@@ -1,0 +1,26 @@
+name: mongodb
+summary: A MongoDB K8s charm
+description: |
+    MongoDB charm for Kubernetes
+series:
+   - kubernetes
+tags:
+  - kubernetes
+  - mongodb
+  - db
+min-juju-version: 2.7.5
+storage:
+  db:
+    type: filesystem
+    location: /data/db
+deployment:
+  type: stateful
+  service: cluster
+peers:
+  cluster:
+    interface: cluster
+resources:
+  mongodb-image:
+    type: oci-image
+    description: upstream docker image for mongodb
+    upstream-source: 'mongo:4.4.1'

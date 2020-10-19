@@ -1,0 +1,53 @@
+description: mongo
+bundle: kubernetes
+applications:
+  mongo-standalone-one:
+    charm: "../mongodb.charm"
+    scale: 1
+    series: kubernetes
+    options:
+      standalone: true
+    resources:
+      mongodb-image: mongo:4.1.1
+  mongo-standalone-two:
+    charm: "../mongodb.charm"
+    scale: 2
+    series: kubernetes
+    options:
+      standalone: true
+    resources:
+      mongodb-image: mongo:4.1.1
+  mongo-replica-one:
+    charm: "../mongodb.charm"
+    scale: 1
+    series: kubernetes
+    options:
+      standalone: false
+    resources:
+      mongodb-image: mongo:4.1.1
+  mongo-replica-two:
+    charm: "../mongodb.charm"
+    scale: 2
+    series: kubernetes
+    options:
+      standalone: false
+    resources:
+      mongodb-image: mongo:4.1.1
+  mongo-replica-one-custom:
+    charm: "../mongodb.charm"
+    scale: 1
+    series: kubernetes
+    options:
+      standalone: false
+      replica_set_name: myreplica
+    resources:
+      mongodb-image: mongo:4.1.1
+  mongo-replica-two-custom:
+    charm: "../mongodb.charm"
+    scale: 2
+    series: kubernetes
+    options:
+      standalone: false
+      replica_set_name: myreplica
+    resources:
+      mongodb-image: mongo:4.1.1
