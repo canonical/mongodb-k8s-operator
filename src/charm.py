@@ -114,7 +114,7 @@ class MongoDBCharm(CharmBase):
             return
 
         # Build Pod spec
-        self.unit.status = BlockedStatus("Assembling pod spec")
+        self.unit.status = WaitingStatus("Assembling pod spec")
         builder = PodSpecBuilder(
             name=self.model.app.name,
             replica_set_name=self.replica_set_name,
