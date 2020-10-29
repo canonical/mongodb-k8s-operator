@@ -51,7 +51,6 @@ class ReplicaSetConfigured(EventBase):
 
 
 class MongoDBClusterEvents(CharmEvents):
-    mongodb_started = EventSource(MongoDBStartedEvent)
     cluster_ready = EventSource(MongoDBReadyEvent)
     replica_set_configured = EventSource(ReplicaSetConfigured)
 
@@ -81,9 +80,6 @@ class MongoDBCharm(CharmBase):
 
         self.framework.observe(self.on.cluster_relation_changed, self.reconfigure)
         self.framework.observe(self.on.cluster_relation_departed, self.reconfigure)
-
-        # Cluster Events
-        self.framework.observe(self.on.mongodb_started, self.on_mongodb_started)
 
         logger.debug("MongoDBCharm initialized!")
 
@@ -138,7 +134,7 @@ class MongoDBCharm(CharmBase):
             return
         logger.debug("Running on_start")
         if self._is_mongodb_service_ready():
-            self.on.mongodb_started.emit()
+            self._initialize_mongodb_cluster(event)
         else:
             # This event is not being retriggered before update_status
             event.defer()
@@ -196,11 +192,11 @@ class MongoDBCharm(CharmBase):
     ########## CLUSTER EVENT HANDLERS ############
     ##############################################
 
-    def on_mongodb_started(self, event):
+    def _initialize_mongodb_cluster(self, event):
         if not self.unit.is_leader() or self.standalone:
             self.on_update_status(event)
             return
-        logger.debug("Running on_mongodb_started")
+        logger.debug("Initializing MongoDB Cluster")
         if not self.cluster.replica_set_initialized:
             self.unit.status = WaitingStatus("Initializing the replica set")
             self.mongo.initialize_replica_set(self.cluster.hosts)
@@ -208,7 +204,7 @@ class MongoDBCharm(CharmBase):
 
         self.on.cluster_ready.emit()
         self.on_update_status(event)
-        logger.debug("Running on_mongodb_started finished")
+        logger.debug("MongoDB Cluster Initialized")
 
     ##############################################
     ############### PROPERTIES ###################
