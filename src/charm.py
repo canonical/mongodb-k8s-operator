@@ -161,10 +161,6 @@ class MongoDBCharm(CharmBase):
                     if self.cluster.ready:
                         hosts_count = len(self.cluster.replica_set_hosts)
                         status_message += f" ({hosts_count} members)"
-                    else:
-                        status_message += " (replica set not ready yet)"
-                        # Since on_start is not being properly triggered, I'm calling it manually here
-                        self.on_start(event)
                 self.unit.status = ActiveStatus(status_message)
             else:
                 status_message += "service not ready yet"
