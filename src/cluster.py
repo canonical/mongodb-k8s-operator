@@ -41,7 +41,7 @@ class MongoDBCluster(Object):
 
     def on_cluster_ready(self, event):
         if not self.framework.model.unit.is_leader():
-            raise RuntimeError("The replica set can only be initialized by the leader.")
+            return
 
         self.state.ready = True
 
@@ -57,7 +57,7 @@ class MongoDBCluster(Object):
 
     def on_replica_set_configured(self, event):
         if not self.framework.model.unit.is_leader():
-            raise RuntimeError("The replica set can only be initialized by the leader.")
+            return
 
         self.state.replica_set_hosts = event.hosts
 
