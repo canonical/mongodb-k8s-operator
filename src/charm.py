@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 
 import logging
+import json
 
-from urllib.parse import urlparse
-
-from ops.charm import CharmBase, CharmEvents
-
-from ops.framework import StoredState, EventBase, EventSource
+from ops.charm import CharmBase
+from ops.framework import StoredState
 
 from ops.main import main
 from ops.model import (
@@ -17,7 +15,6 @@ from ops.model import (
 from oci_image import OCIImageResource, OCIImageResourceError
 
 from pod_spec import PodSpecBuilder
-from cluster import MongoDBCluster
 from mongo import Mongo
 
 logger = logging.getLogger(__name__)
@@ -29,41 +26,22 @@ REQUIRED_SETTINGS_NOT_STANDALONE = ["replica_set_name"]
 # default ports
 MONGODB_PORT = 27017
 
-
-class MongoDBStartedEvent(EventBase):
-    pass
-
-
-class MongoDBReadyEvent(EventBase):
-    pass
-
-
-class ReplicaSetConfigured(EventBase):
-    def __init__(self, handle, hosts):
-        super().__init__(handle)
-        self.hosts = hosts
-
-    def snapshot(self):
-        return {"hosts": self.hosts}
-
-    def restore(self, snapshot):
-        self.hosts = snapshot["hosts"]
-
-
-class MongoDBClusterEvents(CharmEvents):
-    cluster_ready = EventSource(MongoDBReadyEvent)
-    replica_set_configured = EventSource(ReplicaSetConfigured)
+# Name of peer relation
+PEER = "cluster"
 
 
 class MongoDBCharm(CharmBase):
     state = StoredState()
-    on = MongoDBClusterEvents()
 
     def __init__(self, *args):
         super().__init__(*args)
 
         self.state.set_default(started=False)
         self.state.set_default(pod_spec=None)
+        self.state.set_default(ready=None)
+        self.state.set_default(replica_set_hosts=None)
+
+        self.peer_relation = self.framework.model.get_relation(PEER)
 
         self.port = MONGODB_PORT
         self.image = OCIImageResource(self, "mongodb-image")
@@ -75,11 +53,10 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.start, self.on_start)
         self.framework.observe(self.on.update_status, self.on_update_status)
 
-        # Peer relation
-        self.cluster = MongoDBCluster(self, "cluster", self.port)
-
-        self.framework.observe(self.on.cluster_relation_changed, self.reconfigure)
-        self.framework.observe(self.on.cluster_relation_departed, self.reconfigure)
+        self.framework.observe(self.on[PEER].relation_changed,
+                               self.reconfigure)
+        self.framework.observe(self.on[PEER].relation_departed,
+                               self.reconfigure)
 
         logger.debug("MongoDBCharm initialized!")
 
@@ -106,7 +83,8 @@ class MongoDBCharm(CharmBase):
             self.unit.status = WaitingStatus("Fetching image information")
             image_info = self.image.fetch()
         except OCIImageResourceError:
-            self.unit.status = BlockedStatus("Error fetching image information")
+            self.unit.status = BlockedStatus(
+                "Error fetching image information")
             return
 
         # Build Pod spec
@@ -158,8 +136,8 @@ class MongoDBCharm(CharmBase):
             if self._is_mongodb_service_ready():
                 status_message += "ready"
                 if self.unit.is_leader():
-                    if self.cluster.ready:
-                        hosts_count = len(self.cluster.replica_set_hosts)
+                    if self.cluster_is_ready:
+                        hosts_count = len(self.replica_set_hosts)
                         status_message += f" ({hosts_count} members)"
                 self.unit.status = ActiveStatus(status_message)
             else:
@@ -176,11 +154,11 @@ class MongoDBCharm(CharmBase):
 
         if (
             self.unit.is_leader()
-            and self.cluster.replica_set_initialized
-            and self.cluster.need_replica_set_reconfiguration()
+            and self.replica_set_initialized
+            and self.need_replica_set_reconfiguration()
         ):
-            self.mongo.reconfigure_replica_set(self.cluster.hosts)
-            self.on.replica_set_configured.emit(self.cluster.hosts)
+            self.mongo.reconfigure_replica_set(self.cluster_hosts)
+            self.update_replica_set_status(self.cluster_hosts)
         self.on_update_status(event)
         logger.debug("Running reconfigure finished")
 
@@ -193,14 +171,48 @@ class MongoDBCharm(CharmBase):
             self.on_update_status(event)
             return
         logger.debug("Initializing MongoDB Cluster")
-        if not self.cluster.replica_set_initialized:
+        if not self.replica_set_initialized:
             self.unit.status = WaitingStatus("Initializing the replica set")
-            self.mongo.initialize_replica_set(self.cluster.hosts)
-            self.on.replica_set_configured.emit(self.cluster.hosts)
+            self.mongo.initialize_replica_set(self.cluster_hosts)
+            self.update_replica_set_status(self.cluster_hosts)
 
-        self.on.cluster_ready.emit()
+        self.update_cluster_status(event)
         self.on_update_status(event)
         logger.debug("MongoDB Cluster Initialized")
+
+    def update_cluster_status(self, event):
+        if not self.framework.model.unit.is_leader():
+            return
+
+        self.state.ready = True
+
+        if not self.is_joined:
+            logger.debug("cluster status: No relation joined yet")
+            event.defer()
+            return
+
+        ready = str(self.state.ready)
+        self.peer_relation.data[self.model.app]["ready"] = ready
+
+        logger.debug(f"Relation data updated: ready={ready}")
+
+    def update_replica_set_status(self, hosts):
+        if not self.framework.model.unit.is_leader():
+            return
+
+        self.state.replica_set_hosts = hosts
+
+        if not self.is_joined:
+            logger.debug("replica set status: No relation joined yet")
+            return
+
+        replica_set_hosts = str(self.state.replica_set_hosts)
+        self.peer_relation.data[self.model.app][
+            "replica_set_hosts"] = replica_set_hosts
+
+        logger.debug(
+            f"Relation data updated: replica_set_hosts={replica_set_hosts}"
+        )
 
     ##############################################
     ############### PROPERTIES ###################
@@ -209,17 +221,70 @@ class MongoDBCharm(CharmBase):
     @property
     def mongo(self):
         return Mongo(
-            standalone_uri=self.cluster.standalone_uri,
-            replica_set_uri=f"{self.cluster.replica_set_uri}?replicaSet={self.replica_set_name}",
+            standalone_uri=self.standalone_uri,
+            replica_set_uri=f"{self.replica_set_uri}?replicaSet={self.replica_set_name}",
         )
+
+    @property
+    def replica_set_uri(self):
+        uri = "mongodb://"
+        for i, host in enumerate(self.cluster_hosts):
+            if i:
+                uri += ","
+            uri += f"{host}:{self.port}"
+        uri += "/"
+        return uri
+
+    @property
+    def standalone_uri(self):
+        return f"mongodb://{self.model.app.name}:{self.port}/"
 
     @property
     def replica_set_name(self):
         return self.model.config["replica_set_name"]
 
     @property
+    def num_peers(self):
+        return len(self.peer_relation.units) + 1 if self.is_joined else 1
+    
+    @property
     def standalone(self):
         return self.model.config["standalone"]
+
+    @property
+    def is_joined(self):
+        return self.peer_relation is not None
+
+    @property
+    def replica_set_initialized(self):
+        return self.replica_set_hosts is not None
+
+    @property
+    def cluster_is_ready(self):
+        if not self.state.ready and self.is_joined:
+            ready = self.peer_relation.data[self.model.app].get("ready", False)
+            self.state.started = bool(ready)
+        return self.state.ready
+
+    def _get_unit_hostname(self, _id: int) -> str:
+        return f"{self.model.app.name}-{_id}.{self.model.app.name}-endpoints"
+
+    @property
+    def cluster_hosts(self: int) -> list:
+        return [self._get_unit_hostname(i) for i in range(self.num_peers)]
+
+    @property
+    def replica_set_hosts(self):
+
+        if not self.state.replica_set_hosts and self.is_joined:
+            hosts = self.peer_relation.data[self.model.app].get(
+                "replica_set_hosts")
+            if hosts:
+                self.state.replica_set_hosts = json.loads(hosts)
+        return self.state.replica_set_hosts
+
+    def need_replica_set_reconfiguration(self):
+        return self.cluster_hosts != self.replica_set_hosts
 
     ##############################################
     ############## PRIVATE METHODS ###############
