@@ -61,7 +61,7 @@ class MongoDBCharm(CharmBase):
         logger.debug("MongoDBCharm initialized!")
 
     ##############################################
-    ########### CHARM HOOKS HANDLERS #############
+    #           CHARM HOOKS HANDLERS             #
     ##############################################
 
     # hooks: install, config-changed, upgrade-charm
@@ -145,7 +145,7 @@ class MongoDBCharm(CharmBase):
                 self.unit.status = WaitingStatus(status_message)
 
     ##############################################
-    ######## PEER RELATION HOOK HANDLERS #########
+    #        PEER RELATION HOOK HANDLERS         #
     ##############################################
 
     # hooks: cluster-relation-changed, cluster-relation-departed
@@ -163,7 +163,7 @@ class MongoDBCharm(CharmBase):
         logger.debug("Running reconfigure finished")
 
     ##############################################
-    ########## CLUSTER EVENT HANDLERS ############
+    #          CLUSTER EVENT HANDLERS            #
     ##############################################
 
     def _initialize_mongodb_cluster(self, event):
@@ -215,7 +215,7 @@ class MongoDBCharm(CharmBase):
         )
 
     ##############################################
-    ############### PROPERTIES ###################
+    #               PROPERTIES                   #
     ##############################################
 
     @property
@@ -287,7 +287,7 @@ class MongoDBCharm(CharmBase):
         return self.cluster_hosts != self.replica_set_hosts
 
     ##############################################
-    ############## PRIVATE METHODS ###############
+    #              PRIVATE METHODS               #
     ##############################################
 
     def _check_settings(self):
