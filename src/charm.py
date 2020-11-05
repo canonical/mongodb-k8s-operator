@@ -47,7 +47,6 @@ class MongoDBCharm(CharmBase):
         self.image = OCIImageResource(self, "mongodb-image")
 
         # Register all of the events we want to observe
-        self.framework.observe(self.on.install, self.configure_pod)
         self.framework.observe(self.on.config_changed, self.configure_pod)
         self.framework.observe(self.on.upgrade_charm, self.configure_pod)
         self.framework.observe(self.on.start, self.on_start)
