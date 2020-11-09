@@ -52,6 +52,8 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.start, self.on_start)
         self.framework.observe(self.on.update_status, self.on_update_status)
 
+        self.framework.observe(self.on["database"].relation_changed,
+                               self.on_database_relation_changed)
         self.framework.observe(self.on[PEER].relation_changed,
                                self.reconfigure)
         self.framework.observe(self.on[PEER].relation_departed,
@@ -212,6 +214,19 @@ class MongoDBCharm(CharmBase):
         logger.debug(
             f"Relation data updated: replica_set_hosts={replica_set_hosts}"
         )
+
+    ##############################################
+    #               RELATIONS                    #
+    ##############################################
+
+    def on_database_relation_changed(self, event):
+        event.relation.data[self.unit]['replicated'] = str(self.is_joined)
+        event.relation.data[self.unit][
+            'replica_set_name'] = self.replica_set_name
+        event.relation.data[self.unit]['standalone_uri'] = "{}".format(
+            self.standalone_uri)
+        event.relation.data[self.unit]['replica_set_uri'] = "{}".format(
+            self.replica_set_uri)
 
     ##############################################
     #               PROPERTIES                   #
