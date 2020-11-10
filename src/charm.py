@@ -36,7 +36,6 @@ class MongoDBCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.state.set_default(started=False)
         self.state.set_default(pod_spec=None)
         self.state.set_default(ready=None)
         self.state.set_default(replica_set_hosts=None)
@@ -277,7 +276,6 @@ class MongoDBCharm(CharmBase):
     def cluster_is_ready(self):
         if not self.state.ready and self.is_joined:
             ready = self.peer_relation.data[self.model.app].get("ready", False)
-            self.state.started = bool(ready)
         return self.state.ready
 
     def _get_unit_hostname(self, _id: int) -> str:
