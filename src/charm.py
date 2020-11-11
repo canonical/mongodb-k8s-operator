@@ -34,7 +34,7 @@ class MongoDBCharm(CharmBase):
         super().__init__(*args)
 
         self.state.set_default(pod_spec=None)
-        self.state.set_default(cluster_initialized=False)
+        self.state.set_default(mongodb_initialized=False)
         self.state.set_default(replica_set_hosts=None)
 
         self.peer_relation = self.framework.model.get_relation(PEER)
@@ -109,12 +109,12 @@ class MongoDBCharm(CharmBase):
             logger.debug("Waiting for MongoDB Service")
             event.defer()
 
-        if not self.state.cluster_initialized:
+        if not self.state.mongodb_initialized:
             logger.debug("Initializing MongoDB")
             self.unit.status = WaitingStatus("Initializing MongoDB")
             try:
                 self.mongo.initialize_replica_set(self.cluster_hosts)
-                self.state.cluster_initialized = True
+                self.state.mongodb_initialized = True
                 logger.debug("MongoDB Initialized")
             except Exception as e:
                 logger.info(f"Deferring on_start since : error={e}")
@@ -131,7 +131,7 @@ class MongoDBCharm(CharmBase):
             return
 
         if self.mongo.is_ready():
-            if not self.state.cluster_initialized:
+            if not self.state.mongodb_initialized:
                 status_message = "mongodb not initialized"
                 self.unit.status = WaitingStatus(status_message)
                 return
