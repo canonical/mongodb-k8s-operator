@@ -37,7 +37,7 @@ class MongoDBCharm(CharmBase):
         super().__init__(*args)
 
         self.state.set_default(pod_spec=None)
-        self.state.set_default(cluster_initialized=None)
+        self.state.set_default(cluster_initialized=False)
         self.state.set_default(replica_set_hosts=None)
 
         self.peer_relation = self.framework.model.get_relation(PEER)
@@ -108,15 +108,27 @@ class MongoDBCharm(CharmBase):
 
     # hooks: start
     def on_start(self, event):
+        logger.debug("Running on_start")
         if not self.unit.is_leader():
             return
-        logger.debug("Running on_start")
-        if self._is_mongodb_service_ready():
-            self._initialize_mongodb_cluster(event)
-        else:
-            # This event is not being retriggered before update_status
+
+        if not self.mongo.is_ready():
+            self.unit.status = WaitingStatus("Waiting for MongoDB Service")
+            logger.debug("Waiting for MongoDB Service")
             event.defer()
 
+        if not self.state.cluster_initialized:
+            logger.debug("Initializing MongoDB")
+            self.unit.status = WaitingStatus("Initializing MongoDB")
+            try:
+                self.mongo.initialize_replica_set(self.cluster_hosts)
+                self.state.cluster_initialized = True
+                logger.debug("MongoDB Initialized")
+            except Exception as e:
+                logger.info(f"Deferring on_start since : error={e}")
+                event.defer()
+
+        self.update_replica_set_status(self.cluster_hosts)
         self.on_update_status(event)
         logger.debug("Running on_start finished")
 
@@ -125,7 +137,7 @@ class MongoDBCharm(CharmBase):
         status_message = ""
         if self.standalone:
             status_message += "standalone-mode: "
-            if self._is_mongodb_service_ready():
+            if self.mongo.is_ready():
                 status_message += "ready"
                 self.unit.status = ActiveStatus(status_message)
             else:
@@ -133,7 +145,7 @@ class MongoDBCharm(CharmBase):
                 self.unit.status = WaitingStatus(status_message)
         else:
             status_message += f"replica-set-mode({self.replica_set_name}): "
-            if self._is_mongodb_service_ready():
+            if self.mongo.is_ready():
                 status_message += "ready"
                 if self.unit.is_leader():
                     if self.state.cluster_initialized:
@@ -165,37 +177,6 @@ class MongoDBCharm(CharmBase):
     ##############################################
     #          CLUSTER EVENT HANDLERS            #
     ##############################################
-
-    def _initialize_mongodb_cluster(self, event):
-        if not self.unit.is_leader() or self.standalone:
-            self.on_update_status(event)
-            return
-        logger.debug("Initializing MongoDB Cluster")
-        if not self.replica_set_initialized:
-            self.unit.status = WaitingStatus("Initializing the replica set")
-            self.mongo.initialize_replica_set(self.cluster_hosts)
-            self.update_replica_set_status(self.cluster_hosts)
-
-        self.update_cluster_status(event)
-        self.on_update_status(event)
-        logger.debug("MongoDB Cluster Initialized")
-
-    def update_cluster_status(self, event):
-        if not self.framework.model.unit.is_leader():
-            return
-
-        self.state.cluster_initialized = True
-
-        if not self.is_joined:
-            logger.debug("cluster status: No relation joined yet")
-            event.defer()
-            return
-
-        self.peer_relation.data[self.model.app][
-            "initialized"] = str(self.state.cluster_initialized)
-
-        logger.debug(f"Relation data updated: initialized="
-                     "{self.state.cluster_initialized}")
 
     def update_replica_set_status(self, hosts):
         if not self.framework.model.unit.is_leader():
@@ -312,9 +293,6 @@ class MongoDBCharm(CharmBase):
                     problems.append(problem)
 
         return ";".join(problems)
-
-    def _is_mongodb_service_ready(self):
-        return self.mongo.is_ready()
 
 
 if __name__ == "__main__":
