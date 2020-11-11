@@ -19,9 +19,6 @@ from mongo import Mongo
 
 logger = logging.getLogger(__name__)
 
-REQUIRED_SETTINGS = ["standalone"]
-REQUIRED_SETTINGS_NOT_STANDALONE = ["replica_set_name"]
-
 # We expect the mongodb container to use the
 # default ports
 MONGODB_PORT = 27017
@@ -72,11 +69,6 @@ class MongoDBCharm(CharmBase):
             return
 
         logger.debug("Running configuring_pod")
-        # Check problems in the settings
-        problems = self._check_settings()
-        if problems:
-            self.unit.status = BlockedStatus(problems)
-            return
 
         # Fetch image information
         try:
@@ -134,27 +126,19 @@ class MongoDBCharm(CharmBase):
 
     # hooks: update-status
     def on_update_status(self, event):
-        status_message = ""
-        if self.standalone:
-            status_message += "standalone-mode: "
-            if self.mongo.is_ready():
-                status_message += "ready"
-                self.unit.status = ActiveStatus(status_message)
-            else:
-                status_message += "service not ready yet"
+        if not self.unit.is_leader():
+            self.unit.status = ActiveStatus()
+            return
+
+        if self.mongo.is_ready():
+            if not self.state.cluster_initialized:
+                status_message = "mongodb not initialized"
                 self.unit.status = WaitingStatus(status_message)
+                return
+            self.unit.status = ActiveStatus()
         else:
-            status_message += f"replica-set-mode({self.replica_set_name}): "
-            if self.mongo.is_ready():
-                status_message += "ready"
-                if self.unit.is_leader():
-                    if self.state.cluster_initialized:
-                        hosts_count = len(self.replica_set_hosts)
-                        status_message += f" ({hosts_count} members)"
-                self.unit.status = ActiveStatus(status_message)
-            else:
-                status_message += "service not ready yet"
-                self.unit.status = WaitingStatus(status_message)
+            status_message = "service not ready yet"
+            self.unit.status = WaitingStatus(status_message)
 
     ##############################################
     #        PEER RELATION HOOK HANDLERS         #
@@ -243,10 +227,6 @@ class MongoDBCharm(CharmBase):
         return len(self.peer_relation.units) + 1 if self.is_joined else 1
     
     @property
-    def standalone(self):
-        return self.model.config["standalone"]
-
-    @property
     def is_joined(self):
         return self.peer_relation is not None
 
@@ -273,27 +253,6 @@ class MongoDBCharm(CharmBase):
 
     def need_replica_set_reconfiguration(self):
         return self.cluster_hosts != self.replica_set_hosts
-
-    ##############################################
-    #              PRIVATE METHODS               #
-    ##############################################
-
-    def _check_settings(self):
-        problems = []
-        config = self.model.config
-
-        for setting in REQUIRED_SETTINGS:
-            if config.get(setting) is None:
-                problem = f"missing config {setting}"
-                problems.append(problem)
-        if not self.standalone:
-            for setting in REQUIRED_SETTINGS_NOT_STANDALONE:
-                if not config.get(setting):
-                    problem = f"missing config {setting}"
-                    problems.append(problem)
-
-        return ";".join(problems)
-
 
 if __name__ == "__main__":
     main(MongoDBCharm)
