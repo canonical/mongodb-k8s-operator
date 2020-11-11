@@ -73,5 +73,6 @@ class Mongo:
             client.admin.command("replSetInitiate", config)
         except Exception as e:
             logger.error(f"cannot initialize replica set. error={e}")
+            raise e
         finally:
             client.close()
