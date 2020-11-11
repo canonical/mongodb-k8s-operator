@@ -37,7 +37,7 @@ class MongoDBCharm(CharmBase):
         super().__init__(*args)
 
         self.state.set_default(pod_spec=None)
-        self.state.set_default(ready=None)
+        self.state.set_default(cluster_initialized=None)
         self.state.set_default(replica_set_hosts=None)
 
         self.peer_relation = self.framework.model.get_relation(PEER)
@@ -136,7 +136,7 @@ class MongoDBCharm(CharmBase):
             if self._is_mongodb_service_ready():
                 status_message += "ready"
                 if self.unit.is_leader():
-                    if self.cluster_is_ready:
+                    if self.state.cluster_initialized:
                         hosts_count = len(self.replica_set_hosts)
                         status_message += f" ({hosts_count} members)"
                 self.unit.status = ActiveStatus(status_message)
@@ -184,17 +184,18 @@ class MongoDBCharm(CharmBase):
         if not self.framework.model.unit.is_leader():
             return
 
-        self.state.ready = True
+        self.state.cluster_initialized = True
 
         if not self.is_joined:
             logger.debug("cluster status: No relation joined yet")
             event.defer()
             return
 
-        ready = str(self.state.ready)
-        self.peer_relation.data[self.model.app]["ready"] = ready
+        self.peer_relation.data[self.model.app][
+            "initialized"] = str(self.state.cluster_initialized)
 
-        logger.debug(f"Relation data updated: ready={ready}")
+        logger.debug(f"Relation data updated: initialized="
+                     "{self.state.cluster_initialized}")
 
     def update_replica_set_status(self, hosts):
         if not self.framework.model.unit.is_leader():
@@ -271,12 +272,6 @@ class MongoDBCharm(CharmBase):
     @property
     def replica_set_initialized(self):
         return self.replica_set_hosts is not None
-
-    @property
-    def cluster_is_ready(self):
-        if not self.state.ready and self.is_joined:
-            ready = self.peer_relation.data[self.model.app].get("ready", False)
-        return self.state.ready
 
     def _get_unit_hostname(self, _id: int) -> str:
         return f"{self.model.app.name}-{_id}.{self.model.app.name}-endpoints"
