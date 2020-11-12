@@ -119,8 +119,9 @@ class MongoDBCharm(CharmBase):
             except Exception as e:
                 logger.info(f"Deferring on_start since : error={e}")
                 event.defer()
+            finally:
+                self.update_replica_set_status(self.cluster_hosts)
 
-        self.update_replica_set_status(self.cluster_hosts)
         self.on_update_status(event)
         logger.debug("Running on_start finished")
 
