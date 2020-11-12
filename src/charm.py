@@ -130,15 +130,18 @@ class MongoDBCharm(CharmBase):
             self.unit.status = ActiveStatus()
             return
 
-        if self.mongo.is_ready():
-            if not self.state.mongodb_initialized:
-                status_message = "mongodb not initialized"
-                self.unit.status = WaitingStatus(status_message)
-                return
-            self.unit.status = ActiveStatus()
-        else:
+        if not self.mongo.is_ready():
             status_message = "service not ready yet"
             self.unit.status = WaitingStatus(status_message)
+            return
+
+        if not self.state.mongodb_initialized:
+            status_message = "mongodb not initialized"
+            self.unit.status = WaitingStatus(status_message)
+            return
+
+        self.unit.status = ActiveStatus()
+
 
     ##############################################
     #        PEER RELATION HOOK HANDLERS         #
