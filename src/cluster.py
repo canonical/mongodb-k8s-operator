@@ -43,4 +43,3 @@ class MongoDBCluster(Object):
         self.state.set_default(ready=None)
         self.state.set_default(replica_set_hosts=None)
         self.port = port
-
