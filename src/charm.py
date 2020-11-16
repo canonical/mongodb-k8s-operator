@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import logging
-import json
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
