@@ -203,7 +203,7 @@ class MongoDBCharm(CharmBase):
     @property
     def num_peers(self):
         return len(self.peer_relation.units) + 1 if self.is_joined else 1
-    
+
     @property
     def is_joined(self):
         return self.peer_relation is not None
@@ -217,6 +217,7 @@ class MongoDBCharm(CharmBase):
 
     def need_replica_set_reconfiguration(self):
         return self.cluster_hosts != self.state.replica_set_hosts
+
 
 if __name__ == "__main__":
     main(MongoDBCharm)
