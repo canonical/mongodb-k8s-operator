@@ -115,12 +115,11 @@ class MongoDBCharm(CharmBase):
             try:
                 self.mongo.initialize_replica_set(self.cluster_hosts)
                 self.state.mongodb_initialized = True
+                self.state.replica_set_hosts = self.cluster_hosts
                 logger.debug("MongoDB Initialized")
             except Exception as e:
                 logger.info(f"Deferring on_start since : error={e}")
                 event.defer()
-            finally:
-                self.update_replica_set_status(self.cluster_hosts)
 
         self.on_update_status(event)
         logger.debug("Running on_start finished")
@@ -158,31 +157,8 @@ class MongoDBCharm(CharmBase):
             and self.need_replica_set_reconfiguration()
         ):
             self.mongo.reconfigure_replica_set(self.cluster_hosts)
-            self.update_replica_set_status(self.cluster_hosts)
         self.on_update_status(event)
         logger.debug("Running reconfigure finished")
-
-    ##############################################
-    #          CLUSTER EVENT HANDLERS            #
-    ##############################################
-
-    def update_replica_set_status(self, hosts):
-        if not self.framework.model.unit.is_leader():
-            return
-
-        self.state.replica_set_hosts = hosts
-
-        if not self.is_joined:
-            logger.debug("replica set status: No relation joined yet")
-            return
-
-        replica_set_hosts = str(self.state.replica_set_hosts)
-        self.peer_relation.data[self.model.app][
-            "replica_set_hosts"] = replica_set_hosts
-
-        logger.debug(
-            f"Relation data updated: replica_set_hosts={replica_set_hosts}"
-        )
 
     ##############################################
     #               RELATIONS                    #
@@ -247,12 +223,6 @@ class MongoDBCharm(CharmBase):
 
     @property
     def replica_set_hosts(self):
-
-        if not self.state.replica_set_hosts and self.is_joined:
-            hosts = self.peer_relation.data[self.model.app].get(
-                "replica_set_hosts")
-            if hosts:
-                self.state.replica_set_hosts = json.loads(hosts)
         return self.state.replica_set_hosts
 
     def need_replica_set_reconfiguration(self):
