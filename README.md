@@ -1,40 +1,84 @@
-# MongoDB operator Charm for Kubernetes
+# MongoDB Operator
 
-## Requirements
+## Description
 
-```bash
-sudo snap install juju --classic
-sudo snap install charmcraft --beta
-# If you don't have a Kubernetes, install Microk8s
-sudo snap install microk8s --classic
-sudo microk8s.status --wait-ready
-sudo microk8s.enable storage dns
-```
+The [MongoDB](https://www.mongodb.com/) operator provides a general
+purpose distributed document database. This repository contains a
+[Juju](https://jaas.ai/) Charm for deploying MongoDB on Kubernetes
+clusters.
 
-## Bootstrap a Juju controller in K8s
 
-- If you are using microk8s:
+## Setup
 
-```bash
-juju bootstrap microk8s
-```
+A typical setup using [snaps](https://snapcraft.io/), for deployments
+to a [microk8s](https://microk8s.io/) cluster can be done using the
+following commands
 
-- If you are using another Kubernetes:
+    sudo snap install microk8s --classic
+    microk8s.enable dns storage registry dashboard
+    sudo snap install juju --classic
+    juju bootstrap microk8s microk8s
+    juju create-storage-pool operator-storage kubernetes storage-class=microk8s-hostpath
 
-```bash
-cat /path/to/kube/config | juju add-k8s my-k8s
-juju bootstrap my-k8s
-```
+## Build
 
-## Deploy MongoDB
+Install the charmcraft tool
 
-```bash
-juju add-model mongodb
-charmcraft build
-juju deploy ./mongodb.charm
-```
+    sudo snap install charmcraft
 
-## Configuration options
+Build the charm in this git repository
 
-- standalone
-- replica_set_name
+    charmcraft build
+
+## Usage
+
+Create a Juju model for your operators, say "lma"
+
+    juju add-model lma
+
+Deploy a single unit of MongoDB using its default configuration
+
+    juju deploy ./mongodb.charm
+
+It is customary to use MongoDB with replication. Hence usually more
+than one unit (preferably and odd number) is deployed. Additionally
+units (say two more) may be deployed using
+
+    juju add-unit -n 2 mongodb
+    
+Alternatively multiple MongoDB units may be deployed at the
+outset. This is usually faster
+
+    juju deploy -n 3 ./mongodb.charm
+
+If required, remove the deployed monitoring model completely
+
+    juju destroy-model -y lma --no-wait --force --destroy-storage
+
+Note the `--destroy-storage` will delete any data stored by MongoDB in
+its persistent store.
+
+## Relations
+
+Currently supported relations are
+
+- Peer relations for replication
+- Provides a `mongodb` database interface.
+
+## Developing
+
+Use your existing Python 3 development environment or create and
+activate a Python 3 virtualenv
+
+    virtualenv -p python3 venv
+    source venv/bin/activate
+
+Install the development requirements
+
+    pip install -r requirements-dev.txt
+
+## Testing
+
+Just run `run_tests`:
+
+    ./run_tests
