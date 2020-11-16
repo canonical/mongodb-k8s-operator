@@ -216,12 +216,8 @@ class MongoDBCharm(CharmBase):
     def cluster_hosts(self: int) -> list:
         return [self._get_unit_hostname(i) for i in range(self.num_peers)]
 
-    @property
-    def replica_set_hosts(self):
-        return self.state.replica_set_hosts
-
     def need_replica_set_reconfiguration(self):
-        return self.cluster_hosts != self.replica_set_hosts
+        return self.cluster_hosts != self.state.replica_set_hosts
 
 if __name__ == "__main__":
     main(MongoDBCharm)
