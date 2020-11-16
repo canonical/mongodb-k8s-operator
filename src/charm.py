@@ -142,7 +142,6 @@ class MongoDBCharm(CharmBase):
 
         self.unit.status = ActiveStatus()
 
-
     ##############################################
     #        PEER RELATION HOOK HANDLERS         #
     ##############################################
@@ -153,7 +152,7 @@ class MongoDBCharm(CharmBase):
 
         if (
             self.unit.is_leader()
-            and self.replica_set_initialized
+            and self.state.mongodb_initialized
             and self.need_replica_set_reconfiguration()
         ):
             self.mongo.reconfigure_replica_set(self.cluster_hosts)
@@ -209,10 +208,6 @@ class MongoDBCharm(CharmBase):
     @property
     def is_joined(self):
         return self.peer_relation is not None
-
-    @property
-    def replica_set_initialized(self):
-        return self.replica_set_hosts is not None
 
     def _get_unit_hostname(self, _id: int) -> str:
         return f"{self.model.app.name}-{_id}.{self.model.app.name}-endpoints"
