@@ -58,7 +58,7 @@ class Mongo:
                 "replSetReconfig", rs_config["config"], force=True
             )
         except Exception as e:
-            logger.error(f"cannot reconfigure replica set. error={e}")
+            logger.error("cannot reconfigure replica set. error={}".format(e))
         finally:
             replica_set_client.close()
 
@@ -69,10 +69,10 @@ class Mongo:
         }
         client = self.get_client()
         try:
-            logger.debug(f"initializing replica set with config={config}")
+            logger.debug("initializing replica set with config={}".format(config))
             client.admin.command("replSetInitiate", config)
         except Exception as e:
-            logger.error(f"cannot initialize replica set. error={e}")
+            logger.error("cannot initialize replica set. error={}".format(e))
             raise e
         finally:
             client.close()

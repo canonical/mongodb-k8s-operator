@@ -117,7 +117,7 @@ class MongoDBCharm(CharmBase):
                 self.state.replica_set_hosts = self.cluster_hosts
                 logger.debug("MongoDB Initialized")
             except Exception as e:
-                logger.info(f"Deferring on_start since : error={e}")
+                logger.info("Deferring on_start since : error={}".format(e))
                 event.defer()
 
         self.on_update_status(event)
@@ -179,8 +179,8 @@ class MongoDBCharm(CharmBase):
     def mongo(self):
         return Mongo(
             standalone_uri=self.standalone_uri,
-            replica_set_uri=f"{self.replica_set_uri}?replicaSet={self.replica_set_name}",
-        )
+            replica_set_uri="{}?replicaSet={}".format(self.replica_set_uri,
+                                                      self.replica_set_name))
 
     @property
     def replica_set_uri(self):
@@ -188,13 +188,14 @@ class MongoDBCharm(CharmBase):
         for i, host in enumerate(self.cluster_hosts):
             if i:
                 uri += ","
-            uri += f"{host}:{self.port}"
+            uri += "{}:{}".format(host, self.port)
         uri += "/"
         return uri
 
     @property
     def standalone_uri(self):
-        return f"mongodb://{self.model.app.name}:{self.port}/"
+        return "mongodb://{}:{}/".format(self.model.app.name,
+                                         self.port)
 
     @property
     def replica_set_name(self):
@@ -209,7 +210,9 @@ class MongoDBCharm(CharmBase):
         return self.peer_relation is not None
 
     def _get_unit_hostname(self, _id: int) -> str:
-        return f"{self.model.app.name}-{_id}.{self.model.app.name}-endpoints"
+        return "{}-{}.{}-endpoints".format(self.model.app.name,
+                                           _id,
+                                           self.model.app.name)
 
     @property
     def cluster_hosts(self: int) -> list:
