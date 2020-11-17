@@ -17,7 +17,7 @@ class PodSpecBuilder:
         command = ["mongod"]
         bind_ip_option = "--bind_ip 0.0.0.0"
         replica_set_option = (
-            f"--replSet {self.replica_set_name}" if self.replica_set_name else None
+            "--replSet {}".format(self.replica_set_name) if self.replica_set_name else None
         )
 
         command.extend(bind_ip_option.split(" "))
