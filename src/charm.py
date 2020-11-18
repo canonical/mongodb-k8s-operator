@@ -36,8 +36,6 @@ class MongoDBCharm(CharmBase):
         self.state.set_default(mongodb_initialized=False)
         self.state.set_default(replica_set_hosts=None)
 
-        self.peer_relation = self.framework.model.get_relation(PEER)
-
         self.port = MONGODB_PORT
         self.image = OCIImageResource(self, "mongodb-image")
 
@@ -207,11 +205,13 @@ class MongoDBCharm(CharmBase):
 
     @property
     def num_peers(self):
-        return len(self.peer_relation.units) + 1 if self.is_joined else 1
+        peer_relation = self.framework.model.get_relation(PEER)
+        return len(peer_relation.units) + 1 if self.is_joined else 1
 
     @property
     def is_joined(self):
-        return self.peer_relation is not None
+        peer_relation = self.framework.model.get_relation(PEER)
+        return peer_relation is not None
 
     def _get_unit_hostname(self, _id: int) -> str:
         return "{}-{}.{}-endpoints".format(self.model.app.name,
