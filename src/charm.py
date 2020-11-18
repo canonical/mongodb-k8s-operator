@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 MONGODB_PORT = 27017
 
 # Name of peer relation
-PEER = "cluster"
+PEER = "mongodb"
 
 
 class MongoDBCharm(CharmBase):
