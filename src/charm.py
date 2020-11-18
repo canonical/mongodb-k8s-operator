@@ -151,7 +151,6 @@ class MongoDBCharm(CharmBase):
 
         if (
             self.unit.is_leader()
-            and self.state.mongodb_initialized
             and self.need_replica_set_reconfiguration()
         ):
             try:
