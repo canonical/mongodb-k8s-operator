@@ -50,6 +50,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.config_changed, self.configure_pod)
         self.framework.observe(self.on.upgrade_charm, self.configure_pod)
         self.framework.observe(self.on.start, self.on_start)
+        self.framework.observe(self.on.stop, self.on_stop)
         self.framework.observe(self.on.update_status, self.on_update_status)
 
         self.framework.observe(self.on["database"].relation_changed,
@@ -138,6 +139,12 @@ class MongoDBCharm(CharmBase):
 
         self.on_update_status(event)
         logger.debug("Running on_start finished")
+
+    # Handles stop event
+    def on_stop(self, _):
+        """Mark terminating unit as inactive
+        """
+        self.unit.status = MaintenanceStatus('Pod is terminating.')
 
     # Handles update-status event
     def on_update_status(self, event):
