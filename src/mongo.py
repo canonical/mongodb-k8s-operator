@@ -59,6 +59,7 @@ class Mongo:
             )
         except Exception as e:
             logger.error("cannot reconfigure replica set. error={}".format(e))
+            raise e
         finally:
             replica_set_client.close()
 

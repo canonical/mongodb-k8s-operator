@@ -154,7 +154,12 @@ class MongoDBCharm(CharmBase):
             and self.state.mongodb_initialized
             and self.need_replica_set_reconfiguration()
         ):
-            self.mongo.reconfigure_replica_set(self.cluster_hosts)
+            try:
+                self.mongo.reconfigure_replica_set(self.cluster_hosts)
+            except Exception as e:
+                logger.info("Deferring relation event since : error={}".format(e))
+                event.defer()
+
         self.on_update_status(event)
         logger.debug("Running reconfigure finished")
 
