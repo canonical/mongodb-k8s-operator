@@ -27,6 +27,13 @@ PEER = "mongodb"
 
 
 class MongoDBCharm(CharmBase):
+    """A Juju Charm to deploy MongoDB on Kubernetes
+
+    This charm has the following features:
+    - Add one more MongoDB units
+    - Reconfigure replica set anytime number of MongoDB units changes
+    - Provides a database relation for any MongoDB client
+    """
     state = StoredState()
 
     def __init__(self, *args):
@@ -58,8 +65,13 @@ class MongoDBCharm(CharmBase):
     #           CHARM HOOKS HANDLERS             #
     ##############################################
 
-    # hooks: install, config-changed, upgrade-charm
+    # Handles config-changed and upgrade-charm events
     def configure_pod(self, event):
+        """Configure MongoDB Pod specification
+
+        A new MongoDB pod specification is set only if it is different
+        from the current specification.
+        """
         # Continue only if the unit is the leader
         if not self.unit.is_leader():
             self.on_update_status(event)
@@ -95,8 +107,14 @@ class MongoDBCharm(CharmBase):
         self.on_update_status(event)
         logger.debug("Running configuring_pod finished")
 
-    # hooks: start
+    # Handles start event
     def on_start(self, event):
+        """Initialize MongoDB
+
+        This event handler is deferred if initialization of MongoDB
+        replica set fails. By doing so it is gauranteed that another
+        attempt at initialization will be made.
+        """
         logger.debug("Running on_start")
         if not self.unit.is_leader():
             return
@@ -121,8 +139,15 @@ class MongoDBCharm(CharmBase):
         self.on_update_status(event)
         logger.debug("Running on_start finished")
 
-    # hooks: update-status
+    # Handles update-status event
     def on_update_status(self, event):
+        """Set status for all units
+
+        Status may be
+        - MongoDB API server not reachable (service is not ready),
+        - MongoDB Replication set is not Initialized
+        - Unit is active
+        """
         if not self.unit.is_leader():
             self.unit.status = ActiveStatus()
             return
@@ -143,8 +168,12 @@ class MongoDBCharm(CharmBase):
     #        PEER RELATION HOOK HANDLERS         #
     ##############################################
 
-    # hooks: cluster-relation-changed, cluster-relation-departed
+    # Handles relation-changed and relation-departed events
     def reconfigure(self, event):
+        """Reconfigure replicat set
+
+        The number of replicas in the MongoDB replica set is updated.
+        """
         logger.debug("Running reconfigure")
 
         if (
@@ -164,7 +193,19 @@ class MongoDBCharm(CharmBase):
     #               RELATIONS                    #
     ##############################################
 
+    # handles client relation for MongoDB
     def on_database_relation_changed(self, event):
+        """Connect to database client
+
+        Any MongoDB client is provided with the following information
+        - Is MongoDB in a replicated or unitary state
+        - Replica set URI
+        - Standalone URI
+
+        Using this information a client can establish a database
+        connection with MongoDB, for instances using the pymongo
+        Python Module.
+        """
         event.relation.data[self.unit]['replicated'] = str(self.is_joined)
         event.relation.data[self.unit][
             'replica_set_name'] = self.replica_set_name
@@ -179,6 +220,10 @@ class MongoDBCharm(CharmBase):
 
     @property
     def mongo(self):
+        """Return a MongoDB API client
+
+        A pymongo client is returned.
+        """
         return Mongo(
             standalone_uri=self.standalone_uri,
             replica_set_uri="{}?replicaSet={}".format(self.replica_set_uri,
@@ -186,6 +231,8 @@ class MongoDBCharm(CharmBase):
 
     @property
     def replica_set_uri(self):
+        """Construct a replica set URI
+        """
         uri = "mongodb://"
         for i, host in enumerate(self.cluster_hosts):
             if i:
@@ -196,33 +243,47 @@ class MongoDBCharm(CharmBase):
 
     @property
     def standalone_uri(self):
+        """Construct a standalone URI
+        """
         return "mongodb://{}:{}/".format(self.model.app.name,
                                          self.port)
 
     @property
     def replica_set_name(self):
+        """Find the replica set name
+        """
         return self.model.config["replica_set_name"]
 
     @property
     def num_peers(self):
+        """Find number of deployed MongoDB units
+        """
         peer_relation = self.framework.model.get_relation(PEER)
         return len(peer_relation.units) + 1 if self.is_joined else 1
 
     @property
     def is_joined(self):
+        """Does MongoDB charm have peers
+        """
         peer_relation = self.framework.model.get_relation(PEER)
         return peer_relation is not None
 
     def _get_unit_hostname(self, _id: int) -> str:
+        """Construct a DNS name for a MongoDB unit
+        """
         return "{}-{}.{}-endpoints".format(self.model.app.name,
                                            _id,
                                            self.model.app.name)
 
     @property
     def cluster_hosts(self: int) -> list:
+        """Find all hostnames for MongoDB units
+        """
         return [self._get_unit_hostname(i) for i in range(self.num_peers)]
 
     def need_replica_set_reconfiguration(self):
+        """Does MongoDB replica set need reconfiguration
+        """
         return self.cluster_hosts != self.state.replica_set_hosts
 
 
