@@ -10,6 +10,7 @@ from ops.model import (
     ActiveStatus,
     BlockedStatus,
     WaitingStatus,
+    MaintenanceStatus
 )
 from oci_image import OCIImageResource, OCIImageResourceError
 
