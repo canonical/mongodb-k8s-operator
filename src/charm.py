@@ -40,7 +40,6 @@ class MongoDBCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.state.set_default(pod_spec=None)
         self.state.set_default(mongodb_initialized=False)
         self.state.set_default(replica_set_hosts=None)
 
@@ -100,11 +99,8 @@ class MongoDBCharm(CharmBase):
         )
         pod_spec = builder.make_pod_spec()
 
-        # Update pod spec if the generated one is different
-        # from the one previously applied
-        if self.state.pod_spec != pod_spec:
-            self.model.pod.set_spec(pod_spec)
-            self.state.pod_spec = pod_spec
+        # Applying pod spec. If the spec hasn't changed, this has no effect.
+        self.model.pod.set_spec(pod_spec)
 
         self.on_update_status(event)
         logger.debug("Running configuring_pod finished")
