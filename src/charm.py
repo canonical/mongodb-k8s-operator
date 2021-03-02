@@ -15,13 +15,9 @@ from ops.model import (
 from oci_image import OCIImageResource, OCIImageResourceError
 
 from pod_spec import PodSpecBuilder
-from mongo import Mongo
+from mongoserver import MongoDB, MONGODB_PORT
 
 logger = logging.getLogger(__name__)
-
-# We expect the mongodb container to use the
-# default ports
-MONGODB_PORT = 27017
 
 # Name of peer relation
 PEER = "mongodb"
@@ -130,9 +126,9 @@ class MongoDBCharm(CharmBase):
             logger.debug("Initializing MongoDB")
             self.unit.status = WaitingStatus("Initializing MongoDB")
             try:
-                self.mongo.initialize_replica_set(self.cluster_hosts)
+                self.mongo.initialize_replica_set(self.mongo.cluster_hosts)
                 self.state.mongodb_initialized = True
-                self.state.replica_set_hosts = self.cluster_hosts
+                self.state.replica_set_hosts = self.mongo.cluster_hosts
                 logger.debug("MongoDB Initialized")
             except Exception as e:
                 logger.info("Deferring on_start since : error={}".format(e))
@@ -186,10 +182,10 @@ class MongoDBCharm(CharmBase):
 
         if (
             self.unit.is_leader()
-            and self.need_replica_set_reconfiguration()
+            and self.need_replica_set_reconfiguration
         ):
             try:
-                self.mongo.reconfigure_replica_set(self.cluster_hosts)
+                self.mongo.reconfigure_replica_set(self.mongo.cluster_hosts)
             except Exception as e:
                 logger.info("Deferring relation event since : error={}".format(e))
                 event.defer()
@@ -227,34 +223,10 @@ class MongoDBCharm(CharmBase):
     ##############################################
 
     @property
-    def mongo(self):
-        """Return a MongoDB API client
-
-        A pymongo client is returned.
+    def need_replica_set_reconfiguration(self):
+        """Does MongoDB replica set need reconfiguration
         """
-        return Mongo(
-            standalone_uri=self.standalone_uri,
-            replica_set_uri="{}?replicaSet={}".format(self.replica_set_uri,
-                                                      self.replica_set_name))
-
-    @property
-    def replica_set_uri(self):
-        """Construct a replica set URI
-        """
-        uri = "mongodb://"
-        for i, host in enumerate(self.cluster_hosts):
-            if i:
-                uri += ","
-            uri += "{}:{}".format(host, self.port)
-        uri += "/"
-        return uri
-
-    @property
-    def standalone_uri(self):
-        """Construct a standalone URI
-        """
-        return "mongodb://{}:{}/".format(self.model.app.name,
-                                         self.port)
+        return self.mongo.cluster_hosts != self.state.replica_set_hosts
 
     @property
     def replica_set_name(self):
@@ -276,23 +248,36 @@ class MongoDBCharm(CharmBase):
         peer_relation = self.framework.model.get_relation(PEER)
         return peer_relation is not None
 
-    def _get_unit_hostname(self, _id: int) -> str:
-        """Construct a DNS name for a MongoDB unit
-        """
-        return "{}-{}.{}-endpoints".format(self.model.app.name,
-                                           _id,
-                                           self.model.app.name)
+    @property
+    def db_info(self):
+        info = {
+            'replicated': str(self.is_joined),
+            'replica_set_name': self.replica_set_name,
+            'standalone_uri': "{}".format(self.mongo.standalone_uri),
+            'replica_set_uri': "{}".format(self.mongo.replica_set_uri)
+        }
+        return info
 
     @property
-    def cluster_hosts(self: int) -> list:
-        """Find all hostnames for MongoDB units
-        """
-        return [self._get_unit_hostname(i) for i in range(self.num_peers)]
+    def mongo(self):
+        config = {'app_name': self.model.app.name,
+                  'replica_set_name': self.replica_set_name,
+                  'num_peers': self.num_peers,
+                  'port': self.port}
+        return MongoDB(config)
 
-    def need_replica_set_reconfiguration(self):
-        """Does MongoDB replica set need reconfiguration
-        """
-        return self.cluster_hosts != self.state.replica_set_hosts
+    ##############################################
+    #             UTILITY METHODS                #
+    ##############################################
+
+    @property
+    def provides(self):
+        provided = {
+            "provides": {"mongodb": str(self.mongo.version)},
+            "config": self.db_info
+        }
+        logger.debug("Providing : {}".format(provided))
+        return provided
 
 
 if __name__ == "__main__":
