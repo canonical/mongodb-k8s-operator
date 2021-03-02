@@ -33,7 +33,7 @@ class TestCharm(unittest.TestCase):
         pod_spec = self.harness.get_pod_spec()
         self.assertEqual(replica_set_name(pod_spec), "new_name")
 
-    @patch("mongo.Mongo.reconfigure_replica_set")
+    @patch("mongoserver.MongoDB.reconfigure_replica_set")
     def test_replica_set_is_reconfigured_when_peer_joins(self, mock_reconf):
         self.harness.set_leader(True)
         rel_id = self.harness.add_relation('mongodb', 'mongodb')
@@ -41,7 +41,6 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(rel_id,
                                           'mongodb/1',
                                           {'private-address': '10.0.0.1'})
-        self.assertEqual(self.harness.charm.num_peers, 2)
         peers = ['mongodb-0.mongodb-endpoints',
                  'mongodb-1.mongodb-endpoints']
         mock_reconf.assert_called_once_with(peers)
