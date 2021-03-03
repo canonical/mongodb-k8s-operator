@@ -45,6 +45,29 @@ class TestCharm(unittest.TestCase):
                  'mongodb-1.mongodb-endpoints']
         mock_reconf.assert_called_once_with(peers)
 
+    def test_uri_data_is_generated_correctly(self):
+        self.harness.set_leader(True)
+        standalone_uri = self.harness.charm.mongo.standalone_uri
+        replica_set_uri = self.harness.charm.mongo.replica_set_uri
+        self.assertEqual(standalone_uri, 'mongodb://mongodb:27017/')
+        self.assertEqual(replica_set_uri, 'mongodb://mongodb-0.mongodb-endpoints:27017/')
+
+    def test_database_relation_data_is_set_correctly(self):
+        self.harness.set_leader(True)
+        rel_id = self.harness.add_relation('database', 'client')
+        self.harness.add_relation_unit(rel_id, 'client/1')
+        rel = self.harness.framework.model.get_relation('database', rel_id)
+        unit = self.harness.framework.model.get_unit('client/1')
+        self.harness.charm.on['database'].relation_changed.emit(rel, unit)
+        got = self.harness.get_relation_data(rel_id, self.harness.framework.model.unit.name)
+        expected = {
+            'replicated': 'False',
+            'replica_set_name': 'rs0',
+            'standalone_uri': 'mongodb://mongodb:27017/',
+            'replica_set_uri': 'mongodb://mongodb-0.mongodb-endpoints:27017/'
+        }
+        self.assertDictEqual(got, expected)
+
 
 def replica_set_name(pod_spec):
     containers = pod_spec[0]["containers"]

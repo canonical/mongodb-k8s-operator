@@ -210,9 +210,9 @@ class MongoDBCharm(CharmBase):
         event.relation.data[self.unit][
             'replica_set_name'] = self.replica_set_name
         event.relation.data[self.unit]['standalone_uri'] = "{}".format(
-            self.standalone_uri)
+            self.mongo.standalone_uri)
         event.relation.data[self.unit]['replica_set_uri'] = "{}".format(
-            self.replica_set_uri)
+            self.mongo.replica_set_uri)
 
     ##############################################
     #               PROPERTIES                   #
