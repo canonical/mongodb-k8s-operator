@@ -103,6 +103,25 @@ class MongoDB():
         return [self.hostname(i) for i in range(self.num_peers)]
 
     @property
+    def databases(self):
+        """List all databases currently available
+        """
+        if not self.is_ready():
+            return []
+
+        if self.num_peers > 1:
+            client = self.get_replica_set_client()
+        else:
+            client = self.get_client()
+
+        # gather list of no default databases
+        defaultdbs = ("admin", "local", "config")
+        databases = client.list_database_names()
+        databases = [db for db in databases if db not in defaultdbs]
+
+        return databases
+
+    @property
     def version(self):
         """Get MongoDB version
         """
