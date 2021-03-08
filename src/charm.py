@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import logging
 
 from ops.charm import CharmBase
@@ -16,6 +15,7 @@ from oci_image import OCIImageResource, OCIImageResourceError
 
 from pod_spec import PodSpecBuilder
 from mongoserver import MongoDB, MONGODB_PORT
+from mongoprovider import MongoProvider
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +49,17 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.stop, self.on_stop)
         self.framework.observe(self.on.update_status, self.on_update_status)
 
-        self.framework.observe(self.on["database"].relation_changed,
-                               self.on_database_relation_changed)
         self.framework.observe(self.on[PEER].relation_changed,
                                self.reconfigure)
         self.framework.observe(self.on[PEER].relation_departed,
                                self.reconfigure)
+
+        if self.state.mongodb_initialized:
+            logger.debug("Mongo Provider Available")
+            self.mongo_provider = MongoProvider(self, 'database', self.provides)
+            self.mongo_provider.ready()
+        else:
+            logger.debug("Mongo Provider not yet Available")
 
         logger.debug("MongoDBCharm initialized!")
 
@@ -188,31 +193,6 @@ class MongoDBCharm(CharmBase):
 
         self.on_update_status(event)
         logger.debug("Running reconfigure finished")
-
-    ##############################################
-    #               RELATIONS                    #
-    ##############################################
-
-    # handles client relation for MongoDB
-    def on_database_relation_changed(self, event):
-        """Connect to database client
-
-        Any MongoDB client is provided with the following information
-        - Is MongoDB in a replicated or unitary state
-        - Replica set URI
-        - Standalone URI
-
-        Using this information a client can establish a database
-        connection with MongoDB, for instances using the pymongo
-        Python Module.
-        """
-        event.relation.data[self.unit]['replicated'] = str(self.is_joined)
-        event.relation.data[self.unit][
-            'replica_set_name'] = self.replica_set_name
-        event.relation.data[self.unit]['standalone_uri'] = "{}".format(
-            self.mongo.standalone_uri)
-        event.relation.data[self.unit]['replica_set_uri'] = "{}".format(
-            self.mongo.replica_set_uri)
 
     ##############################################
     #               PROPERTIES                   #
