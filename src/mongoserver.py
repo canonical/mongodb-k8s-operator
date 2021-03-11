@@ -17,6 +17,7 @@ class MongoDB():
         self.replica_set_name = config['replica_set_name']
         self.num_peers = config['num_peers']
         self.port = config['port']
+        self.root_password = config['root_password']
 
     def get_client(self):
         return MongoClient(self.standalone_uri, serverSelectionTimeoutMS=1000)
@@ -74,20 +75,29 @@ class MongoDB():
     def replica_set_uri(self):
         """Construct a replica set URI
         """
-        uri = "mongodb://"
+        uri = "mongodb://{}:{}@".format(
+            "root",
+            self.root_password)
         for i, host in enumerate(self.cluster_hosts):
             if i:
                 uri += ","
             uri += "{}:{}".format(host, self.port)
-        uri += "/"
+        uri += "/admin"
+        logger.debug("STANDALONE URI: " + uri)
         return uri
 
     @property
     def standalone_uri(self):
         """Construct a standalone URI
         """
-        return "mongodb://{}:{}/".format(self.app_name,
-                                         self.port)
+        uri = "mongodb://{}:{}@{}:{}".format(
+            "root",
+            self.root_password,
+            self.app_name,
+            self.port)
+        uri += "/admin"
+        logger.debug("REPLICA SET URI: " + uri)
+        return uri
 
     def hostname(self, id: int) -> str:
         """Construct a DNS name for a MongoDB unit

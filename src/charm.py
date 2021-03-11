@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import logging
+import secrets
+import string
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
@@ -38,6 +40,8 @@ class MongoDBCharm(CharmBase):
 
         self.state.set_default(mongodb_initialized=False)
         self.state.set_default(replica_set_hosts=None)
+        self.state.set_default(root_password=None)
+        self.state.set_default(security_key=None)
 
         self.port = MONGODB_PORT
         self.image = OCIImageResource(self, "mongodb-image")
@@ -92,12 +96,15 @@ class MongoDBCharm(CharmBase):
 
         # Build Pod spec
         self.unit.status = WaitingStatus("Assembling pod spec")
-        builder = PodSpecBuilder(
-            name=self.model.app.name,
-            replica_set_name=self.replica_set_name,
-            port=self.port,
-            image_info=image_info,
-        )
+        builder_config = {
+            "name": self.model.app.name,
+            "replica_set_name": self.replica_set_name,
+            "port": self.port,
+            "image_info": image_info,
+            "root_password": self.root_password,
+            "security_key": self.security_key
+        }
+        builder = PodSpecBuilder(builder_config)
         pod_spec = builder.make_pod_spec()
 
         # Applying pod spec. If the spec hasn't changed, this has no effect.
@@ -239,7 +246,8 @@ class MongoDBCharm(CharmBase):
         config = {'app_name': self.model.app.name,
                   'replica_set_name': self.replica_set_name,
                   'num_peers': self.num_peers,
-                  'port': self.port}
+                  'port': self.port,
+                  'root_password': self.root_password}
         return MongoDB(config)
 
     ##############################################
@@ -254,6 +262,25 @@ class MongoDBCharm(CharmBase):
         }
         logger.debug("Providing : {}".format(provided))
         return provided
+
+    @property
+    def root_password(self):
+        if self.state.root_password is None:
+            choices = string.ascii_letters + string.digits
+            pwd = "".join([secrets.choice(choices) for i in range(16)])
+            self.state.root_password = pwd
+            return pwd
+        else:
+            return self.state.root_password
+
+    @property
+    def security_key(self):
+        if self.state.security_key is None:
+            key = secrets.token_hex(128)
+            self.state.security_key = key
+            return key
+        else:
+            return self.state.security_key
 
 
 if __name__ == "__main__":

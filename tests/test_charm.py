@@ -49,8 +49,11 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         standalone_uri = self.harness.charm.mongo.standalone_uri
         replica_set_uri = self.harness.charm.mongo.replica_set_uri
-        self.assertEqual(standalone_uri, 'mongodb://mongodb:27017/')
-        self.assertEqual(replica_set_uri, 'mongodb://mongodb-0.mongodb-endpoints:27017/')
+        pwd = self.harness.charm.state.root_password
+        cred = "root:{}".format(pwd)
+        self.assertEqual(standalone_uri, 'mongodb://{}@mongodb:27017/admin'.format(cred))
+        self.assertEqual(replica_set_uri,
+                         'mongodb://{}@mongodb-0.mongodb-endpoints:27017/admin'.format(cred))
 
 
 def replica_set_name(pod_spec):
@@ -58,7 +61,7 @@ def replica_set_name(pod_spec):
 
     for container in containers:
         if container["name"] == "mongodb":
-            command = container.get("command")
+            command = container.get("args")
             idx = command.index("--replSet")
             return command[idx + 1]
 
