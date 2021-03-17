@@ -38,14 +38,14 @@ Create a Juju model for your operators, say "lma"
 
 Deploy a single unit of MongoDB using its default configuration
 
-    juju deploy ./mongodb.charm
+    juju deploy ./mongodb.charm --resource mongodb-image=mongo:4.4.1
 
 It is customary to use MongoDB with replication. Hence usually more
 than one unit (preferably and odd number) is deployed. Additionally
 units (say two more) may be deployed using
 
     juju add-unit -n 2 mongodb
-    
+
 Alternatively multiple MongoDB units may be deployed at the
 outset. This is usually faster
 
