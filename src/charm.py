@@ -58,6 +58,9 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on[PEER].relation_departed,
                                self.reconfigure)
 
+        self.framework.observe(self.on.leader_elected,
+                               self.on_leader_elected)
+
         if self.state.mongodb_initialized:
             logger.debug("Mongo Provider Available")
             self.mongo_provider = MongoProvider(self, 'database', self.provides)
@@ -188,18 +191,28 @@ class MongoDBCharm(CharmBase):
         """
         logger.debug("Running reconfigure")
 
-        if (
-            self.unit.is_leader()
-            and self.need_replica_set_reconfiguration
-        ):
-            try:
-                self.mongo.reconfigure_replica_set(self.mongo.cluster_hosts)
-            except Exception as e:
-                logger.info("Deferring relation event since : error={}".format(e))
-                event.defer()
+        if self.unit.is_leader():
+            event.relation.data[event.app]['root_password'] = str(self.state.root_password)
+            event.relation.data[event.app]['security_key'] = str(self.state.security_key)
+
+            if self.need_replica_set_reconfiguration:
+                try:
+                    self.mongo.reconfigure_replica_set(self.mongo.cluster_hosts)
+                except Exception as e:
+                    logger.info("Deferring relation event since : error={}".format(e))
+                    event.defer()
 
         self.on_update_status(event)
         logger.debug("Running reconfigure finished")
+
+    def on_leader_elected(self, event):
+        rel = self.framework.model.get_relation(PEER)
+        if rel:
+            data = rel.data[rel.app]
+            root_password = data.get('root_password', None)
+            self.state.root_password = root_password
+            security_key = data.get('security_key', None)
+            self.state.security_key = security_key
 
     ##############################################
     #               PROPERTIES                   #
