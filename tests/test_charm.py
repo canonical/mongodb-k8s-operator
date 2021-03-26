@@ -55,6 +55,31 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(replica_set_uri,
                          'mongodb://{}@mongodb-0.mongodb-endpoints:27017/admin'.format(cred))
 
+    def test_leader_stores_key_and_root_credentials(self):
+        self.harness.set_leader(False)
+        rel_id = self.harness.add_relation('mongodb', 'mongodb')
+        password = "some_password"
+        security_key = "some_key"
+        self.harness.update_relation_data(rel_id,
+                                          'mongodb',
+                                          {'root_password': password,
+                                           'security_key': security_key})
+        self.assertIsNone(self.harness.charm.state.root_password)
+        self.assertIsNone(self.harness.charm.state.security_key)
+        self.harness.set_leader(True)
+        pwd = self.harness.charm.state.root_password
+        self.assertEqual(pwd, password)
+        key = self.harness.charm.state.security_key
+        self.assertEqual(key, security_key)
+
+    @patch('mongoserver.MongoDB.version')
+    def test_charm_provides_db_info_and_version(self, mock_version):
+        self.harness.set_leader(True)
+        mock_version.return_value = "4.4.1"
+        provided = self.harness.charm.provides
+        self.assertIn('provides', provided)
+        self.assertIn('config', provided)
+
 
 def replica_set_name(pod_spec):
     containers = pod_spec[0]["containers"]
