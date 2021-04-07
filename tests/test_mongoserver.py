@@ -86,15 +86,15 @@ class TestMongoServer(unittest.TestCase):
     def test_replica_set_uri_contains_correct_number_of_hosts(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-
-        host_list = mongo.replica_set_uri.split(',')
+        uri = mongo.replica_set_uri()
+        host_list = uri.split(',')
         self.assertEqual(len(host_list), config['num_peers'])
 
     def test_replica_set_uri_has_correct_root_credentials(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-
-        prefix, _ = mongo.replica_set_uri.split('@')
+        uri = mongo.replica_set_uri()
+        prefix, _ = uri.split('@')
         _, user, password = prefix.split(':')
         user = user.lstrip("/")
         self.assertEqual("root", user)
@@ -103,8 +103,8 @@ class TestMongoServer(unittest.TestCase):
     def test_standalone_uri_has_correct_root_credentials(self):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
-
-        prefix, _ = mongo.standalone_uri.split('@')
+        uri = mongo.standalone_uri()
+        prefix, _ = uri.split('@')
         _, user, password = prefix.split(':')
         user = user.lstrip("/")
         self.assertEqual("root", user)

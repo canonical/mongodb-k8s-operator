@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import logging
 import secrets
-import string
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
@@ -245,16 +244,6 @@ class MongoDBCharm(CharmBase):
         return peer_relation is not None
 
     @property
-    def db_info(self):
-        info = {
-            'replicated': str(self.is_joined),
-            'replica_set_name': self.replica_set_name,
-            'standalone_uri': "{}".format(self.mongo.standalone_uri),
-            'replica_set_uri': "{}".format(self.mongo.replica_set_uri)
-        }
-        return info
-
-    @property
     def mongo(self):
         config = {'app_name': self.model.app.name,
                   'replica_set_name': self.replica_set_name,
@@ -271,7 +260,6 @@ class MongoDBCharm(CharmBase):
     def provides(self):
         provided = {
             "provides": {"mongodb": str(self.mongo.version)},
-            "config": self.db_info
         }
         logger.debug("Providing : {}".format(provided))
         return provided
@@ -279,8 +267,7 @@ class MongoDBCharm(CharmBase):
     @property
     def root_password(self):
         if self.state.root_password is None:
-            choices = string.ascii_letters + string.digits
-            pwd = "".join([secrets.choice(choices) for i in range(16)])
+            pwd = MongoDB.new_password()
             self.state.root_password = pwd
             return pwd
         else:

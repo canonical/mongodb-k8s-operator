@@ -47,8 +47,8 @@ class TestCharm(unittest.TestCase):
 
     def test_uri_data_is_generated_correctly(self):
         self.harness.set_leader(True)
-        standalone_uri = self.harness.charm.mongo.standalone_uri
-        replica_set_uri = self.harness.charm.mongo.replica_set_uri
+        standalone_uri = self.harness.charm.mongo.standalone_uri()
+        replica_set_uri = self.harness.charm.mongo.replica_set_uri()
         pwd = self.harness.charm.state.root_password
         cred = "root:{}".format(pwd)
         self.assertEqual(standalone_uri, 'mongodb://{}@mongodb:27017/admin'.format(cred))
@@ -78,8 +78,8 @@ class TestCharm(unittest.TestCase):
         mock_version.return_value = "4.4.1"
         provided = self.harness.charm.provides
         self.assertIn('provides', provided)
-        self.assertIn('config', provided)
-
+        self.assertIn('replicated', provided)
+        self.assertIn('replica_set_name', provided)
 
 def replica_set_name(pod_spec):
     containers = pod_spec[0]["containers"]
