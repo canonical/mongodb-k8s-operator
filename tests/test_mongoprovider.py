@@ -78,6 +78,16 @@ class Mongo:
         dbs = self.charm.model.config['available_dbs']
         return dbs
 
+    def standalone_uri(self, credentials=None):
+        return self.charm.model.config['standalone_uri']
+
+    def replica_set_uri(self, credentials=None):
+        return self.charm.model.config['replica_set_uri']
+
+    def new_databases(self, credentials, databases):
+        """Fake MongoDB does not have to do anything here"""
+        pass
+
 
 class MongoDBCharm(CharmBase):
     """A Fake MongoDB charm used for unit testing MongoProvider"""
@@ -92,15 +102,10 @@ class MongoDBCharm(CharmBase):
     @property
     def provides(self):
         """Fake provides injects information using model config unlike a real charm"""
-        db_info = {
-            'replicated': self.model.config['is_joined'],
-            'replica_set_name': self.model.config['replica_set_name'],
-            'standalone_uri': self.model.config['standalone_uri'],
-            'replica_set_uri': self.model.config['replica_set_uri']
-        }
         provided = {
             "provides": {"mongodb": self.model.config['db_version']},
-            "config": db_info
+            "replicated": self.model.config['is_joined'],
+            "replica_set_name": self.model.config['replica_set_name'],
         }
         return provided
 

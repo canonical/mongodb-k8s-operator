@@ -1,3 +1,6 @@
+import secrets
+import string
+
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 import logging
@@ -20,10 +23,17 @@ class MongoDB():
         self.root_password = config['root_password']
 
     def get_client(self):
-        return MongoClient(self.standalone_uri, serverSelectionTimeoutMS=1000)
+        return MongoClient(self.standalone_uri(), serverSelectionTimeoutMS=1000)
 
     def get_replica_set_client(self):
-        return MongoClient(self.replica_set_uri, serverSelectionTimeoutMS=1000)
+        return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
+
+    def client(self):
+        if self.num_peers > 1:
+            client = self.get_replica_set_client()
+        else:
+            client = self.get_client()
+        return client
 
     def is_ready(self):
         ready = False
@@ -71,13 +81,46 @@ class MongoDB():
         finally:
             client.close()
 
-    @property
-    def replica_set_uri(self):
+    def new_user(self, credentials):
+        client = self.client()
+        db = client["admin"]
+        db.command("createUser", credentials["username"],
+                   pwd=credentials["password"],
+                   roles=[])
+        client.close()
+
+    def drop_user(self, username):
+        client = self.client()
+        db = client["admin"]
+        db.command("dropUser",
+                   username)
+        client.close()
+
+    def new_databases(self, credentials, databases):
+        client = self.client()
+        db = client["admin"]
+        roles = []
+        for database in databases:
+            roles.append({"role": "readWrite",
+                          "db": database})
+        db.command("updateUser",
+                   credentials["username"],
+                   roles=roles)
+        client.close()
+
+    def replica_set_uri(self, credentials=None):
         """Construct a replica set URI
         """
+        if credentials:
+            password = credentials["password"]
+            username = credentials["username"]
+        else:
+            password = self.root_password
+            username = "root"
+
         uri = "mongodb://{}:{}@".format(
-            "root",
-            self.root_password)
+            username,
+            password)
         for i, host in enumerate(self.cluster_hosts):
             if i:
                 uri += ","
@@ -86,13 +129,19 @@ class MongoDB():
         logger.debug("STANDALONE URI: " + uri)
         return uri
 
-    @property
-    def standalone_uri(self):
+    def standalone_uri(self, credentials=None):
         """Construct a standalone URI
         """
+        if credentials:
+            password = credentials["password"]
+            username = credentials["username"]
+        else:
+            password = self.root_password
+            username = "root"
+
         uri = "mongodb://{}:{}@{}:{}".format(
-            "root",
-            self.root_password,
+            username,
+            password,
             self.app_name,
             self.port)
         uri += "/admin"
@@ -119,15 +168,12 @@ class MongoDB():
         if not self.is_ready():
             return []
 
-        if self.num_peers > 1:
-            client = self.get_replica_set_client()
-        else:
-            client = self.get_client()
-
+        client = self.client()
         # gather list of no default databases
         defaultdbs = ("admin", "local", "config")
         databases = client.list_database_names()
         databases = [db for db in databases if db not in defaultdbs]
+        client.close()
 
         return databases
 
@@ -138,3 +184,9 @@ class MongoDB():
         client = self.get_client()
         info = client.server_info()
         return info['version']
+
+    @staticmethod
+    def new_password():
+        choices = string.ascii_letters + string.digits
+        pwd = "".join([secrets.choice(choices) for i in range(16)])
+        return pwd
