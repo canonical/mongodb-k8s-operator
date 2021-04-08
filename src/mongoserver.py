@@ -108,6 +108,13 @@ class MongoDB():
                    roles=roles)
         client.close()
 
+    def drop_databases(self, databases):
+        client = self.client()
+        for database in databases:
+            db = client[database]
+            db.command("dropDatabase")
+        client.close()
+
     def replica_set_uri(self, credentials=None):
         """Construct a replica set URI
         """

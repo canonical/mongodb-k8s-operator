@@ -20,6 +20,8 @@ class MongoProvider(Provider):
                                self.on_database_relation_joined)
         self.framework.observe(events.relation_changed,
                                self.on_database_relation_changed)
+        self.framework.observe(events.relation_broken,
+                               self.on_database_relation_broken)
 
     ##############################################
     #               RELATIONS                    #
@@ -70,6 +72,21 @@ class MongoProvider(Provider):
             creds = self.credentials(rel_id)
             self.charm.mongo.new_databases(creds, missing)
             event.relation.data[self.charm.app]['databases'] = json.dumps(dbs_available)
+
+    def on_database_relation_broken(self, event):
+        if not self.charm.unit.is_leader():
+            return
+
+        rel_id = event.relation.id
+        databases = json.loads(event.relation.data[self.charm.app]['databases'])
+
+        if rel_id in self.stored.consumers:
+            creds = self.credentials(rel_id)
+            self.charm.mongo.drop_user(creds["username"])
+            _ = self.stored.consumers.pop(rel_id)
+
+        if self.charm.model.config['autodelete']:
+            self.charm.mongo.drop_databases(databases)
 
     def is_new_relation(self, rel_id):
         if rel_id in self.stored.consumers:
