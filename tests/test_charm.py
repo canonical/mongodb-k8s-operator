@@ -1,11 +1,14 @@
 # Copyright 2020 Canonical Ltd
 # See LICENSE file for licensing details.
 
+import logging
 import unittest
 from unittest.mock import patch
 
 from ops.testing import Harness
 from charm import MongoDBCharm
+
+logger = logging.getLogger(__name__)
 
 
 class TestCharm(unittest.TestCase):
@@ -73,13 +76,34 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(key, security_key)
 
     @patch('mongoserver.MongoDB.version')
-    def test_charm_provides_db_info_and_version(self, mock_version):
+    def test_charm_provides_version(self, mock_version):
         self.harness.set_leader(True)
         mock_version.return_value = "4.4.1"
         provided = self.harness.charm.provides
         self.assertIn('provides', provided)
-        self.assertIn('replicated', provided)
-        self.assertIn('replica_set_name', provided)
+
+    @patch('mongoserver.MongoDB.is_ready')
+    def test_start_is_deffered_if_monog_is_not_ready(self, is_ready):
+        is_ready.return_value = False
+        self.harness.set_leader(True)
+        with self.assertLogs(level="DEBUG") as logger:
+            self.harness.charm.on.start.emit()
+            is_ready.assert_called()
+            self.assertIn("DEBUG:charm:Deferring on start since mongodb is not ready",
+                          sorted(logger.output))
+
+    @patch('mongoserver.MongoDB.initialize_replica_set')
+    @patch('mongoserver.MongoDB.is_ready')
+    def test_start_is_deffered_if_monog_is_not_initialized(self, is_ready, initialize):
+        is_ready.return_value = True
+        initialize.side_effect = RuntimeError("Not Initialized")
+        self.harness.set_leader(True)
+        with self.assertLogs(level="DEBUG") as logger:
+            self.harness.charm.on.start.emit()
+            is_ready.assert_called()
+            self.assertIn("INFO:charm:Deferring on_start since : error=Not Initialized",
+                          sorted(logger.output))
+
 
 def replica_set_name(pod_spec):
     containers = pod_spec[0]["containers"]

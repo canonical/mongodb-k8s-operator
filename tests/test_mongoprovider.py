@@ -84,6 +84,10 @@ class Mongo:
     def replica_set_uri(self, credentials=None):
         return self.charm.model.config['replica_set_uri']
 
+    def new_user(self, credentials):
+        """Fake MongoDB"""
+        pass
+
     def new_databases(self, credentials, databases):
         """Fake MongoDB does not have to do anything here"""
         pass
@@ -98,6 +102,14 @@ class MongoDBCharm(CharmBase):
         self.provider = MongoProvider(self,
                                       self.model.config['relation_name'],
                                       self.provides)
+
+    @property
+    def is_joined(self):
+        return True
+
+    @property
+    def replica_set_name(self):
+        return self.model.config['replica_set_name']
 
     @property
     def provides(self):
@@ -165,7 +177,7 @@ class TestMongoProvider(unittest.TestCase):
         json_request = json.dumps(requested_database)
         consumer_data = {'databases': json_request}
 
-        rel_id = self.harness.add_relation('database', 'consumer')
+        rel_id = self.harness.add_relation(meta['relation_name'], 'consumer')
         data = self.harness.get_relation_data(rel_id, self.harness.model.app.name)
         self.assertDictEqual(data, {})
         self.harness.add_relation_unit(rel_id, 'consumer/0')
