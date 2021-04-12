@@ -130,7 +130,10 @@ class MongoDBCharm(CharmBase):
         if not self.mongo.is_ready():
             self.unit.status = WaitingStatus("Waiting for MongoDB Service")
             logger.debug("Waiting for MongoDB Service")
+            self.on_update_status(event)
+            logger.debug("Deferring on start since mongodb is not ready")
             event.defer()
+            return
 
         if not self.state.mongodb_initialized:
             logger.debug("Initializing MongoDB")
@@ -142,9 +145,10 @@ class MongoDBCharm(CharmBase):
                 logger.debug("MongoDB Initialized")
             except Exception as e:
                 logger.info("Deferring on_start since : error={}".format(e))
+                self.on_update_status(event)
                 event.defer()
+                return
 
-        self.on_update_status(event)
         logger.debug("Running on_start finished")
 
     # Handles stop event
