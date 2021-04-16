@@ -41,7 +41,6 @@ class MongoDB():
         try:
             client.server_info()
             ready = True
-            logger.debug("mongodb service is ready.")
         except ServerSelectionTimeoutError:
             logger.debug("mongodb service is not ready yet.")
         finally:
@@ -73,7 +72,6 @@ class MongoDB():
         }
         client = self.get_client()
         try:
-            logger.debug("initializing replica set with config={}".format(config))
             client.admin.command("replSetInitiate", config)
         except Exception as e:
             logger.error("cannot initialize replica set. error={}".format(e))
@@ -133,7 +131,6 @@ class MongoDB():
                 uri += ","
             uri += "{}:{}".format(host, self.port)
         uri += "/admin"
-        logger.debug("STANDALONE URI: " + uri)
         return uri
 
     def standalone_uri(self, credentials=None):
@@ -152,7 +149,6 @@ class MongoDB():
             self.app_name,
             self.port)
         uri += "/admin"
-        logger.debug("REPLICA SET URI: " + uri)
         return uri
 
     def hostname(self, id: int) -> str:
