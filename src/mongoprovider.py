@@ -27,6 +27,7 @@ class MongoProvider(Provider):
     #               RELATIONS                    #
     ##############################################
     def on_database_relation_joined(self, event):
+
         if not self.charm.unit.is_leader():
             return
 
@@ -51,12 +52,9 @@ class MongoProvider(Provider):
             return
 
         data = event.relation.data[event.app]
-        logger.debug("SERVER REQUEST DATA {}".format(data))
         dbs = data.get('databases')
         dbs_requested = json.loads(dbs) if dbs else []
-        logger.debug("SERVER REQUEST DB {}".format(dbs_requested))
         dbs_available = self.charm.mongo.databases
-        logger.debug("SERVER AVAILABLE DB {}".format(dbs_available))
 
         missing = None
         if dbs_requested:
@@ -66,8 +64,8 @@ class MongoProvider(Provider):
                 missing = dbs_requested
 
         if missing:
+            logger.debug("creating new databases : {}".format(missing))
             dbs_available.extend(missing)
-            logger.debug("SERVER REQUEST RESPONSE {}".format(dbs_available))
             rel_id = event.relation.id
             creds = self.credentials(rel_id)
             self.charm.mongo.new_databases(creds, missing)

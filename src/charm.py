@@ -61,13 +61,10 @@ class MongoDBCharm(CharmBase):
                                self.on_leader_elected)
 
         if self.state.mongodb_initialized:
-            logger.debug("Mongo Provider Available")
             self.mongo_provider = MongoProvider(self, 'database', self.provides)
             self.mongo_provider.ready()
         else:
             logger.debug("Mongo Provider not yet Available")
-
-        logger.debug("MongoDBCharm initialized!")
 
     ##############################################
     #           CHARM HOOKS HANDLERS             #
@@ -129,20 +126,16 @@ class MongoDBCharm(CharmBase):
 
         if not self.mongo.is_ready():
             self.unit.status = WaitingStatus("Waiting for MongoDB Service")
-            logger.debug("Waiting for MongoDB Service")
             self.on_update_status(event)
-            logger.debug("Deferring on start since mongodb is not ready")
             event.defer()
             return
 
         if not self.state.mongodb_initialized:
-            logger.debug("Initializing MongoDB")
             self.unit.status = WaitingStatus("Initializing MongoDB")
             try:
                 self.mongo.initialize_replica_set(self.mongo.cluster_hosts)
                 self.state.mongodb_initialized = True
                 self.state.replica_set_hosts = self.mongo.cluster_hosts
-                logger.debug("MongoDB Initialized")
             except Exception as e:
                 logger.info("Deferring on_start since : error={}".format(e))
                 self.on_update_status(event)
@@ -202,7 +195,7 @@ class MongoDBCharm(CharmBase):
                 try:
                     self.mongo.reconfigure_replica_set(self.mongo.cluster_hosts)
                 except Exception as e:
-                    logger.info("Deferring relation event since : error={}".format(e))
+                    logger.info("Deferring reconfigure since : error={}".format(e))
                     event.defer()
 
         self.on_update_status(event)
@@ -265,7 +258,6 @@ class MongoDBCharm(CharmBase):
         provided = {
             "provides": {"mongodb": str(self.mongo.version)},
         }
-        logger.debug("Providing : {}".format(provided))
         return provided
 
     @property
