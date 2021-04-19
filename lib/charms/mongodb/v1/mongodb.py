@@ -36,7 +36,6 @@ class MongoConsumer(Consumer):
         username = relation_data.get('username')
         password = relation_data.get('password')
         replica_set_uri = relation_data.get('replica_set_uri')
-        standalone_uri = relation_data.get('standalone_uri')
         replicated = relation_data.get('replicated')
 
         credentials = {}
@@ -44,7 +43,6 @@ class MongoConsumer(Consumer):
             credentials = {"username": username,
                            "password": password,
                            "replica_set_uri": replica_set_uri,
-                           "standalone_uri": standalone_uri,
                            "replicated": replicated}
         return credentials
 

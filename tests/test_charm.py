@@ -50,11 +50,9 @@ class TestCharm(unittest.TestCase):
 
     def test_uri_data_is_generated_correctly(self):
         self.harness.set_leader(True)
-        standalone_uri = self.harness.charm.mongo.standalone_uri()
         replica_set_uri = self.harness.charm.mongo.replica_set_uri()
         pwd = self.harness.charm.state.root_password
         cred = "root:{}".format(pwd)
-        self.assertEqual(standalone_uri, 'mongodb://{}@mongodb:27017/admin'.format(cred))
         self.assertEqual(replica_set_uri,
                          'mongodb://{}@mongodb-0.mongodb-endpoints:27017/admin'.format(cred))
 
@@ -83,14 +81,15 @@ class TestCharm(unittest.TestCase):
         self.assertIn('provides', provided)
 
     @patch('mongoserver.MongoDB.is_ready')
-    def test_start_is_deffered_if_monog_is_not_ready(self, is_ready):
+    def test_start_is_deferred_if_monog_is_not_ready(self, is_ready):
         is_ready.return_value = False
         self.harness.set_leader(True)
         with self.assertLogs(level="DEBUG") as logger:
             self.harness.charm.on.start.emit()
             is_ready.assert_called()
-            self.assertIn("DEBUG:charm:Deferring on start since mongodb is not ready",
-                          sorted(logger.output))
+            for message in sorted(logger.output):
+                if "DEBUG:ops.framework:Deferring" in message:
+                    self.assertIn("StartEvent", message)
 
     @patch('mongoserver.MongoDB.initialize_replica_set')
     @patch('mongoserver.MongoDB.is_ready')

@@ -34,13 +34,11 @@ class MongoProvider(Provider):
         rel_id = event.relation.id
         creds = self.credentials(rel_id)
         self.charm.mongo.new_user(creds)
-        standalone_uri = "{}".format(self.charm.mongo.standalone_uri(creds))
         replica_set_uri = "{}".format(self.charm.mongo.replica_set_uri(creds))
         replicated = str(self.charm.is_joined)
         replica_set_name = self.charm.replica_set_name
         event.relation.data[self.charm.app]['username'] = creds['username']
         event.relation.data[self.charm.app]['password'] = creds['password']
-        event.relation.data[self.charm.app]['standalone_uri'] = standalone_uri
         event.relation.data[self.charm.app]['replica_set_uri'] = replica_set_uri
         event.relation.data[self.charm.app]['replicated'] = replicated
         event.relation.data[self.charm.app]['replica_set_name'] = replica_set_name

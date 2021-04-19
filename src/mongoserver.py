@@ -22,22 +22,12 @@ class MongoDB():
         self.port = config['port']
         self.root_password = config['root_password']
 
-    def get_client(self):
-        return MongoClient(self.standalone_uri(), serverSelectionTimeoutMS=1000)
-
-    def get_replica_set_client(self):
-        return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
-
     def client(self):
-        if self.num_peers > 1:
-            client = self.get_replica_set_client()
-        else:
-            client = self.get_client()
-        return client
+        return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
 
     def is_ready(self):
         ready = False
-        client = self.get_client()
+        client = self.client()
         try:
             client.server_info()
             ready = True
@@ -48,7 +38,7 @@ class MongoDB():
         return ready
 
     def reconfigure_replica_set(self, hosts: list):
-        replica_set_client = self.get_replica_set_client()
+        replica_set_client = self.client()
         try:
             rs_config = replica_set_client.admin.command("replSetGetConfig")
             rs_config["config"]["_id"] = self.replica_set_name
@@ -70,7 +60,7 @@ class MongoDB():
             "_id": self.replica_set_name,
             "members": [{"_id": i, "host": h} for i, h in enumerate(hosts)],
         }
-        client = self.get_client()
+        client = self.client()
         try:
             client.admin.command("replSetInitiate", config)
         except Exception as e:
@@ -133,24 +123,6 @@ class MongoDB():
         uri += "/admin"
         return uri
 
-    def standalone_uri(self, credentials=None):
-        """Construct a standalone URI
-        """
-        if credentials:
-            password = credentials["password"]
-            username = credentials["username"]
-        else:
-            password = self.root_password
-            username = "root"
-
-        uri = "mongodb://{}:{}@{}:{}".format(
-            username,
-            password,
-            self.app_name,
-            self.port)
-        uri += "/admin"
-        return uri
-
     def hostname(self, id: int) -> str:
         """Construct a DNS name for a MongoDB unit
         """
@@ -184,8 +156,9 @@ class MongoDB():
     def version(self):
         """Get MongoDB version
         """
-        client = self.get_client()
+        client = self.client()
         info = client.server_info()
+        client.close()
         return info['version']
 
     @staticmethod

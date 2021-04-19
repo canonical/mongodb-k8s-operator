@@ -18,28 +18,8 @@ MONGO_CONFIG = {
 
 class TestMongoServer(unittest.TestCase):
 
-    def test_get_client_returns_mongo_client_instance(self):
+    def test_client_returns_mongo_client_instance(self):
         config = MONGO_CONFIG.copy()
-        mongo = MongoDB(config)
-
-        client = mongo.get_client()
-        self.assertIsInstance(client, MongoClient)
-
-    def test_get_replica_set_client_returns_mongo_client_instance(self):
-        config = MONGO_CONFIG.copy()
-        mongo = MongoDB(config)
-
-        client = mongo.get_replica_set_client()
-        self.assertIsInstance(client, MongoClient)
-
-    def test_client_returns_correct_instance(self):
-        config = MONGO_CONFIG.copy()
-        mongo = MongoDB(config)
-
-        client = mongo.client()
-        self.assertIsInstance(client, MongoClient)
-
-        config['num_peers'] = 1
         mongo = MongoDB(config)
 
         client = mongo.client()
@@ -62,13 +42,13 @@ class TestMongoServer(unittest.TestCase):
         ready = mongo.is_ready()
         self.assertEqual(ready, False)
 
-    @patch('mongoserver.MongoDB.get_replica_set_client')
+    @patch('mongoserver.MongoDB.client')
     @patch('pymongo.MongoClient')
-    def test_reconfiguring_replica_invokes_admin_command(self, mock_client, mock_get):
+    def test_reconfiguring_replica_invokes_admin_command(self, mock_client, client):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
 
-        mock_get.return_value = mock_client
+        client.return_value = mock_client
 
         hosts = {}
         for i in range(config['num_peers']):
@@ -79,13 +59,13 @@ class TestMongoServer(unittest.TestCase):
         command, _ = mock_client.admin.command.call_args
         self.assertEqual("replSetReconfig", command[0])
 
-    @patch('mongoserver.MongoDB.get_client')
+    @patch('mongoserver.MongoDB.client')
     @patch('pymongo.MongoClient')
-    def test_initializing_replica_invokes_admin_command(self, mock_client, mock_get):
+    def test_initializing_replica_invokes_admin_command(self, mock_client, client):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
 
-        mock_get.return_value = mock_client
+        client.return_value = mock_client
 
         hosts = {}
         for i in range(config['num_peers']):
@@ -119,28 +99,6 @@ class TestMongoServer(unittest.TestCase):
 
         credentials = {"username": "me", "password": "secret"}
         uri = mongo.replica_set_uri(credentials)
-        prefix, _ = uri.split('@')
-        _, user, password = prefix.split(':')
-        user = user.lstrip("/")
-        self.assertEqual(credentials["username"], user)
-        self.assertEqual(password, credentials["password"])
-
-    def test_standalone_uri_has_correct_root_credentials(self):
-        config = MONGO_CONFIG.copy()
-        mongo = MongoDB(config)
-        uri = mongo.standalone_uri()
-        prefix, _ = uri.split('@')
-        _, user, password = prefix.split(':')
-        user = user.lstrip("/")
-        self.assertEqual("root", user)
-        self.assertEqual(password, config['root_password'])
-
-    def test_standalone_uri_sets_correct_credentials(self):
-        config = MONGO_CONFIG.copy()
-        mongo = MongoDB(config)
-
-        credentials = {"username": "me", "password": "secret"}
-        uri = mongo.standalone_uri(credentials)
         prefix, _ = uri.split('@')
         _, user, password = prefix.split(':')
         user = user.lstrip("/")
@@ -218,13 +176,13 @@ class TestMongoServer(unittest.TestCase):
         client.assert_called()
         mock_db.command.assert_called_once_with("dropDatabase")
 
-    @patch('mongoserver.MongoDB.get_client')
-    def test_mongoserver_returns_correct_version(self, get_client):
+    @patch('mongoserver.MongoDB.client')
+    def test_mongoserver_returns_correct_version(self, client):
         config = MONGO_CONFIG.copy()
         mongo = MongoDB(config)
 
         version = "1.0.0"
         mock_client = MagicMock()
-        get_client.return_value = mock_client
+        client.return_value = mock_client
         mock_client.server_info.return_value = {"version": version}
         self.assertEqual(mongo.version, version)
