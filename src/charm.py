@@ -4,17 +4,16 @@ import secrets
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
+from ops.pebble import ConnectionError
 
 from ops.main import main
 from ops.model import (
     ActiveStatus,
-    BlockedStatus,
     WaitingStatus,
     MaintenanceStatus
 )
-from oci_image import OCIImageResource, OCIImageResourceError
 
-from pod_spec import PodSpecBuilder
+from pebble_layers import MongoLayers
 from mongoserver import MongoDB, MONGODB_PORT
 from mongoprovider import MongoProvider
 
@@ -43,11 +42,9 @@ class MongoDBCharm(CharmBase):
         self.state.set_default(security_key=None)
 
         self.port = MONGODB_PORT
-        self.image = OCIImageResource(self, "mongodb-image")
 
         # Register all of the events we want to observe
-        self.framework.observe(self.on.config_changed, self.configure_pod)
-        self.framework.observe(self.on.upgrade_charm, self.configure_pod)
+        self.framework.observe(self.on.mongodb_pebble_ready, self.configure_pebble_layers)
         self.framework.observe(self.on.start, self.on_start)
         self.framework.observe(self.on.stop, self.on_stop)
         self.framework.observe(self.on.update_status, self.on_update_status)
@@ -71,46 +68,39 @@ class MongoDBCharm(CharmBase):
     ##############################################
 
     # Handles config-changed and upgrade-charm events
-    def configure_pod(self, event):
-        """Configure MongoDB Pod specification
+    def configure_pebble_layers(self, event):
+        """(Re)Configure MongoDB pebble layer specification
 
-        A new MongoDB pod specification is set only if it is different
-        from the current specification.
+        A new MongoDB pebble layer specification is set only if it is
+        different from the current specification.
         """
         # Continue only if the unit is the leader
         if not self.unit.is_leader():
             self.on_update_status(event)
             return
 
-        logger.debug("Running configuring_pod")
+        logger.debug("Running configure_pebble_layers")
 
-        # Fetch image information
-        try:
-            self.unit.status = WaitingStatus("Fetching image information")
-            image_info = self.image.fetch()
-        except OCIImageResourceError:
-            self.unit.status = BlockedStatus(
-                "Error fetching image information")
-            return
+        container = event.workload
 
-        # Build Pod spec
-        self.unit.status = WaitingStatus("Assembling pod spec")
-        builder_config = {
+        # Build layer
+        config = {
             "name": self.model.app.name,
             "replica_set_name": self.replica_set_name,
             "port": self.port,
-            "image_info": image_info,
             "root_password": self.root_password,
             "security_key": self.security_key
         }
-        builder = PodSpecBuilder(builder_config)
-        pod_spec = builder.make_pod_spec()
+        layers = MongoLayers(config)
+        mongo_layer = layers.build()
 
-        # Applying pod spec. If the spec hasn't changed, this has no effect.
-        self.model.pod.set_spec(pod_spec)
+        # Apply layer
+        container.add_layer("mongodb", mongo_layer)
+        container.autostart()
+        self.unit.status = ActiveStatus()
 
         self.on_update_status(event)
-        logger.debug("Running configuring_pod finished")
+        logger.debug("Running configure_pebble_layers finished")
 
     # Handles start event
     def on_start(self, event):

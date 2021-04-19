@@ -4,28 +4,32 @@ description: |
     MongoDB is a general purpose distributed document database.  This
     charm deploys and operates MongoDB on kubernetes Clusters. It
     supports replicated MongoDB databases.
-series:
-   - kubernetes
 tags:
   - kubernetes
   - mongodb
   - db
-min-juju-version: 2.7.5
-storage:
-  db:
-    type: filesystem
-    location: /data/db
-deployment:
-  type: stateful
-  service: cluster
+platforms:
+  - kubernetes
+bases:
+  - name: ubuntu
+    channel: 20.04/stable
 peers:
   mongodb:
     interface: mongodb
 provides:
   database:
     interface: mongodb
+containers:
+  mongodb:
+    resource: mongodb-image
+    mounts:
+      - storage: db
+        location: /data/db
 resources:
   mongodb-image:
     type: oci-image
     description: upstream docker image for mongodb
     upstream-source: 'mongo:latest'
+storage:
+  db:
+    type: filesystem
