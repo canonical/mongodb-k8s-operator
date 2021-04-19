@@ -27,7 +27,6 @@ CONFIG = {
     'relation_name': METADATA['relation_name'],
     'is_joined': True,
     'db_version': '4.1.1',
-    'standalone_uri': 'mongodb://localhost:12701',
     'replica_set_name': 'rs0',
     'replica_set_uri': 'mongodb://rs0:12701',
     'available_dbs': json.dumps([])
@@ -48,10 +47,6 @@ options:
     type: string
     description: 'Fake MongoDB version used for testing'
     default: {db_version}
-  standalone_uri:
-    type: string
-    description: 'Fake URI of single MongoDB instance'
-    default: {standalone_uri}
   replica_set_name:
     type: string
     description: 'Name of fake replica set'
@@ -77,9 +72,6 @@ class Mongo:
         """Return list fake list of available databases"""
         dbs = self.charm.model.config['available_dbs']
         return dbs
-
-    def standalone_uri(self, credentials=None):
-        return self.charm.model.config['standalone_uri']
 
     def replica_set_uri(self, credentials=None):
         return self.charm.model.config['replica_set_uri']
