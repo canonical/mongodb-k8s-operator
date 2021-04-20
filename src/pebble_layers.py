@@ -43,10 +43,8 @@ class MongoLayers:
 
     def _command_arguments(self):
         args = ["mongod"]
-        bind_ip_option = "--bind_ip 0.0.0.0"
         replica_set_option = "--replSet {}".format(self.replica_set_name)
         # keyfile_option = "--keyFile {}/{}".format(SECRET_PATH, KEY_FILE)
-        args.extend(bind_ip_option.split(" "))
         args.extend(replica_set_option.split(" "))
         # TODO: "chmod 0400 SECRET_PATH/KEY_FILE"
         # TODO: "chown mongodb.mongodb SECRET_PATH/KEY_FILE"
