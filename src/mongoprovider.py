@@ -2,17 +2,17 @@ import json
 import logging
 
 from ops.framework import StoredState
-from ops.relation import Provider
+from ops.relation import ProviderBase
 from mongoserver import MongoDB
 
 logger = logging.getLogger(__name__)
 
 
-class MongoProvider(Provider):
+class MongoProvider(ProviderBase):
     stored = StoredState()
 
-    def __init__(self, charm, name, provides):
-        super().__init__(charm, name, provides)
+    def __init__(self, charm, name, *args, **kwargs):
+        super().__init__(charm, name, *args, **kwargs)
         self.charm = charm
         self.stored.set_default(consumers={})
         events = self.charm.on[name]
