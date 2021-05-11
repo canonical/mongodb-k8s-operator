@@ -58,7 +58,10 @@ class MongoDBCharm(CharmBase):
                                self.on_leader_elected)
 
         if self.state.mongodb_initialized:
-            self.mongo_provider = MongoProvider(self, 'database', self.provides)
+            self.mongo_provider = MongoProvider(self,
+                                                'database',
+                                                'mongodb',
+                                                version=self.version)
             self.mongo_provider.ready()
         else:
             logger.debug("Mongo Provider not yet Available")
@@ -244,11 +247,8 @@ class MongoDBCharm(CharmBase):
     ##############################################
 
     @property
-    def provides(self):
-        provided = {
-            "provides": {"mongodb": str(self.mongo.version)},
-        }
-        return provided
+    def version(self):
+        return str(self.mongo.version)
 
     @property
     def root_password(self):
