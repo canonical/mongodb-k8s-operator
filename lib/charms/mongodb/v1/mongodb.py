@@ -1,12 +1,12 @@
 import json
 import uuid
-from ops.relation import Consumer
+from ops.relation import ConsumerBase
 
 LIBAPI = 1
 LIBPATCH = 0
 
 
-class MongoConsumer(Consumer):
+class MongoConsumer(ConsumerBase):
     def __init__(self, charm, name, consumes, multi=False):
         super().__init__(charm, name, consumes, multi)
         self.charm = charm
