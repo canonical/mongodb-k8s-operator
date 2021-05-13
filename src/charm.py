@@ -44,7 +44,8 @@ class MongoDBCharm(CharmBase):
         self.port = MONGODB_PORT
 
         # Register all of the events we want to observe
-        self.framework.observe(self.on.mongodb_pebble_ready, self.configure_pebble_layers)
+        self.framework.observe(self.on.mongodb_pebble_ready, self.on_pebble_ready)
+        self.framework.observe(self.on.config_changed, self.on_config_changed)
         self.framework.observe(self.on.start, self.on_start)
         self.framework.observe(self.on.stop, self.on_stop)
         self.framework.observe(self.on.update_status, self.on_update_status)
@@ -61,7 +62,7 @@ class MongoDBCharm(CharmBase):
             self.mongo_provider = MongoProvider(self,
                                                 'database',
                                                 'mongodb',
-                                                version=self.version)
+                                                version=self.mongo.version)
             self.mongo_provider.ready()
         else:
             logger.debug("Mongo Provider not yet Available")
@@ -70,31 +71,19 @@ class MongoDBCharm(CharmBase):
     #           CHARM HOOKS HANDLERS             #
     ##############################################
 
-    # Handles config-changed and upgrade-charm events
-    def configure_pebble_layers(self, event):
-        """(Re)Configure MongoDB pebble layer specification
+    # Handles pebble ready event
+    def on_pebble_ready(self, event):
+        """Configure MongoDB pebble layer specification
 
         A new MongoDB pebble layer specification is set only if it is
         different from the current specification.
         """
-        # Continue only if the unit is the leader
-        if not self.unit.is_leader():
-            self.on_update_status(event)
-            return
-
-        logger.debug("Running configure_pebble_layers")
+        logger.debug("Running pebble ready handler")
 
         container = event.workload
 
         # Build layer
-        config = {
-            "name": self.model.app.name,
-            "replica_set_name": self.replica_set_name,
-            "port": self.port,
-            "root_password": self.root_password,
-            "security_key": self.security_key
-        }
-        layers = MongoLayers(config)
+        layers = MongoLayers(self.config)
         mongo_layer = layers.build()
 
         # Apply layer
@@ -103,7 +92,35 @@ class MongoDBCharm(CharmBase):
         self.unit.status = ActiveStatus()
 
         self.on_update_status(event)
-        logger.debug("Running configure_pebble_layers finished")
+        logger.debug("Finished pebble ready handler")
+
+    # Handles config-changed and upgrade-charm events
+    def on_config_changed(self, event):
+        """(Re)Configure MongoDB pebble layer specification
+
+        A new MongoDB pebble layer specification is set only if it is
+        different from the current specification.
+        """
+        logger.debug("Running config changed handler")
+        container = self.unit.get_container("mongodb")
+
+        # Build layer
+        layers = MongoLayers(self.config)
+        mongo_layer = layers.build()
+        plan = container.get_plan()
+        if plan.services != mongo_layer["services"]:
+            container.add_layer("mongodb", mongo_layer, combine=True)
+
+            if container.get_service("mongodb").is_running():
+                container.stop("mongodb")
+
+            container.start("mongodb")
+            logger.info("Restarted mongodb container")
+
+        self.unit.status = ActiveStatus()
+
+        self.on_update_status(event)
+        logger.debug("Finished config changed handler")
 
     # Handles start event
     def on_start(self, event):
@@ -235,20 +252,23 @@ class MongoDBCharm(CharmBase):
 
     @property
     def mongo(self):
-        config = {'app_name': self.model.app.name,
-                  'replica_set_name': self.replica_set_name,
-                  'num_peers': self.num_peers,
-                  'port': self.port,
-                  'root_password': self.root_password}
-        return MongoDB(config)
+        return MongoDB(self.config)
 
     ##############################################
     #             UTILITY METHODS                #
     ##############################################
 
     @property
-    def version(self):
-        return str(self.mongo.version)
+    def config(self):
+        config = {
+            "app_name": self.model.app.name,
+            "replica_set_name": self.replica_set_name,
+            "num_peers": self.num_peers,
+            "port": self.port,
+            "root_password": self.root_password,
+            "security_key": self.security_key
+        }
+        return config
 
     @property
     def root_password(self):
