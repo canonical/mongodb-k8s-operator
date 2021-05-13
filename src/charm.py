@@ -81,6 +81,9 @@ class MongoDBCharm(CharmBase):
         logger.debug("Running pebble ready handler")
 
         container = event.workload
+        plan = container.get_plan()
+        if plan.services:
+            return
 
         # Build layer
         layers = MongoLayers(self.config)
