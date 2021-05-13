@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 class MongoLayers:
     def __init__(self, config):
-        self.name = config.get("name")
         self.replica_set_name = config.get("replica_set_name")
         self.port = config.get("port", 27017)
         self.root_password = config.get("root_password")
