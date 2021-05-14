@@ -4,7 +4,6 @@ import secrets
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
-from ops.pebble import ConnectionError
 
 from ops.main import main
 from ops.model import (
