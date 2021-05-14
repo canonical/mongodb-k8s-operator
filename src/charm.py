@@ -4,6 +4,7 @@ import secrets
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
+from subprocess import check_output
 
 from ops.main import main
 from ops.model import (
@@ -289,6 +290,11 @@ class MongoDBCharm(CharmBase):
             return key
         else:
             return self.state.security_key
+
+    @property
+    def ip(self):
+        ip = check_output(["unit-get", "private-address"]).decode().strip()
+        return ip
 
 
 if __name__ == "__main__":
