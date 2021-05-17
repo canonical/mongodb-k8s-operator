@@ -298,4 +298,4 @@ class MongoDBCharm(CharmBase):
 
 
 if __name__ == "__main__":
-    main(MongoDBCharm)
+    main(MongoDBCharm, use_juju_for_storage=True)
