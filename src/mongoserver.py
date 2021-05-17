@@ -158,9 +158,14 @@ class MongoDB():
         """Get MongoDB version
         """
         client = self.client()
-        info = client.server_info()
-        client.close()
-        return info['version']
+        try:
+            info = client.server_info()
+            return info['version']
+        except ServerSelectionTimeoutError:
+            logger.debug("mongodb service is not ready yet.")
+        finally:
+            client.close()
+        return None
 
     @staticmethod
     def new_password():
