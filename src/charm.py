@@ -58,7 +58,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.leader_elected,
                                self.on_leader_elected)
 
-        if self.state.mongodb_initialized:
+        if self.state.mongodb_initialized and self.mongo.version:
             self.mongo_provider = MongoProvider(self,
                                                 'database',
                                                 'mongodb',
