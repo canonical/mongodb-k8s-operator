@@ -44,7 +44,7 @@ class MongoDBCharm(CharmBase):
         self.port = MONGODB_PORT
 
         # Register all of the events we want to observe
-        self.framework.observe(self.on.mongodb_pebble_ready, self.on_pebble_ready)
+        self.framework.observe(self.on.mongodb_pebble_ready, self.on_config_changed)
         self.framework.observe(self.on.config_changed, self.on_config_changed)
         self.framework.observe(self.on.start, self.on_start)
         self.framework.observe(self.on.stop, self.on_stop)
@@ -70,32 +70,6 @@ class MongoDBCharm(CharmBase):
     ##############################################
     #           CHARM HOOKS HANDLERS             #
     ##############################################
-
-    # Handles pebble ready event
-    def on_pebble_ready(self, event):
-        """Configure MongoDB pebble layer specification
-
-        A new MongoDB pebble layer specification is set only if it is
-        different from the current specification.
-        """
-        logger.debug("Running pebble ready handler")
-
-        container = event.workload
-        plan = container.get_plan()
-        if plan.services:
-            return
-
-        # Build layer
-        layers = MongoLayers(self.config)
-        mongo_layer = layers.build()
-
-        # Apply layer
-        container.add_layer("mongodb", mongo_layer)
-        container.autostart()
-        self.unit.status = ActiveStatus()
-
-        self.on_update_status(event)
-        logger.debug("Finished pebble ready handler")
 
     # Handles config-changed and upgrade-charm events
     def on_config_changed(self, event):
