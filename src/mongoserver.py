@@ -129,7 +129,7 @@ class MongoDB():
     def hostname(self, id: int) -> str:
         """Construct a DNS name for a MongoDB unit
         """
-        return "{}-{}".format(self.app_name, id)
+        return "{0}-{1}.{0}-endpoints".format(self.app_name, id)
 
     @property
     def cluster_hosts(self) -> list:
