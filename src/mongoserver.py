@@ -106,24 +106,21 @@ class MongoDB():
     def replica_set_uri(self, credentials=None):
         """Construct a replica set URI
         """
-        # if credentials:
-        #     password = credentials["password"]
-        #     username = credentials["username"]
-        # else:
-        #     password = self.root_password
-        #     username = "root"
+        if credentials:
+            password = credentials["password"]
+            username = credentials["username"]
+        else:
+            password = self.root_password
+            username = "root"
 
-        # uri = "mongodb://{}:{}@".format(
-        #     username,
-        #     password)
-        uri = "mongodb://"
+        uri = "mongodb://{}:{}@".format(
+            username,
+            password)
         for i, host in enumerate(self.cluster_hosts):
             if i:
                 uri += ","
             uri += "{}:{}".format(host, self.port)
-        # uri += "/admin"
-        # TODO: remove log line after enabling authentication
-        logger.debug("URI: %s", uri)
+        uri += "/admin"
         return uri
 
     def hostname(self, id: int) -> str:

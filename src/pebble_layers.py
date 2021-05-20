@@ -24,11 +24,11 @@ class MongoLayers:
                     "summary": "mongod daemon",
                     "command": self._command(),
                     "startup": "enabled",
-#                    "environment": {
-#                        "MONGO_INITDB_ROOT_USERNAME": "root",
-#                        "MONGO_INITDB_ROOT_PASSWORD": self.root_password,
-#                        "MONGO_INITDB_DATABASE": "admin"
-#                    }
+                    "environment": {
+                        "MONGO_INITDB_ROOT_USERNAME": "root",
+                        "MONGO_INITDB_ROOT_PASSWORD": self.root_password,
+                        "MONGO_INITDB_DATABASE": "admin"
+                    }
                 }
             },
         }
@@ -43,9 +43,7 @@ class MongoLayers:
     def _command_arguments(self):
         args = ["mongod"]
         replica_set_option = "--replSet {}".format(self.replica_set_name)
-        # keyfile_option = "--keyFile {}/{}".format(SECRET_PATH, KEY_FILE)
+        keyfile_option = "--keyFile {}/{}".format(SECRET_PATH, KEY_FILE)
         args.extend(replica_set_option.split(" "))
-        # TODO: "chmod 0400 SECRET_PATH/KEY_FILE"
-        # TODO: "chown mongodb.mongodb SECRET_PATH/KEY_FILE"
-        # args.extend(keyfile_option.split(" "))
+        args.extend(keyfile_option.split(" "))
         return args
