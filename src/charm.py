@@ -39,8 +39,6 @@ class MongoDBCharm(CharmBase):
 
         self.state.set_default(mongodb_initialized=False)
         self.state.set_default(replica_set_hosts=None)
-        self.state.set_default(root_password=None)
-        self.state.set_default(security_key=None)
 
         self.port = MONGODB_PORT
 
@@ -179,28 +177,33 @@ class MongoDBCharm(CharmBase):
         """
         logger.debug("Running reconfigure")
 
-        if self.unit.is_leader():
-            event.relation.data[event.app]['root_password'] = str(self.state.root_password)
-            event.relation.data[event.app]['security_key'] = str(self.state.security_key)
+        if not self.unit.is_leader():
+            self.on_update_status(event)
+            return
 
-            if self.need_replica_set_reconfiguration:
-                try:
-                    self.mongo.reconfigure_replica_set(self.mongo.cluster_hosts)
-                except Exception as e:
-                    logger.info("Deferring reconfigure since : error={}".format(e))
-                    event.defer()
+        if self.need_replica_set_reconfiguration:
+            try:
+                self.mongo.reconfigure_replica_set(self.mongo.cluster_hosts)
+            except Exception as e:
+                logger.info("Deferring reconfigure since : error={}".format(e))
+                event.defer()
 
         self.on_update_status(event)
         logger.debug("Running reconfigure finished")
 
     def on_leader_elected(self, event):
-        rel = self.framework.model.get_relation(PEER)
-        if rel:
-            data = rel.data[rel.app]
+        peers = self.framework.model.get_relation(PEER)
+
+        if peers:
+            data = peers.data[peers.app]
+
             root_password = data.get('root_password', None)
-            self.state.root_password = root_password
+            if root_password is None:
+                peers.data[peers.app]['root_password'] = str(self.root_password)
+
             security_key = data.get('security_key', None)
-            self.state.security_key = security_key
+            if security_key is None:
+                peers.data[peers.app]['security_key'] = str(self.security_key)
 
     ##############################################
     #               PROPERTIES                   #
@@ -254,21 +257,31 @@ class MongoDBCharm(CharmBase):
 
     @property
     def root_password(self):
-        if self.state.root_password is None:
-            pwd = MongoDB.new_password()
-            self.state.root_password = pwd
-            return pwd
-        else:
-            return self.state.root_password
+        root_password = None
+        peers = self.framework.model.get_relation(PEER)
+
+        if peers:
+            data = peers.data[peers.app]
+            root_password = data.get('root_password', None)
+
+        if root_password is None:
+            root_password = MongoDB.new_password()
+
+        return root_password
 
     @property
     def security_key(self):
-        if self.state.security_key is None:
-            key = secrets.token_hex(128)
-            self.state.security_key = key
-            return key
-        else:
-            return self.state.security_key
+        security_key = None
+        peers = self.framework.model.get_relation(PEER)
+
+        if peers:
+            data = peers.data[peers.app]
+            security_key = data.get('security_key', None)
+
+        if security_key is None:
+            security_key = secrets.token_hex(128)
+
+        return security_key
 
     @property
     def ip(self):
