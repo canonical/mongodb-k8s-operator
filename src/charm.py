@@ -4,6 +4,7 @@ import secrets
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
+from ops.pebble import PathError
 from subprocess import check_output
 
 from ops.main import main
@@ -13,7 +14,7 @@ from ops.model import (
     MaintenanceStatus
 )
 
-from pebble_layers import MongoLayers
+from pebble_layers import MongoLayers, SECRET_PATH, KEY_FILE
 from mongoserver import MongoDB, MONGODB_PORT
 from mongoprovider import MongoProvider
 
@@ -80,6 +81,10 @@ class MongoDBCharm(CharmBase):
         """
         logger.debug("Running config changed handler")
         container = self.unit.get_container("mongodb")
+
+        # Set security key
+        if not self.have_security_key(container):
+            self.set_security_key(container)
 
         # Build layer
         layers = MongoLayers(self.config)
@@ -269,6 +274,23 @@ class MongoDBCharm(CharmBase):
     def ip(self):
         ip = check_output(["unit-get", "private-address"]).decode().strip()
         return ip
+
+    def have_security_key(self, container):
+        file_path = SECRET_PATH + "/" + KEY_FILE
+        try:
+            key_file = container.pull(file_path)
+            key = key_file.read()
+        except PathError:
+            return False
+        return True if key else False
+
+    def set_security_key(self, container):
+        file_path = SECRET_PATH + "/" + KEY_FILE
+        container.push(file_path,
+                       self.security_key,
+                       permissions=0o400,
+                       user="mongodb",
+                       group="mongodb")
 
 
 if __name__ == "__main__":
