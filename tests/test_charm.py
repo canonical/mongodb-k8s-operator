@@ -23,7 +23,8 @@ class TestCharm(unittest.TestCase):
         self.harness.add_oci_resource("mongodb-image", mongo_resource)
         self.harness.begin()
 
-    def test_replica_set_name_can_be_changed(self):
+    @patch('ops.testing._TestingPebbleClient.pull')
+    def test_replica_set_name_can_be_changed(self, _):
         self.harness.set_leader(True)
         self.harness.container_pebble_ready("mongodb")
 
@@ -44,34 +45,25 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(rel_id,
                                           'mongodb/1',
                                           {'private-address': '10.0.0.1'})
-        peers = ['mongodb-0', 'mongodb-1']
+        peers = ['mongodb-0.mongodb-endpoints', 'mongodb-1.mongodb-endpoints']
         mock_reconf.assert_called_once_with(peers)
 
-    @unittest.skip
     def test_replica_set_uri_data_is_generated_correctly(self):
+        rel_id = self.harness.add_relation('mongodb', 'mongodb')
         self.harness.set_leader(True)
         replica_set_uri = self.harness.charm.mongo.replica_set_uri()
-        pwd = self.harness.charm.state.root_password
-        cred = "root:{}".format(pwd)
+        data = self.harness.get_relation_data(rel_id, self.harness.model.app.name)
+        cred = "root:{}".format(data['root_password'])
         self.assertEqual(replica_set_uri,
-                         'mongodb://{}@mongodb-0:27017/admin'.format(cred))
+                         'mongodb://{}@mongodb-0.mongodb-endpoints:27017/admin'.format(cred))
 
-    def test_leader_stores_key_and_root_credentials(self):
+    def test_leader_sets_key_and_root_credentials(self):
         self.harness.set_leader(False)
         rel_id = self.harness.add_relation('mongodb', 'mongodb')
-        password = "some_password"
-        security_key = "some_key"
-        self.harness.update_relation_data(rel_id,
-                                          'mongodb',
-                                          {'root_password': password,
-                                           'security_key': security_key})
-        self.assertIsNone(self.harness.charm.state.root_password)
-        self.assertIsNone(self.harness.charm.state.security_key)
         self.harness.set_leader(True)
-        pwd = self.harness.charm.state.root_password
-        self.assertEqual(pwd, password)
-        key = self.harness.charm.state.security_key
-        self.assertEqual(key, security_key)
+        data = self.harness.get_relation_data(rel_id, self.harness.model.app.name)
+        self.assertIsNotNone(data['root_password'])
+        self.assertIsNotNone(data['security_key'])
 
     @patch('mongoserver.MongoDB.version')
     def test_charm_provides_version(self, mock_version):
