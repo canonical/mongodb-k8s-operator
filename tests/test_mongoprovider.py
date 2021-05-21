@@ -93,7 +93,8 @@ class MongoDBCharm(CharmBase):
         self.mongo = Mongo(self)
         self.provider = MongoProvider(self,
                                       self.model.config['relation_name'],
-                                      self.provides)
+                                      service="mongodb",
+                                      version=self.model.config['db_version'])
 
     @property
     def is_joined(self):
@@ -102,16 +103,6 @@ class MongoDBCharm(CharmBase):
     @property
     def replica_set_name(self):
         return self.model.config['replica_set_name']
-
-    @property
-    def provides(self):
-        """Fake provides injects information using model config unlike a real charm"""
-        provided = {
-            "provides": {"mongodb": self.model.config['db_version']},
-            "replicated": self.model.config['is_joined'],
-            "replica_set_name": self.model.config['replica_set_name'],
-        }
-        return provided
 
 
 class TestMongoProvider(unittest.TestCase):
