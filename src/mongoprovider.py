@@ -17,16 +17,16 @@ class MongoProvider(ProviderBase):
         self.stored.set_default(consumers={})
         events = self.charm.on[name]
         self.framework.observe(events.relation_joined,
-                               self.on_database_relation_joined)
+                               self._on_database_relation_joined)
         self.framework.observe(events.relation_changed,
-                               self.on_database_relation_changed)
+                               self._on_database_relation_changed)
         self.framework.observe(events.relation_broken,
-                               self.on_database_relation_broken)
+                               self._on_database_relation_broken)
 
     ##############################################
     #               RELATIONS                    #
     ##############################################
-    def on_database_relation_joined(self, event):
+    def _on_database_relation_joined(self, event):
 
         if not self.charm.unit.is_leader():
             return
@@ -43,7 +43,7 @@ class MongoProvider(ProviderBase):
         event.relation.data[self.charm.app]['replicated'] = replicated
         event.relation.data[self.charm.app]['replica_set_name'] = replica_set_name
 
-    def on_database_relation_changed(self, event):
+    def _on_database_relation_changed(self, event):
         """Ensure total number of databases requested are available
         """
         if not self.charm.unit.is_leader():
@@ -69,7 +69,7 @@ class MongoProvider(ProviderBase):
             self.charm.mongo.new_databases(creds, missing)
             event.relation.data[self.charm.app]['databases'] = json.dumps(dbs_available)
 
-    def on_database_relation_broken(self, event):
+    def _on_database_relation_broken(self, event):
         if not self.charm.unit.is_leader():
             return
 
