@@ -32,13 +32,13 @@ class MongoDBCharm(CharmBase):
     - Reconfigure replica set anytime number of MongoDB units changes
     - Provides a database relation for any MongoDB client
     """
-    state = StoredState()
+    _stored = StoredState()
 
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.state.set_default(mongodb_initialized=False)
-        self.state.set_default(replica_set_hosts=None)
+        self._stored.set_default(mongodb_initialized=False)
+        self._stored.set_default(replica_set_hosts=None)
 
         self.port = MONGODB_PORT
 
@@ -57,7 +57,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.leader_elected,
                                self._on_leader_elected)
 
-        if self.state.mongodb_initialized and self.mongo.version:
+        if self._stored.mongodb_initialized and self.mongo.version:
             self.mongo_provider = MongoProvider(self,
                                                 'database',
                                                 'mongodb',
@@ -120,12 +120,12 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        if not self.state.mongodb_initialized:
+        if not self._stored.mongodb_initialized:
             self.unit.status = WaitingStatus("Initializing MongoDB")
             try:
                 self.mongo.initialize_replica_set(self.mongo.cluster_hosts)
-                self.state.mongodb_initialized = True
-                self.state.replica_set_hosts = self.mongo.cluster_hosts
+                self._stored.mongodb_initialized = True
+                self._stored.replica_set_hosts = self.mongo.cluster_hosts
             except Exception as e:
                 logger.info("Deferring on_start since : error={}".format(e))
                 self._on_update_status(event)
@@ -158,7 +158,7 @@ class MongoDBCharm(CharmBase):
             self.unit.status = WaitingStatus(status_message)
             return
 
-        if not self.state.mongodb_initialized:
+        if not self._stored.mongodb_initialized:
             status_message = "mongodb not initialized"
             self.unit.status = WaitingStatus(status_message)
             return
@@ -213,7 +213,7 @@ class MongoDBCharm(CharmBase):
     def need_replica_set_reconfiguration(self):
         """Does MongoDB replica set need reconfiguration
         """
-        return self.mongo.cluster_hosts != self.state.replica_set_hosts
+        return self.mongo.cluster_hosts != self._stored.replica_set_hosts
 
     @property
     def replica_set_name(self):
