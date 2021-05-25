@@ -43,19 +43,19 @@ class MongoDBCharm(CharmBase):
         self.port = MONGODB_PORT
 
         # Register all of the events we want to observe
-        self.framework.observe(self.on.mongodb_pebble_ready, self.on_config_changed)
-        self.framework.observe(self.on.config_changed, self.on_config_changed)
-        self.framework.observe(self.on.start, self.on_start)
-        self.framework.observe(self.on.stop, self.on_stop)
-        self.framework.observe(self.on.update_status, self.on_update_status)
+        self.framework.observe(self.on.mongodb_pebble_ready, self._on_config_changed)
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
+        self.framework.observe(self.on.start, self._on_start)
+        self.framework.observe(self.on.stop, self._on_stop)
+        self.framework.observe(self.on.update_status, self._on_update_status)
 
         self.framework.observe(self.on[PEER].relation_changed,
-                               self.reconfigure)
+                               self._reconfigure)
         self.framework.observe(self.on[PEER].relation_departed,
-                               self.reconfigure)
+                               self._reconfigure)
 
         self.framework.observe(self.on.leader_elected,
-                               self.on_leader_elected)
+                               self._on_leader_elected)
 
         if self.state.mongodb_initialized and self.mongo.version:
             self.mongo_provider = MongoProvider(self,
@@ -71,7 +71,7 @@ class MongoDBCharm(CharmBase):
     ##############################################
 
     # Handles config-changed and upgrade-charm events
-    def on_config_changed(self, event):
+    def _on_config_changed(self, event):
         """(Re)Configure MongoDB pebble layer specification
 
         A new MongoDB pebble layer specification is set only if it is
@@ -99,11 +99,11 @@ class MongoDBCharm(CharmBase):
 
         self.unit.status = ActiveStatus()
 
-        self.on_update_status(event)
+        self._on_update_status(event)
         logger.debug("Finished config changed handler")
 
     # Handles start event
-    def on_start(self, event):
+    def _on_start(self, event):
         """Initialize MongoDB
 
         This event handler is deferred if initialization of MongoDB
@@ -116,7 +116,7 @@ class MongoDBCharm(CharmBase):
 
         if not self.mongo.is_ready():
             self.unit.status = WaitingStatus("Waiting for MongoDB Service")
-            self.on_update_status(event)
+            self._on_update_status(event)
             event.defer()
             return
 
@@ -128,20 +128,20 @@ class MongoDBCharm(CharmBase):
                 self.state.replica_set_hosts = self.mongo.cluster_hosts
             except Exception as e:
                 logger.info("Deferring on_start since : error={}".format(e))
-                self.on_update_status(event)
+                self._on_update_status(event)
                 event.defer()
                 return
 
         logger.debug("Running on_start finished")
 
     # Handles stop event
-    def on_stop(self, _):
+    def _on_stop(self, _):
         """Mark terminating unit as inactive
         """
         self.unit.status = MaintenanceStatus('Pod is terminating.')
 
     # Handles update-status event
-    def on_update_status(self, event):
+    def _on_update_status(self, event):
         """Set status for all units
 
         Status may be
@@ -170,7 +170,7 @@ class MongoDBCharm(CharmBase):
     ##############################################
 
     # Handles relation-changed and relation-departed events
-    def reconfigure(self, event):
+    def _reconfigure(self, event):
         """Reconfigure replicat set
 
         The number of replicas in the MongoDB replica set is updated.
@@ -178,7 +178,7 @@ class MongoDBCharm(CharmBase):
         logger.debug("Running reconfigure")
 
         if not self.unit.is_leader():
-            self.on_update_status(event)
+            self._on_update_status(event)
             return
 
         if self.need_replica_set_reconfiguration:
@@ -188,10 +188,10 @@ class MongoDBCharm(CharmBase):
                 logger.info("Deferring reconfigure since : error={}".format(e))
                 event.defer()
 
-        self.on_update_status(event)
+        self._on_update_status(event)
         logger.debug("Running reconfigure finished")
 
-    def on_leader_elected(self, event):
+    def _on_leader_elected(self, event):
         peers = self.framework.model.get_relation(PEER)
 
         if peers:
