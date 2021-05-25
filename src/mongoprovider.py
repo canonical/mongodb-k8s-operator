@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 class MongoProvider(ProviderBase):
-    stored = StoredState()
+    _stored = StoredState()
 
     def __init__(self, charm, name, *args, **kwargs):
         super().__init__(charm, name, *args, **kwargs)
         self.charm = charm
-        self.stored.set_default(consumers={})
+        self._stored.set_default(consumers={})
         events = self.charm.on[name]
         self.framework.observe(events.relation_joined,
                                self._on_database_relation_joined)
@@ -76,16 +76,16 @@ class MongoProvider(ProviderBase):
         rel_id = event.relation.id
         databases = json.loads(event.relation.data[self.charm.app]['databases'])
 
-        if rel_id in self.stored.consumers:
+        if rel_id in self._stored.consumers:
             creds = self.credentials(rel_id)
             self.charm.mongo.drop_user(creds["username"])
-            _ = self.stored.consumers.pop(rel_id)
+            _ = self._stored.consumers.pop(rel_id)
 
         if self.charm.model.config['autodelete']:
             self.charm.mongo.drop_databases(databases)
 
     def is_new_relation(self, rel_id):
-        if rel_id in self.stored.consumers:
+        if rel_id in self._stored.consumers:
             return False
         else:
             return True
@@ -96,9 +96,9 @@ class MongoProvider(ProviderBase):
                 'username': self.new_username(rel_id),
                 'password': MongoDB.new_password()
             }
-            self.stored.consumers[rel_id] = creds
+            self._stored.consumers[rel_id] = creds
         else:
-            creds = self.stored.consumers[rel_id]
+            creds = self._stored.consumers[rel_id]
         return creds
 
     def new_username(self, rel_id):
