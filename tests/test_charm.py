@@ -45,7 +45,7 @@ class TestCharm(unittest.TestCase):
         self.harness.update_relation_data(rel_id,
                                           'mongodb/1',
                                           {'private-address': '10.0.0.1'})
-        peers = ['mongodb-0.mongodb-endpoints', 'mongodb-1.mongodb-endpoints']
+        peers = ['mongodb-k8s-0.mongodb-k8s-endpoints', 'mongodb-k8s-1.mongodb-k8s-endpoints']
         mock_reconf.assert_called_once_with(peers)
 
     def test_replica_set_uri_data_is_generated_correctly(self):
@@ -55,7 +55,8 @@ class TestCharm(unittest.TestCase):
         data = self.harness.get_relation_data(rel_id, self.harness.model.app.name)
         cred = "root:{}".format(data['root_password'])
         self.assertEqual(replica_set_uri,
-                         'mongodb://{}@mongodb-0.mongodb-endpoints:27017/admin'.format(cred))
+                         'mongodb://{}@mongodb-k8s-0.mongodb-k8s-endpoints:27017/admin'.format(
+                             cred))
 
     def test_leader_sets_key_and_root_credentials(self):
         self.harness.set_leader(False)
