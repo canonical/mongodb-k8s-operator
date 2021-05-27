@@ -9,10 +9,9 @@ logger = logging.getLogger(__name__)
 
 class MongoLayers:
     def __init__(self, config):
-        self.replica_set_name = config.get("replica_set_name")
-        self.port = config.get("port", 27017)
-        self.root_password = config.get("root_password")
-        self.security_key = config.get("security_key")
+        self._replica_set_name = config.get("replica_set_name")
+        self._port = config.get("port", 27017)
+        self._root_password = config.get("root_password")
 
     def build(self):
         layer = {
@@ -26,7 +25,7 @@ class MongoLayers:
                     "startup": "enabled",
                     "environment": {
                         "MONGO_INITDB_ROOT_USERNAME": "root",
-                        "MONGO_INITDB_ROOT_PASSWORD": self.root_password,
+                        "MONGO_INITDB_ROOT_PASSWORD": self._root_password,
                         "MONGO_INITDB_DATABASE": "admin"
                     }
                 }
@@ -42,7 +41,7 @@ class MongoLayers:
 
     def _command_arguments(self):
         args = ["mongod"]
-        replica_set_option = "--replSet {}".format(self.replica_set_name)
+        replica_set_option = "--replSet {}".format(self._replica_set_name)
         keyfile_option = "--keyFile {}/{}".format(SECRET_PATH, KEY_FILE)
         args.extend(replica_set_option.split(" "))
         args.extend(keyfile_option.split(" "))
