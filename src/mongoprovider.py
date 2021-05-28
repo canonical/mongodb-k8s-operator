@@ -12,6 +12,14 @@ class MongoProvider(ProviderBase):
     _stored = StoredState()
 
     def __init__(self, charm, name, *args, **kwargs):
+        """Manager of MongoDB relations.
+
+        Args:
+
+            charm: a :class:`CharmBase` object representing the
+                MongoDB charm. This is usually self.
+            name: string name of relation being managed.
+        """
         super().__init__(charm, name, *args, **kwargs)
         self.charm = charm
         self._stored.set_default(consumers={})
@@ -27,7 +35,15 @@ class MongoProvider(ProviderBase):
     #               RELATIONS                    #
     ##############################################
     def _on_database_relation_joined(self, event):
+        """Handle relation joined events.
 
+        When a new relation joins the :class:`MongoProvider` sets relation
+        data, that the related charm can use for accessing the MongoDB
+        database.
+
+        Args:
+            event: a :class:`EventBase` object.
+        """
         if not self.charm.unit.is_leader():
             return
 
@@ -44,7 +60,16 @@ class MongoProvider(ProviderBase):
         event.relation.data[self.charm.app]['replica_set_name'] = replica_set_name
 
     def _on_database_relation_changed(self, event):
-        """Ensure total number of databases requested are available
+        """Ensure total number of databases requested are available.
+
+        Where there is any change to relation data
+        :class:`MongoProvider` checks if any new databases have been
+        requested. If so these new databases are "created", the
+        requesting user (charm) is granted access to these databases,
+        and provided the names of the databases.
+
+        Args:
+            event: a :class:`EventBase` object.
         """
         if not self.charm.unit.is_leader():
             return
@@ -70,6 +95,17 @@ class MongoProvider(ProviderBase):
             event.relation.data[self.charm.app]['databases'] = json.dumps(dbs_available)
 
     def _on_database_relation_broken(self, event):
+        """Handle relation broken events.
+
+        When a relation is broken :class:`MongoProvider` ensures that
+        database access credentials allocated for that relation is
+        removed. Further if the configuration option "autodelete" was
+        set then the database associated with that relation is also
+        removed.
+
+        Args:
+            event: a :class:`EventBase` object.
+        """
         if not self.charm.unit.is_leader():
             return
 
@@ -85,12 +121,28 @@ class MongoProvider(ProviderBase):
             self.charm.mongo.drop_databases(databases)
 
     def is_new_relation(self, rel_id):
+        """Has this relation never been seen before.
+
+        Args:
+           rel_id: integer id of relation
+
+        Retruns:
+           True if relation was not seen before.
+        """
         if rel_id in self._stored.consumers:
             return False
         else:
             return True
 
     def credentials(self, rel_id):
+        """Fetch credentials associated with a relation.
+
+        Args:
+           rel_id: integer id of relation
+
+        Returns:
+           A dictionary with keys "username" and "password".
+        """
         if self.is_new_relation(rel_id):
             creds = {
                 'username': self.new_username(rel_id),
@@ -102,5 +154,13 @@ class MongoProvider(ProviderBase):
         return creds
 
     def new_username(self, rel_id):
+        """Create a new username
+
+        Args:
+           rel_id: integer id of relation
+
+        Returns:
+           A string user name.
+        """
         username = "user-{}".format(rel_id)
         return username
