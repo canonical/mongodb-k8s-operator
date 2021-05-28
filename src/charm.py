@@ -25,7 +25,7 @@ PEER = "mongodb"
 
 
 class MongoDBCharm(CharmBase):
-    """A Juju Charm to deploy MongoDB on Kubernetes
+    """A Juju Charm to deploy MongoDB on Kubernetes.
 
     This charm has the following features:
     - Add one more MongoDB units
@@ -72,7 +72,7 @@ class MongoDBCharm(CharmBase):
 
     # Handles config-changed and upgrade-charm events
     def _on_config_changed(self, event):
-        """(Re)Configure MongoDB pebble layer specification
+        """(Re)Configure MongoDB pebble layer specification.
 
         A new MongoDB pebble layer specification is set only if it is
         different from the current specification.
@@ -104,7 +104,7 @@ class MongoDBCharm(CharmBase):
 
     # Handles start event
     def _on_start(self, event):
-        """Initialize MongoDB
+        """Initialize MongoDB.
 
         This event handler is deferred if initialization of MongoDB
         replica set fails. By doing so it is gauranteed that another
@@ -136,7 +136,7 @@ class MongoDBCharm(CharmBase):
 
     # Handles stop event
     def _on_stop(self, _):
-        """Mark terminating unit as inactive
+        """Mark terminating unit as inactive.
         """
         self.unit.status = MaintenanceStatus('Pod is terminating.')
 
@@ -171,7 +171,7 @@ class MongoDBCharm(CharmBase):
 
     # Handles relation-changed and relation-departed events
     def _reconfigure(self, event):
-        """Reconfigure replicat set
+        """Reconfigure replicat set.
 
         The number of replicas in the MongoDB replica set is updated.
         """
@@ -192,6 +192,12 @@ class MongoDBCharm(CharmBase):
         logger.debug("Running reconfigure finished")
 
     def _on_leader_elected(self, event):
+        """Assume leadership.
+
+        Each new leader checks if root password and the security key
+        is available in peer relation data. If not the leader sets
+        these into peer relation data.
+        """
         peers = self.framework.model.get_relation(PEER)
 
         if peers:
@@ -211,32 +217,34 @@ class MongoDBCharm(CharmBase):
 
     @property
     def need_replica_set_reconfiguration(self):
-        """Does MongoDB replica set need reconfiguration
+        """Does MongoDB replica set need reconfiguration.
         """
         return self.mongo.cluster_hosts != self._stored.replica_set_hosts
 
     @property
     def replica_set_name(self):
-        """Find the replica set name
+        """Find the replica set name.
         """
         return self.model.config["replica_set_name"]
 
     @property
     def num_peers(self):
-        """Find number of deployed MongoDB units
+        """Find number of deployed MongoDB units.
         """
         peer_relation = self.framework.model.get_relation(PEER)
         return len(peer_relation.units) + 1 if self.is_joined else 1
 
     @property
     def is_joined(self):
-        """Does MongoDB charm have peers
+        """Does MongoDB charm have peers.
         """
         peer_relation = self.framework.model.get_relation(PEER)
         return peer_relation is not None
 
     @property
     def mongo(self):
+        """Fetch the MongoDB server interface object.
+        """
         return MongoDB(self.config)
 
     ##############################################
@@ -245,6 +253,8 @@ class MongoDBCharm(CharmBase):
 
     @property
     def config(self):
+        """Configuration for MongoDB replica set with authentication.
+        """
         config = {
             "app_name": self.model.app.name,
             "replica_set_name": self.replica_set_name,
@@ -257,6 +267,8 @@ class MongoDBCharm(CharmBase):
 
     @property
     def root_password(self):
+        """MongoDB root password.
+        """
         root_password = None
         peers = self.framework.model.get_relation(PEER)
 
@@ -271,6 +283,8 @@ class MongoDBCharm(CharmBase):
 
     @property
     def security_key(self):
+        """Security key used for authentication replica set peers.
+        """
         security_key = None
         peers = self.framework.model.get_relation(PEER)
 
@@ -289,6 +303,14 @@ class MongoDBCharm(CharmBase):
         return ip
 
     def have_security_key(self, container):
+        """Has the security key been uploaded to a workload container.
+
+        Args:
+            container: the container object that must be checked.
+
+        Returns:
+            True if container has security key, False otherwise.
+        """
         file_path = SECRET_PATH + "/" + KEY_FILE
         try:
             key_file = container.pull(file_path)
@@ -298,6 +320,11 @@ class MongoDBCharm(CharmBase):
         return True if key else False
 
     def set_security_key(self, container):
+        """Upload the security key to a workload container.
+
+        Args:
+            container: the container object that must be checked.
+        """
         file_path = SECRET_PATH + "/" + KEY_FILE
         container.push(file_path,
                        self.security_key,
