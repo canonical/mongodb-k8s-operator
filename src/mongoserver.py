@@ -16,6 +16,16 @@ MONGODB_PORT = 27017
 class MongoDB():
 
     def __init__(self, config):
+        """A MongoDB server interface.
+
+        Args:
+            config: a dict with the following keys
+                - "app_name" : name of application
+                - "replica_set_name" : name of replica set
+                - "num_peers" : number of peer units
+                - "port" : port on which MongoDB services is exposed
+                - "root_password" : password for MongoDB root account
+        """
         self.app_name = config['app_name']
         self.replica_set_name = config['replica_set_name']
         self.num_peers = config['num_peers']
@@ -23,9 +33,21 @@ class MongoDB():
         self.root_password = config['root_password']
 
     def client(self):
+        """Construct a client for the MongoDB database.
+
+        The timeout for all queries using this client object is 1 sec.
+
+        Retruns:
+            A pymongo :class:`MongoClient` object.
+        """
         return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
 
     def is_ready(self):
+        """Is the MongoDB server ready to services requests.
+
+        Returns:
+            True if services is ready False otherwise.
+        """
         ready = False
         client = self.client()
         try:
@@ -38,6 +60,11 @@ class MongoDB():
         return ready
 
     def reconfigure_replica_set(self, hosts: list):
+        """Reconfigure the MongoDB replica set.
+
+        Args:
+            hosts: a list of peer host addresses
+        """
         replica_set_client = self.client()
         try:
             rs_config = replica_set_client.admin.command("replSetGetConfig")
@@ -56,6 +83,11 @@ class MongoDB():
             replica_set_client.close()
 
     def initialize_replica_set(self, hosts: list):
+        """Initialize the MongoDB replica set.
+
+        Args:
+            hosts: a list of peer host addresses
+        """
         config = {
             "_id": self.replica_set_name,
             "members": [{"_id": i, "host": h} for i, h in enumerate(hosts)],
@@ -70,6 +102,13 @@ class MongoDB():
             client.close()
 
     def new_user(self, credentials):
+        """Create a new MongoDB user.
+
+        Args:
+            credentials: a dictionary with keys
+                - "username": name of new user
+                - "password": password of new user
+        """
         client = self.client()
         db = client["admin"]
         db.command("createUser", credentials["username"],
@@ -78,6 +117,11 @@ class MongoDB():
         client.close()
 
     def drop_user(self, username):
+        """Remove a MongoDB user.
+
+        Args:
+            username: string name of user
+        """
         client = self.client()
         db = client["admin"]
         db.command("dropUser",
@@ -85,6 +129,12 @@ class MongoDB():
         client.close()
 
     def new_databases(self, credentials, databases):
+        """Create a new database in MongoDB.
+
+        Args:
+            credentials: a dictionary with key "username"
+            databases: a list of new database names
+        """
         client = self.client()
         db = client["admin"]
         roles = []
@@ -97,6 +147,11 @@ class MongoDB():
         client.close()
 
     def drop_databases(self, databases):
+        """Remove a list of databases from MongoDB
+
+        Args:
+            databases: a list of database names
+        """
         client = self.client()
         for database in databases:
             db = client[database]
@@ -104,7 +159,15 @@ class MongoDB():
         client.close()
 
     def replica_set_uri(self, credentials=None):
-        """Construct a replica set URI
+        """Construct a replica set URI.
+
+        Args:
+            credentials: an optional dictionary with keys "username"
+            and "password"
+
+        Returns:
+            A string URI that may be used to access the MongoDB
+            replica set.
         """
         if credentials:
             password = credentials["password"]
@@ -124,25 +187,37 @@ class MongoDB():
         return uri
 
     def hostname(self, id: int) -> str:
-        """Construct a DNS name for a MongoDB unit
+        """Construct a DNS name for a MongoDB unit.
+
+        Args:
+            id: an integer identifying the unit.
+
+        Returns:
+            A string representing the hostname of the MongoDB unit.
         """
         return "{0}-{1}.{0}-endpoints".format(self.app_name, id)
 
     @property
     def cluster_hosts(self) -> list:
-        """Find all hostnames for MongoDB units
+        """Find all hostnames for MongoDB units.
+
+        Returns:
+            A list of hostnames of all MongoDB peer units.
         """
         return [self.hostname(i) for i in range(self.num_peers)]
 
     @property
     def databases(self):
-        """List all databases currently available
+        """List all databases currently available.
+
+        Returns:
+            A list of non default database names.
         """
         if not self.is_ready():
             return []
 
         client = self.client()
-        # gather list of no default databases
+        # gather list of non default databases
         defaultdbs = ("admin", "local", "config")
         databases = client.list_database_names()
         databases = [db for db in databases if db not in defaultdbs]
@@ -152,7 +227,10 @@ class MongoDB():
 
     @property
     def version(self):
-        """Get MongoDB version
+        """Get MongoDB version.
+
+        Returns:
+            A string representing the MongoDB version.
         """
         client = self.client()
         try:
@@ -166,6 +244,11 @@ class MongoDB():
 
     @staticmethod
     def new_password():
+        """Generate a random password string.
+
+        Returns:
+           A random password string.
+        """
         choices = string.ascii_letters + string.digits
         pwd = "".join([secrets.choice(choices) for i in range(16)])
         return pwd
