@@ -112,6 +112,7 @@ class TestMongoProvider(unittest.TestCase):
         self.harness = Harness(MongoDBCharm, meta=meta_yaml, config=config_yaml)
         self.addCleanup(self.harness.cleanup)
         self.harness.set_leader(True)
+        self.peer_rel_id = self.harness.add_relation('mongodb', 'mongodb')
         self.harness.begin()
 
     def test_databases_are_created_when_requested(self):

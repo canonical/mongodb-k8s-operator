@@ -1,7 +1,6 @@
 import json
 import logging
 
-from ops.framework import StoredState
 from ops.relation import ProviderBase
 from mongoserver import MongoDB
 
@@ -9,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class MongoProvider(ProviderBase):
-    _stored = StoredState()
 
     def __init__(self, charm, name, *args, **kwargs):
         """Manager of MongoDB relations.
@@ -22,7 +20,6 @@ class MongoProvider(ProviderBase):
         """
         super().__init__(charm, name, *args, **kwargs)
         self.charm = charm
-        self._stored.set_default(consumers={})
         events = self.charm.on[name]
         self.framework.observe(events.relation_joined,
                                self._on_database_relation_joined)
@@ -112,10 +109,12 @@ class MongoProvider(ProviderBase):
         rel_id = event.relation.id
         databases = json.loads(event.relation.data[self.charm.app]['databases'])
 
-        if rel_id in self._stored.consumers:
+        consumers = self.consumers()
+        if rel_id in consumers:
             creds = self.credentials(rel_id)
             self.charm.mongo.drop_user(creds["username"])
-            _ = self._stored.consumers.pop(rel_id)
+            _ = consumers.pop(rel_id)
+            self.peers.data[self.charm.app]['consumers'] = json.dumps(consumers)
 
         if self.charm.model.config['autodelete']:
             self.charm.mongo.drop_databases(databases)
@@ -129,7 +128,7 @@ class MongoProvider(ProviderBase):
         Retruns:
            True if relation was not seen before.
         """
-        if rel_id in self._stored.consumers:
+        if rel_id in self.consumers():
             return False
         else:
             return True
@@ -143,14 +142,18 @@ class MongoProvider(ProviderBase):
         Returns:
            A dictionary with keys "username" and "password".
         """
+        consumers = self.consumers()
+
         if self.is_new_relation(rel_id):
             creds = {
                 'username': self.new_username(rel_id),
                 'password': MongoDB.new_password()
             }
-            self._stored.consumers[rel_id] = creds
+            consumers[rel_id] = creds
+
+            self.peers.data[self.charm.app]['consumers'] = json.dumps(consumers)
         else:
-            creds = self._stored.consumers[rel_id]
+            creds = consumers[rel_id]
         return creds
 
     def new_username(self, rel_id):
@@ -164,3 +167,23 @@ class MongoProvider(ProviderBase):
         """
         username = "user-{}".format(rel_id)
         return username
+
+    def consumers(self):
+        """Fetch current set of consumers
+
+        Returns:
+            A dictionary where the keys are relation IDs of consumers
+            and the values are the consumer credentials.
+        """
+        consumers = json.loads(self.peers.data[self.charm.app].get('consumers', "{}"))
+        return consumers
+
+    @property
+    def peers(self):
+        """Fetch the peer relation
+
+        Returns:
+             A :class:`ops.model.Relation` object representing
+             the peer relation.
+        """
+        return self.charm.model.get_relation("mongodb")
