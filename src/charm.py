@@ -198,7 +198,7 @@ class MongoDBCharm(CharmBase):
         is available in peer relation data. If not the leader sets
         these into peer relation data.
         """
-        peers = self.framework.model.get_relation(PEER)
+        peers = self.peers
 
         if peers:
             data = peers.data[peers.app]
@@ -231,8 +231,7 @@ class MongoDBCharm(CharmBase):
     def num_peers(self):
         """Find number of deployed MongoDB units.
         """
-        peer_relation = self.framework.model.get_relation(PEER)
-        return len(peer_relation.units) + 1 if self.is_joined else 1
+        return len(self.peers.units) + 1 if self.peers else 1
 
     @property
     def mongo(self):
@@ -263,7 +262,7 @@ class MongoDBCharm(CharmBase):
         """MongoDB root password.
         """
         root_password = None
-        peers = self.framework.model.get_relation(PEER)
+        peers = self.peers
 
         if peers:
             data = peers.data[peers.app]
@@ -279,7 +278,7 @@ class MongoDBCharm(CharmBase):
         """Security key used for authentication replica set peers.
         """
         security_key = None
-        peers = self.framework.model.get_relation(PEER)
+        peers = self.peers
 
         if peers:
             data = peers.data[peers.app]
