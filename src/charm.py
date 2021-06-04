@@ -235,13 +235,6 @@ class MongoDBCharm(CharmBase):
         return len(peer_relation.units) + 1 if self.is_joined else 1
 
     @property
-    def is_joined(self):
-        """Does MongoDB charm have peers.
-        """
-        peer_relation = self.framework.model.get_relation(PEER)
-        return peer_relation is not None
-
-    @property
     def mongo(self):
         """Fetch the MongoDB server interface object.
         """

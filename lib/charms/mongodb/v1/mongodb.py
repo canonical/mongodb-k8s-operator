@@ -36,14 +36,12 @@ class MongoConsumer(ConsumerBase):
         username = relation_data.get('username')
         password = relation_data.get('password')
         replica_set_uri = relation_data.get('replica_set_uri')
-        replicated = relation_data.get('replicated')
 
         credentials = {}
         if username and password:
             credentials = {"username": username,
                            "password": password,
-                           "replica_set_uri": replica_set_uri,
-                           "replicated": replicated}
+                           "replica_set_uri": replica_set_uri}
         return credentials
 
     def databases(self, rel_id=None):
