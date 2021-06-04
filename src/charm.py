@@ -5,7 +5,6 @@ import secrets
 from ops.charm import CharmBase
 from ops.framework import StoredState
 from ops.pebble import PathError
-from subprocess import check_output
 
 from ops.main import main
 from ops.model import (
@@ -296,11 +295,6 @@ class MongoDBCharm(CharmBase):
             security_key = secrets.token_hex(128)
 
         return security_key
-
-    @property
-    def ip(self):
-        ip = check_output(["unit-get", "private-address"]).decode().strip()
-        return ip
 
     def have_security_key(self, container):
         """Has the security key been uploaded to a workload container.
