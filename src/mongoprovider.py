@@ -48,12 +48,10 @@ class MongoProvider(ProviderBase):
         creds = self.credentials(rel_id)
         self.charm.mongo.new_user(creds)
         replica_set_uri = "{}".format(self.charm.mongo.replica_set_uri(creds))
-        replicated = str(self.charm.is_joined)
         replica_set_name = self.charm.replica_set_name
         event.relation.data[self.charm.app]['username'] = creds['username']
         event.relation.data[self.charm.app]['password'] = creds['password']
         event.relation.data[self.charm.app]['replica_set_uri'] = replica_set_uri
-        event.relation.data[self.charm.app]['replicated'] = replicated
         event.relation.data[self.charm.app]['replica_set_name'] = replica_set_name
 
     def _on_database_relation_changed(self, event):
