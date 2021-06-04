@@ -124,7 +124,7 @@ class MongoDBCharm(CharmBase):
             try:
                 self.mongo.initialize_replica_set(self.mongo.cluster_hosts)
                 self._stored.mongodb_initialized = True
-                self.peers.data[self.charm.app][
+                self.peers.data[self.app][
                     "replica_set_hosts"] = json.dumps(self.mongo.cluster_hosts)
             except Exception as e:
                 logger.info("Deferring on_start since : error={}".format(e))
@@ -198,18 +198,15 @@ class MongoDBCharm(CharmBase):
         is available in peer relation data. If not the leader sets
         these into peer relation data.
         """
-        peers = self.peers
+        data = self.peers.data[self.app]
 
-        if peers:
-            data = peers.data[peers.app]
+        root_password = data.get('root_password', None)
+        if root_password is None:
+            self.peers.data[self.app]['root_password'] = str(self.root_password)
 
-            root_password = data.get('root_password', None)
-            if root_password is None:
-                peers.data[peers.app]['root_password'] = str(self.root_password)
-
-            security_key = data.get('security_key', None)
-            if security_key is None:
-                peers.data[peers.app]['security_key'] = str(self.security_key)
+        security_key = data.get('security_key', None)
+        if security_key is None:
+            self.peers.data[self.app]['security_key'] = str(self.security_key)
 
     ##############################################
     #               PROPERTIES                   #
@@ -264,9 +261,8 @@ class MongoDBCharm(CharmBase):
         root_password = None
         peers = self.peers
 
-        if peers:
-            data = peers.data[peers.app]
-            root_password = data.get('root_password', None)
+        data = self.peers.data[peers.app]
+        root_password = data.get('root_password', None)
 
         if root_password is None:
             root_password = MongoDB.new_password()
@@ -278,11 +274,9 @@ class MongoDBCharm(CharmBase):
         """Security key used for authentication replica set peers.
         """
         security_key = None
-        peers = self.peers
 
-        if peers:
-            data = peers.data[peers.app]
-            security_key = data.get('security_key', None)
+        data = self.peers.data[self.app]
+        security_key = data.get('security_key', None)
 
         if security_key is None:
             security_key = secrets.token_hex(128)
@@ -305,7 +299,7 @@ class MongoDBCharm(CharmBase):
         Returns:
             A list of hosts addresses (strings).
         """
-        hosts = json.loads(self.peers.data[self.charm.app].get("replica_set_hosts", "[]"))
+        hosts = json.loads(self.peers.data[self.app].get("replica_set_hosts", "[]"))
         return hosts
 
     def have_security_key(self, container):

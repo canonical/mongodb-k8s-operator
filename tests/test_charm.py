@@ -22,6 +22,7 @@ class TestCharm(unittest.TestCase):
         }
         self.harness.add_oci_resource("mongodb-image", mongo_resource)
         self.harness.begin()
+        self.peer_rel_id = self.harness.add_relation('mongodb', 'mongodb')
 
     @patch('ops.testing._TestingPebbleClient.pull')
     def test_replica_set_name_can_be_changed(self, _):
@@ -40,19 +41,17 @@ class TestCharm(unittest.TestCase):
     @patch("mongoserver.MongoDB.reconfigure_replica_set")
     def test_replica_set_is_reconfigured_when_peer_joins(self, mock_reconf):
         self.harness.set_leader(True)
-        rel_id = self.harness.add_relation('mongodb', 'mongodb')
-        self.harness.add_relation_unit(rel_id, 'mongodb/1')
-        self.harness.update_relation_data(rel_id,
+        self.harness.add_relation_unit(self.peer_rel_id, 'mongodb/1')
+        self.harness.update_relation_data(self.peer_rel_id,
                                           'mongodb/1',
                                           {'private-address': '10.0.0.1'})
         peers = ['mongodb-k8s-0.mongodb-k8s-endpoints', 'mongodb-k8s-1.mongodb-k8s-endpoints']
         mock_reconf.assert_called_once_with(peers)
 
     def test_replica_set_uri_data_is_generated_correctly(self):
-        rel_id = self.harness.add_relation('mongodb', 'mongodb')
         self.harness.set_leader(True)
         replica_set_uri = self.harness.charm.mongo.replica_set_uri()
-        data = self.harness.get_relation_data(rel_id, self.harness.model.app.name)
+        data = self.harness.get_relation_data(self.peer_rel_id, self.harness.model.app.name)
         cred = "root:{}".format(data['root_password'])
         self.assertEqual(replica_set_uri,
                          'mongodb://{}@mongodb-k8s-0.mongodb-k8s-endpoints:27017/admin'.format(
@@ -60,9 +59,8 @@ class TestCharm(unittest.TestCase):
 
     def test_leader_sets_key_and_root_credentials(self):
         self.harness.set_leader(False)
-        rel_id = self.harness.add_relation('mongodb', 'mongodb')
         self.harness.set_leader(True)
-        data = self.harness.get_relation_data(rel_id, self.harness.model.app.name)
+        data = self.harness.get_relation_data(self.peer_rel_id, self.harness.model.app.name)
         self.assertIsNotNone(data['root_password'])
         self.assertIsNotNone(data['security_key'])
 
