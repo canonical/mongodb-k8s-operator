@@ -114,7 +114,7 @@ class MongoProvider(ProviderBase):
             creds = self.credentials(rel_id)
             self.charm.mongo.drop_user(creds["username"])
             _ = consumers.pop(rel_id)
-            self.peers.data[self.charm.app]['consumers'] = json.dumps(consumers)
+            self.charm.peers.data[self.charm.app]['consumers'] = json.dumps(consumers)
 
         if self.charm.model.config['autodelete']:
             self.charm.mongo.drop_databases(databases)
@@ -151,7 +151,7 @@ class MongoProvider(ProviderBase):
             }
             consumers[rel_id] = creds
 
-            self.peers.data[self.charm.app]['consumers'] = json.dumps(consumers)
+            self.charm.peers.data[self.charm.app]['consumers'] = json.dumps(consumers)
         else:
             creds = consumers[rel_id]
         return creds
@@ -175,15 +175,5 @@ class MongoProvider(ProviderBase):
             A dictionary where the keys are relation IDs of consumers
             and the values are the consumer credentials.
         """
-        consumers = json.loads(self.peers.data[self.charm.app].get('consumers', "{}"))
+        consumers = json.loads(self.charm.peers.data[self.charm.app].get('consumers', "{}"))
         return consumers
-
-    @property
-    def peers(self):
-        """Fetch the peer relation
-
-        Returns:
-             A :class:`ops.model.Relation` object representing
-             the peer relation.
-        """
-        return self.charm.model.get_relation("mongodb")
