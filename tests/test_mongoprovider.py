@@ -104,6 +104,10 @@ class MongoDBCharm(CharmBase):
     def replica_set_name(self):
         return self.model.config['replica_set_name']
 
+    @property
+    def peers(self):
+        return self.model.get_relation('mongodb')
+
 
 class TestMongoProvider(unittest.TestCase):
     def setup_harness(self, config, meta):

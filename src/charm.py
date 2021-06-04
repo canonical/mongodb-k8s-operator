@@ -296,6 +296,16 @@ class MongoDBCharm(CharmBase):
 
         return security_key
 
+    @property
+    def peers(self):
+        """Fetch the peer relation
+
+        Returns:
+             A :class:`ops.model.Relation` object representing
+             the peer relation.
+        """
+        return self.model.get_relation(PEER)
+
     def have_security_key(self, container):
         """Has the security key been uploaded to a workload container.
 
