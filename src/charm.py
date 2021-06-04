@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import logging
 import secrets
 
@@ -37,7 +38,6 @@ class MongoDBCharm(CharmBase):
         super().__init__(*args)
 
         self._stored.set_default(mongodb_initialized=False)
-        self._stored.set_default(replica_set_hosts=None)
 
         self.port = MONGODB_PORT
 
@@ -124,7 +124,8 @@ class MongoDBCharm(CharmBase):
             try:
                 self.mongo.initialize_replica_set(self.mongo.cluster_hosts)
                 self._stored.mongodb_initialized = True
-                self._stored.replica_set_hosts = self.mongo.cluster_hosts
+                self.peers.data[self.charm.app][
+                    "replica_set_hosts"] = json.dumps(self.mongo.cluster_hosts)
             except Exception as e:
                 logger.info("Deferring on_start since : error={}".format(e))
                 self._on_update_status(event)
@@ -218,7 +219,7 @@ class MongoDBCharm(CharmBase):
     def need_replica_set_reconfiguration(self):
         """Does MongoDB replica set need reconfiguration.
         """
-        return self.mongo.cluster_hosts != self._stored.replica_set_hosts
+        return self.mongo.cluster_hosts != self.replica_set_hosts
 
     @property
     def replica_set_name(self):
@@ -305,6 +306,15 @@ class MongoDBCharm(CharmBase):
              the peer relation.
         """
         return self.model.get_relation(PEER)
+
+    def replica_set_hosts(self):
+        """Fetch current list of hosts in the replica set.
+
+        Returns:
+            A list of hosts addresses (strings).
+        """
+        hosts = json.loads(self.peers.data[self.charm.app].get("replica_set_hosts", "[]"))
+        return hosts
 
     def have_security_key(self, container):
         """Has the security key been uploaded to a workload container.
