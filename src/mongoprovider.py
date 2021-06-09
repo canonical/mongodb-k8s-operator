@@ -105,7 +105,7 @@ class MongoProvider(ProviderBase):
             return
 
         rel_id = event.relation.id
-        databases = json.loads(event.relation.data[self.charm.app]['databases'])
+        databases = json.loads(event.relation.data[self.charm.app].get('databases', []))
 
         consumers = self.consumers()
         if rel_id in consumers:
@@ -114,7 +114,7 @@ class MongoProvider(ProviderBase):
             _ = consumers.pop(rel_id)
             self.charm.peers.data[self.charm.app]['consumers'] = json.dumps(consumers)
 
-        if self.charm.model.config['autodelete']:
+        if self.charm.model.config['autodelete'] and databases:
             self.charm.mongo.drop_databases(databases)
 
     def is_new_relation(self, rel_id):
