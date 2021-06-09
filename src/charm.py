@@ -5,7 +5,7 @@ import secrets
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
-from ops.pebble import PathError
+from ops.pebble import PathError, ConnectionError
 
 from ops.main import main
 from ops.model import (
@@ -80,8 +80,12 @@ class MongoDBCharm(CharmBase):
         container = self.unit.get_container("mongodb")
 
         # Set security key
-        if not self.have_security_key(container):
-            self.set_security_key(container)
+        try:
+            if not self.have_security_key(container):
+                self.set_security_key(container)
+        except ConnectionError:
+            self.unit.status = WaitingStatus("Waiting for Pebble ready")
+            return
 
         # Build layer
         layers = MongoLayers(self.config)
@@ -310,6 +314,9 @@ class MongoDBCharm(CharmBase):
 
         Returns:
             True if container has security key, False otherwise.
+
+        Raises:
+            :class:`ops.pebble.ConnectionError` if pebble is not ready
         """
         file_path = SECRET_PATH + "/" + KEY_FILE
         try:
@@ -324,6 +331,9 @@ class MongoDBCharm(CharmBase):
 
         Args:
             container: the container object that must be checked.
+
+        Raises:
+            :class:`ops.pebble.ConnectionError` if pebble is not ready
         """
         file_path = SECRET_PATH + "/" + KEY_FILE
         container.push(file_path,
