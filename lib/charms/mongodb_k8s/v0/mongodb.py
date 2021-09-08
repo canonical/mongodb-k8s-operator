@@ -2,8 +2,15 @@ import json
 import uuid
 from ops.relation import ConsumerBase
 
-LIBAPI = 1
-LIBPATCH = 0
+# The unique Charmhub library identifier, never change it
+LIBID = "1057f353503741a98ed79309b5be7e29"
+
+# Increment this major API version when introducing breaking changes
+LIBAPI = 0
+
+# Increment this PATCH version before using `charmcraft publish-lib` or reset
+# to 0 if you are raising the major API version
+LIBPATCH = 1
 
 
 class MongoConsumer(ConsumerBase):
