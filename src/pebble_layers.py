@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+from ops.pebble import Layer
 
 SECRET_PATH = "/var/lib/mongodb-secrets"
 KEY_FILE = "key.file"
@@ -27,7 +28,7 @@ class MongoLayers:
         Returns:
             A dictionary representing the MongoDB pebble layer.
         """
-        layer = {
+        layer_spec = {
             "summary": "MongoDB layer",
             "description": "Pebble layer configuration for replicated MongoDB",
             "services": {
@@ -44,7 +45,7 @@ class MongoLayers:
                 }
             },
         }
-        return layer
+        return Layer(layer_spec)
 
     def _command(self):
         """Construct the MongoDB startup command line.
