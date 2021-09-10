@@ -87,13 +87,9 @@ class MongoDBCharm(CharmBase):
         layers = MongoLayers(self.config)
         mongo_layer = layers.build()
         plan = container.get_plan()
-        if plan.services != mongo_layer["services"]:
+        if plan.services != mongo_layer.services:
             container.add_layer("mongodb", mongo_layer, combine=True)
-
-            if container.get_service("mongodb").is_running():
-                container.stop("mongodb")
-
-            container.start("mongodb")
+            container.restart("mongodb")
             logger.info("Restarted mongodb container")
 
         self.unit.status = ActiveStatus()
