@@ -57,11 +57,7 @@ class MongoDBCharm(CharmBase):
                                self._on_leader_elected)
 
         if self._stored.mongodb_initialized and self.mongo.version:
-            self.mongo_provider = MongoProvider(self,
-                                                'database',
-                                                'mongodb',
-                                                version=self.mongo.version)
-            self.mongo_provider.ready()
+            self.mongo_provider = MongoProvider(self, 'database')
         else:
             logger.debug("Mongo Provider not yet Available")
 

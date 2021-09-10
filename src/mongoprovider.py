@@ -1,13 +1,13 @@
 import json
 import logging
 
-from ops.relation import ProviderBase
+from ops.framework import Object
 from mongoserver import MongoDB
 
 logger = logging.getLogger(__name__)
 
 
-class MongoProvider(ProviderBase):
+class MongoProvider(Object):
 
     def __init__(self, charm, name, *args, **kwargs):
         """Manager of MongoDB relations.
