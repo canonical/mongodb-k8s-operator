@@ -1,6 +1,6 @@
 import json
 import uuid
-from ops.relation import ConsumerBase
+from ops.framework import Object
 
 # The unique Charmhub library identifier, never change it
 LIBID = "1057f353503741a98ed79309b5be7e29"
@@ -13,9 +13,9 @@ LIBAPI = 0
 LIBPATCH = 1
 
 
-class MongoConsumer(ConsumerBase):
-    def __init__(self, charm, name, consumes, multi=False):
-        super().__init__(charm, name, consumes, multi)
+class MongoConsumer(Object):
+    def __init__(self, charm, name):
+        super().__init__(charm, name)
         self.charm = charm
         self.relation_name = name
 
