@@ -87,8 +87,11 @@ class MongoDBCharm(CharmBase):
         layers = MongoLayers(self.config)
         mongo_layer = layers.build()
         plan = container.get_plan()
-        if plan.services != mongo_layer.services:
+        service_changed = plan.services != mongo_layer.services
+        if service_changed:
             container.add_layer("mongodb", mongo_layer, combine=True)
+
+        if service_changed or self.need_replica_set_reconfiguration:
             container.restart("mongodb")
             logger.info("Restarted mongodb container")
 
