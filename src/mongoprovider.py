@@ -105,7 +105,8 @@ class MongoProvider(Object):
             return
 
         rel_id = event.relation.id
-        databases = json.loads(event.relation.data[self.charm.app].get('databases', []))
+        databases = json.loads(
+            event.relation.data[self.charm.app].get('databases', '[]'))
 
         consumers = self.consumers()
         if rel_id in consumers:
