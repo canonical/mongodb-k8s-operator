@@ -5,11 +5,12 @@ import secrets
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
-from ops.pebble import PathError, ConnectionError
+from ops.pebble import PathError, ProtocolError
 
 from ops.main import main
 from ops.model import (
     ActiveStatus,
+    BlockedStatus,
     WaitingStatus,
     MaintenanceStatus
 )
@@ -75,13 +76,13 @@ class MongoDBCharm(CharmBase):
         logger.debug("Running config changed handler")
         container = self.unit.get_container("mongodb")
 
-        # Set security key
-        try:
-            if not self.have_security_key(container):
-                self.set_security_key(container)
-        except ConnectionError:
+        if not container.can_connect():
             self.unit.status = WaitingStatus("Waiting for Pebble ready")
             return
+
+        # Set security key
+        if not self.have_security_key(container):
+            self.set_security_key(container)
 
         # Build layer
         layers = MongoLayers(self.config)
@@ -331,11 +332,14 @@ class MongoDBCharm(CharmBase):
             :class:`ops.pebble.ConnectionError` if pebble is not ready
         """
         file_path = SECRET_PATH + "/" + KEY_FILE
-        container.push(file_path,
-                       self.security_key,
-                       permissions=0o400,
-                       user="mongodb",
-                       group="mongodb")
+        try:
+            container.push(file_path,
+                           self.security_key,
+                           permissions=0o400,
+                           user="mongodb",
+                           group="mongodb")
+        except (PathError, ProtocolError):
+            self.unit.status = BlockedStatus("Failed to set security key")
 
 
 if __name__ == "__main__":
