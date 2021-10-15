@@ -156,6 +156,10 @@ class MongoDBCharm(CharmBase):
         if not self.mongo.is_ready():
             status_message = "service not ready yet"
             self.unit.status = WaitingStatus(status_message)
+            # TODO: remove container restarting here when Pebble
+            # does this automatically
+            container = self.unit.get_container("mongodb")
+            container.restart("mongodb")
             return
 
         if not self._stored.mongodb_initialized:
