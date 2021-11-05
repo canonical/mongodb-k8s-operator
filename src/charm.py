@@ -93,7 +93,7 @@ class MongoDBCharm(CharmBase):
             container.add_layer("mongodb", mongo_layer, combine=True)
 
         if service_changed or self.need_replica_set_reconfiguration:
-            container.restart("mongodb")
+            self.restart()
             logger.info("Restarted mongodb container")
 
         self.unit.status = ActiveStatus()
@@ -157,9 +157,8 @@ class MongoDBCharm(CharmBase):
             status_message = "service not ready yet"
             self.unit.status = WaitingStatus(status_message)
             # TODO: remove container restarting here when Pebble
-            # does this automatically
-            container = self.unit.get_container("mongodb")
-            container.restart("mongodb")
+            # does this automatically if workload is inactive
+            self.restart()
             return
 
         if not self._stored.mongodb_initialized:
@@ -305,6 +304,13 @@ class MongoDBCharm(CharmBase):
         """
         hosts = json.loads(self.peers.data[self.app].get("replica_set_hosts", "[]"))
         return hosts
+
+    def restart(self):
+        """Shutdown MongoDB workload and restart container.
+        """
+        self.mongo.shutdown()
+        container = self.unit.get_container("mongodb")
+        container.restart("mongodb")
 
     def have_security_key(self, container):
         """Has the security key been uploaded to a workload container.

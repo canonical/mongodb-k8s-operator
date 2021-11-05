@@ -2,7 +2,7 @@ import secrets
 import string
 
 from pymongo import MongoClient
-from pymongo.errors import ServerSelectionTimeoutError
+from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 import logging
 
 
@@ -100,6 +100,20 @@ class MongoDB():
             raise e
         finally:
             client.close()
+
+    def shutdown(self):
+        """Shutdown MongoDB server.
+        """
+        if not self.is_ready():
+            return
+
+        client = self.client()
+        db = client["admin"]
+        try:
+            db.command("shutdown")
+        except (AutoReconnect, ServerSelectionTimeoutError):
+            logger.debug("MongoDB shutdown failed")
+        client.close()
 
     def new_user(self, credentials):
         """Create a new MongoDB user.
