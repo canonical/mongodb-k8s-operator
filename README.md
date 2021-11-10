@@ -24,11 +24,11 @@ following commands
 
 Install the charmcraft tool
 
-    sudo snap install charmcraft
+    sudo snap install charmcraft --classic
 
 Build the charm in this git repository
 
-    charmcraft build
+    charmcraft pack
 
 ## Usage
 
@@ -38,7 +38,7 @@ Create a Juju model for your operators, say "lma"
 
 Deploy a single unit of MongoDB using its default configuration
 
-    juju deploy ./mongodb.charm --resource mongodb-image=mongo:4.4.1
+    juju deploy ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4.1
 
 It is customary to use MongoDB with replication. Hence usually more
 than one unit (preferably and odd number) is deployed. Additionally
@@ -49,7 +49,7 @@ units (say two more) may be deployed using
 Alternatively multiple MongoDB units may be deployed at the
 outset. This is usually faster
 
-    juju deploy -n 3 ./mongodb.charm
+    juju deploy -n 3 ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4.1
 
 If required, remove the deployed monitoring model completely
 
