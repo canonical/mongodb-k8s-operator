@@ -158,7 +158,9 @@ class MongoDBCharm(CharmBase):
             self.unit.status = WaitingStatus(status_message)
             # TODO: remove container restarting here when Pebble
             # does this automatically if workload is inactive
-            self.restart()
+            container = self.unit.get_container("mongodb")
+            if container.can_connect() and "mongodb" in container.get_services():
+                self.restart()
             return
 
         if not self._stored.mongodb_initialized:
