@@ -52,7 +52,7 @@ class TestMongoServer(unittest.TestCase):
 
         hosts = {}
         for i in range(config['num_peers']):
-            hosts['i'] = "host{}".format(i)
+            hosts[i] = "host{}".format(i)
 
         mongo.reconfigure_replica_set(hosts)
         mock_client.admin.command.assert_called()
@@ -69,7 +69,7 @@ class TestMongoServer(unittest.TestCase):
 
         hosts = {}
         for i in range(config['num_peers']):
-            hosts['i'] = "host{}".format(i)
+            hosts[i] = "host{}".format(i)
 
         mongo.initialize_replica_set(hosts)
         mock_client.admin.command.assert_called()
