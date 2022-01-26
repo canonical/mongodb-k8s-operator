@@ -115,6 +115,9 @@ class MongoProvider(Object):
 
     def _create_new_user(self, relation):
         rel_id = str(relation.id)
+        if not self.is_new_relation(rel_id):
+            return
+
         creds = self.credentials(rel_id)
         self.charm.mongo.new_user(creds)
         replica_set_uri = "{}".format(self.charm.mongo.replica_set_uri(creds))
@@ -131,8 +134,7 @@ class MongoProvider(Object):
 
         # Only treat the new relations.
         for relation in relations:
-            if self.is_new_relation(str(relation.id)):
-                self._create_new_user(relation)
+            self._create_new_user(relation)
 
     def is_new_relation(self, rel_id: str):
         """Has this relation never been seen before.
