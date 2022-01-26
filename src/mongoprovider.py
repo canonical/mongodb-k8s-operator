@@ -79,7 +79,7 @@ class MongoProvider(Object):
         if missing:
             logger.debug("creating new databases : {}".format(missing))
             dbs_available.extend(missing)
-            rel_id = event.relation.id
+            rel_id = str(event.relation.id)
             creds = self.credentials(rel_id)
             self.charm.mongo.new_databases(creds, missing)
             event.relation.data[self.charm.app]['databases'] = json.dumps(dbs_available)
@@ -99,7 +99,7 @@ class MongoProvider(Object):
         if not self.charm.unit.is_leader():
             return
 
-        rel_id = event.relation.id
+        rel_id = str(event.relation.id)
         databases = json.loads(
             event.relation.data[self.charm.app].get('databases', '[]'))
 
@@ -114,7 +114,10 @@ class MongoProvider(Object):
             self.charm.mongo.drop_databases(databases)
 
     def _create_new_user(self, relation):
-        rel_id = relation.id
+        rel_id = str(relation.id)
+        if not self.is_new_relation(rel_id):
+            return
+
         creds = self.credentials(rel_id)
         self.charm.mongo.new_user(creds)
         replica_set_uri = "{}".format(self.charm.mongo.replica_set_uri(creds))
@@ -131,14 +134,13 @@ class MongoProvider(Object):
 
         # Only treat the new relations.
         for relation in relations:
-            if self.is_new_relation(relation.id):
-                self._create_new_user(relation)
+            self._create_new_user(relation)
 
-    def is_new_relation(self, rel_id):
+    def is_new_relation(self, rel_id: str):
         """Has this relation never been seen before.
 
         Args:
-           rel_id: integer id of relation
+           rel_id: string id of relation
 
         Retruns:
            True if relation was not seen before.
@@ -148,11 +150,11 @@ class MongoProvider(Object):
         else:
             return True
 
-    def credentials(self, rel_id):
+    def credentials(self, rel_id: str):
         """Fetch credentials associated with a relation.
 
         Args:
-           rel_id: integer id of relation
+           rel_id: string id of relation
 
         Returns:
            A dictionary with keys "username" and "password".
@@ -166,16 +168,19 @@ class MongoProvider(Object):
             }
             consumers[rel_id] = creds
 
+            # NOTE(claudiub): json.dumps will convert all int keys into strings.
+            # Because of this, we shouldn't rely on Relation IDs being integers
+            # when checking the consumers.
             self.charm.peers.data[self.charm.app]['consumers'] = json.dumps(consumers)
         else:
             creds = consumers[rel_id]
         return creds
 
-    def new_username(self, rel_id):
+    def new_username(self, rel_id: str):
         """Create a new username
 
         Args:
-           rel_id: integer id of relation
+           rel_id: string id of relation
 
         Returns:
            A string user name.

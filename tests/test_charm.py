@@ -111,8 +111,8 @@ class TestCharm(unittest.TestCase):
         self.assertIn("mongo_provider", charm.__dict__)
         is_ready.assert_called()
         initialize.assert_called()
-        new_user.assert_called()
-        set_uri.assert_called()
+        new_user.assert_called_once()
+        set_uri.assert_called_once()
 
         data = self.harness.get_relation_data(db_rel_id, self.harness.model.app.name)
         self.assertIn("password", data)
@@ -123,6 +123,16 @@ class TestCharm(unittest.TestCase):
             "replica_set_name": charm.replica_set_name,
         }
         self.assertDictEqual(expected_data, data)
+
+        patcher = patch.object(charm.unit, 'is_leader')
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+        # Trigger a database relation join on the same relation. It should not create
+        # a new user.
+        self.harness.add_relation_unit(db_rel_id, 'database-consumer/1')
+        charm.unit.is_leader.assert_called()
+        new_user.assert_called_once()
 
 
 def replica_set_name(plan, service="mongodb"):
