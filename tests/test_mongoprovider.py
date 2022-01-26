@@ -91,10 +91,7 @@ class MongoDBCharm(CharmBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
         self.mongo = Mongo(self)
-        self.provider = MongoProvider(self,
-                                      self.model.config['relation_name'],
-                                      service="mongodb",
-                                      version=self.model.config['db_version'])
+        self.provider = MongoProvider(self, 'database')
 
     @property
     def is_joined(self):

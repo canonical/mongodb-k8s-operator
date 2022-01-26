@@ -126,6 +126,11 @@ class MongoDBCharm(CharmBase):
                 self._stored.mongodb_initialized = True
                 self.peers.data[self.app][
                     "replica_set_hosts"] = json.dumps(self.mongo.cluster_hosts)
+
+                # Now that we've initialized MongoDB, we can finally set the necessary
+                # relation data for the relations that were already created.
+                self.mongo_provider = MongoProvider(self, 'database')
+                self.mongo_provider.update_all_db_relations()
             except Exception as e:
                 logger.info("Deferring on_start since : error={}".format(e))
                 self._on_update_status(event)
