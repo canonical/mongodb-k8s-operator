@@ -6,6 +6,9 @@ from mongoserver import MongoDB
 
 logger = logging.getLogger(__name__)
 
+# Name of the db relation
+DB_RELATION_NAME = "database"
+
 
 class MongoProvider(Object):
 
@@ -44,15 +47,7 @@ class MongoProvider(Object):
         if not self.charm.unit.is_leader():
             return
 
-        rel_id = event.relation.id
-        creds = self.credentials(rel_id)
-        self.charm.mongo.new_user(creds)
-        replica_set_uri = "{}".format(self.charm.mongo.replica_set_uri(creds))
-        replica_set_name = self.charm.replica_set_name
-        event.relation.data[self.charm.app]['username'] = creds['username']
-        event.relation.data[self.charm.app]['password'] = creds['password']
-        event.relation.data[self.charm.app]['replica_set_uri'] = replica_set_uri
-        event.relation.data[self.charm.app]['replica_set_name'] = replica_set_name
+        self._create_new_user(event.relation)
 
     def _on_database_relation_changed(self, event):
         """Ensure total number of databases requested are available.
@@ -117,6 +112,27 @@ class MongoProvider(Object):
 
         if self.charm.model.config['autodelete'] and databases:
             self.charm.mongo.drop_databases(databases)
+
+    def _create_new_user(self, relation):
+        rel_id = relation.id
+        creds = self.credentials(rel_id)
+        self.charm.mongo.new_user(creds)
+        replica_set_uri = "{}".format(self.charm.mongo.replica_set_uri(creds))
+        replica_set_name = self.charm.replica_set_name
+        relation.data[self.charm.app]['username'] = creds['username']
+        relation.data[self.charm.app]['password'] = creds['password']
+        relation.data[self.charm.app]['replica_set_uri'] = replica_set_uri
+        relation.data[self.charm.app]['replica_set_name'] = replica_set_name
+
+    def update_all_db_relations(self):
+        relations = self.model.relations[DB_RELATION_NAME]
+        if not relations:
+            return
+
+        # Only treat the new relations.
+        for relation in relations:
+            if self.is_new_relation(relation.id):
+                self._create_new_user(relation)
 
     def is_new_relation(self, rel_id):
         """Has this relation never been seen before.

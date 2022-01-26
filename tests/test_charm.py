@@ -94,9 +94,11 @@ class TestCharm(unittest.TestCase):
             self.assertIn("INFO:charm:Deferring on_start since : error=Not Initialized",
                           sorted(logger.output))
 
+    @patch('mongoserver.MongoDB.replica_set_uri')
+    @patch('mongoserver.MongoDB.new_user')
     @patch('mongoserver.MongoDB.initialize_replica_set')
     @patch('mongoserver.MongoDB.is_ready')
-    def test_on_start_initialize_relations_data(self, is_ready, initialize):
+    def test_on_start_initialize_relations_data(self, is_ready, initialize, new_user, set_uri):
         is_ready.return_value = True
         self.harness.set_leader(True)
         db_rel_id = self.harness.add_relation("database", "database")
@@ -106,12 +108,21 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.start.emit()
 
         charm = self.harness.charm
-        self.assertNotIn("mongo_provider", charm.__dict__)
+        self.assertIn("mongo_provider", charm.__dict__)
         is_ready.assert_called()
         initialize.assert_called()
+        new_user.assert_called()
+        set_uri.assert_called()
 
         data = self.harness.get_relation_data(db_rel_id, self.harness.model.app.name)
-        self.assertDictEqual({}, data)
+        self.assertIn("password", data)
+        data.pop("password")
+        expected_data = {
+            "username": charm.mongo_provider.new_username(db_rel_id),
+            "replica_set_uri": "{}".format(set_uri.return_value),
+            "replica_set_name": charm.replica_set_name,
+        }
+        self.assertDictEqual(expected_data, data)
 
 
 def replica_set_name(plan, service="mongodb"):
