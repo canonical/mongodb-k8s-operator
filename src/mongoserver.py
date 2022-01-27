@@ -2,7 +2,11 @@ import secrets
 import string
 
 from pymongo import MongoClient
-from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
+from pymongo.errors import (
+    AutoReconnect,
+    OperationFailure,
+    ServerSelectionTimeoutError
+)
 import logging
 
 
@@ -111,7 +115,7 @@ class MongoDB():
         db = client["admin"]
         try:
             db.command("shutdown")
-        except (AutoReconnect, ServerSelectionTimeoutError):
+        except (AutoReconnect, OperationFailure, ServerSelectionTimeoutError):
             logger.debug("MongoDB shutdown failed")
         client.close()
 
