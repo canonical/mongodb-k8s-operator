@@ -194,6 +194,11 @@ class MongoDBCharm(CharmBase):
         if self.need_replica_set_reconfiguration:
             try:
                 self.mongo.reconfigure_replica_set(self.mongo.cluster_hosts)
+                # since a new replica set has been configured,
+                # now update the set of replica set hosts
+                self.peers.data[self.app][
+                    "replica_set_hosts"] = json.dumps(self.mongo.cluster_hosts)
+                logger.debug("Reconfigured replica set")
             except Exception as e:
                 logger.info("Deferring reconfigure since : error={}".format(e))
                 event.defer()
