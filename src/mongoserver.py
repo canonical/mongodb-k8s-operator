@@ -40,7 +40,7 @@ class MongoDB():
         Retruns:
             A pymongo :class:`MongoClient` object.
         """
-        return MongoClient(self.replica_set_uri(), serverSelectionTimeoutMS=1000)
+        return MongoClient(self.replica_set_uri())
 
     def is_ready(self):
         """Is the MongoDB server ready to services requests.
