@@ -16,8 +16,6 @@ containers:
     mounts:
       - storage: db
         location: /data/db
-      - storage: secrets
-        location: /var/lib/mongodb-secrets
 resources:
   mongodb-image:
     type: oci-image
@@ -25,6 +23,4 @@ resources:
     upstream-source: 'mongo:latest'
 storage:
   db:
-    type: filesystem
-  secrets:
     type: filesystem
