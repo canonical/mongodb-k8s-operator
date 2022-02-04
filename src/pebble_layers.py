@@ -2,8 +2,7 @@
 import logging
 from ops.pebble import Layer
 
-SECRET_PATH = "/var/lib/mongodb-secrets"
-KEY_FILE = "key.file"
+KEY_FILE = "/key.file"
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +66,7 @@ class MongoLayers:
         """
         args = ["mongod"]
         replica_set_option = "--replSet {}".format(self._replica_set_name)
-        keyfile_option = "--keyFile {}/{}".format(SECRET_PATH, KEY_FILE)
+        keyfile_option = "--keyFile {}".format(KEY_FILE)
         args.extend(replica_set_option.split(" "))
         args.extend(keyfile_option.split(" "))
         return args

@@ -15,7 +15,7 @@ from ops.model import (
     MaintenanceStatus
 )
 
-from pebble_layers import MongoLayers, SECRET_PATH, KEY_FILE
+from pebble_layers import MongoLayers, KEY_FILE
 from mongoserver import MongoDB, MONGODB_PORT
 from mongoprovider import MongoProvider
 
@@ -336,9 +336,8 @@ class MongoDBCharm(CharmBase):
         Raises:
             :class:`ops.pebble.ConnectionError` if pebble is not ready
         """
-        file_path = SECRET_PATH + "/" + KEY_FILE
         try:
-            key_file = container.pull(file_path)
+            key_file = container.pull(KEY_FILE)
             key = key_file.read()
         except PathError:
             return False
@@ -353,9 +352,8 @@ class MongoDBCharm(CharmBase):
         Raises:
             :class:`ops.pebble.ConnectionError` if pebble is not ready
         """
-        file_path = SECRET_PATH + "/" + KEY_FILE
         try:
-            container.push(file_path,
+            container.push(KEY_FILE,
                            self.security_key,
                            permissions=0o400,
                            user="mongodb",
