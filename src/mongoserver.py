@@ -36,24 +36,43 @@ class MongoDB():
         self.port = config['port']
         self.root_password = config['root_password']
 
-    def client(self):
+    def client(self, host=None):
         """Construct a client for the MongoDB database.
 
-        The timeout for all queries using this client object is 1 sec.
+        Depending on if the option `host` argument is provided or not
+        the client returned may be a client for a particular host or
+        a replica set client.
+
+        Args:
+            host: a string identifier for the MongoDB host.
 
         Retruns:
             A pymongo :class:`MongoClient` object.
         """
-        return MongoClient(self.replica_set_uri())
+        if host:
+            return MongoClient(str(host), int(self.port), directConnection=True,
+                               username="root",
+                               password=self.root_password)
+        else:
+            return MongoClient(self.replica_set_uri(),
+                               username="root",
+                               password=self.root_password)
 
-    def is_ready(self):
+    def is_ready(self, host=None):
         """Is the MongoDB server ready to services requests.
+
+        Depending of if the optional `host` argument is provided or
+        not the ready status is checked by connecting to an individual
+        host or the entire replica set.
+
+        Args:
+            host: a string identifier for the MongoDB host.
 
         Returns:
             True if services is ready False otherwise.
         """
         ready = False
-        client = self.client()
+        client = self.client(host)
         try:
             client.server_info()
             ready = True
@@ -96,7 +115,11 @@ class MongoDB():
             "_id": self.replica_set_name,
             "members": [{"_id": i, "host": h} for i, h in enumerate(hosts)],
         }
-        client = self.client()
+
+        # The mongo client used for initialization is constructed using a single node
+        # since the replica set does not yet exist.
+        client = self.client("localhost")
+
         try:
             client.admin.command("replSetInitiate", config)
         except Exception as e:
