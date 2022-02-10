@@ -113,7 +113,7 @@ class MongoDBCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
-        if not self.mongo.is_ready():
+        if not self.mongo.is_ready(host="localhost"):
             self.unit.status = WaitingStatus("Waiting for MongoDB Service")
             self._on_update_status(event)
             event.defer()
@@ -122,6 +122,10 @@ class MongoDBCharm(CharmBase):
         if not self._stored.mongodb_initialized:
             self.unit.status = WaitingStatus("Initializing MongoDB")
             try:
+                logger.debug(
+                    "Attempting replica set initialization : %s",
+                    self.mongo.cluster_hosts
+                )
                 self.mongo.initialize_replica_set(self.mongo.cluster_hosts)
                 self._stored.mongodb_initialized = True
                 self.peers.data[self.app][
@@ -158,7 +162,7 @@ class MongoDBCharm(CharmBase):
             self.unit.status = ActiveStatus()
             return
 
-        if not self.mongo.is_ready():
+        if not self.mongo.is_ready(host="localhost"):
             status_message = "service not ready yet"
             self.unit.status = WaitingStatus(status_message)
             # TODO: remove container restarting here when Pebble
