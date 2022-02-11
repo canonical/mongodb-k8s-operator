@@ -74,9 +74,9 @@ class MongoDB():
         ready = False
         client = self.client(host)
         try:
-            client.server_info()
+            _ = client.server_info()
             ready = True
-        except ServerSelectionTimeoutError:
+        except (OperationFailure, ServerSelectionTimeoutError):
             logger.debug("mongodb service is not ready yet.")
         finally:
             client.close()
@@ -277,7 +277,7 @@ class MongoDB():
         try:
             info = client.server_info()
             return info['version']
-        except ServerSelectionTimeoutError:
+        except (OperationFailure, ServerSelectionTimeoutError):
             logger.debug("mongodb service is not ready yet.")
         finally:
             client.close()
