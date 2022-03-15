@@ -1,8 +1,8 @@
-# MongoDB Operator
+# Charmed Operator for MongoDB
 
 ## Description
 
-The [MongoDB](https://www.mongodb.com/) operator provides a general
+The charmed operator for [MongoDB](https://www.mongodb.com/) provides a general
 purpose distributed document database. This repository contains a
 [Juju](https://jaas.ai/) Charm for deploying MongoDB on Kubernetes
 clusters.
