@@ -2,6 +2,7 @@
 import json
 import logging
 import secrets
+import string
 
 from ops.charm import CharmBase
 from ops.framework import StoredState
@@ -298,7 +299,8 @@ class MongoDBCharm(CharmBase):
         security_key = data.get('security_key', None)
 
         if security_key is None:
-            security_key = secrets.token_hex(128)
+            choices = string.ascii_letters + string.digits
+            security_key = "".join([secrets.choice(choices) for i in range(1024)])
 
         return security_key
 

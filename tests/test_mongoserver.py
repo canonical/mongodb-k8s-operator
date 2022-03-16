@@ -122,7 +122,9 @@ class TestMongoServer(unittest.TestCase):
         mock_db.command.assert_called_once_with("createUser",
                                                 credentials["username"],
                                                 pwd=credentials["password"],
-                                                roles=[])
+                                                roles=[
+                                                    {'role': 'userAdminAnyDatabase', 'db': 'admin'}
+                                                ])
 
     @patch('mongoserver.MongoDB.client')
     def test_drop_user_requests_user_removal(self, client):

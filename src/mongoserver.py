@@ -154,7 +154,7 @@ class MongoDB():
         db = client["admin"]
         db.command("createUser", credentials["username"],
                    pwd=credentials["password"],
-                   roles=[])
+                   roles=[{'role': 'userAdminAnyDatabase', 'db': 'admin'}])
         client.close()
 
     def drop_user(self, username):
@@ -291,5 +291,5 @@ class MongoDB():
            A random password string.
         """
         choices = string.ascii_letters + string.digits
-        pwd = "".join([secrets.choice(choices) for i in range(16)])
+        pwd = "".join([secrets.choice(choices) for i in range(32)])
         return pwd
