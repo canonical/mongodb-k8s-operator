@@ -99,6 +99,8 @@ def generate_keyfile() -> str:
 
 
 def log_signal(f):
+    """Decorator for hooks, simplify debug"""
+
     @wraps(f)
     def _inner(*args, **kwargs):
         try:
