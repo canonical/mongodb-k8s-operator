@@ -1,0 +1,31 @@
+# Copyright 2022 Canonical Ltd
+# See LICENSE file for licensing details.
+
+name: mongodb
+display-name: |
+    Charmed Operator for MongoDB
+description: |
+    MongoDB is a general purpose distributed document database.  This
+    charm deploys and operates MongoDB on kubernetes Clusters. It
+    supports replicated MongoDB databases.
+summary: A MongoDB operator charm for Kubernetes
+peers:
+  mongodb:
+    interface: mongodb
+provides:
+  database:
+    interface: mongodb_datastore
+containers:
+  mongod:
+    resource: mongodb-image
+    mounts:
+      - storage: db
+        location: /data/db
+resources:
+  mongodb-image:
+    type: oci-image
+    description: OCI image for mongodb
+    upstream-source: 'mongo:latest'
+storage:
+  db:
+    type: filesystem

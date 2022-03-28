@@ -1,0 +1,73 @@
+[tool.poetry]
+name = "mongodb"
+version = "0.0.1-dev.0"
+description = ""
+authors = [
+    "Mykola Marzhan <mykola.marzhan@canonical.com>"
+]
+license = "Apache-2.0"
+classifiers = [
+    "TODO",
+]
+readme = "README.md"
+homepage = "TODO"
+repository = "TODO"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+
+ops = "^1.2"
+pymongo = "^4.0"
+
+[tool.poetry.dev-dependencies]
+coverage = "*"
+flake8 = "*"
+pytest = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target-version = ["py38"]
+include = '\.pyi?$'
+experimental-string-processing = true
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.pip-cache
+  | \.poetry
+  | \.venv
+  | \.vscode
+  | build
+  | dist
+)/
+'''
+
+[tool.coverage.run]
+branch = true
+omit = [
+    "*tests/*",
+    "*tests.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  # Have to re-enable the standard pragma
+  "pragma: no cover",
+  # Don't complain about empty realizations
+  "pass",
+  # Don't complain about abstract methods
+  "@abc.abstractmethod"
+]
+ignore_errors = true
+precision = 2
+
+[tool.isort]
+combine_as_imports = true
+profile = "black"
+sections = "FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
+skip = ".eggs,.pip-cache,.poetry,venv,.venv,dist"
