@@ -92,6 +92,14 @@ class MongoDBCharm(CharmBase):
         This event handler is deferred if initialization of MongoDB
         replica set fails. By doing so it is guaranteed that another
         attempt at initialization will be made.
+
+        Initial admin user can be created only through localhost connection.
+        see https://www.mongodb.com/docs/manual/core/localhost-exception/
+        unfortunately, pymongo not able to create connection which considered
+        as local connection by MongoDB, even if socket connection used.
+        As result where are only hackish ways to create initial user.
+        It is needed to install mongodb-clients inside charm container to make
+        this function work correctly.
         """
         if not self.unit.is_leader():
             return
