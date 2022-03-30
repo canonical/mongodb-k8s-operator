@@ -1,9 +1,11 @@
-# Copyright 2022 Canonical Ltd
+# Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
+
 import pytest
-from charm import MongoDBCharm
 from ops.model import ActiveStatus
 from ops.testing import Harness
+
+from charm import MongoDBCharm
 
 
 @pytest.fixture
@@ -14,7 +16,7 @@ def harness():
     }
     harness.add_oci_resource("mongodb-image", mongo_resource)
     harness.begin()
-    harness.add_relation('mongodb', 'mongodb')
+    harness.add_relation("mongodb", "mongodb")
     yield harness
     harness.cleanup()
 
@@ -31,10 +33,12 @@ def test_mongod_pebble_ready(harness):
                 "group": "mongodb",
                 "override": "replace",
                 "summary": "mongod",
-                "command": "mongod --bind_ip_all --auth "
-                           "--replSet=mongodb "
-                           "--clusterAuthMode=keyFile "
-                           "--keyFile=/tmp/keyFile",
+                "command": (
+                    "mongod --bind_ip_all --auth "
+                    "--replSet=mongodb "
+                    "--clusterAuthMode=keyFile "
+                    "--keyFile=/tmp/keyFile"
+                ),
                 "startup": "enabled",
             }
         },

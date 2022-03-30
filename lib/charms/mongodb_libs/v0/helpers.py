@@ -2,7 +2,6 @@ import string
 import secrets
 import logging
 from typing import List
-from functools import wraps
 from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration
 
 # The unique Charmhub library identifier, never change it
@@ -96,17 +95,3 @@ def generate_keyfile() -> str:
     """
     choices = string.ascii_letters + string.digits
     return "".join([secrets.choice(choices) for _ in range(1024)])
-
-
-def log_signal(f):
-    """Decorator for hooks, simplify debug"""
-
-    @wraps(f)
-    def _inner(*args, **kwargs):
-        try:
-            logger.debug(f"Running {f.__name__}")
-            return f(*args, **kwargs)
-        finally:
-            logger.debug(f"Finished {f.__name__}")
-
-    return _inner

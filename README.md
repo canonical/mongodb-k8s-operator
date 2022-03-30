@@ -65,15 +65,7 @@ Currently supported relations are
 - Peer relations for replication
 - Provides a `mongodb` database interface.
 
-## Developing
+## Contributing
 
-Create and activate a virtualenv with the development requirements:
-
-    poetry install
-
-## Testing
-
-Just run `run_tests`:
-
-    ./run_tests
-
+Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this
+charm following best practice guidelines, and [CONTRIBUTING.md](./CONTRIBUTING.md) for developer guidance.

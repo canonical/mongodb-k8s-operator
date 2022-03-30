@@ -1,3 +1,6 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 [tool.poetry]
 name = "mongodb"
 version = "0.0.1-dev.0"
@@ -20,54 +23,57 @@ ops = "^1.2"
 pymongo = "^4.0"
 
 [tool.poetry.dev-dependencies]
-coverage = "*"
-flake8 = "*"
-pytest = "*"
+coverage = {extras = ["toml"], version = "^6.3.2"}
+flake8 = "^4.0.1"
+pytest = "^7.1.1"
+isort = "^5.10.1"
+black = "^22.3.0"
+pyproject-flake8 = "^0.0.1-alpha.3"
+flake8-docstrings = "^1.6.0"
+flake8-copyright = "^0.2.2"
+flake8-builtins = "^1.5.3"
+pep8-naming = "^0.12.1"
+codespell = "^2.1.0"
+juju = "^2.9.8"
+pytest-operator = "^0.14.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.black]
-line-length = 88
-target-version = ["py38"]
-include = '\.pyi?$'
-experimental-string-processing = true
-exclude = '''
-/(
-    \.git
-  | \.hg
-  | \.mypy_cache
-  | \.pip-cache
-  | \.poetry
-  | \.venv
-  | \.vscode
-  | build
-  | dist
-)/
-'''
-
+# Testing tools configuration
 [tool.coverage.run]
 branch = true
-omit = [
-    "*tests/*",
-    "*tests.py",
-]
 
 [tool.coverage.report]
-exclude_lines = [
-  # Have to re-enable the standard pragma
-  "pragma: no cover",
-  # Don't complain about empty realizations
-  "pass",
-  # Don't complain about abstract methods
-  "@abc.abstractmethod"
-]
-ignore_errors = true
-precision = 2
+show_missing = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+log_cli_level = "INFO"
+
+# Formatting tools configuration
+[tool.black]
+line-length = 99
+target-version = ["py38"]
 
 [tool.isort]
-combine_as_imports = true
 profile = "black"
-sections = "FUTURE,STDLIB,THIRDPARTY,FIRSTPARTY,LOCALFOLDER"
-skip = ".eggs,.pip-cache,.poetry,venv,.venv,dist"
+
+# Linting tools configuration
+[tool.flake8]
+max-line-length = 99
+max-doc-length = 99
+max-complexity = 10
+exclude = [".git", "__pycache__", ".tox", "build", "dist", "*.egg_info", "venv"]
+select = ["E", "W", "F", "C", "N", "R", "D", "H"]
+# Ignore W503, E501 because using black creates errors with this
+# Ignore D107 Missing docstring in __init__
+ignore = ["W503", "E501", "D107"]
+# D100, D101, D102, D103: Ignore missing docstrings in tests
+per-file-ignores = ["tests/*:D100,D101,D102,D103,D104"]
+docstring-convention = "google"
+# Check for properly formatted copyright header in each file
+copyright-check = "True"
+copyright-author = "Canonical Ltd."
+copyright-regexp = "Copyright\\s\\d{4}([-,]\\d{4})*\\s+%(author)s"

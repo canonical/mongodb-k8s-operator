@@ -118,7 +118,7 @@ class MongoDBConnection:
                 #     created which is the step after this
                 # AlreadyInitialized error can be raised only if this step
                 #     finished
-                logger.error(f"cannot initialize replica set. error={e}")
+                logger.error("cannot initialize replica set. error=%r", e)
                 raise e
 
     @property
