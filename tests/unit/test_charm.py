@@ -17,14 +17,12 @@ def harness():
     harness.add_oci_resource("mongodb-image", mongo_resource)
     harness.begin()
     harness.add_relation("mongodb", "mongodb")
+    harness.set_leader(True)
     yield harness
     harness.cleanup()
 
 
 def test_mongod_pebble_ready(harness):
-    # Check the initial Pebble plan is empty
-    initial_plan = harness.get_container_pebble_plan("mongod")
-    assert initial_plan.to_yaml() == "{}\n"
     # Expected plan after Pebble ready with default config
     expected_plan = {
         "services": {
@@ -37,7 +35,7 @@ def test_mongod_pebble_ready(harness):
                     "mongod --bind_ip_all --auth "
                     "--replSet=mongodb "
                     "--clusterAuthMode=keyFile "
-                    "--keyFile=/tmp/keyFile"
+                    "--keyFile=/etc/mongodb/keyFile"
                 ),
                 "startup": "enabled",
             }
@@ -45,6 +43,7 @@ def test_mongod_pebble_ready(harness):
     }
     # Get the mongod container from the model
     container = harness.model.unit.get_container("mongod")
+    harness.set_can_connect(container, True)
     # Emit the PebbleReadyEvent carrying the mongod container
     harness.charm.on.mongod_pebble_ready.emit(container)
     # Get the plan now we've run PebbleReady

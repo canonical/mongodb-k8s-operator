@@ -11,6 +11,7 @@ includes scaling and other capabilities.
 """
 
 import logging
+from typing import Dict
 
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
@@ -19,12 +20,17 @@ from charms.mongodb_libs.v0.helpers import (
     get_create_user_cmd,
     get_mongod_cmd,
 )
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb_libs.v0.mongodb import (
+    MongoDBConfiguration,
+    MongoDBConnection,
+    NotReadyError,
+)
 from ops.charm import CharmBase
 from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus, WaitingStatus
+from ops.model import ActiveStatus, Container
 from ops.pebble import ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
+from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
 PEER = "mongodb"
@@ -41,7 +47,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on[PEER].relation_changed, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_departed, self._reconfigure)
 
-    def _on_leader_elected(self, _):
+    def _on_leader_elected(self, _) -> None:
         """Assume leadership.
 
         admin password and keyFile should be created before running MongoDB
@@ -56,14 +62,20 @@ class MongoDBCharm(CharmBase):
         if "keyfile" not in self._app_data:
             self._app_data["keyfile"] = generate_keyfile()
 
-    def _on_mongod_pebble_ready(self, event):
+    def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
         # mongod needs keyFile on filesystem
-        if not self.unit.get_container("mongod").can_connect():
+        container = self.unit.get_container("mongod")
+        if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
             event.defer()
             return
-        self._set_keyfile()
+        try:
+            self._set_keyfile(container)
+        except (PathError, ProtocolError) as e:
+            logger.error("Cannot put keyFile: %r", e)
+            event.defer()
+            return
 
         # Get a reference the container attribute on the PebbleReadyEvent
         container = event.workload
@@ -71,10 +83,10 @@ class MongoDBCharm(CharmBase):
         container.add_layer("mongod", self._mongod_layer, combine=True)
         # Restart changed services and start startup-enabled services.
         container.replan()
-        # TODO: rework status here
+        # TODO: rework status
         self.unit.status = ActiveStatus()
 
-    def _on_start(self, event):
+    def _on_start(self, event) -> None:
         """Initialize MongoDB.
 
         Initialization of replSet should be made once after start.
@@ -101,35 +113,17 @@ class MongoDBCharm(CharmBase):
             return
 
         if "replset_initialized" not in self._app_data:
-            self.unit.status = WaitingStatus("Initializing MongoDB")
-
-            with MongoDBConnection(
-                self._mongodb_config, "localhost", direct=True
-            ) as direct_client:
-                if not direct_client.is_ready:
+            with MongoDBConnection(self._mongodb_config, "localhost", direct=True) as direct_mongo:
+                if not direct_mongo.is_ready:
                     logger.debug("mongodb service is not ready yet.")
                     event.defer()
                     return
                 try:
                     logger.info("Replica Set initialization")
-                    direct_client.init_replset()
-
-                    """Creates initial admin user for MongoDB
-                    Initial admin user can be created only through localhost connection.
-                    see https://www.mongodb.com/docs/manual/core/localhost-exception/
-                    unfortunately, pymongo not able to create connection which considered
-                    as local connection by MongoDB, even if socket connection used.
-                    As result where are only hackish ways to create initial user.
-                    It is needed to install mongodb-clients inside charm container to make
-                    this function work correctly
-                    """
+                    direct_mongo.init_replset()
                     logger.info("User initialization")
-                    process = container.exec(
-                        command=get_create_user_cmd(self._mongodb_config),
-                        stdin=self._mongodb_config.admin_password,
-                    )
-                    stdout, _ = process.wait_output()
-                    logger.debug("User created: %s", stdout)
+                    self._init_user(container)
+
                 except ExecError as e:
                     logger.error(
                         "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
@@ -142,7 +136,7 @@ class MongoDBCharm(CharmBase):
                     return
                 self._app_data["replset_initialized"] = "True"
 
-    def _reconfigure(self, event):
+    def _reconfigure(self, event) -> None:
         """Reconfigure replicat set.
 
         The number of replicas in the MongoDB replica set is updated.
@@ -155,9 +149,19 @@ class MongoDBCharm(CharmBase):
 
         with MongoDBConnection(self._mongodb_config) as mongo:
             try:
-                if not mongo.is_replset_up_to_date:
+                replset_members = mongo.get_replset_members
+                if replset_members != self._mongodb_config.hosts:  # compare sets
                     logger.info("Reconfigure replica set")
-                    mongo.reconfigure_replset()
+                    # remove members first, it is faster
+                    for member in replset_members - self._mongodb_config.hosts:
+                        logger.debug("Removing %s from replica set", member)
+                        mongo.remove_replset_member(member)
+                    for member in self._mongodb_config.hosts - replset_members:
+                        logger.debug("Adding %s to replica set", member)
+                        mongo.add_replset_member(member)
+            except NotReadyError:
+                logger.info("Deferring reconfigure since: another member doing sync right now")
+                event.defer()
             except PyMongoError as e:
                 logger.info("Deferring reconfigure since: error=%r", e)
                 event.defer()
@@ -182,7 +186,7 @@ class MongoDBCharm(CharmBase):
         return Layer(layer_config)
 
     @property
-    def _app_data(self):
+    def _app_data(self) -> Dict:
         """Peer relation data object."""
         return self.model.get_relation(PEER).data[self.app]
 
@@ -204,22 +208,20 @@ class MongoDBCharm(CharmBase):
             replset_name=self.app.name,
             admin_user="operator",
             admin_password=self._app_data.get("admin_password"),
-            hosts=hosts,
+            hosts=set(hosts),
             sharding=False,
         )
 
-    def _set_keyfile(self):
+    def _set_keyfile(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
-        try:
-            self.unit.get_container("mongod").push(
-                KEY_FILE,
-                self._app_data.get("keyfile"),
-                permissions=0o400,
-                user="mongodb",
-                group="mongodb",
-            )
-        except (PathError, ProtocolError):
-            self.unit.status = BlockedStatus("Failed to set security key")
+        container.push(
+            KEY_FILE,
+            self._app_data.get("keyfile"),
+            make_dirs=True,
+            permissions=0o400,
+            user="mongodb",
+            group="mongodb",
+        )
 
     def _get_hostname_by_unit(self, unit_name: str) -> str:
         """Construct a DNS name for a MongoDB unit.
@@ -232,6 +234,30 @@ class MongoDBCharm(CharmBase):
         """
         unit_id = unit_name.split("/")[1]
         return f"{self.app.name}-{unit_id}.{self.app.name}-endpoints"
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_user(self, container: Container) -> None:
+        """Creates initial admin user for MongoDB.
+
+        Initial admin user can be created only through localhost connection.
+        see https://www.mongodb.com/docs/manual/core/localhost-exception/
+        unfortunately, pymongo not able to create connection which considered
+        as local connection by MongoDB, even if socket connection used.
+        As result where are only hackish ways to create initial user.
+        It is needed to install mongodb-clients inside charm container to make
+        this function work correctly
+        """
+        process = container.exec(
+            command=get_create_user_cmd(self._mongodb_config),
+            stdin=self._mongodb_config.admin_password,
+        )
+        stdout, _ = process.wait_output()
+        logger.debug("User created: %s", stdout)
 
 
 if __name__ == "__main__":

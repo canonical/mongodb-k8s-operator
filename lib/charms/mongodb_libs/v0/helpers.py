@@ -15,7 +15,7 @@ LIBAPI = 0
 LIBPATCH = 0
 
 # path to store mongodb ketFile
-KEY_FILE = "/tmp/keyFile"
+KEY_FILE = "/etc/mongodb/keyFile"
 
 
 logger = logging.getLogger(__name__)

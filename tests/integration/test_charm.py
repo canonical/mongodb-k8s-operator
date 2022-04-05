@@ -49,5 +49,5 @@ async def test_application_is_up(ops_test: OpsTest):
     address = status["applications"][APP_NAME]["units"][f"{APP_NAME}/0"]["address"]
 
     logger.info("querying address: %s", address)
-    response = MongoClient(address).admin.command("ping")
-    assert response.ok == 1
+    response = MongoClient(address, directConnection=True).admin.command("ping")
+    assert response["ok"] == 1

@@ -1,9 +1,20 @@
 import logging
-
-from typing import List
-from pymongo import MongoClient
 from dataclasses import dataclass
+from typing import Set, Dict
 from urllib.parse import quote_plus
+from bson.json_util import dumps
+
+from tenacity import (
+    retry,
+    stop_after_delay,
+    stop_after_attempt,
+    wait_fixed,
+    before_log,
+    RetryError,
+    Retrying,
+)
+
+from pymongo import MongoClient
 from pymongo.errors import (
     OperationFailure,
     PyMongoError,
@@ -37,8 +48,12 @@ class MongoDBConfiguration:
     replset_name: str
     admin_user: str
     admin_password: str
-    hosts: List[str]
+    hosts: Set[str]
     sharding: bool
+
+
+class NotReadyError(PyMongoError):
+    """Raised when not all replica set members healthy or finished initial sync."""
 
 
 class MongoDBConnection:
@@ -76,7 +91,7 @@ class MongoDBConnection:
             directConnection=direct,
             connect=False,
             serverSelectionTimeoutMS=1000,
-            connectTimeoutMS=10000,
+            connectTimeoutMS=2000,
         )
         return
 
@@ -95,14 +110,23 @@ class MongoDBConnection:
             True if services is ready False otherwise.
         """
         try:
-            # The ping command is cheap and does not require auth.
-            self.client.admin.command("ping")
-        except PyMongoError:
+            for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+                with attempt:
+                    # The ping command is cheap and does not require auth.
+                    self.client.admin.command("ping")
+        except RetryError:
             return False
 
         return True
 
-    def init_replset(self):
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def init_replset(self) -> None:
+        """Create replica set config the first time"""
         config = {
             "_id": self.mongodb_config.replset_name,
             "members": [
@@ -118,24 +142,106 @@ class MongoDBConnection:
                 #     created which is the step after this
                 # AlreadyInitialized error can be raised only if this step
                 #     finished
-                logger.error("cannot initialize replica set. error=%r", e)
+                logger.error("Cannot initialize replica set. error=%r", e)
                 raise e
 
     @property
-    def is_replset_up_to_date(self) -> bool:
+    def get_replset_members(self) -> Set[str]:
         """Is the replica set has all members?
 
         Returns:
             True if all peer members included in MongoDB status output.
         """
-        status = self.client.admin.command("replSetGetStatus")
+        rs_status = self.client.admin.command("replSetGetStatus")
         curr_members = [
-            str(member["name"]).split(":")[0] for member in status["members"]
+            str(member["name"]).split(":")[0] for member in rs_status["members"]
         ]
-        return set(self.mongodb_config.hosts) == set(curr_members)
+        return set(curr_members)
 
-    def reconfigure_replset(self):
-        """Reconfigure replica set membership inside MongoDB
-        according to current peer membership
+    def add_replset_member(self, hostname: str) -> None:
+        """Add new member to replica set config inside MongoDB"""
+        rs_config = self.client.admin.command("replSetGetConfig")
+        rs_status = self.client.admin.command("replSetGetStatus")
+
+        # When we add new member, MongoDB transfer data from existing member to new.
+        # Such operation reduce performance of the cluster. To avoid huge performance
+        # degradation, before adding new members, it is needed to check that all other
+        # members finished init sync.
+        if self._is_any_sync(rs_status):
+            # it can take a while, we should defer
+            raise NotReadyError
+
+        # Avoid reusing ids, according to the doc
+        # https://www.mongodb.com/docs/manual/reference/replica-configuration/
+        max_id = max([
+            int(member["_id"]) for member in rs_config["config"]["members"]
+        ])
+        new_member = {"_id": int(max_id + 1), "host": hostname}
+
+        rs_config["config"]["version"] += 1
+        rs_config["config"]["members"].extend([new_member])
+        logger.debug("rs_config: %r", rs_config["config"])
+        self.client.admin.command("replSetReconfig", rs_config["config"])
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def remove_replset_member(self, hostname: str) -> None:
+        """Remove member from replica set config inside MongoDB"""
+        rs_config = self.client.admin.command("replSetGetConfig")
+        rs_status = self.client.admin.command("replSetGetStatus")
+
+        # When we remove member, to avoid issues when majority removed, we need to
+        # remove next member only when MongoDB forget the previous removed member.
+        if self._is_any_removing(rs_status):
+            # it is fast, we will @retry(3 times with a 5sec timeout) before giving up
+            raise NotReadyError
+
+        # avoid downtime we need to reelect new primary
+        # if removable member is primary
+        logger.debug("primary: %r", self._is_primary(rs_status, hostname))
+        if self._is_primary(rs_status, hostname):
+            self.client.admin.command("replSetStepDown", {"stepDownSecs": "60"})
+
+        rs_config["config"]["version"] += 1
+        rs_config["config"]["members"][:] = [
+            member for member in rs_config["config"]["members"] if hostname != str(member["host"]).split(":")[0]
+        ]
+        logger.debug("rs_config: %r", dumps(rs_config["config"]))
+        self.client.admin.command("replSetReconfig", rs_config["config"])
+
+    @staticmethod
+    def _is_primary(rs_status: Dict, hostname: str) -> bool:
+        """Checking if passed member is primary"""
+        return any(
+            hostname == str(member["name"]).split(":")[0]
+            and member["stateStr"] == "PRIMARY"
+            for member in rs_status["members"]
+        )
+
+    @staticmethod
+    def _is_any_sync(rs_status: Dict) -> bool:
+        """Checking any members in replica set are syncing data right now
+        It is recommended to run only one sync in cluster to not have huge
+        performance degradation.
         """
-        pass
+        return any(
+            member["stateStr"] == "STARTUP"
+            or member["stateStr"] == "STARTUP2"
+            or member["stateStr"] == "ROLLBACK"
+            or member["stateStr"] == "RECOVERING"
+            for member in rs_status["members"]
+        )
+
+    @staticmethod
+    def _is_any_removing(rs_status: Dict) -> bool:
+        """Checking any members in replica set are syncing data right now
+        It is recommended to run only one sync in cluster to not have huge performance degradation
+        """
+        return any(
+            member["stateStr"] == "REMOVED"
+            for member in rs_status["members"]
+        )
