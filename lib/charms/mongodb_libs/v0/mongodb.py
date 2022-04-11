@@ -107,7 +107,7 @@ class MongoDBConnection:
         """Is the MongoDB server ready for services requests.
 
         Returns:
-            True if services is ready False otherwise.
+            True if services is ready False otherwise. Retries over a period of 60 seconds times to allow server time to start up.
         """
         try:
             for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
