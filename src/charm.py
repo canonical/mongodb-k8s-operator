@@ -112,7 +112,7 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        if "replset_initialized" not in self._app_data:
+        if "replset_initialised" not in self._app_data:
             with MongoDBConnection(self._mongodb_config, "localhost", direct=True) as direct_mongo:
                 if not direct_mongo.is_ready:
                     logger.debug("mongodb service is not ready yet.")
@@ -134,7 +134,7 @@ class MongoDBCharm(CharmBase):
                     logger.error("Deferring on_start since: error=%r", e)
                     event.defer()
                     return
-                self._app_data["replset_initialized"] = "True"
+                self._app_data["replset_initialised"] = "True"
 
     def _reconfigure(self, event) -> None:
         """Reconfigure replicat set.
@@ -144,21 +144,25 @@ class MongoDBCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
-        if "replset_initialized" not in self._app_data:
+        if "replset_initialised" not in self._app_data:
             return
 
         with MongoDBConnection(self._mongodb_config) as mongo:
             try:
                 replset_members = mongo.get_replset_members
-                if replset_members != self._mongodb_config.hosts:  # compare sets
-                    logger.info("Reconfigure replica set")
-                    # remove members first, it is faster
-                    for member in replset_members - self._mongodb_config.hosts:
-                        logger.debug("Removing %s from replica set", member)
-                        mongo.remove_replset_member(member)
-                    for member in self._mongodb_config.hosts - replset_members:
-                        logger.debug("Adding %s to replica set", member)
-                        mongo.add_replset_member(member)
+
+                # compare set of mongod replica set members and juju hosts
+                if replset_members == self._mongodb_config.hosts:
+                    return
+
+                # remove members first, it is faster
+                logger.info("Reconfigure replica set")
+                for member in replset_members - self._mongodb_config.hosts:
+                    logger.debug("Removing %s from replica set", member)
+                    mongo.remove_replset_member(member)
+                for member in self._mongodb_config.hosts - replset_members:
+                    logger.debug("Adding %s to replica set", member)
+                    mongo.add_replset_member(member)
             except NotReadyError:
                 logger.info("Deferring reconfigure since: another member doing sync right now")
                 event.defer()

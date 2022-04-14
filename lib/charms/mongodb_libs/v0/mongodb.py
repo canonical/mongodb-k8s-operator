@@ -1,3 +1,7 @@
+"""Code for facilitating interaction with mongod for a juju unit running MongoDB."""
+# Copyright 2021 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 import logging
 from dataclasses import dataclass
 from typing import Set, Dict
@@ -66,6 +70,16 @@ class MongoDBConnection:
 
     Connection is automatically closed when object destroyed.
     Automatic close allows to have more clean code.
+
+    Note that connection when used may leadd to the folliwing pymongo errors: ConfigurationError,
+    ConfigurationError, OperationFailure. It is suggested that the following pattern be adopted
+    when using MongoDBConnection:
+
+    with MongoDBConnection(self._mongodb_config) as mongo:
+        try:
+            mongo.<some operation from this class>
+        except ConfigurationError, ConfigurationError, OperationFailure:
+            <error handling as needed>
     """
 
     def __init__(self, config: MongoDBConfiguration, uri=None, direct=False):
@@ -107,7 +121,11 @@ class MongoDBConnection:
         """Is the MongoDB server ready for services requests.
 
         Returns:
-            True if services is ready False otherwise. Retries over a period of 60 seconds times to allow server time to start up.
+            True if services is ready False otherwise. Retries over a period of 60 seconds times to
+            allow server time to start up.
+
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure
         """
         try:
             for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
@@ -126,7 +144,11 @@ class MongoDBConnection:
         before=before_log(logger, logging.DEBUG),
     )
     def init_replset(self) -> None:
-        """Create replica set config the first time"""
+        """Create replica set config the first time
+
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure
+        """
         config = {
             "_id": self.mongodb_config.replset_name,
             "members": [
@@ -147,10 +169,13 @@ class MongoDBConnection:
 
     @property
     def get_replset_members(self) -> Set[str]:
-        """Is the replica set has all members?
+        """Returns a replica set members.
 
         Returns:
-            True if all peer members included in MongoDB status output.
+            A set of the replica set members as reported by mongod
+
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure
         """
         rs_status = self.client.admin.command("replSetGetStatus")
         curr_members = [
@@ -159,7 +184,11 @@ class MongoDBConnection:
         return set(curr_members)
 
     def add_replset_member(self, hostname: str) -> None:
-        """Add new member to replica set config inside MongoDB"""
+        """Add new member to replica set config inside MongoDB.
+
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure, NotReadyError
+        """
         rs_config = self.client.admin.command("replSetGetConfig")
         rs_status = self.client.admin.command("replSetGetStatus")
 
@@ -190,7 +219,11 @@ class MongoDBConnection:
         before=before_log(logger, logging.DEBUG),
     )
     def remove_replset_member(self, hostname: str) -> None:
-        """Remove member from replica set config inside MongoDB"""
+        """Remove member from replica set config inside MongoDB.
+
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure, NotReadyError
+        """
         rs_config = self.client.admin.command("replSetGetConfig")
         rs_status = self.client.admin.command("replSetGetStatus")
 
@@ -215,7 +248,12 @@ class MongoDBConnection:
 
     @staticmethod
     def _is_primary(rs_status: Dict, hostname: str) -> bool:
-        """Checking if passed member is primary"""
+        """Returns True if passed host is the replica set primary.
+
+        Args:
+            hostname: host of interest.
+            rs_status: current state of replica set as reported  by mongod.
+        """
         return any(
             hostname == str(member["name"]).split(":")[0]
             and member["stateStr"] == "PRIMARY"
@@ -224,9 +262,13 @@ class MongoDBConnection:
 
     @staticmethod
     def _is_any_sync(rs_status: Dict) -> bool:
-        """Checking any members in replica set are syncing data right now
-        It is recommended to run only one sync in cluster to not have huge
-        performance degradation.
+        """Returns true if any replica set members are syncing data.
+
+        Checks if any members in replica set are syncing data. Note it is recommended to run only
+        one sync in cluster to not have huge performance degradation.
+
+        Args:
+            rs_status: current state of replica set as reported  by mongod.
         """
         return any(
             member["stateStr"] == "STARTUP"
@@ -238,8 +280,13 @@ class MongoDBConnection:
 
     @staticmethod
     def _is_any_removing(rs_status: Dict) -> bool:
-        """Checking any members in replica set are syncing data right now
-        It is recommended to run only one sync in cluster to not have huge performance degradation
+        """Returns true if any replica set members are currently being removed.
+
+        Checks if any members in replica set are getting removed. It is recommended to run only one
+        removal in cluster at a time as to not have huge performance degradation.
+
+        Args:
+            rs_status: current state of replica set as reported  by mongod.
         """
         return any(
             member["stateStr"] == "REMOVED"
