@@ -179,7 +179,7 @@ class MongoDBConnection:
         """
         rs_status = self.client.admin.command("replSetGetStatus")
         curr_members = [
-            str(member["name"]).split(":")[0] for member in rs_status["members"]
+            self._hostname_from_hostport(member["name"]) for member in rs_status["members"]
         ]
         return set(curr_members)
 
@@ -241,13 +241,13 @@ class MongoDBConnection:
 
         rs_config["config"]["version"] += 1
         rs_config["config"]["members"][:] = [
-            member for member in rs_config["config"]["members"] if hostname != str(member["host"]).split(":")[0]
+            member for member in rs_config["config"]["members"]
+            if hostname != self._hostname_from_hostport(member["host"])
         ]
         logger.debug("rs_config: %r", dumps(rs_config["config"]))
         self.client.admin.command("replSetReconfig", rs_config["config"])
 
-    @staticmethod
-    def _is_primary(rs_status: Dict, hostname: str) -> bool:
+    def _is_primary(self, rs_status: Dict, hostname: str) -> bool:
         """Returns True if passed host is the replica set primary.
 
         Args:
@@ -255,7 +255,7 @@ class MongoDBConnection:
             rs_status: current state of replica set as reported  by mongod.
         """
         return any(
-            hostname == str(member["name"]).split(":")[0]
+            hostname == self._hostname_from_hostport(member["name"])
             and member["stateStr"] == "PRIMARY"
             for member in rs_status["members"]
         )
@@ -292,3 +292,14 @@ class MongoDBConnection:
             member["stateStr"] == "REMOVED"
             for member in rs_status["members"]
         )
+
+    @staticmethod
+    def _hostname_from_hostport(hostname: str) -> str:
+        """Return hostname part from MongoDB returned.
+
+        MongoDB typically returns a value that contains both, hostname and port.
+        e.g. input: mongodb-1:27015
+        Return hostname without changes if the port is not passed.
+        e.g. input mongodb-1
+        """
+        return hostname.split(":")[0]

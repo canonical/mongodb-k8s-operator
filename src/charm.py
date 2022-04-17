@@ -111,30 +111,39 @@ class MongoDBCharm(CharmBase):
             logger.debug("mongod container is not ready yet.")
             event.defer()
             return
+        if not container.exists("/tmp/mongodb-27017.sock"):
+            logger.debug("mongod socket is not ready yet.")
+            event.defer()
+            return
 
-        if "replset_initialised" not in self._app_data:
-            with MongoDBConnection(self._mongodb_config, "localhost", direct=True) as direct_mongo:
-                if not direct_mongo.is_ready:
-                    logger.debug("mongodb service is not ready yet.")
-                    event.defer()
-                    return
-                try:
-                    logger.info("Replica Set initialization")
-                    direct_mongo.init_replset()
-                    logger.info("User initialization")
-                    self._init_user(container)
+        if "replset_initialised" in self._app_data:
+            # The replica set should be initialised only once. Check should be
+            # external (e.g., check initialisation inside peer relation). We
+            # shouldn't rely on MongoDB response because the data directory
+            # can be corrupted.
+            return
 
-                except ExecError as e:
-                    logger.error(
-                        "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
-                    )
-                    event.defer()
-                    return
-                except PyMongoError as e:
-                    logger.error("Deferring on_start since: error=%r", e)
-                    event.defer()
-                    return
-                self._app_data["replset_initialised"] = "True"
+        with MongoDBConnection(self._mongodb_config, "localhost", direct=True) as direct_mongo:
+            if not direct_mongo.is_ready:
+                logger.debug("mongodb service is not ready yet.")
+                event.defer()
+                return
+            try:
+                logger.info("Replica Set initialization")
+                direct_mongo.init_replset()
+                logger.info("User initialization")
+                self._init_user(container)
+            except ExecError as e:
+                logger.error(
+                    "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
+                )
+                event.defer()
+                return
+            except PyMongoError as e:
+                logger.error("Deferring on_start since: error=%r", e)
+                event.defer()
+                return
+            self._app_data["replset_initialised"] = "True"
 
     def _reconfigure(self, event) -> None:
         """Reconfigure replicat set.
