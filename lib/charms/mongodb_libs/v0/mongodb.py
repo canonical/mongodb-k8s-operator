@@ -42,19 +42,29 @@ logger = logging.getLogger(__name__)
 class MongoDBConfiguration:
     """
     Class for MongoDB configuration:
-    — replset_name: name of replica set, needed for connection URI.
-    — admin_user: username used for administrative tasks.
-    — admin_password: password.
+    — replset: name of replica set, needed for connection URI.
+    — database: database name.
+    — username: username.
+    — password: password.
     — hosts: full list of hosts to connect to, needed for the URI.
-    — sharding: depending on sharding, cmd line and URI constructed differently.
     """
 
-    replset_name: str
-    admin_user: str
-    admin_password: str
+    replset: str
+    database: str
+    username: str
+    password: str
     hosts: Set[str]
-    sharding: bool
 
+    @property
+    def uri(self):
+        """Return URI concatenated from fields."""
+        hosts = ",".join(self.hosts)
+        return (
+            f"mongodb://{quote_plus(self.username)}:"
+            f"{quote_plus(self.password)}@"
+            f"{hosts}/{quote_plus(self.database)}?"
+            f"replicaSet={quote_plus(self.replset)}"
+        )
 
 class NotReadyError(PyMongoError):
     """Raised when not all replica set members healthy or finished initial sync."""
@@ -94,13 +104,8 @@ class MongoDBConnection:
         self.mongodb_config = config
 
         if uri is None:
-            hosts = ",".join(config.hosts)
-            uri = (
-                f"mongodb://{quote_plus(config.admin_user)}:"
-                f"{quote_plus(config.admin_password)}@"
-                f"{hosts}/admin?"
-                f"replicaSet={quote_plus(config.replset_name)}"
-            )
+            uri = config.uri
+
         self.client = MongoClient(
             uri,
             directConnection=direct,
@@ -151,7 +156,7 @@ class MongoDBConnection:
             ConfigurationError, ConfigurationError, OperationFailure
         """
         config = {
-            "_id": self.mongodb_config.replset_name,
+            "_id": self.mongodb_config.replset,
             "members": [
                 {"_id": i, "host": h}
                 for i, h in enumerate(self.mongodb_config.hosts)

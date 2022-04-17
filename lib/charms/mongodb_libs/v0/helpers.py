@@ -43,7 +43,7 @@ def get_create_user_cmd(config: MongoDBConfiguration) -> List[str]:
         "--quiet",
         "--eval",
         "db.createUser({"
-        f"  user: '{config.admin_user}',"
+        f"  user: '{config.username}',"
         "  pwd: passwordPrompt(),"
         "  roles:["
         "    {'role': 'userAdminAnyDatabase', 'db': 'admin'}, "
@@ -69,7 +69,7 @@ def get_mongod_cmd(config: MongoDBConfiguration) -> str:
         # enable auth
         "--auth",
         # part of replicaset
-        f"--replSet={config.replset_name}",
+        f"--replSet={config.replset}",
         # keyFile used for authentication replica set peers
         # TODO: replace with x509
         "--clusterAuthMode=keyFile",

@@ -54,11 +54,11 @@ class MongoDBCharm(CharmBase):
         It means, it is needed to generate them once and share between members.
         NB: only leader should execute this function.
         """
-        if "admin_password" not in self._app_data:
-            self._app_data["admin_password"] = generate_password()
+        if "admin_password" not in self.app_data:
+            self.app_data["admin_password"] = generate_password()
 
-        if "keyfile" not in self._app_data:
-            self._app_data["keyfile"] = generate_keyfile()
+        if "keyfile" not in self.app_data:
+            self.app_data["keyfile"] = generate_keyfile()
 
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
@@ -114,14 +114,14 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        if "replset_initialised" in self._app_data:
+        if "replset_initialised" in self.app_data:
             # The replica set should be initialised only once. Check should be
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
             # can be corrupted.
             return
 
-        with MongoDBConnection(self._mongodb_config, "localhost", direct=True) as direct_mongo:
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
                 logger.debug("mongodb service is not ready yet.")
                 event.defer()
@@ -141,7 +141,7 @@ class MongoDBCharm(CharmBase):
                 logger.error("Deferring on_start since: error=%r", e)
                 event.defer()
                 return
-            self._app_data["replset_initialised"] = "True"
+            self.app_data["replset_initialised"] = "True"
 
     def _reconfigure(self, event) -> None:
         """Reconfigure replicat set.
@@ -156,27 +156,27 @@ class MongoDBCharm(CharmBase):
         self._generate_passwords()
 
         # reconfiguration can be successful only if a replica set is initialised.
-        if "replset_initialised" not in self._app_data:
+        if "replset_initialised" not in self.app_data:
             return
 
-        with MongoDBConnection(self._mongodb_config) as mongo:
+        with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 replset_members = mongo.get_replset_members
 
                 # compare set of mongod replica set members and juju hosts
                 # to avoid the unnecessary reconfiguration.
-                if replset_members == self._mongodb_config.hosts:
+                if replset_members == self.mongodb_config.hosts:
                     return
 
                 # remove members first, it is faster
                 logger.info("Reconfigure replica set")
-                for member in replset_members - self._mongodb_config.hosts:
+                for member in replset_members - self.mongodb_config.hosts:
                     logger.debug("Removing %s from replica set", member)
                     mongo.remove_replset_member(member)
-                for member in self._mongodb_config.hosts - replset_members:
+                for member in self.mongodb_config.hosts - replset_members:
                     logger.debug("Adding %s to replica set", member)
                     with MongoDBConnection(
-                        self._mongodb_config, member, direct=True
+                        self.mongodb_config, member, direct=True
                     ) as direct_mongo:
                         if not direct_mongo.is_ready:
                             logger.debug("Deferring reconfigure: %s is not ready yet.", member)
@@ -200,7 +200,7 @@ class MongoDBCharm(CharmBase):
                 "mongod": {
                     "override": "replace",
                     "summary": "mongod",
-                    "command": get_mongod_cmd(self._mongodb_config),
+                    "command": get_mongod_cmd(self.mongodb_config),
                     "startup": "enabled",
                     "user": "mongodb",
                     "group": "mongodb",
@@ -210,12 +210,12 @@ class MongoDBCharm(CharmBase):
         return Layer(layer_config)
 
     @property
-    def _app_data(self) -> Dict:
+    def app_data(self) -> Dict:
         """Peer relation data object."""
         return self.model.get_relation(PEER).data[self.app]
 
     @property
-    def _mongodb_config(self) -> MongoDBConfiguration:
+    def mongodb_config(self) -> MongoDBConfiguration:
         """Create a configuration object with settings.
 
         Needed for correct handling interactions with MongoDB.
@@ -229,18 +229,18 @@ class MongoDBCharm(CharmBase):
         ]
 
         return MongoDBConfiguration(
-            replset_name=self.app.name,
-            admin_user="operator",
-            admin_password=self._app_data.get("admin_password"),
+            replset=self.app.name,
+            database="admin",
+            username="operator",
+            password=self.app_data.get("admin_password"),
             hosts=set(hosts),
-            sharding=False,
         )
 
     def _set_keyfile(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
         container.push(
             KEY_FILE,
-            self._app_data.get("keyfile"),
+            self.app_data.get("keyfile"),
             make_dirs=True,
             permissions=0o400,
             user="mongodb",
@@ -277,8 +277,8 @@ class MongoDBCharm(CharmBase):
         this function work correctly.
         """
         process = container.exec(
-            command=get_create_user_cmd(self._mongodb_config),
-            stdin=self._mongodb_config.admin_password,
+            command=get_create_user_cmd(self.mongodb_config),
+            stdin=self.mongodb_config.password,
         )
         stdout, _ = process.wait_output()
         logger.debug("User created: %s", stdout)
