@@ -1,3 +1,7 @@
+"""Simple functions, which can be used in both K8s and VM charms."""
+# Copyright 2021 Canonical Ltd.
+# See LICENSE file for licensing details.
+
 import string
 import secrets
 import logging
@@ -11,7 +15,7 @@ LIBID = "1057f353503741a98ed79309b5be7e31"
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version
+# to 0 if you are raising the major API version.
 LIBPATCH = 0
 
 # path to store mongodb ketFile
@@ -56,8 +60,7 @@ def get_mongod_cmd(config: MongoDBConfiguration) -> str:
     """Construct the MongoDB startup command line.
 
     Returns:
-        A string representing the command used to start MongoDB in the
-        workload container.
+        A string representing the command used to start MongoDB.
     """
     cmd = [
         "mongod",

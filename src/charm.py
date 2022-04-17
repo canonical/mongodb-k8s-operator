@@ -4,9 +4,9 @@
 
 """Charm for MongoDB on Kubernetes.
 
-Run the developer's favourite document database - MongoDB! Charm for MongoDB is a fully supported,
+Run the developer's favourite document database — MongoDB! Charm for MongoDB is a fully supported,
 automated solution from Canonical for running production-grade MongoDB on Kubernetes. It offers
-simple, secure and highly available setup with automatic recovery on failover. The solution
+simple, secure and highly available setup with automatic recovery on fail-over. The solution
 includes scaling and other capabilities.
 """
 
@@ -50,10 +50,10 @@ class MongoDBCharm(CharmBase):
     def _on_leader_elected(self, _) -> None:
         """Assume leadership.
 
-        admin password and keyFile should be created before running MongoDB
+        Admin password and keyFile should be created before running MongoDB
         _on_leader_elected runs before _mongod_pebble_ready.
         In this function each new leader checks if admin password and the
-        keyFile is available in peer relation data. If not the leader sets
+        keyFile is available in peer relation data. If not, the leader sets
         these into peer relation data.
         """
         if "admin_password" not in self._app_data:
@@ -97,9 +97,9 @@ class MongoDBCharm(CharmBase):
 
         Initial admin user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
-        unfortunately, pymongo not able to create connection which considered
+        unfortunately, pymongo unable to create connection that considered
         as local connection by MongoDB, even if socket connection used.
-        As result where are only hackish ways to create initial user.
+        As result, where are only hackish ways to create initial user.
         It is needed to install mongodb-clients inside charm container to make
         this function work correctly.
         """
@@ -148,7 +148,7 @@ class MongoDBCharm(CharmBase):
     def _reconfigure(self, event) -> None:
         """Reconfigure replicat set.
 
-        The number of replicas in the MongoDB replica set is updated.
+        The amount replicas in the MongoDB replica set is updated.
         """
         if not self.unit.is_leader():
             return
@@ -161,6 +161,7 @@ class MongoDBCharm(CharmBase):
                 replset_members = mongo.get_replset_members
 
                 # compare set of mongod replica set members and juju hosts
+                # to avoid the unnecessary reconfiguration.
                 if replset_members == self._mongodb_config.hosts:
                     return
 
@@ -205,7 +206,7 @@ class MongoDBCharm(CharmBase):
 
     @property
     def _mongodb_config(self) -> MongoDBConfiguration:
-        """Construct a configuration object with settings.
+        """Create a configuration object with settings.
 
         Needed for correct handling interactions with MongoDB.
 
@@ -237,7 +238,7 @@ class MongoDBCharm(CharmBase):
         )
 
     def _get_hostname_by_unit(self, unit_name: str) -> str:
-        """Construct a DNS name for a MongoDB unit.
+        """Create a DNS name for a MongoDB unit.
 
         Args:
             unit_name: the juju unit name, e.g. "mongodb/1".
@@ -259,11 +260,11 @@ class MongoDBCharm(CharmBase):
 
         Initial admin user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
-        unfortunately, pymongo not able to create connection which considered
+        unfortunately, pymongo unable to create connection that considered
         as local connection by MongoDB, even if socket connection used.
-        As result where are only hackish ways to create initial user.
+        As a result, where are only hackish ways to create initial user.
         It is needed to install mongodb-clients inside charm container to make
-        this function work correctly
+        this function work correctly.
         """
         process = container.exec(
             command=get_create_user_cmd(self._mongodb_config),
