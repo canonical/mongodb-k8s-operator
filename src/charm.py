@@ -25,6 +25,7 @@ from charms.mongodb_libs.v0.mongodb import (
     MongoDBConnection,
     NotReadyError,
 )
+from charms.mongodb_libs.v0.relations import MongoDBClientRelation
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Container
@@ -46,6 +47,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.leader_elected, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_changed, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_departed, self._reconfigure)
+        self.client_relations = MongoDBClientRelation(self)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -131,6 +133,8 @@ class MongoDBCharm(CharmBase):
                 direct_mongo.init_replset()
                 logger.info("User initialization")
                 self._init_user(container)
+                logger.info("Reconcile relations")
+                self.client_relations.reconcile(None)
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
@@ -234,6 +238,7 @@ class MongoDBCharm(CharmBase):
             username="operator",
             password=self.app_data.get("admin_password"),
             hosts=set(hosts),
+            roles={"default"},
         )
 
     def _set_keyfile(self, container: Container) -> None:

@@ -2,9 +2,10 @@
 # Copyright 2021 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import re
 import logging
 from dataclasses import dataclass
-from typing import Set, Dict
+from typing import Set, Dict, List, Optional
 from urllib.parse import quote_plus
 from bson.json_util import dumps
 
@@ -50,20 +51,26 @@ class MongoDBConfiguration:
     """
 
     replset: str
-    database: str
+    database: Optional[str]
     username: str
     password: str
     hosts: Set[str]
+    roles: Set[str]
 
     @property
     def uri(self):
         """Return URI concatenated from fields."""
         hosts = ",".join(self.hosts)
+        # Auth DB should be specified while user connects to application DB.
+        auth_source = ""
+        if self.database != "admin":
+            auth_source = "&authSource=admin"
         return (
             f"mongodb://{quote_plus(self.username)}:"
             f"{quote_plus(self.password)}@"
             f"{hosts}/{quote_plus(self.database)}?"
             f"replicaSet={quote_plus(self.replset)}"
+            f"{auth_source}"
         )
 
 
@@ -253,6 +260,72 @@ class MongoDBConnection:
         ]
         logger.debug("rs_config: %r", dumps(rs_config["config"]))
         self.client.admin.command("replSetReconfig", rs_config["config"])
+
+    def create_user(self, config: MongoDBConfiguration):
+        """Create user.
+
+        Grant read and write privileges for specified database.
+        """
+        self.client.admin.command(
+            "createUser",
+            config.username,
+            pwd=config.password,
+            roles=self._get_roles(config),
+        )
+
+    def update_user(self, config: MongoDBConfiguration):
+        """Update grants on database."""
+        self.client.admin.command(
+            "updateUser",
+            config.username,
+            roles=self._get_roles(config),
+        )
+
+    @staticmethod
+    def _get_roles(config: MongoDBConfiguration) -> List[dict]:
+        """Generate roles List."""
+        supported_roles = {
+            "admin": [
+                {"role": "userAdminAnyDatabase", "db": "admin"},
+                {"role": "readWriteAnyDatabase", "db": "admin"},
+            ],
+            "default": [
+                {"role": "readWrite", "db": config.database},
+            ],
+        }
+        return [
+            role_dict
+            for role in config.roles
+            for role_dict in supported_roles[role]
+        ]
+
+    def drop_user(self, username: str):
+        """Drop user"""
+        self.client.admin.command("dropUser", username)
+
+    def get_users(self) -> Set[str]:
+        """Add a new member to replica set config inside MongoDB."""
+        users_info = self.client.admin.command("usersInfo")
+        return set([
+            user_obj["user"]
+            for user_obj in users_info["users"]
+            if re.match(r"^relation-\d+$", user_obj["user"])
+        ])
+
+    def get_databases(self) -> Set[str]:
+        """Return list of all non-default databases."""
+        system_dbs = ("admin", "local", "config")
+        databases = self.client.list_database_names()
+        return set([
+            db for db in databases if db not in system_dbs
+        ])
+
+    def drop_database(self, database: str):
+        """Drop a non-default database."""
+        system_dbs = ("admin", "local", "config")
+        if database in system_dbs:
+            return
+        self.client.drop_database(database)
 
     def _is_primary(self, rs_status: Dict, hostname: str) -> bool:
         """Returns True if passed host is the replica set primary.
