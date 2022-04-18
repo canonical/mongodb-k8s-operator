@@ -33,7 +33,7 @@ from pymongo.errors import PyMongoError
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
-PEER = "mongodb"
+PEER = "database-peers"
 
 
 class MongoDBCharm(CharmBase):
@@ -114,7 +114,7 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        if "replset_initialised" in self.app_data:
+        if "db_initialised" in self.app_data:
             # The replica set should be initialised only once. Check should be
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
@@ -141,7 +141,7 @@ class MongoDBCharm(CharmBase):
                 logger.error("Deferring on_start since: error=%r", e)
                 event.defer()
                 return
-            self.app_data["replset_initialised"] = "True"
+            self.app_data["db_initialised"] = "True"
 
     def _reconfigure(self, event) -> None:
         """Reconfigure replicat set.
@@ -156,7 +156,7 @@ class MongoDBCharm(CharmBase):
         self._generate_passwords()
 
         # reconfiguration can be successful only if a replica set is initialised.
-        if "replset_initialised" not in self.app_data:
+        if "db_initialised" not in self.app_data:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:

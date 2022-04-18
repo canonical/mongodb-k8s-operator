@@ -66,6 +66,7 @@ class MongoDBConfiguration:
             f"replicaSet={quote_plus(self.replset)}"
         )
 
+
 class NotReadyError(PyMongoError):
     """Raised when not all replica set members healthy or finished initial sync."""
 
