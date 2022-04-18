@@ -301,6 +301,6 @@ class MongoDBConnection:
         MongoDB typically returns a value that contains both, hostname and port.
         e.g. input: mongodb-1:27015
         Return hostname without changes if the port is not passed.
-        e.g. input mongodb-1
+        e.g. input: mongodb-1
         """
         return hostname.split(":")[0]

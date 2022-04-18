@@ -41,20 +41,18 @@ class MongoDBCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.framework.observe(self.on.leader_elected, self._on_leader_elected)
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.start, self._on_start)
+        self.framework.observe(self.on.leader_elected, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_changed, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_departed, self._reconfigure)
 
-    def _on_leader_elected(self, _) -> None:
-        """Assume leadership.
+    def _generate_passwords(self) -> None:
+        """Generate passwords and put them into peer relation.
 
-        Admin password and keyFile should be created before running MongoDB
-        _on_leader_elected runs before _mongod_pebble_ready.
-        In this function each new leader checks if admin password and the
-        keyFile is available in peer relation data. If not, the leader sets
-        these into peer relation data.
+        The same keyFile and admin password on all members needed.
+        It means, it is needed to generate them once and share between members.
+        NB: only leader should execute this function.
         """
         if "admin_password" not in self._app_data:
             self._app_data["admin_password"] = generate_password()
@@ -153,6 +151,11 @@ class MongoDBCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
+        # Admin password and keyFile should be created before running MongoDB.
+        # This code runs on leader_elected event before mongod_pebble_ready
+        self._generate_passwords()
+
+        # reconfiguration can be successful only if a replica set is initialised.
         if "replset_initialised" not in self._app_data:
             return
 
@@ -172,12 +175,19 @@ class MongoDBCharm(CharmBase):
                     mongo.remove_replset_member(member)
                 for member in self._mongodb_config.hosts - replset_members:
                     logger.debug("Adding %s to replica set", member)
+                    with MongoDBConnection(
+                        self._mongodb_config, member, direct=True
+                    ) as direct_mongo:
+                        if not direct_mongo.is_ready:
+                            logger.debug("Deferring reconfigure: %s is not ready yet.", member)
+                            event.defer()
+                            return
                     mongo.add_replset_member(member)
             except NotReadyError:
-                logger.info("Deferring reconfigure since: another member doing sync right now")
+                logger.info("Deferring reconfigure: another member doing sync right now")
                 event.defer()
             except PyMongoError as e:
-                logger.info("Deferring reconfigure since: error=%r", e)
+                logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
     @property
