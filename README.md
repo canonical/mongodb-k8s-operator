@@ -1,34 +1,16 @@
-# Charmed Operator for MongoDB
+# Charm for MongoDB on Kubernetes
 
 ## Description
 
-The charmed operator for [MongoDB](https://www.mongodb.com/) provides a general
-purpose distributed document database. This repository contains a
-[Juju](https://jaas.ai/) Charm for deploying MongoDB on Kubernetes
-clusters.
+Fully supported solution for production-grade MongoDB on Kubernetes from Canonical.
 
+Run the developer's favourite document database - MongoDB! Charm for MongoDB is a
+fully supported, automated solution from Canonical for running production-grade
+MongoDB on Kubernetes. It offers simple, secure and highly available setup with
+automatic recovery on failover. The solution includes scaling and other capabilities.
 
-## Setup
-
-A typical setup using [snaps](https://snapcraft.io/), for deployments
-to a [microk8s](https://microk8s.io/) cluster can be done using the
-following commands
-
-    sudo snap install microk8s --classic
-    microk8s.enable dns storage registry dashboard
-    sudo snap install juju --classic
-    juju bootstrap microk8s microk8s
-    juju create-storage-pool operator-storage kubernetes storage-class=microk8s-hostpath
-
-## Build
-
-Install the charmcraft tool
-
-    sudo snap install charmcraft --classic
-
-Build the charm in this git repository
-
-    charmcraft pack
+Charm for MongoDB on Kubernetes is built on Juju, the Charmed Operator Framework
+to provide day-0 to day-2 operations of MongoDB.
 
 ## Usage
 
@@ -38,7 +20,7 @@ Create a Juju model for your operators, say "lma"
 
 Deploy a single unit of MongoDB using its default configuration
 
-    juju deploy ./mongodb_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4
+    juju deploy ./mongodb_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4 --num-units=1
 
 It is customary to use MongoDB with replication. Hence usually more
 than one unit (preferably and odd number) is deployed. Additionally
@@ -63,7 +45,7 @@ its persistent store.
 Currently supported relations are
 
 - Peer relations for replication
-- Provides a `mongodb` database interface.
+- Provides a `mongodb-client` database interface.
 
 ## Contributing
 
