@@ -70,7 +70,7 @@ juju add-model dev
 # Enable DEBUG logging
 juju model-config logging-config="<root>=INFO;unit=DEBUG"
 # Deploy the charm
-juju deploy ./mongodb_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4 --num-units=1
+juju deploy ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4 --num-units=1
 ```
 
 ## Canonical Contributor Agreement

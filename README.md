@@ -20,7 +20,7 @@ Create a Juju model for your operators, say "lma"
 
 Deploy a single unit of MongoDB using its default configuration
 
-    juju deploy ./mongodb_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4 --num-units=1
+    juju deploy ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4
 
 It is customary to use MongoDB with replication. Hence usually more
 than one unit (preferably and odd number) is deployed. Additionally
@@ -31,7 +31,7 @@ units (say two more) may be deployed using
 Alternatively multiple MongoDB units may be deployed at the
 outset. This is usually faster
 
-    juju deploy -n 3 ./mongodb_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4
+    juju deploy -n 3 ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4
 
 If required, remove the deployed monitoring model completely
 
