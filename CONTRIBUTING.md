@@ -24,12 +24,12 @@ this operator.
 ```shell
 # Juju
 sudo snap install juju --classic
-sudo usermod -a -G lxd $USER
-lxd init --auto
-lxc network set lxdbr0 ipv6.address none
 
 # charmcraft
 sudo snap install charmcraft --classic
+sudo usermod -a -G lxd $USER
+lxd init --auto
+lxc network set lxdbr0 ipv6.address none
 
 # microk8s
 sudo snap install microk8s --classic --channel=1.21
