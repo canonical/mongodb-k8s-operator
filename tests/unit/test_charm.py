@@ -33,7 +33,7 @@ def test_mongod_pebble_ready(harness):
                 "summary": "mongod",
                 "command": (
                     "mongod --bind_ip_all --auth "
-                    "--replSet=mongodb "
+                    "--replSet=mongodb-k8s "
                     "--clusterAuthMode=keyFile "
                     "--keyFile=/etc/mongodb/keyFile"
                 ),
