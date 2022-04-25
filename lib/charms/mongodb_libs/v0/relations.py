@@ -48,14 +48,17 @@ class MongoDBClientRelation(Object):
         self.framework.observe(self.charm.on[REL_NAME].relation_broken, self._on_relation_event)
 
     def _on_relation_event(self, event):
-        """Handle relation events.
+        """Handle relation joined events.
 
-        When a new relation joins the :class:`MongoProvider` sets relation
-        data, that the related charm can use for accessing the MongoDB
-        database.
+        When relations join or depart, the :class:`MongoDBClientRelation`
+        creates or drops MongoDB users and sets credentials into relation
+        data. As result, related charm gets credentials for accessing the
+        MongoDB database.
         """
         if not self.charm.unit.is_leader():
             return
+        # We shouldn't try to create or update users if the database is not
+        # initialised. We will create users as part of initialisation.
         if "db_initialised" not in self.charm.app_data:
             return
 
@@ -64,14 +67,19 @@ class MongoDBClientRelation(Object):
             departed_relation_id = event.relation.id
 
         try:
-            self.reconcile(departed_relation_id)
+            self.oversee_users(departed_relation_id)
         except PyMongoError as e:
             logger.error("Deferring _on_relation_event since: error=%r", e)
             event.defer()
             return
 
-    def reconcile(self, departed_relation_id: Optional[int]):
-        """Forced reconciliation of all current relations."""
+    def oversee_users(self, departed_relation_id: Optional[int]):
+        """Forced reconciliation of all current relations.
+
+        When the function is executed in relation departed event, the departed
+        relation is still in the list of all relations. Therefore, for proper
+        work of the function,  we need to exclude departed relation from the list.
+        """
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             database_users = mongo.get_users()
             relation_users = self._get_users_from_relations(departed_relation_id)
@@ -106,24 +114,24 @@ class MongoDBClientRelation(Object):
 
     def _get_config(self, username: str) -> MongoDBConfiguration:
         """Construct config object for future user creation."""
-        relation = self._get_relation(username)
+        relation = self._get_relation_from_username(username)
         return MongoDBConfiguration(
             replset=self.charm.app.name,
-            database=self._get_relation_database(relation),
+            database=self._get_database_from_relation(relation),
             username=username,
             password=generate_password(),
             hosts=self.charm.mongodb_config.hosts,
-            roles=self._get_relation_roles(relation),
+            roles=self._get_roles_from_relation(relation),
         )
 
     def _set_relation(self, config: MongoDBConfiguration):
         """Save all output fields into application relation."""
-        relation = self._get_relation(config.username)
+        relation = self._get_relation_from_username(config.username)
         if relation is None:
             return None
         relation.data[self.charm.app]["username"] = config.username
         relation.data[self.charm.app]["password"] = config.password
-        relation.data[self.charm.app]["database"] = config.password
+        relation.data[self.charm.app]["database"] = config.database
         relation.data[self.charm.app]["endpoints"] = ",".join(config.hosts)
         relation.data[self.charm.app]["replset"] = config.replset
         relation.data[self.charm.app]["uris"] = config.uri
@@ -134,7 +142,7 @@ class MongoDBClientRelation(Object):
         return f"relation-{relation_id}"
 
     def _get_users_from_relations(self, departed_relation_id: Optional[int]):
-        """Return usernames for all relations."""
+        """Return usernames for all relations except departed relation."""
         relations = self.model.relations[REL_NAME]
         return set([
             self._get_username(relation.id)
@@ -143,15 +151,15 @@ class MongoDBClientRelation(Object):
         ])
 
     def _get_databases_from_relations(self, departed_relation_id: Optional[int]) -> Set[str]:
-        """Return database names from all relations."""
+        """Return database names from all relations except departed relation."""
         relations = self.model.relations[REL_NAME]
         return set([
-            self._get_relation_database(relation)
+            self._get_database_from_relation(relation)
             for relation in relations
             if relation.id != departed_relation_id
         ])
 
-    def _get_relation(self, username: str) -> Relation:
+    def _get_relation_from_username(self, username: str) -> Relation:
         """Parse relation ID from a username and return Relation object."""
         match = re.match(r"^relation-(\d+)$", username)
         # We generated username in `_get_users_from_relations`
@@ -161,11 +169,11 @@ class MongoDBClientRelation(Object):
         relation_id = int(match.group(1))
         return self.model.get_relation(REL_NAME, relation_id)
 
-    def _get_relation_database(self, relation: Relation) -> str:
+    def _get_database_from_relation(self, relation: Relation) -> str:
         """Return database name from relation."""
         return relation.data[self.charm.app].get("database", None)
 
-    def _get_relation_roles(self, relation: Relation) -> Set[str]:
+    def _get_roles_from_relation(self, relation: Relation) -> Set[str]:
         """Return additional user roles from relation if specified or return None."""
         roles = relation.data[self.charm.app].get("extra-user-roles", "default")
         return set(roles.split(","))
