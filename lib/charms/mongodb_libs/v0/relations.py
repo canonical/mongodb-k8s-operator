@@ -137,7 +137,7 @@ class MongoDBClientRelation(Object):
         relation.data[self.charm.app]["uris"] = config.uri
 
     @staticmethod
-    def _get_username(relation_id: str) -> str:
+    def _get_username_from_relation_id(relation_id: str) -> str:
         """Construct username."""
         return f"relation-{relation_id}"
 
@@ -145,7 +145,7 @@ class MongoDBClientRelation(Object):
         """Return usernames for all relations except departed relation."""
         relations = self.model.relations[REL_NAME]
         return set([
-            self._get_username(relation.id)
+            self._get_username_from_relation_id(relation.id)
             for relation in relations
             if relation.id != departed_relation_id
         ])
