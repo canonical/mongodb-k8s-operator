@@ -48,7 +48,7 @@ class MongoDBClientRelation(Object):
         self.framework.observe(self.charm.on[REL_NAME].relation_broken, self._on_relation_event)
 
     def _on_relation_event(self, event):
-        """Handle relation joined events.
+        """Handle relation events.
 
         When a new relation joins the :class:`MongoProvider` sets relation
         data, that the related charm can use for accessing the MongoDB
