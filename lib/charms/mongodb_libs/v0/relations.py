@@ -50,7 +50,7 @@ class MongoDBClientRelation(Object):
     def _on_relation_event(self, event):
         """Handle relation joined events.
 
-        When relations join or depart, the :class:`MongoDBClientRelation`
+        When relations join, change, or depart, the :class:`MongoDBClientRelation`
         creates or drops MongoDB users and sets credentials into relation
         data. As result, related charm gets credentials for accessing the
         MongoDB database.
