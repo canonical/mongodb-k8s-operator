@@ -151,7 +151,10 @@ class MongoDBClientRelation(Object):
         ])
 
     def _get_databases_from_relations(self, departed_relation_id: Optional[int]) -> Set[str]:
-        """Return database names from all relations except departed relation."""
+        """Return database names from all relations.
+        
+         Args:
+              departed_relation_id: when specified return all database names except for those databases that belong to the departing relation specified."""
         relations = self.model.relations[REL_NAME]
         return set([
             self._get_database_from_relation(relation)
