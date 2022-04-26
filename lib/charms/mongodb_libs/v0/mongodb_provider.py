@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
 
-class MongoDBClientRelation(Object):
+class MongoDBProvider(Object):
     """In this class we manage client database relations."""
 
     def __init__(self, charm):
@@ -74,16 +74,19 @@ class MongoDBClientRelation(Object):
             return
 
     def oversee_users(self, departed_relation_id: Optional[int]):
-        """Oversees the the users of the application.
-        
-        Function manages user relations by removing, updated, and creating users; and dropping databases when necessary.
-        
-        Args: 
-                departed_relation_id: When specified execution of oversee_users makes sure to exclude the users and databases and remove them if necessary.
-                
+        """Oversees the users of the application.
+
+        Function manages user relations by removing, updated, and creating
+        users; and dropping databases when necessary.
+
+        Args:
+            departed_relation_id: When specified execution of functions
+                makes sure to exclude the users and databases and remove
+                them if necessary.
+
         When the function is executed in relation departed event, the departed
         relation is still in the list of all relations. Therefore, for proper
-        work of the function,  we need to exclude departed relation from the list.
+        work of the function, we need to exclude departed relation from the list.
         """
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             database_users = mongo.get_users()
@@ -157,9 +160,12 @@ class MongoDBClientRelation(Object):
 
     def _get_databases_from_relations(self, departed_relation_id: Optional[int]) -> Set[str]:
         """Return database names from all relations.
-        
-         Args:
-              departed_relation_id: when specified return all database names except for those databases that belong to the departing relation specified."""
+
+        Args:
+            departed_relation_id: when specified return all database names
+                except for those databases that belong to the departing
+                relation specified.
+        """
         relations = self.model.relations[REL_NAME]
         return set([
             self._get_database_from_relation(relation)

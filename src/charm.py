@@ -25,7 +25,7 @@ from charms.mongodb_libs.v0.mongodb import (
     MongoDBConnection,
     NotReadyError,
 )
-from charms.mongodb_libs.v0.relations import MongoDBClientRelation
+from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
 from ops.charm import CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Container
@@ -47,7 +47,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.leader_elected, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_changed, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_departed, self._reconfigure)
-        self.client_relations = MongoDBClientRelation(self)
+        self.client_relations = MongoDBProvider(self)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
