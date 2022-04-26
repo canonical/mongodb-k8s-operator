@@ -74,8 +74,13 @@ class MongoDBClientRelation(Object):
             return
 
     def oversee_users(self, departed_relation_id: Optional[int]):
-        """Forced reconciliation of all current relations.
-
+        """Oversees the the users of the application.
+        
+        Function manages user relations by removing, updated, and creating users; and dropping databases when necessary.
+        
+        Args: 
+                departed_relation_id: When specified execution of oversee_users makes sure to exclude the users and databases and remove them if necessary.
+                
         When the function is executed in relation departed event, the departed
         relation is still in the list of all relations. Therefore, for proper
         work of the function,  we need to exclude departed relation from the list.
