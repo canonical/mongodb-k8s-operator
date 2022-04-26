@@ -167,11 +167,14 @@ class MongoDBProvider(Object):
                 relation specified.
         """
         relations = self.model.relations[REL_NAME]
-        return set([
-            self._get_database_from_relation(relation)
-            for relation in relations
-            if relation.id != departed_relation_id
-        ])
+        databases = set()
+        for relation in relations:
+            if relation.id == departed_relation_id:
+                continue
+            database = self._get_database_from_relation(relation)
+            if database is not None:
+                databases.add(database)
+        return databases
 
     def _get_relation_from_username(self, username: str) -> Relation:
         """Parse relation ID from a username and return Relation object."""
@@ -183,11 +186,24 @@ class MongoDBProvider(Object):
         relation_id = int(match.group(1))
         return self.model.get_relation(REL_NAME, relation_id)
 
-    def _get_database_from_relation(self, relation: Relation) -> str:
+    def _get_database_from_relation(self, relation: Relation) -> Optional[str]:
         """Return database name from relation."""
-        return relation.data[self.charm.app].get("database", None)
+        for unit in relation.units:
+            if unit.app is self.charm.app:
+                # it is peer relation, skip
+                continue
+            database = relation.data[unit].get("database", None)
+            if database is not None:
+                return database
+        return None
 
     def _get_roles_from_relation(self, relation: Relation) -> Set[str]:
         """Return additional user roles from relation if specified or return None."""
-        roles = relation.data[self.charm.app].get("extra-user-roles", "default")
-        return set(roles.split(","))
+        for unit in relation.units:
+            if unit.app is self.charm.app:
+                # it is peer relation, skip
+                continue
+            roles = relation.data[unit].get("extra-user-roles", None)
+            if roles is not None:
+                return set(roles.split(","))
+        return {"default"}
