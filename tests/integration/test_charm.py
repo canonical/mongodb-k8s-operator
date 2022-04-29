@@ -55,7 +55,6 @@ async def test_application_is_up(ops_test: OpsTest, unit_id: int):
     assert response["ok"] == 1
 
 
-@pytest.mark.abort_on_fail
 async def test_application_primary(ops_test: OpsTest):
     """Tests existience of primary and verifies the application is running as a replica set.
 
@@ -81,3 +80,79 @@ async def test_application_primary(ops_test: OpsTest):
     assert (
         primary == f"mongodb-k8s-{leader_id}.mongodb-k8s-endpoints:27017"
     ), "primary not leader on deployment"
+
+
+async def test_scale_up(ops_test: OpsTest):
+    """Tests juju add-unit functionality.
+
+    Verifies that when a new unit is added to the MongoDB application that it is added to the
+    MongoDB replica set configuration.
+    """
+    # add two units and wait for idle
+    await ops_test.model.applications[APP_NAME].scale(scale_change=2)
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME], status="active", timeout=1000, wait_for_exact_units=5
+    )
+    num_units = len(ops_test.model.applications[APP_NAME].units)
+    assert num_units == 5
+
+    # grab juju hosts
+    juju_hosts = [
+        f"mongodb-k8s-{unit_id}.mongodb-k8s-endpoints:27017" for unit_id in range(num_units)
+    ]
+
+    # connect to replica set uri and get replica set members
+    rs_status = await run_mongo_op(ops_test, "rs.status()")
+    assert rs_status, "mongod had no response for 'rs.status()'"
+
+    mongodb_hosts = [member["name"] for member in rs_status["members"]]
+
+    # verify that the replica set members have the correct units
+    assert set(mongodb_hosts) == set(juju_hosts), (
+        "hosts for mongodb: "
+        + str(set(mongodb_hosts))
+        + " and juju: "
+        + str(set(juju_hosts))
+        + " don't match"
+    )
+
+
+async def test_scale_down(ops_test: OpsTest):
+    """Tests juju remove-unit functionality.
+
+    This test verifies:
+    1. multiple units can be removed while still maintaining a majority (ie remove a minority)
+    2. Replica set hosts are properly updated on unit removal
+    """
+    # add two units and wait for idle
+    await ops_test.model.applications[APP_NAME].scale(scale_change=-2)
+    await ops_test.model.wait_for_idle(
+        apps=[APP_NAME], status="active", timeout=1000, wait_for_exact_units=3
+    )
+    num_units = len(ops_test.model.applications[APP_NAME].units)
+    assert num_units == 3
+
+    # grab juju hosts
+    juju_hosts = [
+        f"mongodb-k8s-{unit_id}.mongodb-k8s-endpoints:27017" for unit_id in range(num_units)
+    ]
+
+    # connect to replica set uri and get replica set members
+    rs_status = await run_mongo_op(ops_test, "rs.status()")
+    mongodb_hosts = [member["name"] for member in rs_status["members"]]
+
+    # verify that the replica set members have the correct units
+    assert set(mongodb_hosts) == set(juju_hosts), (
+        "hosts for mongodb: "
+        + str(set(mongodb_hosts))
+        + " and juju: "
+        + str(set(juju_hosts))
+        + " don't match"
+    )
+
+    # verify that the set maintains a primary
+    primary = [
+        member["name"] for member in rs_status["members"] if member["stateStr"] == "PRIMARY"
+    ][0]
+
+    assert primary in juju_hosts, "no primary after scaling down"
