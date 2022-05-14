@@ -26,7 +26,7 @@ from charms.mongodb_libs.v0.mongodb import (
     NotReadyError,
 )
 from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
-from ops.charm import CharmBase
+from ops.charm import ActionEvent, CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Container
 from ops.pebble import ExecError, Layer, PathError, ProtocolError
@@ -47,6 +47,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.leader_elected, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_changed, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_departed, self._reconfigure)
+        self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
         self.client_relations = MongoDBProvider(self)
 
     def _generate_passwords(self) -> None:
@@ -287,6 +288,10 @@ class MongoDBCharm(CharmBase):
         )
         stdout, _ = process.wait_output()
         logger.debug("User created: %s", stdout)
+
+    def _on_get_admin_password(self, event: ActionEvent) -> None:
+        """Returns the password for the user as an action response."""
+        event.set_results({"admin-password": self.app_data.get("admin_password")})
 
 
 if __name__ == "__main__":
