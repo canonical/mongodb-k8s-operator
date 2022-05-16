@@ -166,7 +166,7 @@ class MongoDBCharm(CharmBase):
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
-                replset_members = mongo.get_replset_members
+                replset_members = mongo.get_replset_members()
 
                 # compare set of mongod replica set members and juju hosts
                 # to avoid the unnecessary reconfiguration.
