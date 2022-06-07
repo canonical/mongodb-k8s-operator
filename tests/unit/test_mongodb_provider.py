@@ -236,7 +236,6 @@ class TestMongoProvider(unittest.TestCase):
         # presets, such that the need to drop a database
         connection.return_value.__enter__.return_value.get_databases.return_value = {"db1", "db2"}
         databases_from_relations.return_value = {"d1"}
-        self.harness.update_config({"auto-delete": False})
 
         for dep_id in DEPARTED_IDS:
             self.harness.charm.client_relations.oversee_users(dep_id)
@@ -246,6 +245,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
     def test_oversee_users_mongo_databases_failure(self, connection, relation_users):
         """Verifies failures in checking for databases with mongod result in raised exceptions."""
+        self.harness.update_config({"auto-delete": True})
         for dep_id in DEPARTED_IDS:
             for exception, expected_raise in PYMONGO_EXCEPTIONS:
                 connection.return_value.__enter__.return_value.get_databases.side_effect = (
@@ -265,6 +265,7 @@ class TestMongoProvider(unittest.TestCase):
         # presets, such that the need to drop a database
         connection.return_value.__enter__.return_value.get_databases.return_value = {"db1", "db2"}
         databases_from_relations.return_value = {"d1"}
+        self.harness.update_config({"auto-delete": True})
 
         # verify operations across different inputs to oversee_users
         for dep_id in DEPARTED_IDS:
