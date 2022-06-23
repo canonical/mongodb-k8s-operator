@@ -287,6 +287,7 @@ class MongoDBConnection:
             "admin": [
                 {"role": "userAdminAnyDatabase", "db": "admin"},
                 {"role": "readWriteAnyDatabase", "db": "admin"},
+                {"role": "userAdmin", "db": "admin"},
             ],
             "default": [
                 {"role": "readWrite", "db": config.database},
