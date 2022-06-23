@@ -36,7 +36,9 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: microk8s
+          # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
           channel: 1.23/stable
+          bootstrap-options: "--agent-version 2.9.29"
       - name: Install dependencies
         run: python -m pip install tox poetry
       - name: Run integration tests
