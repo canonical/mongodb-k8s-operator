@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import time
 
 import pytest
 from helpers import (
@@ -11,8 +12,11 @@ from helpers import (
     UNIT_IDS,
     get_address_of_unit,
     get_leader_id,
+    primary_host,
     run_mongo_op,
 )
+from lightkube import AsyncClient
+from lightkube.resources.core_v1 import Pod
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
@@ -156,3 +160,38 @@ async def test_scale_down(ops_test: OpsTest):
     ][0]
 
     assert primary in juju_hosts, "no primary after scaling down"
+
+
+async def test_primary_reelection(ops_test: OpsTest):
+    """Tests removal of Mongodb primary and the reelection functionality.
+
+    Verifies that after the primary server gets removed,
+    a successful reelection happens.
+    """
+
+    # retrieve the status of the replica set
+    rs_status = await run_mongo_op(ops_test, "rs.status()")
+    assert rs_status, "mongod had no response for 'rs.status()'"
+
+    # get the primary host from the rs_status response
+    primary = primary_host(rs_status)
+    assert primary, "no primary set"
+
+    replica_name = primary.split(".")[0]
+
+    # Deleting the primary pod using kubectl
+    k8s_client = AsyncClient(namespace=ops_test.model_name)
+    await k8s_client.delete(Pod, name=replica_name)
+
+    # the median time in which a reelection event happens is after around 12 seconds
+    # setting the double to be on the safe side
+    time.sleep(24)
+
+    # retrieve the status of the replica set
+    rs_status = await run_mongo_op(ops_test, "rs.status()")
+    assert rs_status, "mongod had no response for 'rs.status()'"
+
+    # get the new primary host after reelection
+    new_primary = primary_host(rs_status)
+    assert new_primary, "no new primary set"
+    assert new_primary != primary

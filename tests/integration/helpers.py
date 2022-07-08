@@ -4,6 +4,7 @@
 import json
 import logging
 from pathlib import Path
+from typing import Optional
 
 import yaml
 from pytest_operator.plugin import OpsTest
@@ -76,4 +77,17 @@ async def run_mongo_op(ops_test: OpsTest, mongo_op: str):
     if ret_code != 0:
         logger.error("code %r; stdout %r; stderr: %r", ret_code, stdout, stderr)
         return None
+
     return json.loads(stdout)
+
+
+def primary_host(rs_status) -> Optional[str]:
+    """Returns the primary host in the replica set or None if none was elected"""
+    primary_list = [member["name"]
+                    for member in rs_status["members"]
+                    if member["stateStr"].upper() == "PRIMARY"]
+
+    if not primary_list:
+        return None
+
+    return primary_list[0]
