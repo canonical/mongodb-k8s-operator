@@ -42,12 +42,14 @@ class MongoDBCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
+
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.leader_elected, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_changed, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_departed, self._reconfigure)
         self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
+
         self.client_relations = MongoDBProvider(self)
 
     def _generate_passwords(self) -> None:
@@ -217,7 +219,12 @@ class MongoDBCharm(CharmBase):
     @property
     def app_data(self) -> Dict:
         """Peer relation data object."""
-        return self.model.get_relation(PEER).data[self.app]
+
+        relation = self.model.get_relation(PEER)
+        if relation is None:
+            return {}
+
+        return relation.data[self.app]
 
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
