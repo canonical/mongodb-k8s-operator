@@ -168,7 +168,6 @@ async def test_primary_reelection(ops_test: OpsTest):
     Verifies that after the primary server gets removed,
     a successful reelection happens.
     """
-
     # retrieve the status of the replica set
     rs_status = await run_mongo_op(ops_test, "rs.status()")
     assert rs_status, "mongod had no response for 'rs.status()'"

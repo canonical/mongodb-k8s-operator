@@ -219,7 +219,6 @@ class MongoDBCharm(CharmBase):
     @property
     def app_data(self) -> Dict:
         """Peer relation data object."""
-
         relation = self.model.get_relation(PEER)
         if relation is None:
             return {}
