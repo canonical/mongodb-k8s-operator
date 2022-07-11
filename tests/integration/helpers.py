@@ -82,10 +82,12 @@ async def run_mongo_op(ops_test: OpsTest, mongo_op: str):
 
 
 def primary_host(rs_status) -> Optional[str]:
-    """Returns the primary host in the replica set or None if none was elected"""
-    primary_list = [member["name"]
-                    for member in rs_status["members"]
-                    if member["stateStr"].upper() == "PRIMARY"]
+    """Returns the primary host in the replica set or None if none was elected."""
+    primary_list = [
+        member["name"]
+        for member in rs_status["members"]
+        if member["stateStr"].upper() == "PRIMARY"
+    ]
 
     if not primary_list:
         return None
