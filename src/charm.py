@@ -114,6 +114,7 @@ class MongoDBCharm(CharmBase):
             logger.debug("mongod container is not ready yet.")
             event.defer()
             return
+
         if not container.exists("/tmp/mongodb-27017.sock"):
             logger.debug("mongod socket is not ready yet.")
             event.defer()
@@ -148,6 +149,7 @@ class MongoDBCharm(CharmBase):
                 logger.error("Deferring on_start since: error=%r", e)
                 event.defer()
                 return
+
             self.app_data["db_initialised"] = "True"
 
     def _reconfigure(self, event) -> None:
@@ -288,12 +290,17 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside charm container to make
         this function work correctly.
         """
+        if "user_created" in self.app_data:
+            return
+
         process = container.exec(
             command=get_create_user_cmd(self.mongodb_config),
             stdin=self.mongodb_config.password,
         )
         stdout, _ = process.wait_output()
         logger.debug("User created: %s", stdout)
+
+        self.app_data["user_created"] = "True"
 
     def _on_get_admin_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
