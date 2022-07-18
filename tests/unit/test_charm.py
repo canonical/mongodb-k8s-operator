@@ -1,6 +1,6 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
-
+import logging
 import unittest
 from unittest import mock
 from unittest.mock import patch
@@ -8,7 +8,12 @@ from unittest.mock import patch
 from ops.model import ActiveStatus, ModelError
 from ops.pebble import APIError, ExecError, PathError, ProtocolError
 from ops.testing import Harness
-from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
+from pymongo.errors import (
+    ConfigurationError,
+    ConnectionFailure,
+    OperationFailure,
+    PyMongoError,
+)
 
 from charm import MongoDBCharm, NotReadyError
 from tests.unit.helpers import patch_network_get
@@ -19,6 +24,8 @@ PYMONGO_EXCEPTIONS = [
     (OperationFailure("error message"), OperationFailure),
 ]
 PEER_ADDR = {"private-address": "127.4.5.6"}
+
+logger = logging.getLogger(__name__)
 
 
 class TestCharm(unittest.TestCase):
@@ -562,3 +569,44 @@ class TestCharm(unittest.TestCase):
 
             connection.return_value.__enter__.return_value.add_replset_member.assert_called()
             defer.assert_called()
+
+    @patch("ops.framework.EventBase.defer")
+    @patch("charm.MongoDBProvider.oversee_users")
+    @patch("charm.MongoDBConnection")
+    def test_start_init_user_after_second_call(self, connection, oversee_users, defer):
+        """Tests that the creation of the admin user is only performed once.
+
+        Verifies that if the user is already set up, that no attempts to set it up again are
+        made when a failure happens causing an event deferring calling the init_user again
+        """
+        mock_container = mock.Mock()
+        mock_container.return_value.can_connect.return_value = True
+        mock_container.return_value.exists.return_value = True
+        mock_container.return_value.exec.return_value = mock.Mock()
+        mock_container.return_value.exec.return_value.wait_output.return_value = ("Success", None)
+
+        self.harness.charm.unit.get_container = mock_container
+
+        connection.return_value.__enter__.return_value.is_ready = True
+
+        oversee_users.side_effect = PyMongoError()
+
+        self.harness.charm.on.start.emit()
+
+        # verify app data
+        self.assertEqual("user_created" in self.harness.charm.app_data, True)
+        defer.assert_called()
+
+        # the second call to init user should fail if "exec" is called, but shouldn't happen
+        oversee_users.side_effect = None
+        defer.reset_mock()
+        mock_container.return_value.exec.reset_mock()
+        mock_container.return_value.exec.side_effect = ExecError([], 1, "", "Dummy Error")
+
+        # re-run the start method without a failing oversee_users
+        self.harness.charm.on.start.emit()
+
+        # _init_user should have returned before reaching the "exec" call
+        mock_container.return_value.exec.assert_not_called()
+
+        defer.assert_not_called()
