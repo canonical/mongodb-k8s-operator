@@ -6,11 +6,6 @@ import logging
 import time
 
 import pytest
-from lightkube import AsyncClient
-from lightkube.resources.core_v1 import Pod
-from pymongo import MongoClient
-from pytest_operator.plugin import OpsTest
-
 from helpers import (
     APP_NAME,
     METADATA,
@@ -24,6 +19,10 @@ from helpers import (
     run_mongo_op,
     secondary_mongo_uris_with_sync_delay,
 )
+from lightkube import AsyncClient
+from lightkube.resources.core_v1 import Pod
+from pymongo import MongoClient
+from pytest_operator.plugin import OpsTest
 
 logger = logging.getLogger(__name__)
 
