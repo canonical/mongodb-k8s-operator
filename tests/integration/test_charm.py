@@ -6,19 +6,24 @@ import logging
 import time
 
 import pytest
-from helpers import (
-    APP_NAME,
-    METADATA,
-    UNIT_IDS,
-    get_address_of_unit,
-    get_leader_id,
-    primary_host,
-    run_mongo_op,
-)
 from lightkube import AsyncClient
 from lightkube.resources.core_v1 import Pod
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
+
+from helpers import (
+    APP_NAME,
+    METADATA,
+    TEST_DOCUMENTS,
+    UNIT_IDS,
+    check_if_test_documents_stored,
+    generate_collection_id,
+    get_address_of_unit,
+    get_leader_id,
+    primary_host,
+    run_mongo_op,
+    secondary_mongo_uris_with_sync_delay,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,21 +65,21 @@ async def test_application_is_up(ops_test: OpsTest, unit_id: int):
 
 
 async def test_application_primary(ops_test: OpsTest):
-    """Tests existience of primary and verifies the application is running as a replica set.
+    """Tests existence of primary and verifies the application is running as a replica set.
 
     By retrieving information about the primary this test inherently tests password retrieval.
     """
     rs_status = await run_mongo_op(ops_test, "rs.status()")
-    assert rs_status, "mongod had no response for 'rs.status()'"
+    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
 
     primary = [
-        member["name"] for member in rs_status["members"] if member["stateStr"] == "PRIMARY"
+        member["name"] for member in rs_status.data["members"] if member["stateStr"] == "PRIMARY"
     ][0]
 
     assert primary, "mongod has no primary on deployment"
 
     number_of_primaries = 0
-    for member in rs_status["members"]:
+    for member in rs_status.data["members"]:
         if member["stateStr"] == "PRIMARY":
             number_of_primaries += 1
 
@@ -107,9 +112,9 @@ async def test_scale_up(ops_test: OpsTest):
 
     # connect to replica set uri and get replica set members
     rs_status = await run_mongo_op(ops_test, "rs.status()")
-    assert rs_status, "mongod had no response for 'rs.status()'"
+    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
 
-    mongodb_hosts = [member["name"] for member in rs_status["members"]]
+    mongodb_hosts = [member["name"] for member in rs_status.data["members"]]
 
     # verify that the replica set members have the correct units
     assert set(mongodb_hosts) == set(juju_hosts), (
@@ -143,7 +148,7 @@ async def test_scale_down(ops_test: OpsTest):
 
     # connect to replica set uri and get replica set members
     rs_status = await run_mongo_op(ops_test, "rs.status()")
-    mongodb_hosts = [member["name"] for member in rs_status["members"]]
+    mongodb_hosts = [member["name"] for member in rs_status.data["members"]]
 
     # verify that the replica set members have the correct units
     assert set(mongodb_hosts) == set(juju_hosts), (
@@ -156,13 +161,13 @@ async def test_scale_down(ops_test: OpsTest):
 
     # verify that the set maintains a primary
     primary = [
-        member["name"] for member in rs_status["members"] if member["stateStr"] == "PRIMARY"
+        member["name"] for member in rs_status.data["members"] if member["stateStr"] == "PRIMARY"
     ][0]
 
     assert primary in juju_hosts, "no primary after scaling down"
 
 
-async def test_primary_reelection(ops_test: OpsTest):
+async def test_replication_primary_reelection(ops_test: OpsTest):
     """Tests removal of Mongodb primary and the reelection functionality.
 
     Verifies that after the primary server gets removed,
@@ -170,10 +175,10 @@ async def test_primary_reelection(ops_test: OpsTest):
     """
     # retrieve the status of the replica set
     rs_status = await run_mongo_op(ops_test, "rs.status()")
-    assert rs_status, "mongod had no response for 'rs.status()'"
+    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
 
     # get the primary host from the rs_status response
-    primary = primary_host(rs_status)
+    primary = primary_host(rs_status.data)
     assert primary, "no primary set"
 
     replica_name = primary.split(".")[0]
@@ -188,9 +193,81 @@ async def test_primary_reelection(ops_test: OpsTest):
 
     # retrieve the status of the replica set
     rs_status = await run_mongo_op(ops_test, "rs.status()")
-    assert rs_status, "mongod had no response for 'rs.status()'"
+    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
 
     # get the new primary host after reelection
-    new_primary = primary_host(rs_status)
+    new_primary = primary_host(rs_status.data)
     assert new_primary, "no new primary set"
     assert new_primary != primary
+
+
+async def test_replication_data_consistency(ops_test: OpsTest):
+    """Test the data consistency between the primary and secondaries.
+
+    Verifies that after writing data to the primary the data on
+    the secondaries match.
+    """
+    # generate a collection id
+    collection_id = generate_collection_id()
+
+    # Create a database and a collection (lazily)
+    create_collection = await run_mongo_op(
+        ops_test, f'db.createCollection("{collection_id}")', suffix=f"?replicaSet={APP_NAME}"
+    )
+    assert create_collection.succeeded and create_collection.data["ok"] == 1
+
+    # Store a few test documents
+    insert_many_docs = await run_mongo_op(
+        ops_test,
+        f"db.{collection_id}.insertMany({TEST_DOCUMENTS})",
+        suffix=f"?replicaSet={APP_NAME}",
+    )
+    assert insert_many_docs.succeeded and len(insert_many_docs.data["insertedIds"]) == 2
+
+    # attempt ensuring that the replication happened on all secondaries
+    time.sleep(24)
+
+    # query the primary only
+    set_primary_read_pref = await run_mongo_op(
+        ops_test,
+        'db.getMongo().setReadPref("primary")',
+        suffix=f"?replicaSet={APP_NAME}",
+        expecting_output=False,
+    )
+    assert set_primary_read_pref.succeeded
+    await check_if_test_documents_stored(ops_test, collection_id)
+
+    # query the secondaries with the pymongo default behavior: majority
+    set_secondary_read_pref = await run_mongo_op(
+        ops_test,
+        'db.getMongo().setReadPref("secondary")',
+        suffix=f"?replicaSet={APP_NAME}",
+        expecting_output=False,
+    )
+    assert set_secondary_read_pref.succeeded
+    await check_if_test_documents_stored(ops_test, collection_id)
+
+    # query the secondaries by targeting units
+    rs_status = await run_mongo_op(ops_test, "rs.status()")
+    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
+
+    secondaries = await secondary_mongo_uris_with_sync_delay(ops_test, rs_status.data)
+
+    # verify that each secondary contains the data
+    synced_secondaries_count = 0
+    for secondary in secondaries:
+        time.sleep(secondary["delay"] + 2)  # probably useless, but attempting
+        try:
+            await check_if_test_documents_stored(
+                ops_test, collection_id, mongo_uri=secondary["uri"]
+            )
+        except Exception:
+            # there may need some time to finish replicating to this specific secondary
+            continue
+
+        synced_secondaries_count += 1
+
+    logger.info(
+        f"{synced_secondaries_count}/{len(secondaries)} secondaries fully synced with primary."
+    )
+    assert synced_secondaries_count > 0
