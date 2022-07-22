@@ -122,14 +122,14 @@ async def run_mongo_op(
         if expecting_output:
             try:
                 output.data = json.loads(stdout)
-            except Exception as e:
+            except Exception:
                 logger.error(f"Could not serialize the output into json: \n{stdout}")
-                raise e
+                raise
 
     return output
 
 
-def primary_host(rs_status_data) -> Optional[str]:
+def primary_host(rs_status_data: dict) -> Optional[str]:
     """Returns the primary host in the replica set or None if none was elected."""
     primary_list = [
         member["name"]
@@ -178,6 +178,11 @@ async def check_if_test_documents_stored(
 
 
 async def secondary_mongo_uris_with_sync_delay(ops_test: OpsTest, rs_status_data):
+    """Returns the list of secondaries and their sync delay with the master.
+
+    Returns the ascending list of Secondaries, the first secondary is the
+    one with the lowest data sync delay.
+    """
     primary_optime_date = [
         datetime.strptime(member["optimeDate"], "%Y-%m-%dT%H:%M:%S.%fZ")
         for member in rs_status_data["members"]
@@ -193,7 +198,6 @@ async def secondary_mongo_uris_with_sync_delay(ops_test: OpsTest, rs_status_data
         member_optime_date = datetime.strptime(member["optimeDate"], "%Y-%m-%dT%H:%M:%S.%fZ")
 
         host = await mongodb_uri(ops_test, [unit_id])
-
         delay_seconds = (primary_optime_date - member_optime_date).total_seconds()
 
         secondaries.append({"uri": host, "delay": math.fabs(delay_seconds)})
