@@ -238,7 +238,7 @@ async def test_replication_data_consistency(ops_test: OpsTest):
     assert set_primary_read_pref.succeeded
     await check_if_test_documents_stored(ops_test, collection_id)
 
-    # query the secondaries with the pymongo default behavior: majority
+    # query only from the secondaries
     set_secondary_read_pref = await run_mongo_op(
         ops_test,
         'db.getMongo().setReadPref("secondary")',
