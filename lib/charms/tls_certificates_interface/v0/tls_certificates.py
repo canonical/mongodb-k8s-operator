@@ -251,7 +251,6 @@ class CertificatesRequirerCharmEvents(CharmEvents):
     """List of events that the TLS Certificates requirer charm can leverage."""
 
     certificate_available = EventSource(CertificateAvailableEvent)
-    certificate_departed = EventSource(CertificateAvailableEvent)
 
 
 class TLSCertificatesProvides(Object):
@@ -474,12 +473,16 @@ class TLSCertificatesRequires(Object):
                     )
         return certificates
 
-    def get_certificates_for_common_name(self, common_name: str = None, departed_id: int = None) -> List[Cert]:
+    def get_certificates_for_common_name(
+        self, common_name: str, departed_id: int = None
+    ) -> List[Cert]:
         """Loops over all relations and returns list of Cert objects.
 
         Args:
             common_name: return certificates for specified the common name.
-            departed_id: don't return certificates from departed relation.
+            departed_id: don't return certificates from departed relation. The argument
+                         should be set if the function is executed on relation departed
+                         event to avoid including data from the departed relation.
 
         Returns:
             list: List of certificates.
@@ -487,7 +490,7 @@ class TLSCertificatesRequires(Object):
         certificates = []
         relations = self.model.relations[self.relationship_name]
         for relation in relations:
-            if departed_id is not None and relation.id == departed_id:
+            if relation.id == departed_id:
                 continue
             for unit in relation.units:
                 if unit.app is self.charm.app:
@@ -498,7 +501,7 @@ class TLSCertificatesRequires(Object):
                     continue
                 parsed_certificates = self._parse_certificates_from_relation_data(relation_data)
                 for certificate in parsed_certificates:
-                    if common_name is not None and certificate["common_name"] != common_name:
+                    if certificate["common_name"] != common_name:
                         continue
                     certificates.append(certificate)
 
