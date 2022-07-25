@@ -83,6 +83,10 @@ class MongoDBCharm(CharmBase):
 
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
+        # This function can be triggered when user disabled TLS by removing relation between this
+        # charm and TLS provider. The on_certificates_relation_departed event runs this code then.
+        # Unfortunately, during on_certificates.relation_departed event TLS certificated still
+        # available. We need to exclude departed certificates during start/restart of mongod.
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
             departed_relation_id = event.relation.id
@@ -103,8 +107,13 @@ class MongoDBCharm(CharmBase):
             return
 
         # service is running if TLS encryption enabled/disabled
-        if container.get_services("mongod"):
-            container.stop("mongod")
+        services = container.get_services("mongod")
+        if services and services["mongod"].is_running():
+            new_command = get_mongod_cmd(self.mongodb_config)
+            cur_command = container.get_plan().services["mongod"].command
+            if new_command != cur_command:
+                logger.debug("restart MongoDB due to arguments change: %s", new_command)
+                container.stop("mongod")
 
         # Add initial Pebble config layer using the Pebble API
         container.add_layer("mongod", self._mongod_layer, combine=True)
