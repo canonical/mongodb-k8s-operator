@@ -56,6 +56,7 @@ class MongoDBConfiguration:
     password: str
     hosts: Set[str]
     roles: Set[str]
+    tls: bool
 
     @property
     def uri(self):
