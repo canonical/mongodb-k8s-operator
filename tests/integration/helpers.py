@@ -3,8 +3,13 @@
 
 import json
 import logging
+import math
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from random import choices
+from string import ascii_lowercase, digits
+from types import SimpleNamespace
+from typing import List, Optional
 
 import yaml
 from pytest_operator.plugin import OpsTest
@@ -12,6 +17,24 @@ from pytest_operator.plugin import OpsTest
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 UNIT_IDS = [0, 1, 2]
+
+TEST_DOCUMENTS = """[
+    {
+        \"uid\": 123,
+        \"label\": \"Lorem\",
+        \"price\": 2.3,
+        \"currency\": \"eur\",
+        \"exp_date\": \"2022-12-12\"
+    },
+    {
+        \"uid\": 3456,
+        \"label\": \"Ipsum\",
+        \"price\": 18,
+        \"currency\": \"usd\",
+        \"exp_date\": \"2023-01-13\"
+    }
+]"""
+
 logger = logging.getLogger(__name__)
 
 
@@ -46,15 +69,30 @@ async def get_password(ops_test: OpsTest, unit_id: int) -> str:
     return action.results["admin-password"]
 
 
-async def run_mongo_op(ops_test: OpsTest, mongo_op: str):
-    """Runs provided MongoDB operation in a separate container."""
-    addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in UNIT_IDS]
+async def mongodb_uri(ops_test: OpsTest, unit_ids: List[int] = None) -> str:
+    if unit_ids is None:
+        unit_ids = UNIT_IDS
+
+    addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in unit_ids]
     hosts = ",".join(addresses)
     password = await get_password(ops_test, unit_id=0)
-    mongo_cmd = (
-        f"mongo --quiet --eval 'JSON.stringify({mongo_op})' "
-        f"mongodb://operator:{password}@{hosts}/admin"
-    )
+
+    return f"mongodb://operator:{password}@{hosts}/admin"
+
+
+async def run_mongo_op(
+    ops_test: OpsTest,
+    mongo_op: str,
+    mongo_uri: str = None,
+    suffix: str = "",
+    expecting_output: bool = True,
+) -> SimpleNamespace():
+    """Runs provided MongoDB operation in a separate container."""
+    if mongo_uri is None:
+        mongo_uri = await mongodb_uri(ops_test)
+
+    mongo_cmd = f"mongo --quiet --eval 'JSON.stringify({mongo_op})' {mongo_uri}{suffix}"
+
     kubectl_cmd = (
         "microk8s",
         "kubectl",
@@ -73,19 +111,29 @@ async def run_mongo_op(ops_test: OpsTest, mongo_op: str):
         mongo_cmd,
     )
 
+    output = SimpleNamespace(failed=False, succeeded=False, data=None)
+
     ret_code, stdout, stderr = await ops_test.run(*kubectl_cmd)
     if ret_code != 0:
         logger.error("code %r; stdout %r; stderr: %r", ret_code, stdout, stderr)
-        return None
+        output.failed = True
+    else:
+        output.succeeded = True
+        if expecting_output:
+            try:
+                output.data = json.loads(stdout)
+            except Exception:
+                logger.error(f"Could not serialize the output into json: \n{stdout}")
+                raise
 
-    return json.loads(stdout)
+    return output
 
 
-def primary_host(rs_status) -> Optional[str]:
+def primary_host(rs_status_data: dict) -> Optional[str]:
     """Returns the primary host in the replica set or None if none was elected."""
     primary_list = [
         member["name"]
-        for member in rs_status["members"]
+        for member in rs_status_data["members"]
         if member["stateStr"].upper() == "PRIMARY"
     ]
 
@@ -93,3 +141,72 @@ def primary_host(rs_status) -> Optional[str]:
         return None
 
     return primary_list[0]
+
+
+async def check_if_test_documents_stored(
+    ops_test: OpsTest, collection: str, mongo_uri: str = None
+) -> None:
+    # decide whether to pass a mongo_uri or replication set to the "run_mongo_op" function
+    run_mongo_op_kwargs = {"suffix": f"?replicaSet={APP_NAME}"}
+    if mongo_uri is not None:
+        run_mongo_op_kwargs["mongo_uri"] = mongo_uri
+
+    # serialize the str test documents into json
+    o_test_docs = json.loads(TEST_DOCUMENTS)
+
+    # query filter
+    query_filter = json.dumps({"$or": [{"uid": test_doc["uid"]} for test_doc in o_test_docs]})
+
+    count_documents = await run_mongo_op(
+        ops_test, f"db.{collection}.countDocuments({query_filter})", **run_mongo_op_kwargs
+    )
+    assert count_documents.succeeded and count_documents.data == 2
+
+    # descending order to match insertion order of the test documents
+    find_documents = await run_mongo_op(
+        ops_test,
+        f"db.{collection}.find({query_filter}).sort({{uid: 1}}).toArray()",
+        **run_mongo_op_kwargs,
+    )
+    assert find_documents.succeeded and len(find_documents.data) == 2
+
+    for index, test_doc in zip(range(len(o_test_docs)), o_test_docs):
+        db_doc = find_documents.data[index]
+
+        for key, val in test_doc.items():
+            assert db_doc[key] == val
+
+
+async def secondary_mongo_uris_with_sync_delay(ops_test: OpsTest, rs_status_data):
+    """Returns the list of secondaries and their sync delay with the master.
+
+    Returns the ascending list of Secondaries, the first secondary is the
+    one with the lowest data sync delay.
+    """
+    primary_optime_date = [
+        datetime.strptime(member["optimeDate"], "%Y-%m-%dT%H:%M:%S.%fZ")
+        for member in rs_status_data["members"]
+        if member["stateStr"].upper() == "PRIMARY"
+    ][0]
+
+    secondaries = []
+    for member in rs_status_data["members"]:
+        if member["stateStr"].upper() != "SECONDARY":
+            continue
+
+        unit_id = member["name"].split(".")[0].split("-")[-1]
+        member_optime_date = datetime.strptime(member["optimeDate"], "%Y-%m-%dT%H:%M:%S.%fZ")
+
+        host = await mongodb_uri(ops_test, [unit_id])
+        delay_seconds = (primary_optime_date - member_optime_date).total_seconds()
+
+        secondaries.append({"uri": host, "delay": math.fabs(delay_seconds)})
+
+    secondaries.sort(key=lambda o: o["delay"])
+
+    return secondaries
+
+
+def generate_collection_id() -> str:
+    new_id = "".join(choices(ascii_lowercase + digits, k=4)).replace("_", "")
+    return f"collection_{new_id}"
