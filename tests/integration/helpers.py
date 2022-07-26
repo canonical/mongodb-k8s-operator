@@ -127,6 +127,12 @@ async def run_mongo_op(
         try:
             output.data = json.loads(stdout)
         except Exception:
+            logger.error(
+                "Could not serialize the output into json.{}{}".format(
+                    f"\n\tOut: {stdout}" if stdout else "",
+                    f"\n\tErr: {stderr}" if stderr else "",
+                )
+            )
             raise
 
     return output
