@@ -281,6 +281,14 @@ class MongoDBConnection:
             roles=self._get_roles(config),
         )
 
+    def set_user_password(self, username, password: str):
+        """Update the password."""
+        self.client.admin.command(
+            "updateUser",
+            username,
+            pwd=password,
+        )
+
     @staticmethod
     def _get_roles(config: MongoDBConfiguration) -> List[dict]:
         """Generate roles List."""
