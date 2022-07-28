@@ -146,7 +146,7 @@ class MongoDBProvider(Object):
         relation.data[self.charm.app]["uris"] = config.uri
 
     @staticmethod
-    def _get_username_from_relation_id(relation_id: str) -> str:
+    def _get_username_from_relation_id(relation_id: int) -> str:
         """Construct username."""
         return f"relation-{relation_id}"
 

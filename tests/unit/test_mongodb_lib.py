@@ -11,7 +11,7 @@ from lib.charms.mongodb_libs.v0.mongodb import MongoDBConnection, NotReadyError
 MONGO_CONFIG = {
     "replset": "mongo-k8s",
     "database": "admin",
-    "username": "operator",
+    "username": "admin",
     "password": "password",
     "hosts": set(["1.1.1.1", "2.2.2.2"]),
 }

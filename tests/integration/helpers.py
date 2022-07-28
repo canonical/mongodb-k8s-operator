@@ -78,7 +78,7 @@ async def mongodb_uri(ops_test: OpsTest, unit_ids: List[int] = None) -> str:
     hosts = ",".join(addresses)
     password = await get_password(ops_test, unit_id=0)
 
-    return f"mongodb://operator:{password}@{hosts}/admin"
+    return f"mongodb://admin:{password}@{hosts}/admin"
 
 
 # useful, as sometimes, the mongo request returns nothing on the first try
