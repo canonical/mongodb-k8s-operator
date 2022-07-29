@@ -368,7 +368,7 @@ class MongoDBCharm(CharmBase):
         """Set the password for the admin user."""
         # only leader can write the new password into peer relation.
         if not self.unit.is_leader():
-            event.fail("The action can be run only on juju leader.")
+            event.fail("The action can be run only on leader unit.")
             return
 
         new_password = generate_password()
