@@ -384,7 +384,7 @@ class MongoDBCharm(CharmBase):
                 )
                 return
             except PyMongoError as e:
-                event.fail(f"Failed changing the password: error={e}")
+                event.fail(f"Failed changing the password: {e}")
                 return
         self.app_data["admin_password"] = new_password
         event.set_results({"admin-password": self.app_data.get("admin_password")})
