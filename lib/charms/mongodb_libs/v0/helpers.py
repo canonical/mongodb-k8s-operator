@@ -20,8 +20,6 @@ LIBPATCH = 0
 
 # path to store mongodb ketFile
 KEY_FILE = "/etc/mongodb/keyFile"
-TLS_PEM_FILE = "/etc/mongodb/tls.pem"
-TLS_CA_FILE = "/etc/mongodb/ca.crt"
 
 
 logger = logging.getLogger(__name__)
@@ -76,16 +74,10 @@ def get_mongod_cmd(config: MongoDBConfiguration) -> str:
         # TODO: replace with x509
         "--clusterAuthMode=keyFile",
         f"--keyFile={KEY_FILE}",
+        # TODO: add TLS certificates paths
+        # allow self signed certificates
+        # cmd.append("--tlsAllowInvalidCertificates")
     ]
-    if config.tls:
-        cmd.extend([
-            f"--tlsCAFile={TLS_CA_FILE}",
-            f"--tlsCertificateKeyFile={TLS_PEM_FILE}",
-            # allow non-TLS connections
-            "--tlsMode=preferTLS",
-            # allow self-signed certificates
-            "--tlsAllowInvalidCertificates"
-        ])
     return " ".join(cmd)
 
 

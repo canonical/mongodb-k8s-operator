@@ -11,12 +11,10 @@ includes scaling and other capabilities.
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Dict
 
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
-    TLS_CA_FILE,
-    TLS_PEM_FILE,
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
@@ -28,10 +26,7 @@ from charms.mongodb_libs.v0.mongodb import (
     NotReadyError,
 )
 from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
-from charms.tls_certificates_interface.v0.tls_certificates import (
-    TLSCertificatesRequires,
-)
-from ops.charm import ActionEvent, CharmBase, RelationBrokenEvent
+from ops.charm import ActionEvent, CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Container
 from ops.pebble import ExecError, Layer, PathError, ProtocolError
@@ -40,7 +35,6 @@ from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
 PEER = "database-peers"
-TLS_RELATION = "certificates"
 
 
 class MongoDBCharm(CharmBase):
@@ -58,16 +52,6 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.set_admin_password_action, self._on_set_admin_password)
 
         self.client_relations = MongoDBProvider(self)
-        self.tls_certificates = TLSCertificatesRequires(
-            self,
-            relationship_name=TLS_RELATION,
-            cert_type="server",
-            common_name=self._get_hostname_by_unit(self.unit.name),
-        )
-        self.framework.observe(
-            self.tls_certificates.on.certificate_available, self._on_mongod_pebble_ready
-        )
-        self.framework.observe(self.on[TLS_RELATION].relation_broken, self._on_mongod_pebble_ready)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -84,38 +68,21 @@ class MongoDBCharm(CharmBase):
 
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
-        # This function can be triggered when user disabled TLS by removing relation between this
-        # charm and TLS provider. The on_certificates_relation_departed event runs this code then.
-        # Unfortunately, during on_certificates.relation_departed event TLS certificated still
-        # available. We need to exclude departed certificates during start/restart of mongod.
-        departed_relation_id = None
-        if type(event) is RelationBrokenEvent:
-            departed_relation_id = event.relation.id
-
-        # Get a reference the container attribute
+        # mongod needs keyFile on filesystem
         container = self.unit.get_container("mongod")
-        # mongod needs keyFile and TLS certificates on filesystem
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
             event.defer()
             return
         try:
-            self._set_tls(container, departed_relation_id)
             self._set_keyfile(container)
         except (PathError, ProtocolError) as e:
             logger.error("Cannot put keyFile: %r", e)
             event.defer()
             return
 
-        # service is running if TLS encryption enabled/disabled
-        services = container.get_services("mongod")
-        if services and services["mongod"].is_running():
-            new_command = get_mongod_cmd(self.mongodb_config)
-            cur_command = container.get_plan().services["mongod"].command
-            if new_command != cur_command:
-                logger.debug("restart MongoDB due to arguments change: %s", new_command)
-                container.stop("mongod")
-
+        # Get a reference the container attribute on the PebbleReadyEvent
+        container = event.workload
         # Add initial Pebble config layer using the Pebble API
         container.add_layer("mongod", self._mongod_layer, combine=True)
         # Restart changed services and start startup-enabled services.
@@ -274,7 +241,6 @@ class MongoDBCharm(CharmBase):
         hosts = [self._get_hostname_by_unit(self.unit.name)] + [
             self._get_hostname_by_unit(unit.name) for unit in peers.units
         ]
-        ca, _ = self._get_tls_files(None)
 
         return MongoDBConfiguration(
             replset=self.app.name,
@@ -283,7 +249,6 @@ class MongoDBCharm(CharmBase):
             password=self.app_data.get("admin_password"),
             hosts=set(hosts),
             roles={"default"},
-            tls=ca is not None,
         )
 
     def _set_keyfile(self, container: Container) -> None:
@@ -296,28 +261,6 @@ class MongoDBCharm(CharmBase):
             user="mongodb",
             group="mongodb",
         )
-
-    def _set_tls(self, container: Container, departed_relation_id: Optional[int]) -> None:
-        """Upload the keyFile to a workload container."""
-        ca, pem = self._get_tls_files(departed_relation_id)
-        if ca is not None:
-            container.push(
-                TLS_CA_FILE,
-                ca,
-                make_dirs=True,
-                permissions=0o400,
-                user="mongodb",
-                group="mongodb",
-            )
-        if pem is not None:
-            container.push(
-                TLS_PEM_FILE,
-                pem,
-                make_dirs=True,
-                permissions=0o400,
-                user="mongodb",
-                group="mongodb",
-            )
 
     def _get_hostname_by_unit(self, unit_name: str) -> str:
         """Create a DNS name for a MongoDB unit.
@@ -388,17 +331,6 @@ class MongoDBCharm(CharmBase):
                 return
         self.app_data["admin_password"] = new_password
         event.set_results({"admin-password": self.app_data.get("admin_password")})
-
-    def _get_tls_files(
-        self, departed_relation_id: Optional[int]
-    ) -> (Optional[str], Optional[str]):
-        hostname = self._get_hostname_by_unit(self.unit.name)
-        certificates = self.tls_certificates.get_certificates_for_common_name(
-            hostname, departed_relation_id
-        )
-        if len(certificates) > 0:
-            return certificates[0]["ca"], certificates[0]["key"] + "\n" + certificates[0]["cert"]
-        return None, None
 
 
 if __name__ == "__main__":
