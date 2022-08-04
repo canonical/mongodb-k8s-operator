@@ -48,20 +48,24 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.leader_elected, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_changed, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_departed, self._reconfigure)
-        self.framework.observe(self.on.get_admin_password_action, self._on_get_admin_password)
-        self.framework.observe(self.on.set_admin_password_action, self._on_set_admin_password)
+        self.framework.observe(
+            self.on.get_operator_password_action, self._on_get_operator_password
+        )
+        self.framework.observe(
+            self.on.set_operator_password_action, self._on_set_operator_password
+        )
 
         self.client_relations = MongoDBProvider(self)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
 
-        The same keyFile and admin password on all members needed.
+        The same keyFile and operator password on all members needed.
         It means, it is needed to generate them once and share between members.
         NB: only leader should execute this function.
         """
-        if "admin_password" not in self.app_data:
-            self.app_data["admin_password"] = generate_password()
+        if "operator_password" not in self.app_data:
+            self.app_data["operator_password"] = generate_password()
 
         if "keyfile" not in self.app_data:
             self.app_data["keyfile"] = generate_keyfile()
@@ -99,7 +103,7 @@ class MongoDBCharm(CharmBase):
         replica set fails. By doing so it is guaranteed that another
         attempt at initialization will be made.
 
-        Initial admin user can be created only through localhost connection.
+        Initial operator user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
         unfortunately, pymongo unable to create connection that considered
         as local connection by MongoDB, even if socket connection used.
@@ -245,8 +249,8 @@ class MongoDBCharm(CharmBase):
         return MongoDBConfiguration(
             replset=self.app.name,
             database="admin",
-            username="admin",
-            password=self.app_data.get("admin_password"),
+            username="operator",
+            password=self.app_data.get("operator_password"),
             hosts=set(hosts),
             roles={"default"},
         )
@@ -281,9 +285,9 @@ class MongoDBCharm(CharmBase):
         before=before_log(logger, logging.DEBUG),
     )
     def _init_user(self, container: Container) -> None:
-        """Creates initial admin user for MongoDB.
+        """Creates initial operator user for MongoDB.
 
-        Initial admin user can be created only through localhost connection.
+        Initial operator user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
         unfortunately, pymongo unable to create connection that considered
         as local connection by MongoDB, even if socket connection used.
@@ -303,12 +307,12 @@ class MongoDBCharm(CharmBase):
 
         self.app_data["user_created"] = "True"
 
-    def _on_get_admin_password(self, event: ActionEvent) -> None:
+    def _on_get_operator_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
-        event.set_results({"admin-password": self.app_data.get("admin_password")})
+        event.set_results({"operator-password": self.app_data.get("operator_password")})
 
-    def _on_set_admin_password(self, event: ActionEvent) -> None:
-        """Set the password for the admin user."""
+    def _on_set_operator_password(self, event: ActionEvent) -> None:
+        """Set the password for the operator user."""
         # only leader can write the new password into peer relation.
         if not self.unit.is_leader():
             event.fail("The action can be run only on leader unit.")
@@ -320,7 +324,7 @@ class MongoDBCharm(CharmBase):
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
-                mongo.set_user_password("admin", new_password)
+                mongo.set_user_password("operator", new_password)
             except NotReadyError:
                 event.fail(
                     "Failed changing the password: Not all members healthy or finished initial sync."
@@ -329,8 +333,8 @@ class MongoDBCharm(CharmBase):
             except PyMongoError as e:
                 event.fail(f"Failed changing the password: {e}")
                 return
-        self.app_data["admin_password"] = new_password
-        event.set_results({"admin-password": self.app_data.get("admin_password")})
+        self.app_data["operator_password"] = new_password
+        event.set_results({"operator-password": self.app_data.get("operator_password")})
 
 
 if __name__ == "__main__":

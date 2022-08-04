@@ -64,10 +64,10 @@ async def get_password(ops_test: OpsTest, unit_id: int) -> str:
         String with the password stored on the peer relation databag.
     """
     action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
-        "get-admin-password"
+        "get-operator-password"
     )
     action = await action.wait()
-    return action.results["admin-password"]
+    return action.results["operator-password"]
 
 
 async def mongodb_uri(ops_test: OpsTest, unit_ids: List[int] = None) -> str:
@@ -78,7 +78,7 @@ async def mongodb_uri(ops_test: OpsTest, unit_ids: List[int] = None) -> str:
     hosts = ",".join(addresses)
     password = await get_password(ops_test, unit_id=0)
 
-    return f"mongodb://admin:{password}@{hosts}/admin"
+    return f"mongodb://operator:{password}@{hosts}/admin"
 
 
 # useful, as sometimes, the mongo request returns nothing on the first try
