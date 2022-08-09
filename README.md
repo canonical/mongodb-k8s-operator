@@ -1,12 +1,11 @@
-# Charmed Operator for MongoDB
+# Charmed MongoDB Operator
 
-## Description
+A Charmed MongoDB operator delivers automated operations management from day 0
+to 2 for the [MongoDB Community Edition](https://github.com/mongodb/mongo)
+document database.
 
-The charmed operator for [MongoDB](https://www.mongodb.com/) provides a general
-purpose distributed document database. This repository contains a
-[Juju](https://jaas.ai/) Charm for deploying MongoDB on Kubernetes
-clusters.
-
+This repository contains a [Juju](https://jaas.ai/) Charm for deploying MongoDB
+on Kubernetes clusters.
 
 ## Setup
 
@@ -82,3 +81,15 @@ Install the development requirements
 Just run `run_tests`:
 
     ./run_tests
+
+# License
+
+The Charmed MongoDB Operator is distributed under the Apache Software License,
+version 2.0. It [installs/operates/depends on] [MongoDB Community
+Edition](https://github.com/mongodb/mongo), which is licensed under the Server
+Side Public License (SSPL).
+
+## Trademark notice
+
+MongoDB' is a trademark or registered trademark of MongoDB Inc. Other trademarks
+are property of their respective owners.
