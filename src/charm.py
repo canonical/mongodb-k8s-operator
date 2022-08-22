@@ -11,7 +11,7 @@ includes scaling and other capabilities.
 """
 
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
@@ -64,16 +64,17 @@ class MongoDBCharm(CharmBase):
         It means, it is needed to generate them once and share between members.
         NB: only leader should execute this function.
         """
-        if "operator_password" not in self.app_data:
-            self.app_data["operator_password"] = generate_password()
+        if not self._get_secret("app", "operator_password"):
+            self._set_secret("app", "operator_password", generate_password())
 
-        if "keyfile" not in self.app_data:
-            self.app_data["keyfile"] = generate_keyfile()
+        if not self._get_secret("app", "keyfile"):
+            self._set_secret("app", "keyfile", generate_keyfile())
 
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
-        # mongod needs keyFile on filesystem
+        # Get a reference the container attribute
         container = self.unit.get_container("mongod")
+        # mongod needs keyFile on filesystem
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
             event.defer()
@@ -85,8 +86,6 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        # Get a reference the container attribute on the PebbleReadyEvent
-        container = event.workload
         # Add initial Pebble config layer using the Pebble API
         container.add_layer("mongod", self._mongod_layer, combine=True)
         # Restart changed services and start startup-enabled services.
@@ -233,6 +232,39 @@ class MongoDBCharm(CharmBase):
         return relation.data[self.app]
 
     @property
+    def unit_data(self) -> Dict:
+        """Peer relation data object."""
+        relation = self.model.get_relation(PEER)
+        if relation is None:
+            return {}
+
+        return relation.data[self.unit]
+
+    def _get_secret(self, scope: str, key: str) -> Optional[str]:
+        """Get TLS secret from the secret storage."""
+        if scope == "unit":
+            return self.unit_data.get(key, None)
+        elif scope == "app":
+            return self.app_data.get(key, None)
+        else:
+            raise RuntimeError("Unknown secret scope.")
+
+    def _set_secret(self, scope: str, key: str, value: Optional[str]) -> None:
+        """Get TLS secret from the secret storage."""
+        if scope == "unit":
+            if not value:
+                del self.unit_data[key]
+                return
+            self.unit_data.update({key: value})
+        elif scope == "app":
+            if not value:
+                del self.app_data[key]
+                return
+            self.app_data.update({key: value})
+        else:
+            raise RuntimeError("Unknown secret scope.")
+
+    @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Create a configuration object with settings.
 
@@ -250,7 +282,7 @@ class MongoDBCharm(CharmBase):
             replset=self.app.name,
             database="admin",
             username="operator",
-            password=self.app_data.get("operator_password"),
+            password=self._get_secret("app", "operator_password"),
             hosts=set(hosts),
             roles={"default"},
         )
@@ -259,7 +291,7 @@ class MongoDBCharm(CharmBase):
         """Upload the keyFile to a workload container."""
         container.push(
             KEY_FILE,
-            self.app_data.get("keyfile"),
+            self._get_secret("app", "keyfile"),
             make_dirs=True,
             permissions=0o400,
             user="mongodb",
@@ -309,7 +341,7 @@ class MongoDBCharm(CharmBase):
 
     def _on_get_operator_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
-        event.set_results({"operator-password": self.app_data.get("operator_password")})
+        event.set_results({"operator-password": self._get_secret("app", "operator_password")})
 
     def _on_set_operator_password(self, event: ActionEvent) -> None:
         """Set the password for the operator user."""
@@ -333,8 +365,8 @@ class MongoDBCharm(CharmBase):
             except PyMongoError as e:
                 event.fail(f"Failed changing the password: {e}")
                 return
-        self.app_data["operator_password"] = new_password
-        event.set_results({"operator-password": self.app_data.get("operator_password")})
+        self._set_secret("app", "operator_password", new_password)
+        event.set_results({"operator-password": new_password})
 
 
 if __name__ == "__main__":
