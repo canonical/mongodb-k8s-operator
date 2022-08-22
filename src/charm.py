@@ -124,7 +124,7 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        if "db_initialised" in self.app_data:
+        if "db_initialised" in self.app_peer_data:
             # The replica set should be initialised only once. Check should be
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
@@ -154,7 +154,7 @@ class MongoDBCharm(CharmBase):
                 event.defer()
                 return
 
-            self.app_data["db_initialised"] = "True"
+            self.app_peer_data["db_initialised"] = "True"
 
     def _reconfigure(self, event) -> None:
         """Reconfigure replicat set.
@@ -169,7 +169,7 @@ class MongoDBCharm(CharmBase):
         self._generate_passwords()
 
         # reconfiguration can be successful only if a replica set is initialised.
-        if "db_initialised" not in self.app_data:
+        if "db_initialised" not in self.app_peer_data:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -223,7 +223,7 @@ class MongoDBCharm(CharmBase):
         return Layer(layer_config)
 
     @property
-    def app_data(self) -> Dict:
+    def app_peer_data(self) -> Dict:
         """Peer relation data object."""
         relation = self.model.get_relation(PEER)
         if relation is None:
@@ -232,7 +232,7 @@ class MongoDBCharm(CharmBase):
         return relation.data[self.app]
 
     @property
-    def unit_data(self) -> Dict:
+    def unit_peer_data(self) -> Dict:
         """Peer relation data object."""
         relation = self.model.get_relation(PEER)
         if relation is None:
@@ -243,9 +243,9 @@ class MongoDBCharm(CharmBase):
     def _get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get TLS secret from the secret storage."""
         if scope == "unit":
-            return self.unit_data.get(key, None)
+            return self.unit_peer_data.get(key, None)
         elif scope == "app":
-            return self.app_data.get(key, None)
+            return self.app_peer_data.get(key, None)
         else:
             raise RuntimeError("Unknown secret scope.")
 
@@ -253,14 +253,14 @@ class MongoDBCharm(CharmBase):
         """Get TLS secret from the secret storage."""
         if scope == "unit":
             if not value:
-                del self.unit_data[key]
+                del self.unit_peer_data[key]
                 return
-            self.unit_data.update({key: value})
+            self.unit_peer_data.update({key: value})
         elif scope == "app":
             if not value:
-                del self.app_data[key]
+                del self.app_peer_data[key]
                 return
-            self.app_data.update({key: value})
+            self.app_peer_data.update({key: value})
         else:
             raise RuntimeError("Unknown secret scope.")
 
@@ -327,7 +327,7 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside charm container to make
         this function work correctly.
         """
-        if "user_created" in self.app_data:
+        if "user_created" in self.app_peer_data:
             return
 
         process = container.exec(
@@ -337,7 +337,7 @@ class MongoDBCharm(CharmBase):
         stdout, _ = process.wait_output()
         logger.debug("User created: %s", stdout)
 
-        self.app_data["user_created"] = "True"
+        self.app_peer_data["user_created"] = "True"
 
     def _on_get_operator_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""

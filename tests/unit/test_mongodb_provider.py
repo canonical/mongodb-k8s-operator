@@ -63,7 +63,7 @@ class TestMongoProvider(unittest.TestCase):
         """Tests the errors related to pymongo when overseeing users result in a defer."""
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         relation_id = self.harness.add_relation("database", "consumer")
 
         for exception, expected_raise in PYMONGO_EXCEPTIONS:
@@ -86,7 +86,7 @@ class TestMongoProvider(unittest.TestCase):
         """Verifies that when users are formatted incorrectly an assertion error is raised."""
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         relation_id = self.harness.add_relation("database", "consumer")
 
         # AssertionError is raised when unable to attain users from relation (due to name

@@ -59,7 +59,7 @@ class MongoDBProvider(Object):
             return
         # We shouldn't try to create or update users if the database is not
         # initialised. We will create users as part of initialisation.
-        if "db_initialised" not in self.charm.app_data:
+        if "db_initialised" not in self.charm.app_peer_data:
             return
 
         departed_relation_id = None

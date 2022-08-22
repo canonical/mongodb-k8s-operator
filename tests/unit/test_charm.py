@@ -169,7 +169,7 @@ class TestCharm(unittest.TestCase):
         provider.return_value.oversee_users.assert_not_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_data, False)
+        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_not_called()
 
     @patch("ops.framework.EventBase.defer")
@@ -196,7 +196,7 @@ class TestCharm(unittest.TestCase):
         provider.return_value.oversee_users.assert_not_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_data, False)
+        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
@@ -224,7 +224,7 @@ class TestCharm(unittest.TestCase):
         provider.return_value.oversee_users.assert_not_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_data, False)
+        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
@@ -253,7 +253,7 @@ class TestCharm(unittest.TestCase):
         provider.return_value.oversee_users.assert_not_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_data, False)
+        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_not_called()
 
     @patch("ops.framework.EventBase.defer")
@@ -274,7 +274,7 @@ class TestCharm(unittest.TestCase):
         mock_container.return_value.exists.return_value = True
         self.harness.charm.unit.get_container = mock_container
 
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
 
         self.harness.charm.on.start.emit()
 
@@ -313,7 +313,7 @@ class TestCharm(unittest.TestCase):
         provider.return_value.oversee_users.assert_not_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_data, False)
+        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
@@ -345,7 +345,7 @@ class TestCharm(unittest.TestCase):
             provider.return_value.oversee_users.assert_not_called()
 
             # verify app data
-            self.assertEqual("db_initialised" in self.harness.charm.app_data, False)
+            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
             defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
@@ -374,7 +374,7 @@ class TestCharm(unittest.TestCase):
         defer.assert_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_data, False)
+        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -403,7 +403,7 @@ class TestCharm(unittest.TestCase):
             defer.assert_called()
 
             # verify app data
-            self.assertEqual("db_initialised" in self.harness.charm.app_data, False)
+            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
@@ -457,7 +457,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         rel = self.harness.charm.model.get_relation("database-peers")
 
         for exception, _ in PYMONGO_EXCEPTIONS:
@@ -492,7 +492,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "mongodb-k8s-0.mongodb-k8s-endpoints",
             "mongodb-k8s-1.mongodb-k8s-endpoints",
@@ -526,7 +526,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "mongodb-k8s-0.mongodb-k8s-endpoints"
         }
@@ -550,7 +550,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "mongodb-k8s-0.mongodb-k8s-endpoints"
         }
@@ -594,7 +594,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.start.emit()
 
         # verify app data
-        self.assertEqual("user_created" in self.harness.charm.app_data, True)
+        self.assertEqual("user_created" in self.harness.charm.app_peer_data, True)
         defer.assert_called()
 
         # the second call to init user should fail if "exec" is called, but shouldn't happen
