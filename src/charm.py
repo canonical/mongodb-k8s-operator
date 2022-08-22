@@ -80,7 +80,7 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
         try:
-            self._set_keyfile(container)
+            self._push_keyfile_to_workload(container)
         except (PathError, ProtocolError) as e:
             logger.error("Cannot put keyFile: %r", e)
             event.defer()
@@ -287,7 +287,7 @@ class MongoDBCharm(CharmBase):
             roles={"default"},
         )
 
-    def _set_keyfile(self, container: Container) -> None:
+    def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
         container.push(
             KEY_FILE,

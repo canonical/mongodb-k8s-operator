@@ -79,8 +79,8 @@ class TestCharm(unittest.TestCase):
         defer.assert_not_called()
 
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._set_keyfile")
-    def test_pebble_ready_cannot_retrieve_container(self, set_keyfile, defer):
+    @patch("charm.MongoDBCharm._push_keyfile_to_workload")
+    def test_pebble_ready_cannot_retrieve_container(self, push_keyfile_to_workload, defer):
         """Test verifies behavior when retrieving container results in ModelError in pebble ready.
 
         Verifies that when a failure to get a container occurs, that that failure is raised and
@@ -95,14 +95,14 @@ class TestCharm(unittest.TestCase):
         with self.assertRaises(ModelError):
             self.harness.charm.on.mongod_pebble_ready.emit(mock_container)
 
-        set_keyfile.assert_not_called()
+        push_keyfile_to_workload.assert_not_called()
         mock_container.add_layer.assert_not_called()
         mock_container.replan.assert_not_called()
         defer.assert_not_called()
 
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._set_keyfile")
-    def test_pebble_ready_container_cannot_connect(self, set_keyfile, defer):
+    @patch("charm.MongoDBCharm._push_keyfile_to_workload")
+    def test_pebble_ready_container_cannot_connect(self, push_keyfile_to_workload, defer):
         """Test verifies behavior when cannot connect to container in pebble ready function.
 
         Verifies that when a failure to connect to container results in a deferral and that no
@@ -117,14 +117,14 @@ class TestCharm(unittest.TestCase):
         # Emit the PebbleReadyEvent carrying the mongod container
         self.harness.charm.on.mongod_pebble_ready.emit(mock_container)
 
-        set_keyfile.assert_not_called()
+        push_keyfile_to_workload.assert_not_called()
         mock_container.add_layer.assert_not_called()
         mock_container.replan.assert_not_called()
         defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._set_keyfile")
-    def test_pebble_ready_set_keyfile_failure(self, set_keyfile, defer):
+    @patch("charm.MongoDBCharm._push_keyfile_to_workload")
+    def test_pebble_ready_push_keyfile_to_workload_failure(self, push_keyfile_to_workload, defer):
         """Test verifies behavior when setting keyfile fails.
 
         Verifies that when a failure to set keyfile occurs that there is no attempt to add layers
@@ -137,7 +137,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.unit.get_container = mock_container
 
         for exception in [PathError("kind", "message"), ProtocolError("kind", "message")]:
-            set_keyfile.side_effect = exception
+            push_keyfile_to_workload.side_effect = exception
 
             # Emit the PebbleReadyEvent carrying the mongod container
             self.harness.charm.on.mongod_pebble_ready.emit(mock_container)
