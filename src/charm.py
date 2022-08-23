@@ -21,6 +21,7 @@ from charms.mongodb_libs.v0.helpers import (
     get_mongod_cmd,
 )
 from charms.mongodb_libs.v0.mongodb import (
+    CHARM_USERS,
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
@@ -48,12 +49,8 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.leader_elected, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_changed, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_departed, self._reconfigure)
-        self.framework.observe(
-            self.on.get_operator_password_action, self._on_get_operator_password
-        )
-        self.framework.observe(
-            self.on.set_operator_password_action, self._on_set_operator_password
-        )
+        self.framework.observe(self.on.get_password_action, self._on_get_password)
+        self.framework.observe(self.on.set_password_action, self._on_set_password)
 
         self.client_relations = MongoDBProvider(self)
 
@@ -339,24 +336,48 @@ class MongoDBCharm(CharmBase):
 
         self.app_peer_data["user_created"] = "True"
 
-    def _on_get_operator_password(self, event: ActionEvent) -> None:
+    def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
-        event.set_results({"operator-password": self._get_secret("app", "operator_password")})
+        username = "operator"
+        if "username" in event.params:
+            username = event.params["username"]
+        if username not in CHARM_USERS:
+            event.fail(
+                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}"
+            )
+            return
+        event.set_results(
+            {f"{username}-password": self._get_secret("app", f"{username}_password")}
+        )
 
-    def _on_set_operator_password(self, event: ActionEvent) -> None:
-        """Set the password for the operator user."""
+    def _on_set_password(self, event: ActionEvent) -> None:
+        """Set the password for the specified user."""
         # only leader can write the new password into peer relation.
         if not self.unit.is_leader():
             event.fail("The action can be run only on leader unit.")
+            return
+
+        username = "operator"
+        if "username" in event.params:
+            username = event.params["username"]
+        if username not in CHARM_USERS:
+            event.fail(
+                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}."
+            )
             return
 
         new_password = generate_password()
         if "password" in event.params:
             new_password = event.params["password"]
 
+        if new_password == self._get_secret("app", f"{username}_password"):
+            event.log("The old and new passwords are equal.")
+            event.set_results({f"{username}-password": new_password})
+            return
+
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
-                mongo.set_user_password("operator", new_password)
+                mongo.set_user_password(username, new_password)
             except NotReadyError:
                 event.fail(
                     "Failed changing the password: Not all members healthy or finished initial sync."
@@ -365,8 +386,8 @@ class MongoDBCharm(CharmBase):
             except PyMongoError as e:
                 event.fail(f"Failed changing the password: {e}")
                 return
-        self._set_secret("app", "operator_password", new_password)
-        event.set_results({"operator-password": new_password})
+        self._set_secret("app", f"{username}_password", new_password)
+        event.set_results({f"{username}-password": new_password})
 
 
 if __name__ == "__main__":

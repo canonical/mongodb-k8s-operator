@@ -35,6 +35,9 @@ LIBAPI = 0
 # to 0 if you are raising the major API version.
 LIBPATCH = 0
 
+# List of system usernames needed for correct work on the charm.
+CHARM_USERS = ["operator"]
+
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
 

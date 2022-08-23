@@ -63,9 +63,7 @@ async def get_password(ops_test: OpsTest, unit_id: int) -> str:
     Returns:
         String with the password stored on the peer relation databag.
     """
-    action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
-        "get-operator-password"
-    )
+    action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action("get-password")
     action = await action.wait()
     return action.results["operator-password"]
 
