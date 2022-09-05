@@ -167,7 +167,7 @@ class TestMongoProvider(unittest.TestCase):
     def test_oversee_users_create_user_failure(
         self, connection, relation_users, get_config, set_relation
     ):
-        """Verfies when user creation fails an exception is raised and no relations are set."""
+        """Verifies when user creation fails an exception is raised and no relations are set."""
         # presets, such that the need to create user relations is triggered
         relation_users.return_value = {"relation-user1", "relation-user2"}
         connection.return_value.__enter__.return_value.get_users.return_value = {"relation-user1"}
