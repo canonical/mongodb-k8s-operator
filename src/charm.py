@@ -327,8 +327,12 @@ class MongoDBCharm(CharmBase):
         if "user_created" in self.app_peer_data:
             return
 
+        mongo_cmd = (
+            "/usr/bin/mongosh" if container.exists("/usr/bin/mongosh") else "/usr/bin/mongo"
+        )
+
         process = container.exec(
-            command=get_create_user_cmd(self.mongodb_config),
+            command=get_create_user_cmd(mongo_cmd, self.mongodb_config),
             stdin=self.mongodb_config.password,
         )
         stdout, _ = process.wait_output()

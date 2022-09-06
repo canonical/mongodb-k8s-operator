@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 # noinspection GrazieInspection
-def get_create_user_cmd(config: MongoDBConfiguration) -> List[str]:
+def get_create_user_cmd(mongo_path: str, config: MongoDBConfiguration) -> List[str]:
     """Creates initial admin user for MongoDB
 
     Initial admin user can be created only through localhost connection.
@@ -38,7 +38,7 @@ def get_create_user_cmd(config: MongoDBConfiguration) -> List[str]:
     this function work correctly
     """
     return [
-        "mongo",
+        mongo_path,
         "mongodb://localhost/admin",
         "--quiet",
         "--eval",
