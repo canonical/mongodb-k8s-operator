@@ -20,6 +20,10 @@ LIBPATCH = 0
 
 # path to store mongodb ketFile
 KEY_FILE = "/etc/mongodb/keyFile"
+TLS_EXT_PEM_FILE = "/etc/mongodb/external-cert.pem"
+TLS_EXT_CA_FILE = "/etc/mongodb/external-ca.crt"
+TLS_INT_PEM_FILE = "/etc/mongodb/internal-cert.pem"
+TLS_INT_CA_FILE = "/etc/mongodb/internal-ca.crt"
 
 
 logger = logging.getLogger(__name__)
@@ -70,14 +74,29 @@ def get_mongod_cmd(config: MongoDBConfiguration) -> str:
         "--auth",
         # part of replicaset
         f"--replSet={config.replset}",
-        # keyFile used for authentication replica set peers
-        # TODO: replace with x509
-        "--clusterAuthMode=keyFile",
-        f"--keyFile={KEY_FILE}",
-        # TODO: add TLS certificates paths
-        # allow self signed certificates
-        # cmd.append("--tlsAllowInvalidCertificates")
     ]
+    if config.tls_external:
+        cmd.extend([
+            f"--tlsCAFile={TLS_EXT_CA_FILE}",
+            f"--tlsCertificateKeyFile={TLS_EXT_PEM_FILE}",
+            # allow non-TLS connections
+            "--tlsMode=preferTLS",
+        ])
+
+    # internal TLS can be enabled only in external is enabled
+    if config.tls_internal and config.tls_external:
+        cmd.extend([
+            "--clusterAuthMode=x509",
+            "--tlsAllowInvalidCertificates",
+            f"--tlsClusterCAFile={TLS_INT_CA_FILE}",
+            f"--tlsClusterFile={TLS_INT_PEM_FILE}",
+        ])
+    else:
+        # keyFile used for authentication replica set peers if no internal tls configured.
+        cmd.extend([
+            "--clusterAuthMode=keyFile",
+            f"--keyFile={KEY_FILE}",
+        ])
     return " ".join(cmd)
 
 

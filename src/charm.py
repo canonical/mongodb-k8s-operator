@@ -15,6 +15,10 @@ from typing import Dict, Optional
 
 from charms.mongodb_libs.v0.helpers import (
     KEY_FILE,
+    TLS_EXT_CA_FILE,
+    TLS_EXT_PEM_FILE,
+    TLS_INT_CA_FILE,
+    TLS_INT_PEM_FILE,
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
@@ -27,6 +31,7 @@ from charms.mongodb_libs.v0.mongodb import (
     NotReadyError,
 )
 from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
+from charms.mongodb_libs.v0.mongodb_tls import MongoDBTLS
 from ops.charm import ActionEvent, CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Container
@@ -44,7 +49,7 @@ class MongoDBCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
+        self.framework.observe(self.on.mongod_pebble_ready, self.on_mongod_pebble_ready)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.leader_elected, self._reconfigure)
         self.framework.observe(self.on[PEER].relation_changed, self._reconfigure)
@@ -53,6 +58,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.set_password_action, self._on_set_password)
 
         self.client_relations = MongoDBProvider(self)
+        self.tls = MongoDBTLS(self, PEER)
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -61,27 +67,37 @@ class MongoDBCharm(CharmBase):
         It means, it is needed to generate them once and share between members.
         NB: only leader should execute this function.
         """
-        if not self._get_secret("app", "operator_password"):
-            self._set_secret("app", "operator_password", generate_password())
+        if not self.get_secret("app", "operator_password"):
+            self.set_secret("app", "operator_password", generate_password())
 
-        if not self._get_secret("app", "keyfile"):
-            self._set_secret("app", "keyfile", generate_keyfile())
+        if not self.get_secret("app", "keyfile"):
+            self.set_secret("app", "keyfile", generate_keyfile())
 
-    def _on_mongod_pebble_ready(self, event) -> None:
+    def on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
         # Get a reference the container attribute
         container = self.unit.get_container("mongod")
-        # mongod needs keyFile on filesystem
+        # mongod needs keyFile and TLS certificates on filesystem
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
             event.defer()
             return
         try:
+            self._push_certificate_to_workload(container)
             self._push_keyfile_to_workload(container)
         except (PathError, ProtocolError) as e:
             logger.error("Cannot put keyFile: %r", e)
             event.defer()
             return
+
+        # service is running if TLS encryption enabled/disabled
+        services = container.get_services("mongod")
+        if services and services["mongod"].is_running():
+            new_command = get_mongod_cmd(self.mongodb_config)
+            cur_command = container.get_plan().services["mongod"].command
+            if new_command != cur_command:
+                logger.debug("restart MongoDB due to arguments change: %s", new_command)
+                container.stop("mongod")
 
         # Add initial Pebble config layer using the Pebble API
         container.add_layer("mongod", self._mongod_layer, combine=True)
@@ -237,7 +253,7 @@ class MongoDBCharm(CharmBase):
 
         return relation.data[self.unit]
 
-    def _get_secret(self, scope: str, key: str) -> Optional[str]:
+    def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get TLS secret from the secret storage."""
         if scope == "unit":
             return self.unit_peer_data.get(key, None)
@@ -246,7 +262,7 @@ class MongoDBCharm(CharmBase):
         else:
             raise RuntimeError("Unknown secret scope.")
 
-    def _set_secret(self, scope: str, key: str, value: Optional[str]) -> None:
+    def set_secret(self, scope: str, key: str, value: Optional[str]) -> None:
         """Get TLS secret from the secret storage."""
         if scope == "unit":
             if not value:
@@ -271,31 +287,77 @@ class MongoDBCharm(CharmBase):
             A MongoDBConfiguration object
         """
         peers = self.model.get_relation(PEER)
-        hosts = [self._get_hostname_by_unit(self.unit.name)] + [
-            self._get_hostname_by_unit(unit.name) for unit in peers.units
+        hosts = [self.get_hostname_by_unit(self.unit.name)] + [
+            self.get_hostname_by_unit(unit.name) for unit in peers.units
         ]
+        external_ca, _ = self.tls.get_tls_files("unit")
+        internal_ca, _ = self.tls.get_tls_files("app")
 
         return MongoDBConfiguration(
             replset=self.app.name,
             database="admin",
             username="operator",
-            password=self._get_secret("app", "operator_password"),
+            password=self.get_secret("app", "operator_password"),
             hosts=set(hosts),
             roles={"default"},
+            tls_external=external_ca is not None,
+            tls_internal=internal_ca is not None,
         )
 
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
         container.push(
             KEY_FILE,
-            self._get_secret("app", "keyfile"),
+            self.get_secret("app", "keyfile"),
             make_dirs=True,
             permissions=0o400,
             user="mongodb",
             group="mongodb",
         )
 
-    def _get_hostname_by_unit(self, unit_name: str) -> str:
+    def _push_certificate_to_workload(self, container: Container) -> None:
+        """Uploads certificate to the workload container."""
+        external_ca, external_pem = self.tls.get_tls_files("unit")
+        if external_ca is not None:
+            container.push(
+                TLS_EXT_CA_FILE,
+                external_ca,
+                make_dirs=True,
+                permissions=0o400,
+                user="mongodb",
+                group="mongodb",
+            )
+        if external_pem is not None:
+            container.push(
+                TLS_EXT_PEM_FILE,
+                external_pem,
+                make_dirs=True,
+                permissions=0o400,
+                user="mongodb",
+                group="mongodb",
+            )
+
+        internal_ca, internal_pem = self.tls.get_tls_files("app")
+        if internal_ca is not None:
+            container.push(
+                TLS_INT_CA_FILE,
+                internal_ca,
+                make_dirs=True,
+                permissions=0o400,
+                user="mongodb",
+                group="mongodb",
+            )
+        if internal_pem is not None:
+            container.push(
+                TLS_INT_PEM_FILE,
+                internal_pem,
+                make_dirs=True,
+                permissions=0o400,
+                user="mongodb",
+                group="mongodb",
+            )
+
+    def get_hostname_by_unit(self, unit_name: str) -> str:
         """Create a DNS name for a MongoDB unit.
 
         Args:
@@ -350,9 +412,7 @@ class MongoDBCharm(CharmBase):
                 f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}"
             )
             return
-        event.set_results(
-            {f"{username}-password": self._get_secret("app", f"{username}_password")}
-        )
+        event.set_results({f"{username}-password": self.get_secret("app", f"{username}_password")})
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the specified user."""
@@ -374,7 +434,7 @@ class MongoDBCharm(CharmBase):
         if "password" in event.params:
             new_password = event.params["password"]
 
-        if new_password == self._get_secret("app", f"{username}_password"):
+        if new_password == self.get_secret("app", f"{username}_password"):
             event.log("The old and new passwords are equal.")
             event.set_results({f"{username}-password": new_password})
             return
@@ -390,7 +450,7 @@ class MongoDBCharm(CharmBase):
             except PyMongoError as e:
                 event.fail(f"Failed changing the password: {e}")
                 return
-        self._set_secret("app", f"{username}_password", new_password)
+        self.set_secret("app", f"{username}_password", new_password)
         event.set_results({f"{username}-password": new_password})
 
 
