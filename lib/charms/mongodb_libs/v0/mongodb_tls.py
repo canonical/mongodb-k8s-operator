@@ -11,9 +11,16 @@ external relation.
 import re
 import logging
 import base64
+import socket
+from cryptography import x509
+from cryptography.x509.extensions import ExtensionType
 from ops.framework import Object
 from ops.charm import ActionEvent
-from typing import Optional
+from charms.tls_certificates_interface.v1.tls_certificates import (
+    generate_csr,
+    generate_private_key,
+)
+from typing import List, Optional
 
 # The unique Charmhub library identifier, never change it
 LIBID = "1057f353503741a98ed79309b5be7e33"
@@ -42,26 +49,31 @@ class MongoDBTLS(Object):
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
         """Set the TLS private key, which will be used for requesting the certificate."""
         try:
-            self._request_certificate("unit", "key", event.params.get("external-key", None))
-            self._request_certificate("unit", "ca", event.params.get("external-ca", None))
-            self._request_certificate("unit", "cert", event.params.get("external-cert", None))
+            self._request_certificate("unit", event.params.get("external-key", None))
             if not self.charm.unit.is_leader():
                 event.log(
                     "Only juju leader unit can set private key for the internal certificate. Skipping."
                 )
                 return
-            self._request_certificate("app", "key", event.params.get("internal-key", None))
-            self._request_certificate("app", "ca", event.params.get("internal-ca", None))
-            self._request_certificate("app", "cert", event.params.get("internal-cert", None))
+            self._request_certificate("app", event.params.get("internal-key", None))
         except ValueError as e:
             event.fail(str(e))
 
-    def _request_certificate(self, scope: str, file: str, param: Optional[str]):
-        if not param:
-            return
+    def _request_certificate(self, scope: str, param: Optional[str]):
+        if param is None:
+            key = generate_private_key()
+        else:
+            key = self._parse_tls_file(param)
 
-        key = self._parse_tls_file(param)
-        self.charm.set_secret(scope, file, key.decode("utf-8"))
+        csr = generate_csr(
+            private_key=key,
+            subject=self.charm.get_hostname_by_unit(self.charm.unit.name),
+            organization=self.charm.app.name,
+            sans=self._get_sans(),
+        )
+
+        self.charm.set_secret(scope, "key", key.decode("utf-8"))
+        self.charm.set_secret(scope, "csr", csr.decode("utf-8"))
 
     @staticmethod
     def _parse_tls_file(raw_content: str) -> bytes:
@@ -73,6 +85,19 @@ class MongoDBTLS(Object):
                 raw_content,
             ).encode("utf-8")
         return base64.b64decode(raw_content)
+
+    def _get_sans(self) -> List[str]:
+        """Create a list of DNS names for a MongoDB unit.
+
+        Returns:
+            A list representing the hostnames of the MongoDB unit.
+        """
+        unit_id = self.charm.unit.name.split("/")[1]
+        return [
+            f"{self.charm.app.name}-{unit_id}",
+            socket.getfqdn(),
+            str(self.charm.model.get_binding(self.peer_relation).network.bind_address),
+        ]
 
     def get_tls_files(self, scope: str) -> (Optional[str], Optional[str]):
         """Prepare TLS files in special MongoDB way.
