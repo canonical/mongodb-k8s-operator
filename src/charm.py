@@ -139,7 +139,7 @@ class MongoDBCharm(CharmBase):
                 logger.info("User initialization")
                 self._init_user(container)
                 logger.info("Reconcile relations")
-                self.client_relations.oversee_users(None)
+                self.client_relations.oversee_users(None, event)
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr

@@ -1,25 +1,23 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""In this class we manage client database relations.
+"""In this class, we manage client database relations.
 
-This class creates user and database for each application relation
+This class creates a user and database for each application relation
 and expose needed information for client connection via fields in
 external relation.
 """
-
-import re
+import json
 import logging
+import re
+from collections import namedtuple
 from typing import Optional, Set
 
 from charms.mongodb_libs.v0.helpers import generate_password
-from charms.mongodb_libs.v0.mongodb import (
-    MongoDBConfiguration,
-    MongoDBConnection,
-)
+from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from ops.charm import RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import Relation
-from ops.charm import RelationBrokenEvent
 from pymongo.errors import PyMongoError
 
 # The unique Charmhub library identifier, never change it
@@ -30,19 +28,34 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version.
-LIBPATCH = 0
+LIBPATCH = 1
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 
+LEGACY_REL_NAME = "obsolete"
+
+# We expect the MongoDB container to use the default ports
+MONGODB_PORT = 27017
+MONGODB_VERSION = "5.0"
+PEER = "database-peers"
+
+Diff = namedtuple("Diff", "added changed deleted")
+Diff.__doc__ = """
+A tuple for storing the diff between two data mappings.
+added — keys that were added
+changed — keys that still exist but have new values
+deleted — key that were deleted."""
+
 
 class MongoDBProvider(Object):
-    """In this class we manage client database relations."""
+    """In this class, we manage client database relations."""
 
-    def __init__(self, charm):
+    def __init__(self, charm, substrate="k8s"):
         """Manager of MongoDB client relations."""
         super().__init__(charm, "client-relations")
         self.charm = charm
+        self.substrate = substrate
         self.framework.observe(self.charm.on[REL_NAME].relation_joined, self._on_relation_event)
         self.framework.observe(self.charm.on[REL_NAME].relation_changed, self._on_relation_event)
         self.framework.observe(self.charm.on[REL_NAME].relation_broken, self._on_relation_event)
@@ -52,7 +65,7 @@ class MongoDBProvider(Object):
 
         When relations join, change, or depart, the :class:`MongoDBClientRelation`
         creates or drops MongoDB users and sets credentials into relation
-        data. As result, related charm gets credentials for accessing the
+        data. As a result, related charm gets credentials for accessing the
         MongoDB database.
         """
         if not self.charm.unit.is_leader():
@@ -67,13 +80,13 @@ class MongoDBProvider(Object):
             departed_relation_id = event.relation.id
 
         try:
-            self.oversee_users(departed_relation_id)
+            self.oversee_users(departed_relation_id, event)
         except PyMongoError as e:
             logger.error("Deferring _on_relation_event since: error=%r", e)
             event.defer()
             return
 
-    def oversee_users(self, departed_relation_id: Optional[int]):
+    def oversee_users(self, departed_relation_id: Optional[int], event):
         """Oversees the users of the application.
 
         Function manages user relations by removing, updated, and creating
@@ -83,9 +96,10 @@ class MongoDBProvider(Object):
             departed_relation_id: When specified execution of functions
                 makes sure to exclude the users and databases and remove
                 them if necessary.
+            event: relation event.
 
         When the function is executed in relation departed event, the departed
-        relation is still in the list of all relations. Therefore, for proper
+        relation is still on the list of all relations. Therefore, for proper
         work of the function, we need to exclude departed relation from the list.
         """
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
@@ -97,9 +111,9 @@ class MongoDBProvider(Object):
                 mongo.drop_user(username)
 
             for username in relation_users - database_users:
-                config = self._get_config(username)
+                config = self._get_config(username, None)
                 if config.database is None:
-                    # We need to wait for moment when provider library
+                    # We need to wait for the moment when the provider library
                     # set the database name into the relation.
                     continue
                 logger.info("Create relation user: %s on %s", config.username, config.database)
@@ -107,9 +121,11 @@ class MongoDBProvider(Object):
                 self._set_relation(config)
 
             for username in relation_users.intersection(database_users):
-                config = self._get_config(username)
+                config = self._get_config(username, None)
                 logger.info("Update relation user: %s on %s", config.username, config.database)
                 mongo.update_user(config)
+                logger.info("Updating relation data according to diff")
+                self._diff(event)
 
             if not self.charm.model.config["auto-delete"]:
                 return
@@ -120,14 +136,53 @@ class MongoDBProvider(Object):
                 logger.info("Drop database: %s", database)
                 mongo.drop_database(database)
 
-    def _get_config(self, username: str) -> MongoDBConfiguration:
-        """Construct config object for future user creation."""
+    def _diff(self, event: RelationChangedEvent) -> Diff:
+        """Retrieves the diff of the data in the relation changed databag.
+
+        Args:
+            event: relation changed event.
+
+        Returns:
+            a Diff instance containing the added, deleted and changed
+                keys from the event relation databag.
+        """
+        # TODO import marvelous unit tests in a future PR
+        # Retrieve the old data from the data key in the application relation databag.
+        old_data = json.loads(event.relation.data[self.charm.model.app].get("data", "{}"))
+        # Retrieve the new data from the event relation databag.
+        new_data = {
+            key: value for key, value in event.relation.data[event.app].items() if key != "data"
+        }
+
+        # These are the keys that were added to the databag and triggered this event.
+        added = new_data.keys() - old_data.keys()
+        # These are the keys that were removed from the databag and triggered this event.
+        deleted = old_data.keys() - new_data.keys()
+        # These are the keys that already existed in the databag
+        # but had their values changed.
+        changed = {
+            key for key in old_data.keys() & new_data.keys() if old_data[key] != new_data[key]
+        }
+
+        # TODO: update when evaluation of the possibility of losing the diff is completed
+        # happens in the charm before the diff is completely checked (DPE-412).
+        # Convert the new_data to a serializable format and save it for a next diff check.
+        event.relation.data[self.charm.model.app].update({"data": json.dumps(new_data)})
+
+        # Return the diff with all possible changes.
+        return Diff(added, changed, deleted)
+
+    def _get_config(self, username: str, password: Optional[str]) -> MongoDBConfiguration:
+        """Construct the config object for future user creation."""
         relation = self._get_relation_from_username(username)
+        if not password:
+            password = generate_password()
+
         return MongoDBConfiguration(
             replset=self.charm.app.name,
             database=self._get_database_from_relation(relation),
             username=username,
-            password=generate_password(),
+            password=password,
             hosts=self.charm.mongodb_config.hosts,
             roles=self._get_roles_from_relation(relation),
         )
@@ -137,26 +192,31 @@ class MongoDBProvider(Object):
         relation = self._get_relation_from_username(config.username)
         if relation is None:
             return None
-        relation.data[self.charm.app]["username"] = config.username
-        relation.data[self.charm.app]["password"] = config.password
-        relation.data[self.charm.app]["database"] = config.database
-        relation.data[self.charm.app]["endpoints"] = ",".join(config.hosts)
-        relation.data[self.charm.app]["replset"] = config.replset
-        relation.data[self.charm.app]["uris"] = config.uri
+
+        data = relation.data[self.charm.app]
+        data["username"] = config.username
+        data["password"] = config.password
+        data["database"] = config.database
+        data["endpoints"] = ",".join(config.hosts)
+        data["replset"] = config.replset
+        data["uris"] = config.uri
+        relation.data[self.charm.app].update(data)
 
     @staticmethod
     def _get_username_from_relation_id(relation_id: int) -> str:
         """Construct username."""
         return f"relation-{relation_id}"
 
-    def _get_users_from_relations(self, departed_relation_id: Optional[int]):
+    def _get_users_from_relations(self, departed_relation_id: Optional[int], rel=REL_NAME):
         """Return usernames for all relations except departed relation."""
-        relations = self.model.relations[REL_NAME]
-        return set([
-            self._get_username_from_relation_id(relation.id)
-            for relation in relations
-            if relation.id != departed_relation_id
-        ])
+        relations = self.model.relations[rel]
+        return set(
+            [
+                self._get_username_from_relation_id(relation.id)
+                for relation in relations
+                if relation.id != departed_relation_id
+            ]
+        )
 
     def _get_databases_from_relations(self, departed_relation_id: Optional[int]) -> Set[str]:
         """Return database names from all relations.
@@ -181,29 +241,24 @@ class MongoDBProvider(Object):
         match = re.match(r"^relation-(\d+)$", username)
         # We generated username in `_get_users_from_relations`
         # func and passed it into this function later.
-        # It means the username here MUST match to regex.
+        # It means the username here MUST match regex.
         assert match is not None, "No relation match"
         relation_id = int(match.group(1))
+        logger.debug("Relation ID: %s", relation_id)
         return self.model.get_relation(REL_NAME, relation_id)
 
-    def _get_database_from_relation(self, relation: Relation) -> Optional[str]:
+    @staticmethod
+    def _get_database_from_relation(relation: Relation) -> Optional[str]:
         """Return database name from relation."""
-        for unit in relation.units:
-            if unit.app is self.charm.app:
-                # it is peer relation, skip
-                continue
-            database = relation.data[unit].get("database", None)
-            if database is not None:
-                return database
+        database = relation.data[relation.app].get("database", None)
+        if database is not None:
+            return database
         return None
 
-    def _get_roles_from_relation(self, relation: Relation) -> Set[str]:
+    @staticmethod
+    def _get_roles_from_relation(relation: Relation) -> Set[str]:
         """Return additional user roles from relation if specified or return None."""
-        for unit in relation.units:
-            if unit.app is self.charm.app:
-                # it is peer relation, skip
-                continue
-            roles = relation.data[unit].get("extra-user-roles", None)
-            if roles is not None:
-                return set(roles.split(","))
+        roles = relation.data[relation.app].get("extra-user-roles", None)
+        if roles is not None:
+            return set(roles.split(","))
         return {"default"}
