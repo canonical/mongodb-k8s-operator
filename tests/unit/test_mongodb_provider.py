@@ -2,8 +2,10 @@
 # See LICENSE file for licensing details.
 
 import unittest
+from unittest import mock
 from unittest.mock import patch
 
+from ops.charm import RelationEvent
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 
@@ -57,6 +59,7 @@ class TestMongoProvider(unittest.TestCase):
         oversee_users.assert_not_called()
         defer.assert_not_called()
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     def test_relation_event_oversee_users_mongo_failure(self, oversee_users, defer):
@@ -80,6 +83,7 @@ class TestMongoProvider(unittest.TestCase):
             defer.assert_called()
 
     # oversee_users raises AssertionError when unable to attain users from relation
+    @patch_network_get(private_address="1.1.1.1")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     def test_relation_event_oversee_users_fails_to_get_relation(self, oversee_users, defer):
@@ -101,6 +105,7 @@ class TestMongoProvider(unittest.TestCase):
                 else:
                     self.harness.remove_relation_unit(relation_id, "consumer/0")
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
     def test_oversee_users_get_users_failure(self, connection):
         """Verifies that when unable to retrieve users from mongod an exception is raised."""
@@ -108,8 +113,11 @@ class TestMongoProvider(unittest.TestCase):
             for exception, expected_raise in PYMONGO_EXCEPTIONS:
                 connection.return_value.__enter__.return_value.get_users.side_effect = exception
                 with self.assertRaises(expected_raise):
-                    self.harness.charm.client_relations.oversee_users(dep_id)
+                    self.harness.charm.client_relations.oversee_users(
+                        dep_id, RelationEvent(mock.Mock(), mock.Mock())
+                    )
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_users_from_relations")
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
     def test_oversee_users_drop_user_failure(self, connection, relation_users):
@@ -125,8 +133,11 @@ class TestMongoProvider(unittest.TestCase):
             for exception, expected_raise in PYMONGO_EXCEPTIONS:
                 connection.return_value.__enter__.return_value.drop_user.side_effect = exception
                 with self.assertRaises(expected_raise):
-                    self.harness.charm.client_relations.oversee_users(dep_id)
+                    self.harness.charm.client_relations.oversee_users(
+                        dep_id, RelationEvent(mock.Mock(), mock.Mock())
+                    )
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_users_from_relations")
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
     def test_oversee_users_get_config_failure(self, connection, relation_users):
@@ -139,14 +150,18 @@ class TestMongoProvider(unittest.TestCase):
 
         for dep_id in DEPARTED_IDS:
             with self.assertRaises(AssertionError):
-                self.harness.charm.client_relations.oversee_users(dep_id)
+                self.harness.charm.client_relations.oversee_users(
+                    dep_id, RelationEvent(mock.Mock(), mock.Mock())
+                )
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._set_relation")
     @patch("charm.MongoDBProvider._get_config")
     @patch("charm.MongoDBProvider._get_users_from_relations")
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
+    @patch("charm.MongoDBProvider._diff")
     def test_oversee_users_no_config_database(
-        self, connection, relation_users, get_config, set_relation
+        self, diff, connection, relation_users, get_config, set_relation
     ):
         """Verifies when the config for a user has no database that they are not created."""
         # presets, such that the need to create user relations is triggered
@@ -156,10 +171,13 @@ class TestMongoProvider(unittest.TestCase):
         get_config.return_value.database = None
 
         for dep_id in DEPARTED_IDS:
-            self.harness.charm.client_relations.oversee_users(dep_id)
+            self.harness.charm.client_relations.oversee_users(
+                dep_id, RelationEvent(mock.Mock(), mock.Mock())
+            )
             connection.return_value.__enter__.return_value.create_user.assert_not_called()
             set_relation.assert_not_called()
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._set_relation")
     @patch("charm.MongoDBProvider._get_config")
     @patch("charm.MongoDBProvider._get_users_from_relations")
@@ -176,9 +194,12 @@ class TestMongoProvider(unittest.TestCase):
             for exception, expected_raise in PYMONGO_EXCEPTIONS:
                 connection.return_value.__enter__.return_value.create_user.side_effect = exception
                 with self.assertRaises(expected_raise):
-                    self.harness.charm.client_relations.oversee_users(dep_id)
+                    self.harness.charm.client_relations.oversee_users(
+                        dep_id, RelationEvent(mock.Mock(), mock.Mock())
+                    )
                 set_relation.assert_not_called()
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_config")
     @patch("charm.MongoDBProvider._get_users_from_relations")
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
@@ -194,8 +215,11 @@ class TestMongoProvider(unittest.TestCase):
         for dep_id in DEPARTED_IDS:
             # getting usernames raises AssertionError when usernames do not follow correct format
             with self.assertRaises(AssertionError):
-                self.harness.charm.client_relations.oversee_users(dep_id)
+                self.harness.charm.client_relations.oversee_users(
+                    dep_id, RelationEvent(mock.Mock(), mock.Mock())
+                )
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_users_from_relations")
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
     def test_oversee_users_update_get_config_failure(self, connection, relation_users):
@@ -208,8 +232,11 @@ class TestMongoProvider(unittest.TestCase):
 
         for dep_id in DEPARTED_IDS:
             with self.assertRaises(AssertionError):
-                self.harness.charm.client_relations.oversee_users(dep_id)
+                self.harness.charm.client_relations.oversee_users(
+                    dep_id, RelationEvent(mock.Mock(), mock.Mock())
+                )
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_config")
     @patch("charm.MongoDBProvider._get_users_from_relations")
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
@@ -224,8 +251,11 @@ class TestMongoProvider(unittest.TestCase):
                 connection.return_value.__enter__.return_value.update_user.side_effect = exception
 
                 with self.assertRaises(expected_raise):
-                    self.harness.charm.client_relations.oversee_users(dep_id)
+                    self.harness.charm.client_relations.oversee_users(
+                        dep_id, RelationEvent(mock.Mock(), mock.Mock())
+                    )
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_databases_from_relations")
     @patch("charm.MongoDBProvider._get_users_from_relations")
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
@@ -238,9 +268,12 @@ class TestMongoProvider(unittest.TestCase):
         databases_from_relations.return_value = {"d1"}
 
         for dep_id in DEPARTED_IDS:
-            self.harness.charm.client_relations.oversee_users(dep_id)
+            self.harness.charm.client_relations.oversee_users(
+                dep_id, RelationEvent(mock.Mock(), mock.Mock())
+            )
             connection.return_value.__enter__.return_value.drop_database.assert_not_called()
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_users_from_relations")
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
     def test_oversee_users_mongo_databases_failure(self, connection, relation_users):
@@ -253,8 +286,11 @@ class TestMongoProvider(unittest.TestCase):
                 )
 
                 with self.assertRaises(expected_raise):
-                    self.harness.charm.client_relations.oversee_users(dep_id)
+                    self.harness.charm.client_relations.oversee_users(
+                        dep_id, RelationEvent(mock.Mock(), mock.Mock())
+                    )
 
+    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_databases_from_relations")
     @patch("charm.MongoDBProvider._get_users_from_relations")
     @patch("charms.mongodb_libs.v0.mongodb_provider.MongoDBConnection")
@@ -276,4 +312,6 @@ class TestMongoProvider(unittest.TestCase):
 
                 with self.assertRaises(expected_raise):
                     # verify behaviour across relation event
-                    self.harness.charm.client_relations.oversee_users(dep_id)
+                    self.harness.charm.client_relations.oversee_users(
+                        dep_id, RelationEvent(mock.Mock(), mock.Mock())
+                    )
