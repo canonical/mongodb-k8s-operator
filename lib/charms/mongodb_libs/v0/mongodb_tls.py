@@ -7,7 +7,7 @@ This class creates user and database for each application relation
 and expose needed information for client connection via fields in
 external relation.
 """
-
+import json
 import re
 import logging
 import base64
@@ -23,7 +23,7 @@ from charms.tls_certificates_interface.v1.tls_certificates import (
     generate_csr,
     generate_private_key,
 )
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 # The unique Charmhub library identifier, never change it
 LIBID = "1057f353503741a98ed79309b5be7e33"
@@ -48,14 +48,21 @@ class MongoDBTLS(Object):
         self.charm = charm
         self.peer_relation = peer_relation
         self.certs = TLSCertificatesRequiresV1(self.charm, TLS_RELATION)
-        self.framework.observe(self.charm.on.set_tls_private_key_action, self._on_set_tls_private_key)
-        self.framework.observe(self.charm.on[TLS_RELATION].relation_joined, self._on_tls_relation_joined)
-        self.framework.observe(self.charm.on[TLS_RELATION].relation_broken, self._on_tls_relation_broken)
+        self.framework.observe(
+            self.charm.on.set_tls_private_key_action, self._on_set_tls_private_key
+        )
+        self.framework.observe(
+            self.charm.on[TLS_RELATION].relation_joined, self._on_tls_relation_joined
+        )
+        self.framework.observe(
+            self.charm.on[TLS_RELATION].relation_broken, self._on_tls_relation_broken
+        )
         self.framework.observe(self.certs.on.certificate_available, self._on_certificate_available)
         self.framework.observe(self.certs.on.certificate_expiring, self._on_certificate_expiring)
 
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
         """Set the TLS private key, which will be used for requesting the certificate."""
+        logger.debug("Request to set TLS private key recieved.")
         try:
             self._request_certificate("unit", event.params.get("external-key", None))
             if not self.charm.unit.is_leader():
@@ -64,6 +71,7 @@ class MongoDBTLS(Object):
                 )
                 return
             self._request_certificate("app", event.params.get("internal-key", None))
+            logger.debug("Succesfully set TLS private key.")
         except ValueError as e:
             event.fail(str(e))
 
@@ -106,10 +114,12 @@ class MongoDBTLS(Object):
 
     def _on_tls_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Disable TLS when TLS relation broken."""
+        logger.debug("Disabling external TLS for unit: %s", self.charm.unit.name)
         self.charm.set_secret("unit", "ca", None)
         self.charm.set_secret("unit", "cert", None)
         self.charm.set_secret("unit", "chain", None)
         if self.charm.unit.is_leader():
+            logger.debug("Disabling internal TLS")
             self.charm.set_secret("app", "ca", None)
             self.charm.set_secret("app", "cert", None)
             self.charm.set_secret("app", "chain", None)
@@ -119,14 +129,22 @@ class MongoDBTLS(Object):
             )
             event.defer()
             return
+
+        logger.debug("Restarting mongod with TLS disabled.")
         self.charm.on_mongod_pebble_ready(event)
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Enable TLS when TLS certificate available."""
-        if event.certificate_signing_request.rstrip() == self.charm.get_secret("unit", "csr").rstrip():
+        if (
+            event.certificate_signing_request.rstrip()
+            == self.charm.get_secret("unit", "csr").rstrip()
+        ):
             logger.debug("The external TLS certificate available.")
             scope = "unit"  # external crs
-        elif event.certificate_signing_request.rstrip() == self.charm.get_secret("app", "csr").rstrip():
+        elif (
+            event.certificate_signing_request.rstrip()
+            == self.charm.get_secret("app", "csr").rstrip()
+        ):
             logger.debug("The internal TLS certificate available.")
             if not self.charm.unit.is_leader():
                 return
@@ -137,12 +155,16 @@ class MongoDBTLS(Object):
 
         old_cert = self.charm.get_secret(scope, "cert")
         renewal = old_cert and old_cert != event.certificate
-        self.charm.set_secret(scope, "chain", event.chain)
+
+        self.charm.set_secret(
+            scope, "chain", "\n".join(event.chain) if event.chain is not None else None
+        )
         self.charm.set_secret(scope, "cert", event.certificate)
         self.charm.set_secret(scope, "ca", event.ca)
 
         if renewal:
             self.charm.unit.get_container("mongod").stop("mongod")
+            logger.debug("Successfully renewed certificates.")
         elif not self.charm.get_secret("app", "cert") or not self.charm.get_secret("unit", "cert"):
             logger.debug(
                 "Defer till both internal and external TLS certificates available to avoid second restart."
@@ -150,6 +172,7 @@ class MongoDBTLS(Object):
             event.defer()
             return
 
+        logger.debug("Restarting mongod with TLS enabled.")
         self.charm.on_mongod_pebble_ready(event)
 
     def _on_certificate_expiring(self, event: CertificateExpiringEvent) -> None:
@@ -164,6 +187,7 @@ class MongoDBTLS(Object):
             logger.error("An unknown certificate expiring.")
             return
 
+        logger.debug("Generating a new Certificate Signing Request.")
         key = self.charm.get_secret(scope, "key").encode("utf-8")
         old_csr = self.charm.get_secret(scope, "csr").encode("utf-8")
         new_csr = generate_csr(
@@ -172,6 +196,8 @@ class MongoDBTLS(Object):
             organization=self.charm.app.name,
             sans=self._get_sans(),
         )
+
+        logger.debug("Requesting a certificate renewal.")
         self.certs.request_certificate_renewal(
             old_certificate_signing_request=old_csr,
             new_certificate_signing_request=new_csr,
@@ -191,7 +217,7 @@ class MongoDBTLS(Object):
             str(self.charm.model.get_binding(self.peer_relation).network.bind_address),
         ]
 
-    def get_tls_files(self, scope: str) -> (Optional[str], Optional[str]):
+    def get_tls_files(self, scope: str) -> Tuple[Optional[str], Optional[str]]:
         """Prepare TLS files in special MongoDB way.
 
         MongoDB needs two files:

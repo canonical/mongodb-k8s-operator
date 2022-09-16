@@ -319,6 +319,7 @@ class MongoDBCharm(CharmBase):
         """Uploads certificate to the workload container."""
         external_ca, external_pem = self.tls.get_tls_files("unit")
         if external_ca is not None:
+            logger.debug("Uploading external ca to workload container")
             container.push(
                 TLS_EXT_CA_FILE,
                 external_ca,
@@ -328,6 +329,7 @@ class MongoDBCharm(CharmBase):
                 group="mongodb",
             )
         if external_pem is not None:
+            logger.debug("Uploading external pem to workload container")
             container.push(
                 TLS_EXT_PEM_FILE,
                 external_pem,
@@ -339,6 +341,7 @@ class MongoDBCharm(CharmBase):
 
         internal_ca, internal_pem = self.tls.get_tls_files("app")
         if internal_ca is not None:
+            logger.debug("Uploading internal ca to workload container")
             container.push(
                 TLS_INT_CA_FILE,
                 internal_ca,
@@ -348,6 +351,7 @@ class MongoDBCharm(CharmBase):
                 group="mongodb",
             )
         if internal_pem is not None:
+            logger.debug("Uploading internal pem to workload container")
             container.push(
                 TLS_INT_PEM_FILE,
                 internal_pem,

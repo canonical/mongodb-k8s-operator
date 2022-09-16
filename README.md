@@ -42,12 +42,41 @@ its persistent store.
 
 ## Relations
 
-Currently supported relations are
+Supported [relations](https://juju.is/docs/olm/relations):
 
-- Peer relations for replication
-- Provides a `mongodb-client` database interface.
+#### `mongodb_client` interface:
+
+Relations to new applications are supported via the `mongodb_client` interface. To create a relation: 
+
+```shell
+juju relate mongodb application
+```
+
+To remove a relation:
+```shell
+juju remove-relation mongodb application
+```
+
+#### `tls` interface:
+
+We have also supported TLS for the MongoDB k8s charm. To enable TLS:
+
+```shell
+# deploy the TLS charm 
+juju deploy tls-certificates-operator --channel=edge
+# add the necessary configurations for TLS
+juju config tls-certificates-operator generate-self-signed-certificates="true" ca-common-name="Test CA" 
+# enable TLS via relation
+juju relate tls-certificates-operator mongodb
+# disable TLS by removing relation
+juju remove-relation mongodb tls-certificates-operator
+```
+
+Note: The TLS settings here are for self-signed-certificates which are not recommended for production clusters, the `tls-certificates-operator` charm offers a variety of configurations, read more on the TLS charm [here](https://charmhub.io/tls-certificates-operator)
+
 
 ## Contributing
 
 Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this
 charm following best practice guidelines, and [CONTRIBUTING.md](./CONTRIBUTING.md) for developer guidance.
+
