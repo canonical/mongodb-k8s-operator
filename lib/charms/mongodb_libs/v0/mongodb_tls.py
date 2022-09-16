@@ -125,7 +125,7 @@ class MongoDBTLS(Object):
             self.charm.set_secret("app", "chain", None)
         if self.charm.get_secret("app", "cert"):
             logger.debug(
-                "Defer till the leader delete the internal TLS certificate to avoid second restart."
+                "Defer until the leader deletes the internal TLS certificate to avoid second restart."
             )
             event.defer()
             return
@@ -182,6 +182,8 @@ class MongoDBTLS(Object):
             scope = "unit"  # external cert
         elif event.certificate.rstrip() == self.charm.get_secret("app", "cert").rstrip():
             logger.debug("The internal TLS certificate expiring.")
+            if not self.charm.unit.is_leader():
+                return
             scope = "app"  # internal cert
         else:
             logger.error("An unknown certificate expiring.")

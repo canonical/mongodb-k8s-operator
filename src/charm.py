@@ -90,7 +90,12 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        # service is running if TLS encryption enabled/disabled
+        # This function can be run in two cases:
+        # 1) during regular charm start.
+        # 2) if we forcefully want to apply new
+        # mongod cmd line arguments (returned from get_mongod_cmd).
+        # In the second case, we should restart mongod
+        # service only if arguments changed.
         services = container.get_services("mongod")
         if services and services["mongod"].is_running():
             new_command = get_mongod_cmd(self.mongodb_config)
