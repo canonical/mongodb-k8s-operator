@@ -1,56 +1,54 @@
 """Code for interactions with MongoDB."""
-# Copyright 2021 Canonical Ltd.
+# Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import re
 import logging
+import re
 from dataclasses import dataclass
-from typing import Set, Dict, List, Optional
+from typing import Dict, List, Optional, Set
 from urllib.parse import quote_plus
-from bson.json_util import dumps
 
+from bson.json_util import dumps
+from pymongo import MongoClient
+from pymongo.errors import OperationFailure, PyMongoError
 from tenacity import (
-    retry,
-    stop_after_delay,
-    stop_after_attempt,
-    wait_fixed,
-    before_log,
     RetryError,
     Retrying,
-)
-
-from pymongo import MongoClient
-from pymongo.errors import (
-    OperationFailure,
-    PyMongoError,
+    before_log,
+    retry,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_fixed,
 )
 
 # The unique Charmhub library identifier, never change it
-LIBID = "1057f353503741a98ed79309b5be7e30"
+LIBID = "49c69d9977574dd7942eb7b54f43355b"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version.
-LIBPATCH = 0
-
-# List of system usernames needed for correct work on the charm.
-CHARM_USERS = ["operator"]
+# to 0 if you are raising the major API version
+LIBPATCH = 3
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
 
+# List of system usernames needed for correct work on the charm.
+CHARM_USERS = ["operator"]
+
 
 @dataclass
 class MongoDBConfiguration:
-    """
-    Class for MongoDB configuration:
+    """Class for MongoDB configuration.
+
     — replset: name of replica set, needed for connection URI.
     — database: database name.
     — username: username.
     — password: password.
     — hosts: full list of hosts to connect to, needed for the URI.
+    - tls_external: indicator for use of internal TLS connection.
+    - tls_internal: indicator for use of external TLS connection.
     """
 
     replset: str
@@ -84,8 +82,7 @@ class NotReadyError(PyMongoError):
 
 
 class MongoDBConnection:
-    """
-    In this class we create connection object to MongoDB.
+    """In this class we create connection object to MongoDB.
 
     Real connection is created on the first call to MongoDB.
     Delayed connectivity allows to firstly check database readiness
@@ -109,9 +106,9 @@ class MongoDBConnection:
         """A MongoDB client interface.
 
         Args:
-            — config: MongoDB Configuration object.
-            — uri: allow using custom MongoDB URI, needed for replSet init.
-            — direct: force a direct connection to a specific host, avoiding
+            config: MongoDB Configuration object.
+            uri: allow using custom MongoDB URI, needed for replSet init.
+            direct: force a direct connection to a specific host, avoiding
                     reading replica set configuration and reconnection.
         """
         self.mongodb_config = config
@@ -129,9 +126,11 @@ class MongoDBConnection:
         return
 
     def __enter__(self):
+        """Return a reference to the new connection."""
         return self
 
     def __exit__(self, object_type, value, traceback):
+        """Disconnect from MongoDB client."""
         self.client.close()
         self.client = None
 
@@ -163,17 +162,14 @@ class MongoDBConnection:
         before=before_log(logger, logging.DEBUG),
     )
     def init_replset(self) -> None:
-        """Create replica set config the first time
+        """Create replica set config the first time.
 
         Raises:
             ConfigurationError, ConfigurationError, OperationFailure
         """
         config = {
             "_id": self.mongodb_config.replset,
-            "members": [
-                {"_id": i, "host": h}
-                for i, h in enumerate(self.mongodb_config.hosts)
-            ],
+            "members": [{"_id": i, "host": h} for i, h in enumerate(self.mongodb_config.hosts)],
         }
         try:
             self.client.admin.command("replSetInitiate", config)
@@ -185,6 +181,23 @@ class MongoDBConnection:
                 #     finished.
                 logger.error("Cannot initialize replica set. error=%r", e)
                 raise e
+
+    def get_replset_status(self) -> Dict:
+        """Get a replica set status as a dict.
+
+        Returns:
+            A set of the replica set members along with their status.
+
+        Raises:
+            ConfigurationError, ConfigurationError, OperationFailure
+        """
+        rs_status = self.client.admin.command("replSetGetStatus")
+        rs_status_parsed = {}
+        for member in rs_status["members"]:
+            member_name = self._hostname_from_hostport(member["name"])
+            rs_status_parsed[member_name] = member["stateStr"]
+
+        return rs_status_parsed
 
     def get_replset_members(self) -> Set[str]:
         """Get a replica set members.
@@ -220,9 +233,7 @@ class MongoDBConnection:
 
         # Avoid reusing IDs, according to the doc
         # https://www.mongodb.com/docs/manual/reference/replica-configuration/
-        max_id = max([
-            int(member["_id"]) for member in rs_config["config"]["members"]
-        ])
+        max_id = max([int(member["_id"]) for member in rs_config["config"]["members"]])
         new_member = {"_id": int(max_id + 1), "host": hostname}
 
         rs_config["config"]["version"] += 1
@@ -248,7 +259,8 @@ class MongoDBConnection:
         # When we remove member, to avoid issues when majority members is removed, we need to
         # remove next member only when MongoDB forget the previous removed member.
         if self._is_any_removing(rs_status):
-            # removing from replicaset is fast operation, lets @retry(3 times with a 5sec timeout) before giving up.
+            # removing from replicaset is fast operation, lets @retry(3 times with a 5sec timeout)
+            # before giving up.
             raise NotReadyError
 
         # avoid downtime we need to reelect new primary
@@ -259,7 +271,8 @@ class MongoDBConnection:
 
         rs_config["config"]["version"] += 1
         rs_config["config"]["members"][:] = [
-            member for member in rs_config["config"]["members"]
+            member
+            for member in rs_config["config"]["members"]
             if hostname != self._hostname_from_hostport(member["host"])
         ]
         logger.debug("rs_config: %r", dumps(rs_config["config"]))
@@ -306,32 +319,28 @@ class MongoDBConnection:
                 {"role": "readWrite", "db": config.database},
             ],
         }
-        return [
-            role_dict
-            for role in config.roles
-            for role_dict in supported_roles[role]
-        ]
+        return [role_dict for role in config.roles for role_dict in supported_roles[role]]
 
     def drop_user(self, username: str):
-        """Drop user"""
+        """Drop user."""
         self.client.admin.command("dropUser", username)
 
     def get_users(self) -> Set[str]:
         """Add a new member to replica set config inside MongoDB."""
         users_info = self.client.admin.command("usersInfo")
-        return set([
-            user_obj["user"]
-            for user_obj in users_info["users"]
-            if re.match(r"^relation-\d+$", user_obj["user"])
-        ])
+        return set(
+            [
+                user_obj["user"]
+                for user_obj in users_info["users"]
+                if re.match(r"^relation-\d+$", user_obj["user"])
+            ]
+        )
 
     def get_databases(self) -> Set[str]:
         """Return list of all non-default databases."""
         system_dbs = ("admin", "local", "config")
         databases = self.client.list_database_names()
-        return set([
-            db for db in databases if db not in system_dbs
-        ])
+        return set([db for db in databases if db not in system_dbs])
 
     def drop_database(self, database: str):
         """Drop a non-default database."""
@@ -352,6 +361,19 @@ class MongoDBConnection:
             and member["stateStr"] == "PRIMARY"
             for member in rs_status["members"]
         )
+
+    def primary(self) -> str:
+        """Returns primary replica host."""
+        status = self.client.admin.command("replSetGetStatus")
+
+        primary = None
+        # loop through all members in the replica set
+        for member in status["members"]:
+            # check replica's current state
+            if member["stateStr"] == "PRIMARY":
+                primary = self._hostname_from_hostport(member["name"])
+
+        return primary
 
     @staticmethod
     def _is_any_sync(rs_status: Dict) -> bool:
@@ -381,10 +403,7 @@ class MongoDBConnection:
         Args:
             rs_status: current state of replica set as reported by mongod.
         """
-        return any(
-            member["stateStr"] == "REMOVED"
-            for member in rs_status["members"]
-        )
+        return any(member["stateStr"] == "REMOVED" for member in rs_status["members"])
 
     @staticmethod
     def _hostname_from_hostport(hostname: str) -> str:

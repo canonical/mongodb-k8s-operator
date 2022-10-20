@@ -7,15 +7,12 @@ This class creates user and database for each application relation
 and expose needed information for client connection via fields in
 external relation.
 """
-import json
-import re
-import logging
 import base64
+import logging
+import re
 import socket
-from cryptography import x509
-from cryptography.x509.extensions import ExtensionType
-from ops.framework import Object
-from ops.charm import ActionEvent, RelationJoinedEvent, RelationBrokenEvent
+from typing import List, Optional, Tuple
+
 from charms.tls_certificates_interface.v1.tls_certificates import (
     CertificateAvailableEvent,
     CertificateExpiringEvent,
@@ -23,17 +20,20 @@ from charms.tls_certificates_interface.v1.tls_certificates import (
     generate_csr,
     generate_private_key,
 )
-from typing import List, Optional, Tuple
+from ops.charm import ActionEvent, RelationBrokenEvent, RelationJoinedEvent
+from ops.framework import Object
+from ops.model import ActiveStatus, MaintenanceStatus, Unit
 
 # The unique Charmhub library identifier, never change it
-LIBID = "1057f353503741a98ed79309b5be7e33"
+LIBID = "e02a50f0795e4dd292f58e93b4f493dd"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version.
-LIBPATCH = 0
+# to 0 if you are raising the major API version
+LIBPATCH = 2
+
 
 logger = logging.getLogger(__name__)
 TLS_RELATION = "certificates"
@@ -42,10 +42,11 @@ TLS_RELATION = "certificates"
 class MongoDBTLS(Object):
     """In this class we manage client database relations."""
 
-    def __init__(self, charm, peer_relation):
+    def __init__(self, charm, peer_relation, substrate="k8s"):
         """Manager of MongoDB client relations."""
         super().__init__(charm, "client-relations")
         self.charm = charm
+        self.substrate = substrate
         self.peer_relation = peer_relation
         self.certs = TLSCertificatesRequiresV1(self.charm, TLS_RELATION)
         self.framework.observe(
@@ -62,20 +63,23 @@ class MongoDBTLS(Object):
 
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
         """Set the TLS private key, which will be used for requesting the certificate."""
-        logger.debug("Request to set TLS private key recieved.")
+        logger.debug("Request to set TLS private key received.")
         try:
             self._request_certificate("unit", event.params.get("external-key", None))
+
             if not self.charm.unit.is_leader():
                 event.log(
                     "Only juju leader unit can set private key for the internal certificate. Skipping."
                 )
                 return
+
             self._request_certificate("app", event.params.get("internal-key", None))
-            logger.debug("Succesfully set TLS private key.")
+            logger.debug("Successfully set TLS private key.")
         except ValueError as e:
             event.fail(str(e))
 
     def _request_certificate(self, scope: str, param: Optional[str]):
+
         if param is None:
             key = generate_private_key()
         else:
@@ -83,13 +87,14 @@ class MongoDBTLS(Object):
 
         csr = generate_csr(
             private_key=key,
-            subject=self.charm.get_hostname_by_unit(self.charm.unit.name),
+            subject=self.get_host(self.charm.unit),
             organization=self.charm.app.name,
             sans=self._get_sans(),
         )
 
         self.charm.set_secret(scope, "key", key.decode("utf-8"))
         self.charm.set_secret(scope, "csr", csr.decode("utf-8"))
+        self.charm.set_secret(scope, "cert", None)
 
         if self.charm.model.get_relation(TLS_RELATION):
             self.certs.request_certificate_creation(certificate_signing_request=csr)
@@ -98,11 +103,15 @@ class MongoDBTLS(Object):
     def _parse_tls_file(raw_content: str) -> bytes:
         """Parse TLS files from both plain text or base64 format."""
         if re.match(r"(-+(BEGIN|END) [A-Z ]+-+)", raw_content):
-            return re.sub(
-                r"(-+(BEGIN|END) [A-Z ]+-+)",
-                "\n\\1\n",
-                raw_content,
-            ).encode("utf-8")
+            return (
+                re.sub(
+                    r"(-+(BEGIN|END) [A-Z ]+-+)",
+                    "\\1",
+                    raw_content,
+                )
+                .rstrip()
+                .encode("utf-8")
+            )
         return base64.b64decode(raw_content)
 
     def _on_tls_relation_joined(self, _: RelationJoinedEvent) -> None:
@@ -131,7 +140,12 @@ class MongoDBTLS(Object):
             return
 
         logger.debug("Restarting mongod with TLS disabled.")
-        self.charm.on_mongod_pebble_ready(event)
+        if self.substrate == "vm":
+            self.charm.unit.status = MaintenanceStatus("disabling TLS")
+            self.charm.restart_mongod_service()
+            self.charm.unit.status = ActiveStatus()
+        else:
+            self.charm.on_mongod_pebble_ready(event)
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Enable TLS when TLS certificate available."""
@@ -146,8 +160,6 @@ class MongoDBTLS(Object):
             == self.charm.get_secret("app", "csr").rstrip()
         ):
             logger.debug("The internal TLS certificate available.")
-            if not self.charm.unit.is_leader():
-                return
             scope = "app"  # internal crs
         else:
             logger.error("An unknown certificate available.")
@@ -156,24 +168,42 @@ class MongoDBTLS(Object):
         old_cert = self.charm.get_secret(scope, "cert")
         renewal = old_cert and old_cert != event.certificate
 
-        self.charm.set_secret(
-            scope, "chain", "\n".join(event.chain) if event.chain is not None else None
-        )
-        self.charm.set_secret(scope, "cert", event.certificate)
-        self.charm.set_secret(scope, "ca", event.ca)
+        if scope == "unit" or (scope == "app" and self.charm.unit.is_leader()):
+            self.charm.set_secret(
+                scope, "chain", "\n".join(event.chain) if event.chain is not None else None
+            )
+            self.charm.set_secret(scope, "cert", event.certificate)
+            self.charm.set_secret(scope, "ca", event.ca)
 
-        if renewal:
-            self.charm.unit.get_container("mongod").stop("mongod")
-            logger.debug("Successfully renewed certificates.")
-        elif not self.charm.get_secret("app", "cert") or not self.charm.get_secret("unit", "cert"):
+        if self._waiting_for_certs():
             logger.debug(
                 "Defer till both internal and external TLS certificates available to avoid second restart."
             )
             event.defer()
             return
 
+        if renewal and self.substrate == "k8s":
+            self.charm.unit.get_container("mongod").stop("mongod")
+
         logger.debug("Restarting mongod with TLS enabled.")
-        self.charm.on_mongod_pebble_ready(event)
+        if self.substrate == "vm":
+            self.charm._push_tls_certificate_to_workload()
+            self.charm.unit.status = MaintenanceStatus("enabling TLS")
+            self.charm.restart_mongod_service()
+            self.charm.unit.status = ActiveStatus()
+        else:
+            self.charm.on_mongod_pebble_ready(event)
+
+    def _waiting_for_certs(self):
+        """Returns a boolean indicating whether additional certs are needed."""
+        if not self.charm.get_secret("app", "cert"):
+            logger.debug("Waiting for application certificate.")
+            return True
+        if not self.charm.get_secret("unit", "cert"):
+            logger.debug("Waiting for application certificate.")
+            return True
+
+        return False
 
     def _on_certificate_expiring(self, event: CertificateExpiringEvent) -> None:
         """Request the new certificate when old certificate is expiring."""
@@ -194,16 +224,17 @@ class MongoDBTLS(Object):
         old_csr = self.charm.get_secret(scope, "csr").encode("utf-8")
         new_csr = generate_csr(
             private_key=key,
-            subject=self.charm.get_hostname_by_unit(self.charm.unit.name),
+            subject=self.get_host(self.charm.unit),
             organization=self.charm.app.name,
             sans=self._get_sans(),
         )
-
         logger.debug("Requesting a certificate renewal.")
+
         self.certs.request_certificate_renewal(
             old_certificate_signing_request=old_csr,
             new_certificate_signing_request=new_csr,
         )
+
         self.charm.set_secret(scope, "csr", new_csr.decode("utf-8"))
 
     def _get_sans(self) -> List[str]:
@@ -237,3 +268,10 @@ class MongoDBTLS(Object):
             pem_file = key + "\n" + cert if key else cert
 
         return ca_file, pem_file
+
+    def get_host(self, unit: Unit):
+        """Retrieves the hostname of the unit based on the substrate."""
+        if self.substrate == "vm":
+            return self.charm._unit_ip(unit)
+        else:
+            return self.charm.get_hostname_by_unit(unit.name)

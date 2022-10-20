@@ -13,22 +13,22 @@ import re
 from collections import namedtuple
 from typing import Optional, Set
 
-from charms.mongodb_libs.v0.helpers import generate_password
-from charms.mongodb_libs.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v0.helpers import generate_password
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
-from ops.model import Relation
+from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
 
 # The unique Charmhub library identifier, never change it
-LIBID = "1057f353503741a98ed79309b5be7e32"
+LIBID = "4067879ef7dd4261bf6c164bc29d94b1"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
-# to 0 if you are raising the major API version.
-LIBPATCH = 1
+# to 0 if you are raising the major API version
+LIBPATCH = 3
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -74,6 +74,21 @@ class MongoDBProvider(Object):
         # initialised. We will create users as part of initialisation.
         if "db_initialised" not in self.charm.app_peer_data:
             return
+
+        # legacy relations have auth disabled, which new relations require
+        legacy_relation_users = self._get_users_from_relations(None, rel=LEGACY_REL_NAME)
+        if len(legacy_relation_users) > 0:
+            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            logger.error("Auth disabled due to existing connections to legacy relations")
+            return
+
+        # If auth is disabled but there are no legacy relation users, this means that legacy
+        # users have left and auth can be re-enabled.
+        if self.substrate == "vm" and not self.charm.auth_enabled():
+            logger.debug("Enabling authentication.")
+            self.charm.unit.status = MaintenanceStatus("re-enabling authentication")
+            self.charm.restart_mongod_service(auth=True)
+            self.charm.unit.status = ActiveStatus()
 
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:

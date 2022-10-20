@@ -13,7 +13,7 @@ includes scaling and other capabilities.
 import logging
 from typing import Dict, Optional
 
-from charms.mongodb_libs.v0.helpers import (
+from charms.mongodb.v0.helpers import (
     KEY_FILE,
     TLS_EXT_CA_FILE,
     TLS_EXT_PEM_FILE,
@@ -24,14 +24,14 @@ from charms.mongodb_libs.v0.helpers import (
     get_create_user_cmd,
     get_mongod_cmd,
 )
-from charms.mongodb_libs.v0.mongodb import (
+from charms.mongodb.v0.mongodb import (
     CHARM_USERS,
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
 )
-from charms.mongodb_libs.v0.mongodb_provider import MongoDBProvider
-from charms.mongodb_libs.v0.mongodb_tls import MongoDBTLS
+from charms.mongodb.v0.mongodb_provider import MongoDBProvider
+from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from ops.charm import ActionEvent, CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Container
