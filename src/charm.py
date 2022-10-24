@@ -403,7 +403,7 @@ class MongoDBCharm(CharmBase):
         )
 
         process = container.exec(
-            command=get_create_user_cmd(mongo_cmd, self.mongodb_config),
+            command=get_create_user_cmd(self.mongodb_config, mongo_cmd),
             stdin=self.mongodb_config.password,
         )
         stdout, _ = process.wait_output()
