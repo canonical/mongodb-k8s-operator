@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 import kubernetes
 import yaml
@@ -11,7 +11,7 @@ from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.helpers import APP_NAME, mongodb_uri
+from tests.integration.helpers import APP_NAME, mongodb_uri, primary_host, run_mongo_op
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APPLICATION_DEFAULT_APP_NAME = "application"
@@ -284,7 +284,7 @@ def host_to_unit(host: str) -> str:
     return "/".join(host.split(".")[0].rsplit("-", 1))
 
 
-async def mongod_ready(ops_test, unit: int) -> bool:
+async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
     """Verifies replica is running and available."""
     client = MongoClient(await mongodb_uri(ops_test, [unit]), directConnection=True)
     try:
@@ -298,3 +298,64 @@ async def mongod_ready(ops_test, unit: int) -> bool:
         client.close()
 
     return True
+
+
+async def get_replica_set_primary(ops_test: OpsTest) -> str:
+    rs_status = await run_mongo_op(ops_test, "rs.status()")
+    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
+
+    return host_to_unit(primary_host(rs_status.data))
+
+
+async def count_primaries(ops_test: OpsTest) -> int:
+    """Returns the number of primaries in a replica set."""
+    rs_status = await run_mongo_op(ops_test, "rs.status()")
+    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
+
+    primaries = 0
+    # loop through all members in the replica set
+    for member in rs_status.data["members"]:
+        # check replica's current state
+        if member["stateStr"] == "PRIMARY":
+            primaries += 1
+
+    return primaries
+
+
+async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
+    """Fetches the IPs listed as replica set members in the MongoDB replica set configuration.
+
+    Args:
+        ops_test: reference to deployment.
+    """
+    # connect to replica set uri
+    # get ips from MongoDB replica set configuration
+    rs_config = await run_mongo_op(ops_test, "rs.config()")
+    member_ips = []
+    for member in rs_config.data["members"]:
+        # get member ip without ":PORT"
+        member_ips.append(member["host"].split(":")[0])
+
+    return member_ips
+
+
+async def get_mongo_client(
+    ops_test: OpsTest, exact: str = None, excluded: List[str] = []
+) -> MongoClient:
+    if exact:
+        return MongoClient(
+            await mongodb_uri(ops_test, [int(exact.split("/")[1])]), directConnection=True
+        )
+    mongodb_name = await get_application_name(ops_test, APP_NAME)
+    for unit in ops_test.model.applications[mongodb_name].units:
+        if unit.name not in excluded:
+            return MongoClient(
+                await mongodb_uri(ops_test, [int(unit.name.split("/")[1])]), directConnection=True
+            )
+
+
+async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
+    return [
+        f"{unit.name.replace('/', '-')}.mongodb-k8s-endpoints"
+        for unit in ops_test.model.applications[APP_NAME].units
+    ]
