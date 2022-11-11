@@ -51,3 +51,28 @@ jobs:
           # TEMPLATE-TODO: Replace the application name
           app: operator-template
           model: testing
+  ha-integration-test-microk8s:
+    name: HA Integration tests (microk8s)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: microk8s
+          # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
+          channel: 1.23/stable
+          bootstrap-options: "--agent-version 2.9.29"
+      - name: Install tox
+        run: python3 -m pip install tox
+      - name: Run tls integration tests
+        # set a predictable model name so it can be consumed by charm-logdump-action
+        run: sg microk8s -c "tox -e ha-integration -- --model testing"
+      - name: Dump logs
+        uses: canonical/charm-logdump-action@main
+        if: failure()
+        with:
+          # TEMPLATE-TODO: Replace the application name
+          app: operator-template
+          model: testing

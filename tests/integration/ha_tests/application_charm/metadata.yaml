@@ -1,0 +1,18 @@
+# Copyright 2022 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+name: application
+description: |
+  An application charm used in high availability MongoDB k8s integration tests.
+summary: |
+  Data platform libs application meant to be used
+  only for testing high availability of the MongoDB charm.
+
+requires:
+  database:
+    interface: mongodb_client
+    limit: 1
+
+peers:
+  application-peers:
+    interface: application-peers
