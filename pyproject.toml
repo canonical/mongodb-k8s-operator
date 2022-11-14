@@ -2,7 +2,7 @@
 # See LICENSE file for licensing details.
 
 [tool.poetry]
-name = "mongodb"
+name = "mongodb-k8s"
 version = "0.0.1-dev.0"
 description = ""
 authors = [
@@ -24,22 +24,28 @@ tenacity = "^8.0.1"
 cryptography = "^38.0.0"
 jsonschema = "^4.15.0"
 
-[tool.poetry.dev-dependencies]
-coverage = {extras = ["toml"], version = "^6.3.2"}
-flake8 = "^4.0.1"
-pytest = "^7.1.1"
+[tool.poetry.group.fmt.dependencies]
+black = "^22.10.0"
 isort = "^5.10.1"
-black = "^22.3.0"
-pyproject-flake8 = "^0.0.1-alpha.3"
+
+[tool.poetry.group.lint.dependencies]
+flake8 = "^5.0.4"
 flake8-docstrings = "^1.6.0"
-flake8-copyright = "^0.2.2"
-flake8-builtins = "^1.5.3"
-pep8-naming = "^0.12.1"
-codespell = "^2.1.0"
-juju = "^2.9.8"
+flake8-copyright = "^0.2.3"
+flake8-builtins = "^2.0.1"
+pyproject-flake8 = "^5.0.4.post1"
+pep8-naming = "^0.13.2"
+codespell = "^2.2.2"
+
+[tool.poetry.group.unit.dependencies]
+coverage = {extras = ["toml"], version = "^6.5.0"}
+pytest = "^7.1.1"
+
+[tool.poetry.group.integration.dependencies]
+juju = "^2"
+lightkube = "^0.11.0"
+pytest = "^7.1.1"
 pytest-operator = "^0.22.0"
-lightkube = "^0.10.2"
-pytest-asyncio = "0.18.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -55,6 +61,9 @@ show_missing = true
 [tool.pytest.ini_options]
 minversion = "6.0"
 log_cli_level = "INFO"
+markers = [
+    "database_tests",
+]
 
 # Formatting tools configuration
 [tool.black]
