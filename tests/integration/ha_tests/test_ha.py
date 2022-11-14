@@ -67,6 +67,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     # locate primary unit
+    hostnames = await get_units_hostnames(ops_test)
     primary = await get_replica_set_primary(ops_test)
 
     mongodb_pid = await get_process_pid(
@@ -80,6 +81,10 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
         MONGOD_PROCESS_NAME,
         "SIGKILL",
     )
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
+
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
     client = await get_mongo_client(ops_test, excluded=[primary])
@@ -88,9 +93,6 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     time.sleep(5)
     more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert more_writes > writes, "writes not continuing to DB"
-
-    # sleep for twice the median election time
-    time.sleep(MEDIAN_REELECTION_TIME * 2)
 
     # verify that db service got restarted and is ready
     old_primary_unit = int(primary.split("/")[1])
@@ -107,6 +109,15 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     assert (
         primary != new_primary
     ), "The mongodb primary has not been reelected after sending a SIGKILL"
+
+    # verify all units are running under the same replset
+    member_hosts = await fetch_replica_set_members(ops_test)
+    assert set(member_hosts) == set(hostnames), "all members not running under the same replset"
+
+    # verify there is only one primary after killing old primary
+    assert (
+        await count_primaries(ops_test) == 1
+    ), "there are more than one primary in the replica set."
 
     # verify that no writes to the db were missed
     application_name = await get_application_name(ops_test, "application")
@@ -155,10 +166,6 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     time.sleep(5)
     more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
 
-    # check this after un-freezing the old primary so that if this check fails we still "turned
-    # back on" the mongod process
-    assert more_writes > writes, "writes not continuing to DB"
-
     # un-freeze the old primary
     await send_signal_to_pod_container_process(
         ops_test,
@@ -168,13 +175,17 @@ async def test_freeze_db_process(ops_test, continuous_writes):
         "SIGCONT",
     )
 
+    # check this after un-freezing the old primary so that if this check fails we still "turned
+    # back on" the mongod process
+    assert more_writes > writes, "writes not continuing to DB"
+
     # verify that db service got restarted and is ready
     old_primary_unit = int(primary.split("/")[1])
     assert await mongod_ready(ops_test, old_primary_unit)
 
     # verify all units are running under the same replset
-    member_ips = await fetch_replica_set_members(ops_test)
-    assert set(member_ips) == set(hostnames), "all members not running under the same replset"
+    member_hosts = await fetch_replica_set_members(ops_test)
+    assert set(member_hosts) == set(hostnames), "all members not running under the same replset"
 
     # verify there is only one primary after un-freezing old primary
     assert (
