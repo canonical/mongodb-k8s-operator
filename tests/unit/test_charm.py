@@ -427,7 +427,7 @@ class TestCharm(unittest.TestCase):
                 }
 
                 # simulate removing 2nd MongoDB unit
-                self.harness.remove_relation_unit(rel.id, "mongodb/1")
+                self.harness.remove_relation_unit(rel.id, "mongodb-k8s/1")
             else:
                 # joining presets
                 connection.return_value.__enter__.return_value.get_replset_members.return_value = {
@@ -435,8 +435,8 @@ class TestCharm(unittest.TestCase):
                 }
 
                 # simulate 2nd MongoDB unit joining
-                self.harness.add_relation_unit(rel.id, "mongodb/1")
-                self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
+                self.harness.add_relation_unit(rel.id, "mongodb-k8s/1")
+                self.harness.update_relation_data(rel.id, "mongodb-k8s/1", PEER_ADDR)
 
             if departed:
                 connection.return_value.__enter__.return_value.add_replset_member.assert_not_called()
@@ -469,11 +469,11 @@ class TestCharm(unittest.TestCase):
             for departed in [False, True]:
                 if departed:
                     # simulate removing 2nd MongoDB unit
-                    self.harness.remove_relation_unit(rel.id, "mongodb/1")
+                    self.harness.remove_relation_unit(rel.id, "mongodb-k8s/1")
                 else:
                     # simulate 2nd MongoDB unit joining
-                    self.harness.add_relation_unit(rel.id, "mongodb/1")
-                    self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
+                    self.harness.add_relation_unit(rel.id, "mongodb-k8s/1")
+                    self.harness.update_relation_data(rel.id, "mongodb-k8s/1", PEER_ADDR)
 
                 if departed:
                     connection.return_value.__enter__.return_value.add_replset_member.assert_not_called()
@@ -507,11 +507,11 @@ class TestCharm(unittest.TestCase):
             )
 
             # simulate 2nd MongoDB unit joining( need a unit to join before removing a unit)
-            self.harness.add_relation_unit(rel.id, "mongodb/1")
-            self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
+            self.harness.add_relation_unit(rel.id, "mongodb-k8s/1")
+            self.harness.update_relation_data(rel.id, "mongodb-k8s/1", PEER_ADDR)
 
             # simulate removing 2nd MongoDB unit
-            self.harness.remove_relation_unit(rel.id, "mongodb/1")
+            self.harness.remove_relation_unit(rel.id, "mongodb-k8s/1")
 
             connection.return_value.__enter__.return_value.remove_replset_member.assert_called()
             defer.assert_called()
@@ -534,8 +534,8 @@ class TestCharm(unittest.TestCase):
 
         # simulate 2nd MongoDB unit joining( need a unit to join before removing a unit)
         rel = self.harness.charm.model.get_relation("database-peers")
-        self.harness.add_relation_unit(rel.id, "mongodb/1")
-        self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
+        self.harness.add_relation_unit(rel.id, "mongodb-k8s/1")
+        self.harness.update_relation_data(rel.id, "mongodb-k8s/1", PEER_ADDR)
 
         connection.return_value.__enter__.return_value.add_replset_member.assert_not_called()
         defer.assert_called()
@@ -564,8 +564,8 @@ class TestCharm(unittest.TestCase):
             )
 
             # simulate 2nd MongoDB unit joining( need a unit to join before removing a unit)
-            self.harness.add_relation_unit(rel.id, "mongodb/1")
-            self.harness.update_relation_data(rel.id, "mongodb/1", PEER_ADDR)
+            self.harness.add_relation_unit(rel.id, "mongodb-k8s/1")
+            self.harness.update_relation_data(rel.id, "mongodb-k8s/1", PEER_ADDR)
 
             connection.return_value.__enter__.return_value.add_replset_member.assert_called()
             defer.assert_called()
