@@ -1,5 +1,6 @@
-name: Tests
+name: integration and other tests
 on:
+  workflow_call:
   push:
     branches:
       - main
@@ -28,6 +29,9 @@ jobs:
         run: tox -e unit
   integration-test-microk8s:
     name: Integration tests (microk8s)
+    needs:
+      - lint
+      - unit-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -54,6 +58,9 @@ jobs:
 
   tls-integration-test-microk8s:
     name: TLS Integration tests (microk8s)
+    needs:
+      - lint
+      - unit-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -67,8 +74,6 @@ jobs:
           bootstrap-options: "--agent-version 2.9.29"
       - name: Install tox
         run: python3 -m pip install tox
-      - name: Install poetry
-        run: curl -sSL https://install.python-poetry.org | python3 -
       - name: Run tls integration tests
         # set a predictable model name so it can be consumed by charm-logdump-action
         run: sg microk8s -c "tox -e tls-integration -- --model testing"
