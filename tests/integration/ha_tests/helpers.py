@@ -1,6 +1,7 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
@@ -9,11 +10,12 @@ import yaml
 from juju.unit import Unit
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
-from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+from tenacity import RetryError, Retrying, retry, stop_after_delay, wait_fixed
 
 from tests.integration.helpers import APP_NAME, mongodb_uri, primary_host, run_mongo_op
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+MONGODB_CONTAINER_NAME = "mongod"
 APPLICATION_DEFAULT_APP_NAME = "application"
 TIMEOUT = 15 * 60
 
@@ -359,3 +361,23 @@ async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
         f"{unit.name.replace('/', '-')}.mongodb-k8s-endpoints"
         for unit in ops_test.model.applications[APP_NAME].units
     ]
+
+
+@retry(stop=stop_after_delay(30), wait=wait_fixed(3), reraise=True)
+async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: datetime) -> bool:
+    kubectl_cmd = (
+        "microk8s",
+        "kubectl",
+        "logs",
+        f"-n{ops_test.model_name}",
+        f"--since-time='{sigterm_time.isoformat()}'",
+        old_primary_unit.replace("/", "-"),
+        "-c",
+        MONGODB_CONTAINER_NAME,
+        "|",
+        "grep",
+        '"Starting an election due to step up request"',
+    )
+
+    ret_code, _, _ = await ops_test.run(*kubectl_cmd)
+    return ret_code == 0

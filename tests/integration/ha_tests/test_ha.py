@@ -3,13 +3,17 @@
 # See LICENSE file for licensing details.
 
 import time
+from datetime import datetime, timezone
 
 import pytest
 import pytest_asyncio
 from pytest_operator.plugin import OpsTest
+from tenacity import RetryError
 
 from tests.integration.ha_tests.helpers import (
+    MONGODB_CONTAINER_NAME,
     count_primaries,
+    db_step_down,
     deploy_and_scale_application,
     deploy_and_scale_mongodb,
     fetch_replica_set_members,
@@ -24,7 +28,6 @@ from tests.integration.ha_tests.helpers import (
 )
 from tests.integration.helpers import APP_NAME
 
-MONGODB_CONTAINER_NAME = "mongod"
 MONGOD_PROCESS_NAME = "mongod"
 MEDIAN_REELECTION_TIME = 12
 TEST_DB = "continuous_writes_database"
@@ -207,6 +210,68 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
     # verify that old primary is up to date.
     client = await get_mongo_client(ops_test, exact=primary)
+    total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    assert (
+        total_old_primary == total_expected_writes
+    ), "secondary not up to date with the cluster after restarting."
+
+
+async def test_restart_db_process(ops_test, continuous_writes):
+    # locate primary unit
+    old_primary = await get_replica_set_primary(ops_test)
+
+    # send SIGTERM
+    sig_term_time = datetime.now(timezone.utc)
+    await send_signal_to_pod_container_process(
+        ops_test,
+        old_primary,
+        MONGODB_CONTAINER_NAME,
+        MONGOD_PROCESS_NAME,
+        "SIGTERM",
+    )
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    client = await get_mongo_client(ops_test, excluded=[old_primary])
+
+    writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    time.sleep(5)
+    more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # verify that db service got restarted and is ready
+    old_primary_unit = int(old_primary.split("/")[1])
+    assert await mongod_ready(ops_test, old_primary_unit)
+
+    # verify that a new primary gets elected (ie old primary is secondary)
+    new_primary = await get_replica_set_primary(ops_test)
+    assert new_primary != old_primary
+
+    # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
+    # send a replica step down signal. Performed with a retry to give time for the logs to update.
+    try:
+        assert await db_step_down(
+            ops_test, old_primary, sig_term_time
+        ), "old primary departed without stepping down."
+    except RetryError:
+        False, "old primary departed without stepping down."
+
+    # verify that no writes were missed
+    application_name = await get_application_name(ops_test, "application")
+    application_unit = ops_test.model.applications[application_name].units[0]
+    stop_writes_action = await application_unit.run_action("stop-continuous-writes")
+    await stop_writes_action.wait()
+    total_expected_writes = int(stop_writes_action.results["writes"])
+    actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    assert actual_writes == total_expected_writes
+
+    # verify there is only one primary after killing old primary
+    assert (
+        await count_primaries(ops_test) == 1
+    ), "there are more than one primary in the replica set."
+
+    # verify that old primary is up to date.
+    client = await get_mongo_client(ops_test, exact=old_primary)
     total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert (
         total_old_primary == total_expected_writes
