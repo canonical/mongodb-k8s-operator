@@ -48,7 +48,6 @@ class ContinuousWritesApplication(CharmBase):
         # Database related events
         self.database = DatabaseRequires(self, "database", DATABASE_NAME)
         self.framework.observe(self.database.on.database_created, self._on_database_created)
-        self.framework.observe(self.database.on.endpoints_changed, self._on_endpoints_changed)
 
     # ==============
     # Properties
@@ -198,11 +197,6 @@ class ContinuousWritesApplication(CharmBase):
         """Handle the database created event."""
         self._start_continuous_writes(1)
         self.unit.status = ActiveStatus()
-
-    def _on_endpoints_changed(self, _) -> None:
-        """Handle the database endpoints changed event."""
-        count = self._max_written_value()
-        self._start_continuous_writes(count + 1)
 
 
 if __name__ == "__main__":
