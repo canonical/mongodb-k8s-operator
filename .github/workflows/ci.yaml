@@ -1,5 +1,6 @@
-name: Tests
+name: integration and other tests
 on:
+  workflow_call:
   push:
     branches:
       - main
@@ -28,6 +29,9 @@ jobs:
         run: tox -e unit
   integration-test-microk8s:
     name: Integration tests (microk8s)
+    needs:
+      - lint
+      - unit-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -78,6 +82,9 @@ jobs:
           model: testing
   tls-integration-test-microk8s:
     name: TLS Integration tests (microk8s)
+    needs:
+      - lint
+      - unit-test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

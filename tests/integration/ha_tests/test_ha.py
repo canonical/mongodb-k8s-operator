@@ -128,6 +128,7 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     stop_writes_action = await application_unit.run_action("stop-continuous-writes")
     await stop_writes_action.wait()
     total_expected_writes = int(stop_writes_action.results["writes"])
+    assert total_expected_writes > 0, "error while getting total writes."
     actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert total_expected_writes == actual_writes, "writes to the db were missed."
 
@@ -205,6 +206,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     stop_writes_action = await application_unit.run_action("stop-continuous-writes")
     await stop_writes_action.wait()
     total_expected_writes = int(stop_writes_action.results["writes"])
+    assert total_expected_writes > 0, "error while getting total writes."
     actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert actual_writes == total_expected_writes, "db writes missing."
 

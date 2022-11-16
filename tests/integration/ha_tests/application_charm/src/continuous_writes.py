@@ -2,17 +2,25 @@
 # See LICENSE file for licensing details.
 
 """This file is meant to run in the background continuously writing entries to MongoDB."""
+import signal
 import sys
 
 from pymongo import MongoClient
 from pymongo.errors import AutoReconnect, NotPrimaryError, PyMongoError
 from pymongo.write_concern import WriteConcern
 
+run = True
+
+
+def sigterm_handler(_signo, _stack_frame):
+    global run
+    run = False
+
 
 def continous_writes(connection_string: str, starting_number: int):
     write_value = starting_number
 
-    while True:
+    while run:
         client = MongoClient(
             connection_string,
             socketTimeoutMS=5000,
@@ -44,6 +52,9 @@ def continous_writes(connection_string: str, starting_number: int):
 
         write_value += 1
 
+    with open("/tmp/last_written_value", "w") as fd:
+        fd.write(str(write_value - 1))
+
 
 def main():
     connection_string = sys.argv[1]
@@ -52,4 +63,5 @@ def main():
 
 
 if __name__ == "__main__":
+    signal.signal(signal.SIGTERM, sigterm_handler)
     main()

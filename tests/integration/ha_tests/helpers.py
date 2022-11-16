@@ -3,11 +3,9 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
+from typing import List
 
-import kubernetes
 import yaml
-from juju.unit import Unit
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, retry, stop_after_delay, wait_fixed
@@ -23,7 +21,7 @@ mongodb_charm, application_charm = None, None
 
 
 async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
-    """Returns the name of the application witt the provided application name.
+    """Returns the name of the application with the provided application name.
 
     This enables us to retrieve the name of the deployed application in an existing model.
 
@@ -53,6 +51,8 @@ async def scale_application(
         wait: Boolean indicating whether to wait until units
             reach desired count
     """
+    if len(ops_test.model.applications[application_name].units) == desired_count:
+        return
     await ops_test.model.applications[application_name].scale(desired_count)
 
     if desired_count > 0 and wait:
@@ -64,6 +64,8 @@ async def scale_application(
                 wait_for_exact_units=desired_count,
                 raise_on_blocked=True,
             )
+
+    assert len(ops_test.model.applications[application_name].units) == desired_count
 
 
 async def relate_mongodb_and_application(
@@ -108,9 +110,7 @@ async def deploy_and_scale_mongodb(
     application_name = await get_application_name(ops_test, "mongodb")
 
     if check_for_existing_application and application_name:
-        if len(ops_test.model.applications[application_name].units) != 3:
-            async with ops_test.fast_forward():
-                await scale_application(ops_test, application_name, 3)
+        await scale_application(ops_test, application_name, 3)
 
         return application_name
 
@@ -137,8 +137,6 @@ async def deploy_and_scale_mongodb(
             timeout=TIMEOUT,
         )
 
-        assert len(ops_test.model.applications[mongodb_application_name].units) == 3
-
     return mongodb_application_name
 
 
@@ -151,9 +149,7 @@ async def deploy_and_scale_application(ops_test: OpsTest) -> str:
     application_name = await get_application_name(ops_test, "application")
 
     if application_name:
-        if len(ops_test.model.applications[application_name].units) != 1:
-            async with ops_test.fast_forward():
-                await scale_application(ops_test, application_name, 1)
+        await scale_application(ops_test, application_name, 1)
 
         return application_name
 
@@ -176,8 +172,6 @@ async def deploy_and_scale_application(ops_test: OpsTest) -> str:
             raise_on_blocked=True,
             timeout=TIMEOUT,
         )
-
-        assert len(ops_test.model.applications[APPLICATION_DEFAULT_APP_NAME].units) == 1
 
     return APPLICATION_DEFAULT_APP_NAME
 
@@ -225,8 +219,9 @@ async def get_process_pid(
     ), f"Failed getting pid, unit={unit_name}, container={container_name}, process={process}"
 
     stripped_pid = pid.strip()
-    if not stripped_pid:
-        return -1
+    assert (
+        stripped_pid
+    ), f"Failed stripping pid, unit={unit_name}, container={container_name}, process={process}, {pid}"
 
     return int(stripped_pid)
 
@@ -243,43 +238,20 @@ async def send_signal_to_pod_container_process(
         process: The name of the process to send signal to
         signal_code: The code of the signal to send
     """
-    kubernetes.config.load_kube_config()
-
-    pod_name = unit_name.replace("/", "-")
-
-    send_signal_command = f"pkill --signal {signal_code} -f {process}"
-    response = kubernetes.stream.stream(
-        kubernetes.client.api.core_v1_api.CoreV1Api().connect_get_namespaced_pod_exec,
-        pod_name,
-        ops_test.model.info.name,
-        container=container_name,
-        command=send_signal_command.split(),
-        stdin=False,
-        stdout=True,
-        stderr=True,
-        tty=False,
-        _preload_content=False,
-    )
-    response.run_forever(timeout=5)
+    cmd = [
+        "ssh",
+        "--container",
+        container_name,
+        unit_name,
+        "pkill",
+        f"-{signal_code}",
+        process,
+    ]
+    ret_code, _, _ = await ops_test.juju(*cmd)
 
     assert (
-        response.returncode == 0
+        ret_code == 0
     ), f"Failed to send {signal_code} signal, unit={unit_name}, container={container_name}, process={process}"
-
-
-async def get_cluster_status(ops_test: OpsTest, unit: Unit) -> Dict:
-    """Get the cluster status by running the get-cluster-status action.
-
-    Args:
-        ops_test: The ops test framework
-        unit: The unit on which to execute the action on
-
-    Returns:
-        A dictionary representing the cluster status
-    """
-    get_cluster_status_action = await unit.run_action("get-cluster-status")
-    cluster_status_results = await get_cluster_status_action.wait()
-    return cluster_status_results.results
 
 
 def host_to_unit(host: str) -> str:
@@ -303,6 +275,7 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
 
 
 async def get_replica_set_primary(ops_test: OpsTest) -> str:
+    """Returns the primary unit name based no the replica set host."""
     rs_status = await run_mongo_op(ops_test, "rs.status()")
     assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
 
@@ -344,6 +317,7 @@ async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
 async def get_mongo_client(
     ops_test: OpsTest, exact: str = None, excluded: List[str] = []
 ) -> MongoClient:
+    """Returns a direct mongodb client to specific unit or passing over some of the units."""
     if exact:
         return MongoClient(
             await mongodb_uri(ops_test, [int(exact.split("/")[1])]), directConnection=True
@@ -357,6 +331,7 @@ async def get_mongo_client(
 
 
 async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
+    """Generates k8s hostnames based on unit names."""
     return [
         f"{unit.name.replace('/', '-')}.mongodb-k8s-endpoints"
         for unit in ops_test.model.applications[APP_NAME].units
