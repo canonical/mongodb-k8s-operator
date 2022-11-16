@@ -19,7 +19,7 @@ mongodb_charm, application_charm = None, None
 
 
 async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
-    """Returns the name of the application witt the provided application name.
+    """Returns the name of the application with the provided application name.
 
     This enables us to retrieve the name of the deployed application in an existing model.
 
@@ -217,8 +217,9 @@ async def get_process_pid(
     ), f"Failed getting pid, unit={unit_name}, container={container_name}, process={process}"
 
     stripped_pid = pid.strip()
-    if not stripped_pid:
-        return -1
+    assert (
+        stripped_pid
+    ), f"Failed stripping pid, unit={unit_name}, container={container_name}, process={process}, {pid}"
 
     return int(stripped_pid)
 
@@ -272,6 +273,7 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
 
 
 async def get_replica_set_primary(ops_test: OpsTest) -> str:
+    """Returns the primary unit name based no the replica set host."""
     rs_status = await run_mongo_op(ops_test, "rs.status()")
     assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
 
@@ -313,6 +315,7 @@ async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
 async def get_mongo_client(
     ops_test: OpsTest, exact: str = None, excluded: List[str] = []
 ) -> MongoClient:
+    """Returns a direct mongodb client to specific unit or passing over some of the units."""
     if exact:
         return MongoClient(
             await mongodb_uri(ops_test, [int(exact.split("/")[1])]), directConnection=True
@@ -326,6 +329,7 @@ async def get_mongo_client(
 
 
 async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
+    """Generates k8s hostnames based on unit names."""
     return [
         f"{unit.name.replace('/', '-')}.mongodb-k8s-endpoints"
         for unit in ops_test.model.applications[APP_NAME].units

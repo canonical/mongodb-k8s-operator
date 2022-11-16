@@ -9,6 +9,8 @@ high availability of the MongoDB charm.
 """
 
 import logging
+import os
+import signal
 import subprocess
 from typing import Dict, Optional
 
@@ -23,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 DATABASE_NAME = "continuous_writes_database"
 PEER = "application-peers"
+LAST_WRITTEN_FILE = "/tmp/last_written_value"
 PROC_PID_KEY = "proc-pid"
 
 
@@ -120,35 +123,23 @@ class ContinuousWritesApplication(CharmBase):
         if not self.app_peer_data.get(PROC_PID_KEY):
             return None
 
-        # Send a SIGKILL to the process and wait for the process to exit
-        proc = subprocess.Popen(["pkill", "--signal", "SIGKILL", "-f", "src/continuous_writes.py"])
-        proc.communicate()
+        # Send a SIGTERM to the process and wait for the process to exit
+        os.kill(int(self.app_peer_data[PROC_PID_KEY]), signal.SIGTERM)
 
         del self.app_peer_data[PROC_PID_KEY]
 
-        # Query and return the max value inserted in the database
-        # (else -1 if unable to query)
+        # read the last written_value
         try:
             for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(5)):
                 with attempt:
-                    last_written_value = self._max_written_value()
+                    with open(LAST_WRITTEN_FILE, "r") as fd:
+                        last_written_value = int(fd.read())
         except RetryError as e:
             logger.exception("Unable to query the database", exc_info=e)
             return -1
 
+        os.remove(LAST_WRITTEN_FILE)
         return last_written_value
-
-    def _max_written_value(self) -> int:
-        """Returns the count of rows in the continuous writes table."""
-        if not self._database_config:
-            return -1
-
-        client = MongoClient(self._database_config["uris"])
-        db = client[DATABASE_NAME]
-        test_collection = db["test_collection"]
-        last_written_value = test_collection.find_one(sort=[("number", -1)])
-        client.close()
-        return last_written_value["number"]
 
     # ==============
     # Handlers
@@ -188,14 +179,13 @@ class ContinuousWritesApplication(CharmBase):
     def _on_stop_continuous_writes_action(self, event: ActionEvent) -> None:
         """Handle the stop continuous writes action event."""
         if not self._database_config:
-            return event.set_results({"writes": 0})
+            return event.set_results({"writes": -1})
 
         writes = self._stop_continuous_writes()
-        event.set_results({"writes": writes})
+        event.set_results({"writes": writes or -1})
 
     def _on_database_created(self, _) -> None:
         """Handle the database created event."""
-        self._start_continuous_writes(1)
         self.unit.status = ActiveStatus()
 
 
