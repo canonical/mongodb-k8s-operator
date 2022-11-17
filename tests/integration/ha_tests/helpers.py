@@ -1,6 +1,8 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import subprocess
+from asyncio import gather
 from datetime import datetime
 from pathlib import Path
 from typing import List
@@ -8,9 +10,15 @@ from typing import List
 import yaml
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
-from tenacity import RetryError, Retrying, retry, stop_after_delay, wait_fixed
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.helpers import APP_NAME, mongodb_uri, primary_host, run_mongo_op
+from tests.integration.helpers import (
+    APP_NAME,
+    get_password,
+    mongodb_uri,
+    primary_host,
+    run_mongo_op,
+)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGODB_CONTAINER_NAME = "mongod"
@@ -338,21 +346,72 @@ async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
     ]
 
 
-@retry(stop=stop_after_delay(30), wait=wait_fixed(3), reraise=True)
-async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: datetime) -> None:
-    kubectl_cmd = (
+async def db_step_down(ops_test: OpsTest, sigterm_time: datetime) -> None:
+    """Pipes the k8s logs, looking for stepdown message."""
+    kubectl_cmd = [
         "microk8s",
         "kubectl",
         "logs",
         f"-n{ops_test.model_name}",
-        f"--since-time='{sigterm_time.isoformat()}'",
-        old_primary_unit.replace("/", "-"),
+        f"--since-time={sigterm_time.isoformat()}",
+        "",
         "-c",
         MONGODB_CONTAINER_NAME,
-        "|",
+        "-f",
+    ]
+
+    grep_cmd = (
         "grep",
+        "-m1",
         '"Starting an election due to step up request"',
     )
 
-    ret_code, _, _ = await ops_test.run(*kubectl_cmd)
-    assert ret_code == 0, "old primary departed without stepping down."
+    procs = []
+    for unit in ops_test.model.applications[APP_NAME].units:
+        kubectl_cmd[5] = unit.name.replace("/", "-")
+        kubectl_proc = subprocess.Popen(kubectl_cmd, stdout=subprocess.PIPE)
+        grep_proc = subprocess.Popen(
+            grep_cmd, stdin=kubectl_proc.stdout, stdout=subprocess.DEVNULL
+        )
+        procs.append((kubectl_proc, grep_proc))
+
+    timeout = 30
+    success = False
+    for kubectl_proc, grep_proc in procs:
+        try:
+            grep_proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            pass
+        if grep_proc.poll() == 0:
+            success = True
+        grep_proc.terminate()
+        kubectl_proc.terminate()
+        timeout = 0
+
+    assert success, "old primary departed without stepping down."
+
+
+async def set_log_level(ops_test: OpsTest, level: int, component: str = None) -> None:
+    """Sets a given loglevel for a given component for each mongodb unit."""
+    pass_unit = ops_test.model.applications[APP_NAME].units[0].name
+    cmd = [
+        "ssh",
+        "--container",
+        MONGODB_CONTAINER_NAME,
+        "",
+        "mongosh",
+        "-u",
+        "operator",
+        "-p",
+        await get_password(ops_test, int(pass_unit.split("/")[1])),
+        "--quiet",
+        "--eval",
+        "",
+    ]
+
+    awaits = []
+    for unit in ops_test.model.applications[APP_NAME].units:
+        cmd[3] = unit.name
+        cmd[-1] = cmd[-1] = f"\"db.setLogLevel({level}, '{component}')\""
+        awaits.append(ops_test.juju(*cmd))
+    await gather(*awaits)

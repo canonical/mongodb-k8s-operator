@@ -8,7 +8,6 @@ from datetime import datetime, timezone
 import pytest
 import pytest_asyncio
 from pytest_operator.plugin import OpsTest
-from tenacity import RetryError
 
 from tests.integration.ha_tests.helpers import (
     MONGODB_CONTAINER_NAME,
@@ -25,6 +24,7 @@ from tests.integration.ha_tests.helpers import (
     mongod_ready,
     relate_mongodb_and_application,
     send_signal_to_pod_container_process,
+    set_log_level,
 )
 from tests.integration.helpers import APP_NAME
 
@@ -51,6 +51,16 @@ async def continuous_writes(ops_test: OpsTest) -> None:
 
     clear_writes_action = await application_unit.run_action("clear-continuous-writes")
     await clear_writes_action.wait()
+
+
+@pytest_asyncio.fixture
+async def change_logging(ops_test: OpsTest):
+    """Increases and resets election logging verbosity."""
+    await set_log_level(ops_test, 5, "replication.election")
+
+    yield
+
+    await set_log_level(ops_test, -1, "replication.election")
 
 
 @pytest.mark.abort_on_fail
@@ -218,7 +228,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     ), "secondary not up to date with the cluster after restarting."
 
 
-async def test_restart_db_process(ops_test, continuous_writes):
+async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     # locate primary unit
     old_primary = await get_replica_set_primary(ops_test)
 
@@ -231,6 +241,10 @@ async def test_restart_db_process(ops_test, continuous_writes):
         MONGOD_PROCESS_NAME,
         "SIGTERM",
     )
+    # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
+    # send a replica step down signal. Pipes k8s logs output to see if any of the pods received a
+    # stepdown request. Must be done early otherwise continuous writes may flood the logs
+    await db_step_down(ops_test, sig_term_time)
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
@@ -248,10 +262,6 @@ async def test_restart_db_process(ops_test, continuous_writes):
     # verify that a new primary gets elected (ie old primary is secondary)
     new_primary = await get_replica_set_primary(ops_test)
     assert new_primary != old_primary
-
-    # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
-    # send a replica step down signal. Performed with a retry to give time for the logs to update.
-    await db_step_down(ops_test, old_primary, sig_term_time)
 
     # verify that no writes were missed
     application_name = await get_application_name(ops_test, "application")
