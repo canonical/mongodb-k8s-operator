@@ -251,12 +251,7 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
     # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
     # send a replica step down signal. Performed with a retry to give time for the logs to update.
-    try:
-        assert await db_step_down(
-            ops_test, old_primary, sig_term_time
-        ), "old primary departed without stepping down."
-    except RetryError:
-        False, "old primary departed without stepping down."
+    await db_step_down(ops_test, old_primary, sig_term_time)
 
     # verify that no writes were missed
     application_name = await get_application_name(ops_test, "application")

@@ -339,7 +339,7 @@ async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
 
 
 @retry(stop=stop_after_delay(30), wait=wait_fixed(3), reraise=True)
-async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: datetime) -> bool:
+async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: datetime) -> None:
     kubectl_cmd = (
         "microk8s",
         "kubectl",
@@ -355,4 +355,4 @@ async def db_step_down(ops_test: OpsTest, old_primary_unit: str, sigterm_time: d
     )
 
     ret_code, _, _ = await ops_test.run(*kubectl_cmd)
-    return ret_code == 0
+    assert ret_code == 0, "old primary departed without stepping down."
