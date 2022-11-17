@@ -19,7 +19,7 @@ mongodb_charm, application_charm = None, None
 
 
 async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
-    """Returns the name of the application with the provided application name.
+    """Returns the Application in the juju model that matches the provided application name.
 
     This enables us to retrieve the name of the deployed application in an existing model.
 
