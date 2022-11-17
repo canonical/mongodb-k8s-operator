@@ -25,8 +25,8 @@ async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
 
     This enables us to retrieve the name of the deployed application in an existing model.
 
-    Note: if multiple applications with the application name exist,
-    the first one found will be returned.
+    Note: if multiple applications with the application name exist, the first one found will be
+     returned.
     """
     status = await ops_test.model.get_status()
 
