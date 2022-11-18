@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
+import ops
 import yaml
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
@@ -338,6 +339,17 @@ async def get_mongo_client(
             )
 
 
+async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
+    """Helper function identifies the a unit, based on need for leader or non-leader."""
+    ret_unit = None
+    app = await get_application_name(ops_test, APP_NAME)
+    for unit in ops_test.model.applications[app].units:
+        if await unit.is_leader_from_status() == leader:
+            ret_unit = unit
+
+    return ret_unit
+
+
 async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
     """Generates k8s hostnames based on unit names."""
     return [
@@ -415,3 +427,27 @@ async def set_log_level(ops_test: OpsTest, level: int, component: str = None) ->
         cmd[-1] = cmd[-1] = f"\"db.setLogLevel({level}, '{component}')\""
         awaits.append(ops_test.juju(*cmd))
     await gather(*awaits)
+
+
+async def get_total_writes(ops_test: OpsTest) -> int:
+    """Gets the total writes from the test application action."""
+    application_name = await get_application_name(ops_test, "application")
+    application_unit = ops_test.model.applications[application_name].units[0]
+    stop_writes_action = await application_unit.run_action("stop-continuous-writes")
+    await stop_writes_action.wait()
+    return int(stop_writes_action.results["writes"])
+
+
+async def kubectl_delete(ops_test: OpsTest, unit: ops.model.Unit, wait: bool = True) -> None:
+    """Delete the underlying pod for a unit."""
+    kubectl_cmd = (
+        "microk8s",
+        "kubectl",
+        "delete",
+        "pod",
+        f"--wait={wait}",
+        f"-n{ops_test.model_name}",
+        unit.name.replace("/", "-"),
+    )
+    ret_code, _, _ = await ops_test.run(*kubectl_cmd)
+    assert ret_code == 0, "Unit failed to delete"

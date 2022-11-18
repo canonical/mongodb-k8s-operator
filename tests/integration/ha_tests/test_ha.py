@@ -16,13 +16,17 @@ from tests.integration.ha_tests.helpers import (
     deploy_and_scale_application,
     deploy_and_scale_mongodb,
     fetch_replica_set_members,
+    find_unit,
     get_application_name,
     get_mongo_client,
     get_process_pid,
     get_replica_set_primary,
+    get_total_writes,
     get_units_hostnames,
+    kubectl_delete,
     mongod_ready,
     relate_mongodb_and_application,
+    scale_application,
     send_signal_to_pod_container_process,
     set_log_level,
 )
@@ -76,6 +80,80 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         application_name = await deploy_and_scale_application(ops_test)
 
     await relate_mongodb_and_application(ops_test, mongodb_application_name, application_name)
+
+
+@pytest.mark.abort_on_fail
+async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
+    """Tests juju add-unit functionality.
+
+    Verifies that when a new unit is added to the MongoDB application that it is added to the
+    MongoDB replica set configuration.
+    """
+    # add units and wait for idle
+    app = await get_application_name(ops_test, APP_NAME)
+    initial_units = [unit.name for unit in ops_test.model.applications[app].units]
+    await scale_application(ops_test, app, len(ops_test.model.applications[app].units) + 2)
+
+    # grab unit hosts
+    hostnames = await get_units_hostnames(ops_test)
+
+    # connect to replica set uri and get replica set members
+    member_hosts = await fetch_replica_set_members(ops_test)
+
+    # verify that the replica set members have the correct units
+    assert set(member_hosts) == set(hostnames), "all members not running under the same replset"
+
+    # verify that the no writes were skipped
+    total_expected_writes = await get_total_writes(ops_test)
+    assert total_expected_writes > 0, "error while getting total writes."
+    client = await get_mongo_client(ops_test, excluded=initial_units)
+    actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    assert total_expected_writes == actual_writes, "writes to the db were missed."
+
+
+@pytest.mark.abort_on_fail
+async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> None:
+    """Tests clusters behavior when scaling down a minority and removing a primary replica."""
+    app = await get_application_name(ops_test, APP_NAME)
+    minority_count = int(len(ops_test.model.applications[app].units) / 2)
+    expected_units = len(ops_test.model.applications[app].units) - minority_count
+
+    # find leader unit
+    leader_unit = await find_unit(ops_test, leader=True)
+
+    # verify that we have a leader
+    assert leader_unit is not None, "No unit is leader"
+
+    # Force delete the leader and scale down
+    await kubectl_delete(ops_test, leader_unit, False)
+    await scale_application(ops_test, app, expected_units)
+
+    # grab unit hosts
+    hostnames = await get_units_hostnames(ops_test)
+
+    # check that the replica set with the remaining units has a primary
+    primary = await get_replica_set_primary(ops_test)
+
+    # verify that the primary is not None
+    assert primary is not None, "replica set has no primary"
+
+    # check that the primary is one of the remaining units
+    assert (
+        f"{primary.replace('/', '-')}.mongodb-k8s-endpoints" in hostnames
+    ), "replica set primary is not one of the available units"
+
+    # verify that the configuration of mongodb no longer has the deleted ip
+    member_hosts = await fetch_replica_set_members(ops_test)
+
+    # verify that the replica set members have the correct units
+    assert set(member_hosts) == set(hostnames), "mongod config contains deleted units"
+
+    # verify that the no writes were skipped
+    total_expected_writes = await get_total_writes(ops_test)
+    assert total_expected_writes > 0, "error while getting total writes."
+    client = await get_mongo_client(ops_test)
+    actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    assert total_expected_writes == actual_writes, "writes to the db were missed."
 
 
 async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
@@ -133,11 +211,7 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     ), "there are more than one primary in the replica set."
 
     # verify that no writes to the db were missed
-    application_name = await get_application_name(ops_test, "application")
-    application_unit = ops_test.model.applications[application_name].units[0]
-    stop_writes_action = await application_unit.run_action("stop-continuous-writes")
-    await stop_writes_action.wait()
-    total_expected_writes = int(stop_writes_action.results["writes"])
+    total_expected_writes = await get_total_writes(ops_test)
     assert total_expected_writes > 0, "error while getting total writes."
     actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert total_expected_writes == actual_writes, "writes to the db were missed."
@@ -211,11 +285,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     assert new_primary != primary, "un-frozen primary should be secondary."
 
     # verify that no writes were missed.
-    application_name = await get_application_name(ops_test, "application")
-    application_unit = ops_test.model.applications[application_name].units[0]
-    stop_writes_action = await application_unit.run_action("stop-continuous-writes")
-    await stop_writes_action.wait()
-    total_expected_writes = int(stop_writes_action.results["writes"])
+    total_expected_writes = await get_total_writes(ops_test)
     assert total_expected_writes > 0, "error while getting total writes."
     actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert actual_writes == total_expected_writes, "db writes missing."
@@ -264,11 +334,7 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     assert new_primary != old_primary
 
     # verify that no writes were missed
-    application_name = await get_application_name(ops_test, "application")
-    application_unit = ops_test.model.applications[application_name].units[0]
-    stop_writes_action = await application_unit.run_action("stop-continuous-writes")
-    await stop_writes_action.wait()
-    total_expected_writes = int(stop_writes_action.results["writes"])
+    total_expected_writes = await get_total_writes(ops_test)
     assert total_expected_writes > 0, "error while getting total writes."
     actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert actual_writes == total_expected_writes
