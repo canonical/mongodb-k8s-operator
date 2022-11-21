@@ -435,7 +435,9 @@ async def get_total_writes(ops_test: OpsTest) -> int:
     application_unit = ops_test.model.applications[application_name].units[0]
     stop_writes_action = await application_unit.run_action("stop-continuous-writes")
     await stop_writes_action.wait()
-    return int(stop_writes_action.results["writes"])
+    total_expected_writes = int(stop_writes_action.results["writes"])
+    assert total_expected_writes > 0, "error while getting total writes."
+    return total_expected_writes
 
 
 async def kubectl_delete(ops_test: OpsTest, unit: ops.model.Unit, wait: bool = True) -> None:

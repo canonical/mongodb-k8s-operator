@@ -105,9 +105,8 @@ async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
 
     # verify that the no writes were skipped
     total_expected_writes = await get_total_writes(ops_test)
-    assert total_expected_writes > 0, "error while getting total writes."
-    client = await get_mongo_client(ops_test, excluded=initial_units)
-    actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test, excluded=initial_units) as client:
+        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert total_expected_writes == actual_writes, "writes to the db were missed."
 
 
@@ -150,10 +149,38 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 
     # verify that the no writes were skipped
     total_expected_writes = await get_total_writes(ops_test)
-    assert total_expected_writes > 0, "error while getting total writes."
-    client = await get_mongo_client(ops_test)
-    actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test) as client:
+        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert total_expected_writes == actual_writes, "writes to the db were missed."
+
+
+async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
+    """Check consistency, ie write to primary, read data from secondaries."""
+    # first find primary, write to primary, then read from each unit
+    primary = await get_replica_set_primary(ops_test)
+    with await get_mongo_client(ops_test, exact=primary) as client:
+        db = client["new-db"]
+        test_collection = db["test_ubuntu_collection"]
+        test_collection.insert_one({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
+
+    app = await get_application_name(ops_test, APP_NAME)
+    excluded = [primary]
+    for unit in ops_test.model.applications[app].units:
+        if unit.name == primary:
+            continue
+        with await get_mongo_client(ops_test, excluded=excluded) as client:
+            db = client["new-db"]
+            test_collection = db["test_ubuntu_collection"]
+            query = test_collection.find({}, {"release_name": 1})
+            assert query[0]["release_name"] == "Focal Fossa"
+        excluded.append(unit.name)
+
+    # verify that the no writes were skipped
+    total_expected_writes = await get_total_writes(ops_test)
+    with await get_mongo_client(ops_test) as client:
+        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    assert total_expected_writes > 0, "error while getting total writes."
+    assert total_expected_writes == actual_writes
 
 
 async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
@@ -178,11 +205,10 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
-    client = await get_mongo_client(ops_test, excluded=[primary])
-
-    writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    time.sleep(5)
-    more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test, excluded=[primary]) as client:
+        writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        time.sleep(5)
+        more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert more_writes > writes, "writes not continuing to DB"
 
     # verify that db service got restarted and is ready
@@ -212,13 +238,13 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
 
     # verify that no writes to the db were missed
     total_expected_writes = await get_total_writes(ops_test)
-    assert total_expected_writes > 0, "error while getting total writes."
-    actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test, excluded=[primary]) as client:
+        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert total_expected_writes == actual_writes, "writes to the db were missed."
 
     # verify that old primary is up to date.
-    client = await get_mongo_client(ops_test, exact=primary)
-    total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test, exact=primary) as client:
+        total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert (
         total_old_primary == total_expected_writes
     ), "secondary not up to date with the cluster after restarting."
@@ -248,11 +274,10 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
-    client = await get_mongo_client(ops_test, excluded=[primary])
-
-    writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    time.sleep(5)
-    more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test, excluded=[primary]) as client:
+        writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        time.sleep(5)
+        more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
 
     # un-freeze the old primary
     await send_signal_to_pod_container_process(
@@ -286,13 +311,13 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
     # verify that no writes were missed.
     total_expected_writes = await get_total_writes(ops_test)
-    assert total_expected_writes > 0, "error while getting total writes."
-    actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test, excluded=[primary]) as client:
+        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert actual_writes == total_expected_writes, "db writes missing."
 
     # verify that old primary is up to date.
-    client = await get_mongo_client(ops_test, exact=primary)
-    total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test, exact=primary) as client:
+        total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert (
         total_old_primary == total_expected_writes
     ), "secondary not up to date with the cluster after restarting."
@@ -318,11 +343,10 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
-    client = await get_mongo_client(ops_test, excluded=[old_primary])
-
-    writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    time.sleep(5)
-    more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test, excluded=[old_primary]) as client:
+        writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        time.sleep(5)
+        more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert more_writes > writes, "writes not continuing to DB"
 
     # verify that db service got restarted and is ready
@@ -335,8 +359,8 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
 
     # verify that no writes were missed
     total_expected_writes = await get_total_writes(ops_test)
-    assert total_expected_writes > 0, "error while getting total writes."
-    actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test, excluded=[old_primary]) as client:
+        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert actual_writes == total_expected_writes
 
     # verify there is only one primary after killing old primary
@@ -345,8 +369,8 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     ), "there are more than one primary in the replica set."
 
     # verify that old primary is up to date.
-    client = await get_mongo_client(ops_test, exact=old_primary)
-    total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    with await get_mongo_client(ops_test, exact=old_primary) as client:
+        total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert (
         total_old_primary == total_expected_writes
     ), "secondary not up to date with the cluster after restarting."
