@@ -23,6 +23,7 @@ from tests.integration.ha_tests.helpers import (
     get_replica_set_primary,
     get_total_writes,
     get_units_hostnames,
+    insert_focal_to_cluster,
     kubectl_delete,
     mongod_ready,
     relate_mongodb_and_application,
@@ -157,12 +158,9 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
     # first find primary, write to primary, then read from each unit
-    primary = await get_replica_set_primary(ops_test)
-    with await get_mongo_client(ops_test, exact=primary) as client:
-        db = client["new-db"]
-        test_collection = db["test_ubuntu_collection"]
-        test_collection.insert_one({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
+    await insert_focal_to_cluster(ops_test)
 
+    primary = await get_replica_set_primary(ops_test)
     app = await get_application_name(ops_test, APP_NAME)
     excluded = [primary]
     for unit in ops_test.model.applications[app].units:
@@ -179,8 +177,32 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
     total_expected_writes = await get_total_writes(ops_test)
     with await get_mongo_client(ops_test) as client:
         actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    assert total_expected_writes > 0, "error while getting total writes."
     assert total_expected_writes == actual_writes
+
+
+async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) -> None:
+    """Verify newly added and newly removed members properly replica data.
+
+    Verify newly members have replicated data and newly removed members are gone without data.
+    """
+    # first find primary, write to primary,
+    await insert_focal_to_cluster(ops_test)
+
+    app = await get_application_name(ops_test, APP_NAME)
+    original_units = [unit.name for unit in ops_test.model.applications[app].units]
+
+    await scale_application(ops_test, app, len(original_units) + 1)
+
+    with await get_mongo_client(ops_test, excluded=original_units) as client:
+        db = client["new-db"]
+        test_collection = db["test_ubuntu_collection"]
+        query = test_collection.find({}, {"release_name": 1})
+        assert query[0]["release_name"] == "Focal Fossa"
+
+        # verify that the no writes were skipped
+        total_expected_writes = await get_total_writes(ops_test)
+        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        assert total_expected_writes == actual_writes
 
 
 async def test_kill_db_process(ops_test: OpsTest, continuous_writes):

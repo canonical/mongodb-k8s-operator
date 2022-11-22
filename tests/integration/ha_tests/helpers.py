@@ -438,3 +438,12 @@ async def kubectl_delete(ops_test: OpsTest, unit: ops.model.Unit, wait: bool = T
     )
     ret_code, _, _ = await ops_test.run(*kubectl_cmd)
     assert ret_code == 0, "Unit failed to delete"
+
+
+async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
+    """Inserts the Focal Fossa data into the MongoDB cluster via primary replica."""
+    primary = await get_replica_set_primary(ops_test)
+    with await get_mongo_client(ops_test, exact=primary) as client:
+        db = client["new-db"]
+        test_collection = db["test_ubuntu_collection"]
+        test_collection.insert_one({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
