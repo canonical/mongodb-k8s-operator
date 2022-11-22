@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install tox
         run: python3 -m pip install tox
       - name: Run linters
@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Install tox
         run: python3 -m pip install tox
       - name: Run tests
@@ -35,13 +35,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: microk8s
           # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
-          channel: 1.23/stable
           bootstrap-options: "--agent-version 2.9.29"
       - name: Install tox
         run: python3 -m pip install tox
@@ -63,13 +62,12 @@ jobs:
       - unit-test
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: microk8s
           # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
-          channel: 1.23/stable
           bootstrap-options: "--agent-version 2.9.29"
       - name: Install tox
         run: python3 -m pip install tox
@@ -91,13 +89,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Setup operator environment
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: microk8s
           # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
-          channel: 1.23/stable
           bootstrap-options: "--agent-version 2.9.29"
       - name: Install tox
         run: python3 -m pip install tox
