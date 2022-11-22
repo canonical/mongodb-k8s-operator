@@ -13,13 +13,7 @@ from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.helpers import (
-    APP_NAME,
-    get_password,
-    mongodb_uri,
-    primary_host,
-    run_mongo_op,
-)
+from tests.integration.helpers import APP_NAME, get_password, mongodb_uri, primary_host
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGODB_CONTAINER_NAME = "mongod"
@@ -285,25 +279,18 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
 
 async def get_replica_set_primary(ops_test: OpsTest) -> str:
     """Returns the primary unit name based no the replica set host."""
-    rs_status = await run_mongo_op(ops_test, "rs.status()")
-    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
+    with await get_mongo_client(ops_test) as client:
+        data = client.admin.command("replSetGetStatus")
 
-    return host_to_unit(primary_host(rs_status.data))
+    return host_to_unit(primary_host(data))
 
 
 async def count_primaries(ops_test: OpsTest) -> int:
     """Returns the number of primaries in a replica set."""
-    rs_status = await run_mongo_op(ops_test, "rs.status()")
-    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
+    with await get_mongo_client(ops_test) as client:
+        data = client.admin.command("replSetGetStatus")
 
-    primaries = 0
-    # loop through all members in the replica set
-    for member in rs_status.data["members"]:
-        # check replica's current state
-        if member["stateStr"] == "PRIMARY":
-            primaries += 1
-
-    return primaries
+    return len([member for member in data["members"] if member["stateStr"] == "PRIMARY"])
 
 
 async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
@@ -314,13 +301,10 @@ async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
     """
     # connect to replica set uri
     # get ips from MongoDB replica set configuration
-    rs_config = await run_mongo_op(ops_test, "rs.config()")
-    member_ips = []
-    for member in rs_config.data["members"]:
-        # get member ip without ":PORT"
-        member_ips.append(member["host"].split(":")[0])
+    with await get_mongo_client(ops_test) as client:
+        data = client.admin.command("replSetGetConfig")
 
-    return member_ips
+    return [member["host"].split(":")[0] for member in data["config"]["members"]]
 
 
 async def get_mongo_client(
@@ -333,10 +317,11 @@ async def get_mongo_client(
         )
     mongodb_name = await get_application_name(ops_test, APP_NAME)
     for unit in ops_test.model.applications[mongodb_name].units:
-        if unit.name not in excluded:
+        if unit.name not in excluded and unit.workload_status == "active":
             return MongoClient(
                 await mongodb_uri(ops_test, [int(unit.name.split("/")[1])]), directConnection=True
             )
+    assert False, "No fitting unit could be found"
 
 
 async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
