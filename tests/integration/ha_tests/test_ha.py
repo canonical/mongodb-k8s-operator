@@ -13,8 +13,8 @@ from tests.integration.ha_tests.helpers import (
     MONGODB_CONTAINER_NAME,
     TEST_COLLECTION,
     TEST_DB,
+    check_db_stepped_down,
     count_primaries,
-    db_step_down,
     deploy_and_scale_application,
     deploy_and_scale_mongodb,
     fetch_replica_set_members,
@@ -24,7 +24,6 @@ from tests.integration.ha_tests.helpers import (
     get_mongo_client,
     get_process_pid,
     get_replica_set_primary,
-    get_total_writes,
     get_units_hostnames,
     insert_focal_to_cluster,
     kubectl_delete,
@@ -118,7 +117,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
     await insert_focal_to_cluster(ops_test)
 
     app = await get_application_name(ops_test, APP_NAME)
-    minority_count = int(len(ops_test.model.applications[app].units) / 2)
+    minority_count = int(len(ops_test.model.applications[app].units) // 2)
     expected_units = len(ops_test.model.applications[app].units) - minority_count
 
     # find leader unit
@@ -302,7 +301,10 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
     # send a replica step down signal. Pipes k8s logs output to see if any of the pods received a
     # stepdown request. Must be done early otherwise continuous writes may flood the logs
-    await db_step_down(ops_test, sig_term_time)
+    await check_db_stepped_down(ops_test, sig_term_time)
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
@@ -319,12 +321,6 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     # verify that a new primary gets elected (ie old primary is secondary)
     new_primary = await get_replica_set_primary(ops_test)
     assert new_primary != old_primary
-
-    # verify that no writes were missed
-    total_expected_writes = await get_total_writes(ops_test)
-    with await get_mongo_client(ops_test, excluded=[old_primary]) as client:
-        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    assert actual_writes == total_expected_writes
 
     # verify there is only one primary after killing old primary
     assert (

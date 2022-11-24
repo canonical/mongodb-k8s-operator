@@ -5,7 +5,7 @@ import subprocess
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import ops
 import yaml
@@ -259,8 +259,9 @@ async def send_signal_to_pod_container_process(
     ), f"Failed to send {signal_code} signal, unit={unit_name}, container={container_name}, process={process}"
 
 
-def host_to_unit(host: str) -> str:
-    return "/".join(host.split(".")[0].rsplit("-", 1))
+def host_to_unit(host: str) -> Optional[str]:
+    if host:
+        return "/".join(host.split(".")[0].rsplit("-", 1))
 
 
 async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
@@ -279,7 +280,7 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
     return True
 
 
-async def get_replica_set_primary(ops_test: OpsTest) -> str:
+async def get_replica_set_primary(ops_test: OpsTest) -> Optional[str]:
     """Returns the primary unit name based no the replica set host."""
     with await get_mongo_client(ops_test) as client:
         data = client.admin.command("replSetGetStatus")
@@ -346,11 +347,7 @@ async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
     ]
 
 
-# Gets a stream of mongod container logs from kubectl and pipes them through grep looking for a
-# step down election messages. The check is successful if one of the greps finds a match, the rest
-# should be terminated after a reasonable wait. All the logs should be checked since any node can
-# emit the log.
-async def db_step_down(ops_test: OpsTest, sigterm_time: datetime) -> None:
+async def check_db_stepped_down(ops_test: OpsTest, sigterm_time: datetime) -> None:
     """Pipes the k8s logs, looking for stepdown message."""
     kubectl_cmd = [
         "microk8s",
@@ -370,6 +367,10 @@ async def db_step_down(ops_test: OpsTest, sigterm_time: datetime) -> None:
         '"Starting an election due to step up request"',
     )
 
+    # Gets a stream of mongod container logs from kubectl and pipes them through grep looking for a
+    # step down election messages. The check is successful if one of the greps finds a match, the
+    # rest should be terminated after a reasonable wait. All the logs should be checked since any
+    # node can emit the log.
     procs = []
     for unit in ops_test.model.applications[APP_NAME].units:
         kubectl_cmd[5] = unit.name.replace("/", "-")
