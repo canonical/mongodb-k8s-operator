@@ -19,6 +19,8 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGODB_CONTAINER_NAME = "mongod"
 APPLICATION_DEFAULT_APP_NAME = "application"
 TIMEOUT = 15 * 60
+TEST_DB = "continuous_writes_database"
+TEST_COLLECTION = "test_collection"
 
 mongodb_charm, application_charm = None, None
 
@@ -294,7 +296,7 @@ async def count_primaries(ops_test: OpsTest) -> int:
 
 
 async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
-    """Fetches the IPs listed as replica set members in the MongoDB replica set configuration.
+    """Fetches the hosts listed as replica set members in the MongoDB replica set configuration.
 
     Args:
         ops_test: reference to deployment.
@@ -307,14 +309,15 @@ async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
     return [member["host"].split(":")[0] for member in data["config"]["members"]]
 
 
-async def get_mongo_client(
-    ops_test: OpsTest, exact: str = None, excluded: List[str] = []
-) -> MongoClient:
-    """Returns a direct mongodb client to specific unit or passing over some of the units."""
-    if exact:
-        return MongoClient(
-            await mongodb_uri(ops_test, [int(exact.split("/")[1])]), directConnection=True
-        )
+async def get_direct_mongo_client(ops_test: OpsTest, unit: str) -> MongoClient:
+    """Returns a direct mongodb client to specific unit."""
+    return MongoClient(
+        await mongodb_uri(ops_test, [int(unit.split("/")[1])]), directConnection=True
+    )
+
+
+async def get_mongo_client(ops_test: OpsTest, excluded: List[str] = []) -> MongoClient:
+    """Returns a direct mongodb client potentially passing over some of the units."""
     mongodb_name = await get_application_name(ops_test, APP_NAME)
     for unit in ops_test.model.applications[mongodb_name].units:
         if unit.name not in excluded and unit.workload_status == "active":
@@ -325,7 +328,7 @@ async def get_mongo_client(
 
 
 async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
-    """Helper function identifies the a unit, based on need for leader or non-leader."""
+    """Helper function identifies a unit, based on need for leader or non-leader."""
     ret_unit = None
     app = await get_application_name(ops_test, APP_NAME)
     for unit in ops_test.model.applications[app].units:
@@ -343,6 +346,10 @@ async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
     ]
 
 
+# Gets a stream of mongod container logs from kubectl and pipes them through grep looking for a
+# step down election messages. The check is successful if one of the greps finds a match, the rest
+# should be terminated after a reasonable wait. All the logs should be checked since any node can
+# emit the log.
 async def db_step_down(ops_test: OpsTest, sigterm_time: datetime) -> None:
     """Pipes the k8s logs, looking for stepdown message."""
     kubectl_cmd = [
@@ -372,6 +379,9 @@ async def db_step_down(ops_test: OpsTest, sigterm_time: datetime) -> None:
         )
         procs.append((kubectl_proc, grep_proc))
 
+    # Wait on the first grep pipe to potentially finish successfully. If it does not, don't wait
+    # for the rest. The check is successful if any of the greps manage to find the step down
+    # message.
     timeout = 30
     success = False
     for kubectl_proc, grep_proc in procs:
@@ -443,7 +453,41 @@ async def kubectl_delete(ops_test: OpsTest, unit: ops.model.Unit, wait: bool = T
 async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
     """Inserts the Focal Fossa data into the MongoDB cluster via primary replica."""
     primary = await get_replica_set_primary(ops_test)
-    with await get_mongo_client(ops_test, exact=primary) as client:
+    with await get_direct_mongo_client(ops_test, primary) as client:
         db = client["new-db"]
         test_collection = db["test_ubuntu_collection"]
         test_collection.insert_one({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
+
+
+async def find_focal_in_cluster(ops_test: OpsTest) -> None:
+    """Checks that all the nodes in the cluster have the Focal Fossa data."""
+    app = await get_application_name(ops_test, APP_NAME)
+    for unit in ops_test.model.applications[app].units:
+        with await get_direct_mongo_client(ops_test, unit.name) as client:
+            db = client["new-db"]
+            test_collection = db["test_ubuntu_collection"]
+            query = test_collection.find({}, {"release_name": 1})
+            release_name = query[0]["release_name"]
+        assert release_name == "Focal Fossa"
+
+
+async def verify_writes(ops_test: OpsTest) -> int:
+    """Verifies that no writes to the cluster were missed.
+
+    Gets the total writes according to the test application and verifies against all nodes
+    """
+    app = await get_application_name(ops_test, APP_NAME)
+    primary = await get_replica_set_primary(ops_test)
+
+    total_expected_writes = await get_total_writes(ops_test)
+    for unit in ops_test.model.applications[app].units:
+        if unit.name == primary:
+            role = "Primary"
+        else:
+            role = "Secondary"
+        with await get_direct_mongo_client(ops_test, unit.name) as client:
+            actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        assert (
+            total_expected_writes == actual_writes
+        ), f"{role} {unit.name} missed writes to the db."
+    return total_expected_writes

@@ -11,11 +11,14 @@ from pytest_operator.plugin import OpsTest
 
 from tests.integration.ha_tests.helpers import (
     MONGODB_CONTAINER_NAME,
+    TEST_COLLECTION,
+    TEST_DB,
     count_primaries,
     db_step_down,
     deploy_and_scale_application,
     deploy_and_scale_mongodb,
     fetch_replica_set_members,
+    find_focal_in_cluster,
     find_unit,
     get_application_name,
     get_mongo_client,
@@ -30,13 +33,12 @@ from tests.integration.ha_tests.helpers import (
     scale_application,
     send_signal_to_pod_container_process,
     set_log_level,
+    verify_writes,
 )
 from tests.integration.helpers import APP_NAME
 
 MONGOD_PROCESS_NAME = "mongod"
 MEDIAN_REELECTION_TIME = 12
-TEST_DB = "continuous_writes_database"
-TEST_COLLECTION = "test_collection"
 
 
 @pytest_asyncio.fixture
@@ -84,15 +86,16 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.abort_on_fail
-async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
+async def test_scale_up_capablities(ops_test: OpsTest, continuous_writes) -> None:
     """Tests juju add-unit functionality.
 
     Verifies that when a new unit is added to the MongoDB application that it is added to the
     MongoDB replica set configuration.
     """
+    await insert_focal_to_cluster(ops_test)
+
     # add units and wait for idle
     app = await get_application_name(ops_test, APP_NAME)
-    initial_units = [unit.name for unit in ops_test.model.applications[app].units]
     await scale_application(ops_test, app, len(ops_test.model.applications[app].units) + 2)
 
     # grab unit hosts
@@ -105,15 +108,15 @@ async def test_add_units(ops_test: OpsTest, continuous_writes) -> None:
     assert set(member_hosts) == set(hostnames), "all members not running under the same replset"
 
     # verify that the no writes were skipped
-    total_expected_writes = await get_total_writes(ops_test)
-    with await get_mongo_client(ops_test, excluded=initial_units) as client:
-        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    assert total_expected_writes == actual_writes, "writes to the db were missed."
+    await find_focal_in_cluster(ops_test)
+    await verify_writes(ops_test)
 
 
 @pytest.mark.abort_on_fail
 async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> None:
     """Tests clusters behavior when scaling down a minority and removing a primary replica."""
+    await insert_focal_to_cluster(ops_test)
+
     app = await get_application_name(ops_test, APP_NAME)
     minority_count = int(len(ops_test.model.applications[app].units) / 2)
     expected_units = len(ops_test.model.applications[app].units) - minority_count
@@ -149,10 +152,8 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
     assert set(member_hosts) == set(hostnames), "mongod config contains deleted units"
 
     # verify that the no writes were skipped
-    total_expected_writes = await get_total_writes(ops_test)
-    with await get_mongo_client(ops_test) as client:
-        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    assert total_expected_writes == actual_writes, "writes to the db were missed."
+    await find_focal_in_cluster(ops_test)
+    await verify_writes(ops_test)
 
 
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
@@ -160,49 +161,9 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
     # first find primary, write to primary, then read from each unit
     await insert_focal_to_cluster(ops_test)
 
-    primary = await get_replica_set_primary(ops_test)
-    app = await get_application_name(ops_test, APP_NAME)
-    excluded = [primary]
-    for unit in ops_test.model.applications[app].units:
-        if unit.name == primary:
-            continue
-        with await get_mongo_client(ops_test, excluded=excluded) as client:
-            db = client["new-db"]
-            test_collection = db["test_ubuntu_collection"]
-            query = test_collection.find({}, {"release_name": 1})
-            assert query[0]["release_name"] == "Focal Fossa"
-        excluded.append(unit.name)
-
     # verify that the no writes were skipped
-    total_expected_writes = await get_total_writes(ops_test)
-    with await get_mongo_client(ops_test) as client:
-        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    assert total_expected_writes == actual_writes
-
-
-async def test_replication_member_scaling(ops_test: OpsTest, continuous_writes) -> None:
-    """Verify newly added and newly removed members properly replica data.
-
-    Verify newly members have replicated data and newly removed members are gone without data.
-    """
-    # first find primary, write to primary,
-    await insert_focal_to_cluster(ops_test)
-
-    app = await get_application_name(ops_test, APP_NAME)
-    original_units = [unit.name for unit in ops_test.model.applications[app].units]
-
-    await scale_application(ops_test, app, len(original_units) + 1)
-
-    with await get_mongo_client(ops_test, excluded=original_units) as client:
-        db = client["new-db"]
-        test_collection = db["test_ubuntu_collection"]
-        query = test_collection.find({}, {"release_name": 1})
-        assert query[0]["release_name"] == "Focal Fossa"
-
-        # verify that the no writes were skipped
-        total_expected_writes = await get_total_writes(ops_test)
-        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-        assert total_expected_writes == actual_writes
+    await find_focal_in_cluster(ops_test)
+    await verify_writes(ops_test)
 
 
 async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
@@ -259,17 +220,7 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     ), "there are more than one primary in the replica set."
 
     # verify that no writes to the db were missed
-    total_expected_writes = await get_total_writes(ops_test)
-    with await get_mongo_client(ops_test, excluded=[primary]) as client:
-        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    assert total_expected_writes == actual_writes, "writes to the db were missed."
-
-    # verify that old primary is up to date.
-    with await get_mongo_client(ops_test, exact=primary) as client:
-        total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    assert (
-        total_old_primary == total_expected_writes
-    ), "secondary not up to date with the cluster after restarting."
+    await verify_writes(ops_test)
 
 
 async def test_freeze_db_process(ops_test, continuous_writes):
@@ -332,17 +283,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     assert new_primary != primary, "un-frozen primary should be secondary."
 
     # verify that no writes were missed.
-    total_expected_writes = await get_total_writes(ops_test)
-    with await get_mongo_client(ops_test, excluded=[primary]) as client:
-        actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    assert actual_writes == total_expected_writes, "db writes missing."
-
-    # verify that old primary is up to date.
-    with await get_mongo_client(ops_test, exact=primary) as client:
-        total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    assert (
-        total_old_primary == total_expected_writes
-    ), "secondary not up to date with the cluster after restarting."
+    await verify_writes(ops_test)
 
 
 async def test_restart_db_process(ops_test, continuous_writes, change_logging):
@@ -391,8 +332,4 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     ), "there are more than one primary in the replica set."
 
     # verify that old primary is up to date.
-    with await get_mongo_client(ops_test, exact=old_primary) as client:
-        total_old_primary = client[TEST_DB][TEST_COLLECTION].count_documents({})
-    assert (
-        total_old_primary == total_expected_writes
-    ), "secondary not up to date with the cluster after restarting."
+    await verify_writes(ops_test)
