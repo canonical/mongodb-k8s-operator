@@ -103,6 +103,8 @@ async def deploy_and_scale_mongodb(
     ops_test: OpsTest,
     check_for_existing_application: bool = True,
     mongodb_application_name: str = APP_NAME,
+    num_units: int = 3,
+    charm_path: Optional[str] = None,
 ) -> str:
     """Deploys and scales the mongodb application charm.
 
@@ -111,15 +113,22 @@ async def deploy_and_scale_mongodb(
         check_for_existing_application: Whether to check for existing mongodb applications
             in the model
         mongodb_application_name: The name of the mongodb application if it is to be deployed
+        num_units: The desired number of units
+        charm_path: The location of a prebuilt mongodb-k8s charm
     """
-    application_name = await get_application_name(ops_test, "mongodb")
+    application_name = await get_application_name(ops_test, mongodb_application_name)
 
     if check_for_existing_application and application_name:
-        await scale_application(ops_test, application_name, 3)
+        await scale_application(ops_test, application_name, num_units)
 
         return application_name
 
     global mongodb_charm
+    # if provided an existing charm, use it instead of building
+    if charm_path:
+        path = Path(charm_path).absolute()
+        if path.exists():
+            mongodb_charm = path
     if not mongodb_charm:
         charm = await ops_test.build_charm(".")
         # Cache the built charm to avoid rebuilding it between tests
@@ -132,7 +141,7 @@ async def deploy_and_scale_mongodb(
             mongodb_charm,
             application_name=mongodb_application_name,
             resources=resources,
-            num_units=3,
+            num_units=num_units,
         )
 
         await ops_test.model.wait_for_idle(
@@ -492,3 +501,29 @@ async def verify_writes(ops_test: OpsTest) -> int:
             total_expected_writes == actual_writes
         ), f"{role} {unit.name} missed writes to the db."
     return total_expected_writes
+
+
+async def get_other_mongodb_direct_client(ops_test: OpsTest, app_name: str) -> MongoClient:
+    """Returns a direct mongodb client to the second mongodb cluster."""
+    unit = ops_test.model.applications[app_name].units[0]
+    action = await unit.run_action("get-password")
+    action = await action.wait()
+    password = action.results["operator-password"]
+    status = await ops_test.model.get_status()
+    address = status["applications"][app_name]["units"][unit.name]["address"]
+
+    return MongoClient(f"mongodb://operator:{password}@{address}/admin", directConnection=True)
+
+
+def retrieve_entries(client, db_name, collection_name, query_field):
+    """Retries entries from a specified collection from a provided client."""
+    db = client[db_name]
+    test_collection = db[collection_name]
+
+    # read all entries from original cluster
+    cursor = test_collection.find({})
+    cluster_entries = set()
+    for document in cursor:
+        cluster_entries.add(document[query_field])
+
+    return cluster_entries

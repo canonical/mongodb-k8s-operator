@@ -22,6 +22,7 @@ from tests.integration.ha_tests.helpers import (
     find_unit,
     get_application_name,
     get_mongo_client,
+    get_other_mongodb_direct_client,
     get_process_pid,
     get_replica_set_primary,
     get_units_hostnames,
@@ -29,6 +30,7 @@ from tests.integration.ha_tests.helpers import (
     kubectl_delete,
     mongod_ready,
     relate_mongodb_and_application,
+    retrieve_entries,
     scale_application,
     send_signal_to_pod_container_process,
     set_log_level,
@@ -36,8 +38,15 @@ from tests.integration.ha_tests.helpers import (
 )
 from tests.integration.helpers import APP_NAME
 
+ANOTHER_DATABASE_APP_NAME = "another-database-a"
 MONGOD_PROCESS_NAME = "mongod"
 MEDIAN_REELECTION_TIME = 12
+
+
+@pytest.fixture
+def cmd_mongodb_charm(request):
+    """Fixture to optionally pass a prebuilt charm to deploy."""
+    return request.config.getoption("--mongodb_charm")
 
 
 @pytest_asyncio.fixture
@@ -70,13 +79,15 @@ async def change_logging(ops_test: OpsTest):
 
 
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest) -> None:
+async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
     """Build and deploy three units of MongoDB and one test unit."""
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
     # is a pre-existing cluster.
     mongodb_application_name = await get_application_name(ops_test, APP_NAME)
     if not mongodb_application_name:
-        mongodb_application_name = await deploy_and_scale_mongodb(ops_test)
+        mongodb_application_name = await deploy_and_scale_mongodb(
+            ops_test, charm_path=cmd_mongodb_charm
+        )
     application_name = await get_application_name(ops_test, "application")
     if not application_name:
         application_name = await deploy_and_scale_application(ops_test)
@@ -159,6 +170,43 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
     """Check consistency, ie write to primary, read data from secondaries."""
     # first find primary, write to primary, then read from each unit
     await insert_focal_to_cluster(ops_test)
+
+    # verify that the no writes were skipped
+    await find_focal_in_cluster(ops_test)
+    await verify_writes(ops_test)
+
+
+async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes, cmd_mongodb_charm) -> None:
+    """Verify unique clusters do not share DBs."""
+    # first find primary, write to primary,
+    await insert_focal_to_cluster(ops_test)
+
+    # deploy new cluster
+    if ANOTHER_DATABASE_APP_NAME not in ops_test.model.applications:
+        await deploy_and_scale_mongodb(ops_test, ANOTHER_DATABASE_APP_NAME, 1, cmd_mongodb_charm)
+
+    # write data to new cluster
+    with await get_other_mongodb_direct_client(ops_test, ANOTHER_DATABASE_APP_NAME) as client:
+        db = client["new-db"]
+        test_collection = db["test_ubuntu_collection"]
+        test_collection.insert_one({"release_name": "Jammy Jelly", "version": 22.04, "LTS": False})
+
+        cluster_1_entries = retrieve_entries(
+            client,
+            db_name="new-db",
+            collection_name="test_ubuntu_collection",
+            query_field="release_name",
+        )
+    with await get_mongo_client(ops_test) as client:
+        cluster_2_entries = retrieve_entries(
+            client,
+            db_name="new-db",
+            collection_name="test_ubuntu_collection",
+            query_field="release_name",
+        )
+
+    common_entries = cluster_2_entries.intersection(cluster_1_entries)
+    assert len(common_entries) == 0, "Writes from one cluster are replicated to another cluster."
 
     # verify that the no writes were skipped
     await find_focal_in_cluster(ops_test)
