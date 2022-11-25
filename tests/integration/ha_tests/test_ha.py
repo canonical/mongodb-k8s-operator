@@ -10,6 +10,7 @@ import pytest_asyncio
 from pytest_operator.plugin import OpsTest
 
 from tests.integration.ha_tests.helpers import (
+    ANOTHER_DATABASE_APP_NAME,
     MONGODB_CONTAINER_NAME,
     TEST_COLLECTION,
     TEST_DB,
@@ -38,7 +39,6 @@ from tests.integration.ha_tests.helpers import (
 )
 from tests.integration.helpers import APP_NAME
 
-ANOTHER_DATABASE_APP_NAME = "another-database-a"
 MONGOD_PROCESS_NAME = "mongod"
 MEDIAN_REELECTION_TIME = 12
 
@@ -183,7 +183,9 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes, cmd_mong
 
     # deploy new cluster
     if ANOTHER_DATABASE_APP_NAME not in ops_test.model.applications:
-        await deploy_and_scale_mongodb(ops_test, ANOTHER_DATABASE_APP_NAME, 1, cmd_mongodb_charm)
+        await deploy_and_scale_mongodb(
+            ops_test, False, ANOTHER_DATABASE_APP_NAME, 1, cmd_mongodb_charm
+        )
 
     # write data to new cluster
     with await get_other_mongodb_direct_client(ops_test, ANOTHER_DATABASE_APP_NAME) as client:

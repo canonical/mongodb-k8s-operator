@@ -21,6 +21,8 @@ APPLICATION_DEFAULT_APP_NAME = "application"
 TIMEOUT = 15 * 60
 TEST_DB = "continuous_writes_database"
 TEST_COLLECTION = "test_collection"
+ANOTHER_DATABASE_APP_NAME = "another-database-a"
+EXCLUDED_APPS = [ANOTHER_DATABASE_APP_NAME]
 
 mongodb_charm, application_charm = None, None
 
@@ -28,7 +30,8 @@ mongodb_charm, application_charm = None, None
 async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
     """Returns the Application in the juju model that matches the provided application name.
 
-    This enables us to retrieve the name of the deployed application in an existing model.
+    This enables us to retrieve the name of the deployed application in an existing model, while
+     ignoring some test specific applications.
 
     Note: if multiple applications with the application name exist, the first one found will be
      returned.
@@ -38,7 +41,10 @@ async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
     for application in ops_test.model.applications:
         # note that format of the charm field is not exactly "mongodb" but instead takes the form
         # of `local:focal/mongodb-6`
-        if application_name in status["applications"][application]["charm"]:
+        if (
+            application_name in status["applications"][application]["charm"]
+            and application not in EXCLUDED_APPS
+        ):
             return application
 
     return None
