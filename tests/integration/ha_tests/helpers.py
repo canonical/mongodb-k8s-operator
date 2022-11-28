@@ -110,7 +110,7 @@ async def deploy_and_scale_mongodb(
     check_for_existing_application: bool = True,
     mongodb_application_name: str = APP_NAME,
     num_units: int = 3,
-    charm_path: Optional[str] = None,
+    charm_path: Optional[Path] = None,
 ) -> str:
     """Deploys and scales the mongodb application charm.
 
@@ -132,9 +132,7 @@ async def deploy_and_scale_mongodb(
     global mongodb_charm
     # if provided an existing charm, use it instead of building
     if charm_path:
-        path = Path(charm_path).absolute()
-        if path.exists():
-            mongodb_charm = path
+        mongodb_charm = charm_path
     if not mongodb_charm:
         charm = await ops_test.build_charm(".")
         # Cache the built charm to avoid rebuilding it between tests

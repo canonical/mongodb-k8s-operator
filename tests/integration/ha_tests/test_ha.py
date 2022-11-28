@@ -43,12 +43,6 @@ MONGOD_PROCESS_NAME = "mongod"
 MEDIAN_REELECTION_TIME = 12
 
 
-@pytest.fixture
-def cmd_mongodb_charm(request):
-    """Fixture to optionally pass a prebuilt charm to deploy."""
-    return request.config.getoption("--mongodb_charm")
-
-
 @pytest_asyncio.fixture
 async def continuous_writes(ops_test: OpsTest) -> None:
     """Starts continuous writes to the MySQL cluster for a test and clear the writes at the end."""
