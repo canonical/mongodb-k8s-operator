@@ -1,7 +1,10 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import os
+import string
 import subprocess
+import tempfile
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
@@ -9,9 +12,17 @@ from typing import List, Optional
 
 import ops
 import yaml
+from juju.unit import Unit
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
-from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+from tenacity import (
+    RetryError,
+    Retrying,
+    retry,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_fixed,
+)
 
 from tests.integration.helpers import APP_NAME, get_password, mongodb_uri, primary_host
 
@@ -293,9 +304,9 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
     return True
 
 
-async def get_replica_set_primary(ops_test: OpsTest) -> Optional[str]:
+async def get_replica_set_primary(ops_test: OpsTest, excluded: List[str] = []) -> Optional[str]:
     """Returns the primary unit name based no the replica set host."""
-    with await get_mongo_client(ops_test) as client:
+    with await get_mongo_client(ops_test, excluded) as client:
         data = client.admin.command("replSetGetStatus")
 
     return host_to_unit(primary_host(data))
@@ -531,3 +542,90 @@ def retrieve_entries(client, db_name, collection_name, query_field):
         cluster_entries.add(document[query_field])
 
     return cluster_entries
+
+
+def deploy_chaos_mesh(namespace: str) -> None:
+    """Deploy chaos mesh to the provided namespace.
+
+    Args:
+        namespace: The namespace to deploy chaos mesh to
+    """
+    env = os.environ
+    env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
+
+    subprocess.check_output(
+        " ".join(
+            [
+                "tests/integration/ha_tests/scripts/deploy_chaos_mesh.sh",
+                namespace,
+            ]
+        ),
+        shell=True,
+        env=env,
+    )
+
+
+def destroy_chaos_mesh(namespace: str) -> None:
+    """Deploy chaos mesh to the provided namespace.
+
+    Args:
+        namespace: The namespace to deploy chaos mesh to
+    """
+    env = os.environ
+    env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
+
+    subprocess.check_output(
+        f"tests/integration/ha_tests/scripts/destroy_chaos_mesh.sh {namespace}",
+        shell=True,
+        env=env,
+    )
+
+
+def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
+    """Apply a NetworkChaos file to use chaos-mesh to simulate a network cut."""
+    with tempfile.NamedTemporaryFile() as temp_file:
+        with open(
+            "tests/integration/ha_tests/manifests/chaos_network_loss.yml", "r"
+        ) as chaos_network_loss_file:
+            template = string.Template(chaos_network_loss_file.read())
+            chaos_network_loss = template.substitute(
+                namespace=ops_test.model.info.name,
+                pod=unit_name.replace("/", "-"),
+            )
+
+            temp_file.write(str.encode(chaos_network_loss))
+            temp_file.flush()
+
+        env = os.environ
+        env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
+        subprocess.check_output(
+            " ".join(["microk8s", "kubectl", "apply", "-f", temp_file.name]), shell=True, env=env
+        )
+
+
+def remove_instance_isolation(ops_test: OpsTest) -> None:
+    """Delete the NetworkChaos that is isolating the primary unit of the cluster."""
+    env = os.environ
+    env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
+    subprocess.check_output(
+        f"microk8s kubectl -n {ops_test.model.info.name} delete networkchaos network-loss-primary",
+        shell=True,
+        env=env,
+    )
+
+
+@retry(
+    stop=stop_after_attempt(10),
+    wait=wait_fixed(5),
+    reraise=True,
+)
+async def wait_until_unit_in_status(
+    ops_test: OpsTest, unit_to_check: Unit, online_unit: Unit, status: str
+) -> None:
+    """Waits until a specified unit is in a given status or timeout occurs."""
+    with await get_direct_mongo_client(ops_test, online_unit.name) as client:
+        data = client.admin.command("replSetGetStatus")
+
+    for member in data["members"]:
+        if unit_to_check.name == host_to_unit(member["name"].split(":")[0]):
+            assert member["stateStr"] == status, f"{unit_to_check.name} status is not {status}"

@@ -18,6 +18,8 @@ from tests.integration.ha_tests.helpers import (
     db_step_down,
     deploy_and_scale_application,
     deploy_and_scale_mongodb,
+    deploy_chaos_mesh,
+    destroy_chaos_mesh,
     fetch_replica_set_members,
     find_focal_in_cluster,
     find_unit,
@@ -28,14 +30,17 @@ from tests.integration.ha_tests.helpers import (
     get_replica_set_primary,
     get_units_hostnames,
     insert_focal_to_cluster,
+    isolate_instance_from_cluster,
     kubectl_delete,
     mongod_ready,
     relate_mongodb_and_application,
+    remove_instance_isolation,
     retrieve_entries,
     scale_application,
     send_signal_to_pod_container_process,
     set_log_level,
     verify_writes,
+    wait_until_unit_in_status,
 )
 from tests.integration.helpers import APP_NAME
 
@@ -70,6 +75,13 @@ async def change_logging(ops_test: OpsTest):
     yield
 
     await set_log_level(ops_test, -1, "replication.election")
+
+
+@pytest.fixture(scope="module")
+def chaos_mesh(ops_test: OpsTest) -> None:
+    deploy_chaos_mesh(ops_test.model.info.name)
+    yield
+    destroy_chaos_mesh(ops_test.model.info.name)
 
 
 @pytest.mark.abort_on_fail
@@ -283,7 +295,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
     # verify that a new primary gets elected
-    new_primary = await get_replica_set_primary(ops_test)
+    new_primary = await get_replica_set_primary(ops_test, excluded=[primary])
     assert (
         primary != new_primary
     ), "The mongodb primary has not been reelected after sending a SIGSTOP"
@@ -367,6 +379,60 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     assert new_primary != old_primary
 
     # verify there is only one primary after killing old primary
+    assert (
+        await count_primaries(ops_test) == 1
+    ), "there are more than one primary in the replica set."
+
+    # verify that old primary is up to date.
+    await verify_writes(ops_test)
+
+
+async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
+    app = await get_application_name(ops_test, APP_NAME)
+    primary = await get_replica_set_primary(ops_test)
+
+    primary_unit = None
+    active_unit = None
+    for unit in ops_test.model.applications[app].units:
+        if unit.name == primary:
+            primary_unit = unit
+        else:
+            active_unit = unit
+        if primary_unit and active_unit:
+            break
+
+    # grab unit hosts
+    hostnames = await get_units_hostnames(ops_test)
+
+    # Create networkchaos policy to isolate instance from cluster
+    isolate_instance_from_cluster(ops_test, primary)
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
+
+    # Wait until Mongodb actually detects isolated instance
+    await wait_until_unit_in_status(ops_test, primary_unit, active_unit, "(not reachable/healthy)")
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    with await get_mongo_client(ops_test, excluded=[primary]) as client:
+        writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        time.sleep(5)
+        more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # verify that a new primary got elected
+    new_primary = await get_replica_set_primary(ops_test, excluded=[primary])
+    assert new_primary != primary
+
+    # Remove networkchaos policy isolating instance from cluster
+    remove_instance_isolation(ops_test)
+
+    await wait_until_unit_in_status(ops_test, primary_unit, active_unit, "SECONDARY")
+
+    # verify presence of primary, replica set member configuration, and number of primaries
+    member_hosts = await fetch_replica_set_members(ops_test)
+    assert set(member_hosts) == set(hostnames)
     assert (
         await count_primaries(ops_test) == 1
     ), "there are more than one primary in the replica set."
