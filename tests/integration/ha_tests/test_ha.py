@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 import time
+from asyncio import gather
 from datetime import datetime, timezone
 
 import pytest
@@ -11,9 +12,11 @@ from pytest_operator.plugin import OpsTest
 
 from tests.integration.ha_tests.helpers import (
     ANOTHER_DATABASE_APP_NAME,
+    MONGOD_PROCESS_NAME,
     MONGODB_CONTAINER_NAME,
     TEST_COLLECTION,
     TEST_DB,
+    all_db_processes_down,
     count_primaries,
     db_step_down,
     deploy_and_scale_application,
@@ -39,12 +42,12 @@ from tests.integration.ha_tests.helpers import (
     scale_application,
     send_signal_to_pod_container_process,
     set_log_level,
+    update_pebble_plan,
     verify_writes,
     wait_until_unit_in_status,
 )
 from tests.integration.helpers import APP_NAME
 
-MONGOD_PROCESS_NAME = "mongod"
 MEDIAN_REELECTION_TIME = 12
 
 
@@ -77,10 +80,22 @@ async def change_logging(ops_test: OpsTest):
     await set_log_level(ops_test, -1, "replication.election")
 
 
+@pytest_asyncio.fixture
+async def restart_policy(ops_test: OpsTest):
+    """Sets and resets service pebble restart policy on all units."""
+    await update_pebble_plan(ops_test, {"on-failure": "ignore"})
+
+    yield
+
+    await update_pebble_plan(ops_test, {"on-failure": "restart"})
+
+
 @pytest.fixture(scope="module")
 def chaos_mesh(ops_test: OpsTest) -> None:
     deploy_chaos_mesh(ops_test.model.info.name)
+
     yield
+
     destroy_chaos_mesh(ops_test.model.info.name)
 
 
@@ -294,7 +309,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     # sleep for twice the median election time
     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
-    # verify that a new primary gets elected
+    # verify that a new primary gets elected, old primary is still frozen
     new_primary = await get_replica_set_primary(ops_test, excluded=[primary])
     assert (
         primary != new_primary
@@ -387,6 +402,61 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     await verify_writes(ops_test)
 
 
+# Restart policy and replan should happen before enabling continuous writes
+@pytest.mark.parametrize("signal", ["SIGKILL", "SIGTERM"])
+async def test_full_cluster_crash(ops_test: OpsTest, restart_policy, continuous_writes, signal):
+    app = await get_application_name(ops_test, APP_NAME)
+    # grab unit hosts
+    hostnames = await get_units_hostnames(ops_test)
+
+    # kill all units "simultaneously"
+    await gather(
+        *[
+            send_signal_to_pod_container_process(
+                ops_test,
+                unit.name,
+                MONGODB_CONTAINER_NAME,
+                MONGOD_PROCESS_NAME,
+                signal,
+            )
+            for unit in ops_test.model.applications[app].units
+        ]
+    )
+
+    # verify all that units are down
+    await all_db_processes_down(ops_test)
+
+    # Restart the cluster
+    await update_pebble_plan(ops_test, {"on-failure": "restart"})
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
+
+    # verify all that units are up and running
+    for unit in ops_test.model.applications[app].units:
+        assert await mongod_ready(
+            ops_test, int(unit.name.split("/")[1])
+        ), f"unit {unit.name} not restarted after cluster crash."
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    with await get_mongo_client(ops_test) as client:
+        writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        time.sleep(5)
+        more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # verify presence of primary, replica set member configuration, and number of primaries
+    member_hosts = await fetch_replica_set_members(ops_test)
+    assert set(member_hosts) == set(hostnames)
+    assert (
+        await count_primaries(ops_test) == 1
+    ), "there are more than one primary in the replica set."
+
+    # verify that no writes to the db were missed
+    await verify_writes(ops_test)
+
+
 async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     app = await get_application_name(ops_test, APP_NAME)
     primary = await get_replica_set_primary(ops_test)
@@ -421,7 +491,7 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert more_writes > writes, "writes not continuing to DB"
 
-    # verify that a new primary got elected
+    # verify that a new primary got elected, old primary is still cut off
     new_primary = await get_replica_set_primary(ops_test, excluded=[primary])
     assert new_primary != primary
 

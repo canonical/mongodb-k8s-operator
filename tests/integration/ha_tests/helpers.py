@@ -1,6 +1,7 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import os
 import string
 import subprocess
@@ -8,7 +9,7 @@ import tempfile
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import ops
 import yaml
@@ -28,6 +29,8 @@ from tests.integration.helpers import APP_NAME, get_password, mongodb_uri, prima
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGODB_CONTAINER_NAME = "mongod"
+MONGODB_SERVICE_NAME = "mongod"
+MONGOD_PROCESS_NAME = "mongod"
 APPLICATION_DEFAULT_APP_NAME = "application"
 TIMEOUT = 15 * 60
 TEST_DB = "continuous_writes_database"
@@ -36,6 +39,10 @@ ANOTHER_DATABASE_APP_NAME = "another-database-a"
 EXCLUDED_APPS = [ANOTHER_DATABASE_APP_NAME]
 
 mongodb_charm, application_charm = None, None
+
+
+class ProcessRunningError(Exception):
+    """Raised when a process is running when it is not expected to be."""
 
 
 async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
@@ -248,6 +255,8 @@ async def get_process_pid(
     ), f"Failed getting pid, unit={unit_name}, container={container_name}, process={process}"
 
     stripped_pid = pid.strip()
+    if not stripped_pid:
+        raise Exception()
     assert (
         stripped_pid
     ), f"Failed stripping pid, unit={unit_name}, container={container_name}, process={process}, {pid}"
@@ -629,3 +638,74 @@ async def wait_until_unit_in_status(
     for member in data["members"]:
         if unit_to_check.name == host_to_unit(member["name"].split(":")[0]):
             assert member["stateStr"] == status, f"{unit_to_check.name} status is not {status}"
+
+
+async def update_pebble_plan(ops_test: OpsTest, override: Dict[str, str]) -> None:
+    """Injects a given override in mongod services and replans."""
+    layer = json.dumps({"services": {MONGODB_SERVICE_NAME: {"override": "merge", **override}}})
+    base_cmd = (
+        "ssh",
+        "--container",
+        MONGODB_CONTAINER_NAME,
+    )
+    now = datetime.now().isoformat()
+
+    for unit in ops_test.model.applications[APP_NAME].units:
+        echo_cmd = (
+            *base_cmd,
+            unit.name,
+            "echo",
+            f"'{layer}'",
+            ">",
+            "/ha_test.yaml",
+        )
+        ret_code, _, _ = await ops_test.juju(*echo_cmd)
+        assert ret_code == 0, f"Failed to create layer for {unit.name}"
+        add_plan_cmd = (
+            *base_cmd,
+            unit.name,
+            "/charm/bin/pebble",
+            "add",
+            # layer name label should be unique
+            f"ha_test_{now}",
+            "ha_test.yaml",
+        )
+        ret_code, _, _ = await ops_test.juju(*add_plan_cmd)
+        assert ret_code == 0, f"Failed to set pebble plan for unit {unit.name}"
+
+        replan_cmd = (
+            *base_cmd,
+            unit.name,
+            "/charm/bin/pebble",
+            "replan",
+        )
+        ret_code, _, _ = await ops_test.juju(*replan_cmd)
+        assert ret_code == 0, f"Failed to replan for unit {unit.name}"
+
+
+async def all_db_processes_down(ops_test: OpsTest) -> bool:
+    """Verifies that all units of the charm do not have the DB process running."""
+    app = await get_application_name(ops_test, APP_NAME)
+
+    try:
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+            with attempt:
+                for unit in ops_test.model.applications[app].units:
+                    search_db_process = (
+                        f"run --unit {unit.name} ps aux | grep {MONGOD_PROCESS_NAME}"
+                    )
+                    _, processes, _ = await ops_test.juju(*search_db_process.split())
+
+                    # `ps aux | grep {DB_PROCESS}` is a process on it's own and will be shown in
+                    # the output of ps aux, hence it it is important that we check if there is
+                    # more than one process containing the name `DB_PROCESS`
+                    # splitting processes by "\n" results in one or more empty lines, hence we
+                    # need to process these lines accordingly.
+                    processes = [proc for proc in processes.split("\n") if len(proc) > 0]
+
+                    if len(processes) > 1:
+                        raise ProcessRunningError
+    except RetryError:
+        return False
+
+    return True
