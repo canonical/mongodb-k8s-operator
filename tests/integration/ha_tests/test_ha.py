@@ -83,11 +83,11 @@ async def change_logging(ops_test: OpsTest):
 @pytest_asyncio.fixture
 async def restart_policy(ops_test: OpsTest):
     """Sets and resets service pebble restart policy on all units."""
-    await update_pebble_plan(ops_test, {"on-failure": "ignore"})
+    await update_pebble_plan(ops_test, {"on-failure": "ignore", "on-success": "ignore"})
 
     yield
 
-    await update_pebble_plan(ops_test, {"on-failure": "restart"})
+    await update_pebble_plan(ops_test, {"on-failure": "restart", "on-success": "restart"})
 
 
 @pytest.fixture(scope="module")
@@ -410,6 +410,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, restart_policy, continuous_
     hostnames = await get_units_hostnames(ops_test)
 
     # kill all units "simultaneously"
+    sig_term_time = datetime.now(timezone.utc)
     await gather(
         *[
             send_signal_to_pod_container_process(
@@ -422,12 +423,14 @@ async def test_full_cluster_crash(ops_test: OpsTest, restart_policy, continuous_
             for unit in ops_test.model.applications[app].units
         ]
     )
+    if signal == "SIGTERM":
+        await db_step_down(ops_test, sig_term_time)
 
     # verify all that units are down
     await all_db_processes_down(ops_test)
 
     # Restart the cluster
-    await update_pebble_plan(ops_test, {"on-failure": "restart"})
+    await update_pebble_plan(ops_test, {"on-failure": "restart", "on-success": "restart"})
 
     # sleep for twice the median election time
     time.sleep(MEDIAN_REELECTION_TIME * 2)
