@@ -255,8 +255,6 @@ async def get_process_pid(
     ), f"Failed getting pid, unit={unit_name}, container={container_name}, process={process}"
 
     stripped_pid = pid.strip()
-    if not stripped_pid:
-        raise Exception()
     assert (
         stripped_pid
     ), f"Failed stripping pid, unit={unit_name}, container={container_name}, process={process}, {pid}"
