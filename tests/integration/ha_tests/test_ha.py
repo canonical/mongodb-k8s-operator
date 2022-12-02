@@ -18,14 +18,12 @@ from tests.integration.ha_tests.helpers import (
     deploy_and_scale_application,
     deploy_and_scale_mongodb,
     fetch_replica_set_members,
-    find_focal_in_cluster,
     find_unit,
     get_application_name,
     get_mongo_client,
     get_process_pid,
     get_replica_set_primary,
     get_units_hostnames,
-    insert_focal_to_cluster,
     kubectl_delete,
     mongod_ready,
     relate_mongodb_and_application,
@@ -91,8 +89,6 @@ async def test_scale_up_capablities(ops_test: OpsTest, continuous_writes) -> Non
     Verifies that when a new unit is added to the MongoDB application that it is added to the
     MongoDB replica set configuration.
     """
-    await insert_focal_to_cluster(ops_test)
-
     # add units and wait for idle
     app = await get_application_name(ops_test, APP_NAME)
     await scale_application(ops_test, app, len(ops_test.model.applications[app].units) + 2)
@@ -107,15 +103,12 @@ async def test_scale_up_capablities(ops_test: OpsTest, continuous_writes) -> Non
     assert set(member_hosts) == set(hostnames), "all members not running under the same replset"
 
     # verify that the no writes were skipped
-    await find_focal_in_cluster(ops_test)
     await verify_writes(ops_test)
 
 
 @pytest.mark.abort_on_fail
 async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> None:
     """Tests clusters behavior when scaling down a minority and removing a primary replica."""
-    await insert_focal_to_cluster(ops_test)
-
     app = await get_application_name(ops_test, APP_NAME)
     minority_count = int(len(ops_test.model.applications[app].units) // 2)
     expected_units = len(ops_test.model.applications[app].units) - minority_count
@@ -151,17 +144,12 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
     assert set(member_hosts) == set(hostnames), "mongod config contains deleted units"
 
     # verify that the no writes were skipped
-    await find_focal_in_cluster(ops_test)
     await verify_writes(ops_test)
 
 
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
-    # first find primary, write to primary, then read from each unit
-    await insert_focal_to_cluster(ops_test)
-
     # verify that the no writes were skipped
-    await find_focal_in_cluster(ops_test)
     await verify_writes(ops_test)
 
 

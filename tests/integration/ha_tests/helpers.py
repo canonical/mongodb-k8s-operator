@@ -260,8 +260,7 @@ async def send_signal_to_pod_container_process(
 
 
 def host_to_unit(host: str) -> Optional[str]:
-    if host:
-        return "/".join(host.split(".")[0].rsplit("-", 1))
+    return "/".join(host.split(".")[0].rsplit("-", 1)) if host else None
 
 
 async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
@@ -451,7 +450,7 @@ async def kubectl_delete(ops_test: OpsTest, unit: ops.model.Unit, wait: bool = T
     assert ret_code == 0, "Unit failed to delete"
 
 
-async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
+async def insert_record_in_collection(ops_test: OpsTest) -> None:
     """Inserts the Focal Fossa data into the MongoDB cluster via primary replica."""
     primary = await get_replica_set_primary(ops_test)
     with await get_direct_mongo_client(ops_test, primary) as client:
@@ -460,7 +459,7 @@ async def insert_focal_to_cluster(ops_test: OpsTest) -> None:
         test_collection.insert_one({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
 
 
-async def find_focal_in_cluster(ops_test: OpsTest) -> None:
+async def find_record_in_collection(ops_test: OpsTest) -> None:
     """Checks that all the nodes in the cluster have the Focal Fossa data."""
     app = await get_application_name(ops_test, APP_NAME)
     for unit in ops_test.model.applications[app].units:
@@ -482,10 +481,7 @@ async def verify_writes(ops_test: OpsTest) -> int:
 
     total_expected_writes = await get_total_writes(ops_test)
     for unit in ops_test.model.applications[app].units:
-        if unit.name == primary:
-            role = "Primary"
-        else:
-            role = "Secondary"
+        role = "Primary" if unit.name == primary else "Secondary"
         with await get_direct_mongo_client(ops_test, unit.name) as client:
             actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         assert (
