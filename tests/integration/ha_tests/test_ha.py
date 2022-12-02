@@ -17,14 +17,14 @@ from tests.integration.ha_tests.helpers import (
     TEST_COLLECTION,
     TEST_DB,
     all_db_processes_down,
+    check_db_stepped_down,
     count_primaries,
-    db_step_down,
     deploy_and_scale_application,
     deploy_and_scale_mongodb,
     deploy_chaos_mesh,
     destroy_chaos_mesh,
     fetch_replica_set_members,
-    find_focal_in_cluster,
+    find_record_in_collection,
     find_unit,
     get_application_name,
     get_mongo_client,
@@ -32,7 +32,7 @@ from tests.integration.ha_tests.helpers import (
     get_process_pid,
     get_replica_set_primary,
     get_units_hostnames,
-    insert_focal_to_cluster,
+    insert_record_in_collection,
     isolate_instance_from_cluster,
     kubectl_delete,
     mongod_ready,
@@ -123,8 +123,6 @@ async def test_scale_up_capablities(ops_test: OpsTest, continuous_writes) -> Non
     Verifies that when a new unit is added to the MongoDB application that it is added to the
     MongoDB replica set configuration.
     """
-    await insert_focal_to_cluster(ops_test)
-
     # add units and wait for idle
     app = await get_application_name(ops_test, APP_NAME)
     await scale_application(ops_test, app, len(ops_test.model.applications[app].units) + 2)
@@ -139,17 +137,14 @@ async def test_scale_up_capablities(ops_test: OpsTest, continuous_writes) -> Non
     assert set(member_hosts) == set(hostnames), "all members not running under the same replset"
 
     # verify that the no writes were skipped
-    await find_focal_in_cluster(ops_test)
     await verify_writes(ops_test)
 
 
 @pytest.mark.abort_on_fail
 async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> None:
     """Tests clusters behavior when scaling down a minority and removing a primary replica."""
-    await insert_focal_to_cluster(ops_test)
-
     app = await get_application_name(ops_test, APP_NAME)
-    minority_count = int(len(ops_test.model.applications[app].units) / 2)
+    minority_count = int(len(ops_test.model.applications[app].units) // 2)
     expected_units = len(ops_test.model.applications[app].units) - minority_count
 
     # find leader unit
@@ -183,24 +178,19 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
     assert set(member_hosts) == set(hostnames), "mongod config contains deleted units"
 
     # verify that the no writes were skipped
-    await find_focal_in_cluster(ops_test)
     await verify_writes(ops_test)
 
 
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
-    # first find primary, write to primary, then read from each unit
-    await insert_focal_to_cluster(ops_test)
-
     # verify that the no writes were skipped
-    await find_focal_in_cluster(ops_test)
     await verify_writes(ops_test)
 
 
 async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes, cmd_mongodb_charm) -> None:
     """Verify unique clusters do not share DBs."""
     # first find primary, write to primary,
-    await insert_focal_to_cluster(ops_test)
+    await insert_record_in_collection(ops_test)
 
     # deploy new cluster
     if ANOTHER_DATABASE_APP_NAME not in ops_test.model.applications:
@@ -232,7 +222,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes, cmd_mong
     assert len(common_entries) == 0, "Writes from one cluster are replicated to another cluster."
 
     # verify that the no writes were skipped
-    await find_focal_in_cluster(ops_test)
+    await find_record_in_collection(ops_test)
     await verify_writes(ops_test)
 
 
@@ -372,7 +362,10 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
     # send a replica step down signal. Pipes k8s logs output to see if any of the pods received a
     # stepdown request. Must be done early otherwise continuous writes may flood the logs
-    await db_step_down(ops_test, sig_term_time)
+    await check_db_stepped_down(ops_test, sig_term_time)
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
 
     # sleep for twice the median election time
     time.sleep(MEDIAN_REELECTION_TIME * 2)
@@ -424,7 +417,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, restart_policy, continuous_
         ]
     )
     if signal == "SIGTERM":
-        await db_step_down(ops_test, sig_term_time)
+        await check_db_stepped_down(ops_test, sig_term_time)
 
     # verify all that units are down
     await all_db_processes_down(ops_test)

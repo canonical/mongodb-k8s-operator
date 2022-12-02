@@ -6,7 +6,12 @@ import signal
 import sys
 
 from pymongo import MongoClient
-from pymongo.errors import AutoReconnect, NotPrimaryError, WriteConcernError, PyMongoError
+from pymongo.errors import (
+    AutoReconnect,
+    NotPrimaryError,
+    PyMongoError,
+    WriteConcernError,
+)
 from pymongo.write_concern import WriteConcern
 
 run = True
@@ -44,7 +49,7 @@ def continous_writes(connection_string: str, starting_number: int):
             # incrementing `write_value` as to try to insert this value again.
             continue
         except PyMongoError as e:
-            pass
+            print(e)
         finally:
             client.close()
 
