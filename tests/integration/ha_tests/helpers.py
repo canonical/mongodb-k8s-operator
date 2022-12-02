@@ -1,19 +1,26 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import subprocess
+from asyncio import gather
+from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
+import ops
 import yaml
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
-from tests.integration.helpers import APP_NAME, mongodb_uri, primary_host, run_mongo_op
+from tests.integration.helpers import APP_NAME, get_password, mongodb_uri, primary_host
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+MONGODB_CONTAINER_NAME = "mongod"
 APPLICATION_DEFAULT_APP_NAME = "application"
 TIMEOUT = 15 * 60
+TEST_DB = "continuous_writes_database"
+TEST_COLLECTION = "test_collection"
 
 mongodb_charm, application_charm = None, None
 
@@ -252,8 +259,8 @@ async def send_signal_to_pod_container_process(
     ), f"Failed to send {signal_code} signal, unit={unit_name}, container={container_name}, process={process}"
 
 
-def host_to_unit(host: str) -> str:
-    return "/".join(host.split(".")[0].rsplit("-", 1))
+def host_to_unit(host: str) -> Optional[str]:
+    return "/".join(host.split(".")[0].rsplit("-", 1)) if host else None
 
 
 async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
@@ -272,60 +279,63 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
     return True
 
 
-async def get_replica_set_primary(ops_test: OpsTest) -> str:
+async def get_replica_set_primary(ops_test: OpsTest) -> Optional[str]:
     """Returns the primary unit name based no the replica set host."""
-    rs_status = await run_mongo_op(ops_test, "rs.status()")
-    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
+    with await get_mongo_client(ops_test) as client:
+        data = client.admin.command("replSetGetStatus")
 
-    return host_to_unit(primary_host(rs_status.data))
+    return host_to_unit(primary_host(data))
 
 
 async def count_primaries(ops_test: OpsTest) -> int:
     """Returns the number of primaries in a replica set."""
-    rs_status = await run_mongo_op(ops_test, "rs.status()")
-    assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
+    with await get_mongo_client(ops_test) as client:
+        data = client.admin.command("replSetGetStatus")
 
-    primaries = 0
-    # loop through all members in the replica set
-    for member in rs_status.data["members"]:
-        # check replica's current state
-        if member["stateStr"] == "PRIMARY":
-            primaries += 1
-
-    return primaries
+    return len([member for member in data["members"] if member["stateStr"] == "PRIMARY"])
 
 
 async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
-    """Fetches the IPs listed as replica set members in the MongoDB replica set configuration.
+    """Fetches the hosts listed as replica set members in the MongoDB replica set configuration.
 
     Args:
         ops_test: reference to deployment.
     """
     # connect to replica set uri
     # get ips from MongoDB replica set configuration
-    rs_config = await run_mongo_op(ops_test, "rs.config()")
-    member_ips = []
-    for member in rs_config.data["members"]:
-        # get member ip without ":PORT"
-        member_ips.append(member["host"].split(":")[0])
+    with await get_mongo_client(ops_test) as client:
+        data = client.admin.command("replSetGetConfig")
 
-    return member_ips
+    return [member["host"].split(":")[0] for member in data["config"]["members"]]
 
 
-async def get_mongo_client(
-    ops_test: OpsTest, exact: str = None, excluded: List[str] = []
-) -> MongoClient:
-    """Returns a direct mongodb client to specific unit or passing over some of the units."""
-    if exact:
-        return MongoClient(
-            await mongodb_uri(ops_test, [int(exact.split("/")[1])]), directConnection=True
-        )
+async def get_direct_mongo_client(ops_test: OpsTest, unit: str) -> MongoClient:
+    """Returns a direct mongodb client to specific unit."""
+    return MongoClient(
+        await mongodb_uri(ops_test, [int(unit.split("/")[1])]), directConnection=True
+    )
+
+
+async def get_mongo_client(ops_test: OpsTest, excluded: List[str] = []) -> MongoClient:
+    """Returns a direct mongodb client potentially passing over some of the units."""
     mongodb_name = await get_application_name(ops_test, APP_NAME)
     for unit in ops_test.model.applications[mongodb_name].units:
-        if unit.name not in excluded:
+        if unit.name not in excluded and unit.workload_status == "active":
             return MongoClient(
                 await mongodb_uri(ops_test, [int(unit.name.split("/")[1])]), directConnection=True
             )
+    assert False, "No fitting unit could be found"
+
+
+async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
+    """Helper function identifies a unit, based on need for leader or non-leader."""
+    ret_unit = None
+    app = await get_application_name(ops_test, APP_NAME)
+    for unit in ops_test.model.applications[app].units:
+        if await unit.is_leader_from_status() == leader:
+            ret_unit = unit
+
+    return ret_unit
 
 
 async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
@@ -334,3 +344,147 @@ async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
         f"{unit.name.replace('/', '-')}.mongodb-k8s-endpoints"
         for unit in ops_test.model.applications[APP_NAME].units
     ]
+
+
+async def check_db_stepped_down(ops_test: OpsTest, sigterm_time: datetime) -> None:
+    """Pipes the k8s logs, looking for stepdown message."""
+    kubectl_cmd = [
+        "microk8s",
+        "kubectl",
+        "logs",
+        f"-n{ops_test.model_name}",
+        f"--since-time={sigterm_time.isoformat()}",
+        "",
+        "-c",
+        MONGODB_CONTAINER_NAME,
+        "-f",
+    ]
+
+    grep_cmd = (
+        "grep",
+        "-m1",
+        '"Starting an election due to step up request"',
+    )
+
+    # Gets a stream of mongod container logs from kubectl and pipes them through grep looking for a
+    # step down election messages. The check is successful if one of the greps finds a match, the
+    # rest should be terminated after a reasonable wait. All the logs should be checked since any
+    # node can emit the log.
+    procs = []
+    for unit in ops_test.model.applications[APP_NAME].units:
+        kubectl_cmd[5] = unit.name.replace("/", "-")
+        kubectl_proc = subprocess.Popen(kubectl_cmd, stdout=subprocess.PIPE)
+        grep_proc = subprocess.Popen(
+            grep_cmd, stdin=kubectl_proc.stdout, stdout=subprocess.DEVNULL
+        )
+        procs.append((kubectl_proc, grep_proc))
+
+    # Wait on the first grep pipe to potentially finish successfully. If it does not, don't wait
+    # for the rest. The check is successful if any of the greps manage to find the step down
+    # message.
+    timeout = 30
+    success = False
+    for kubectl_proc, grep_proc in procs:
+        try:
+            grep_proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            pass
+        if grep_proc.poll() == 0:
+            success = True
+        grep_proc.terminate()
+        kubectl_proc.terminate()
+        timeout = 0
+
+    assert success, "old primary departed without stepping down."
+
+
+async def set_log_level(ops_test: OpsTest, level: int, component: str = None) -> None:
+    """Sets a given loglevel for a given component for each mongodb unit."""
+    pass_unit = ops_test.model.applications[APP_NAME].units[0].name
+    cmd = [
+        "ssh",
+        "--container",
+        MONGODB_CONTAINER_NAME,
+        "",
+        "mongosh",
+        "-u",
+        "operator",
+        "-p",
+        await get_password(ops_test, int(pass_unit.split("/")[1])),
+        "--quiet",
+        "--eval",
+        "",
+    ]
+
+    awaits = []
+    for unit in ops_test.model.applications[APP_NAME].units:
+        cmd[3] = unit.name
+        cmd[-1] = cmd[-1] = f"\"db.setLogLevel({level}, '{component}')\""
+        awaits.append(ops_test.juju(*cmd))
+    await gather(*awaits)
+
+
+async def get_total_writes(ops_test: OpsTest) -> int:
+    """Gets the total writes from the test application action."""
+    application_name = await get_application_name(ops_test, "application")
+    application_unit = ops_test.model.applications[application_name].units[0]
+    stop_writes_action = await application_unit.run_action("stop-continuous-writes")
+    await stop_writes_action.wait()
+    total_expected_writes = int(stop_writes_action.results["writes"])
+    assert total_expected_writes > 0, "error while getting total writes."
+    return total_expected_writes
+
+
+async def kubectl_delete(ops_test: OpsTest, unit: ops.model.Unit, wait: bool = True) -> None:
+    """Delete the underlying pod for a unit."""
+    kubectl_cmd = (
+        "microk8s",
+        "kubectl",
+        "delete",
+        "pod",
+        f"--wait={wait}",
+        f"-n{ops_test.model_name}",
+        unit.name.replace("/", "-"),
+    )
+    ret_code, _, _ = await ops_test.run(*kubectl_cmd)
+    assert ret_code == 0, "Unit failed to delete"
+
+
+async def insert_record_in_collection(ops_test: OpsTest) -> None:
+    """Inserts the Focal Fossa data into the MongoDB cluster via primary replica."""
+    primary = await get_replica_set_primary(ops_test)
+    with await get_direct_mongo_client(ops_test, primary) as client:
+        db = client["new-db"]
+        test_collection = db["test_ubuntu_collection"]
+        test_collection.insert_one({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
+
+
+async def find_record_in_collection(ops_test: OpsTest) -> None:
+    """Checks that all the nodes in the cluster have the Focal Fossa data."""
+    app = await get_application_name(ops_test, APP_NAME)
+    for unit in ops_test.model.applications[app].units:
+        with await get_direct_mongo_client(ops_test, unit.name) as client:
+            db = client["new-db"]
+            test_collection = db["test_ubuntu_collection"]
+            query = test_collection.find({}, {"release_name": 1})
+            release_name = query[0]["release_name"]
+        assert release_name == "Focal Fossa"
+
+
+async def verify_writes(ops_test: OpsTest) -> int:
+    """Verifies that no writes to the cluster were missed.
+
+    Gets the total writes according to the test application and verifies against all nodes
+    """
+    app = await get_application_name(ops_test, APP_NAME)
+    primary = await get_replica_set_primary(ops_test)
+
+    total_expected_writes = await get_total_writes(ops_test)
+    for unit in ops_test.model.applications[app].units:
+        role = "Primary" if unit.name == primary else "Secondary"
+        with await get_direct_mongo_client(ops_test, unit.name) as client:
+            actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        assert (
+            total_expected_writes == actual_writes
+        ), f"{role} {unit.name} missed writes to the db."
+    return total_expected_writes
