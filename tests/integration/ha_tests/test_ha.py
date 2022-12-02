@@ -10,6 +10,8 @@ import pytest_asyncio
 from pytest_operator.plugin import OpsTest
 
 from tests.integration.ha_tests.helpers import (
+    ANOTHER_DATABASE_APP_NAME,
+    MONGOD_PROCESS_NAME,
     MONGODB_CONTAINER_NAME,
     TEST_COLLECTION,
     TEST_DB,
@@ -17,24 +19,32 @@ from tests.integration.ha_tests.helpers import (
     count_primaries,
     deploy_and_scale_application,
     deploy_and_scale_mongodb,
+    deploy_chaos_mesh,
+    destroy_chaos_mesh,
     fetch_replica_set_members,
+    find_record_in_collection,
     find_unit,
     get_application_name,
     get_mongo_client,
+    get_other_mongodb_direct_client,
     get_process_pid,
     get_replica_set_primary,
     get_units_hostnames,
+    insert_record_in_collection,
+    isolate_instance_from_cluster,
     kubectl_delete,
     mongod_ready,
     relate_mongodb_and_application,
+    remove_instance_isolation,
+    retrieve_entries,
     scale_application,
     send_signal_to_pod_container_process,
     set_log_level,
     verify_writes,
+    wait_until_unit_in_status,
 )
 from tests.integration.helpers import APP_NAME
 
-MONGOD_PROCESS_NAME = "mongod"
 MEDIAN_REELECTION_TIME = 12
 
 
@@ -67,14 +77,25 @@ async def change_logging(ops_test: OpsTest):
     await set_log_level(ops_test, -1, "replication.election")
 
 
+@pytest.fixture(scope="module")
+def chaos_mesh(ops_test: OpsTest) -> None:
+    deploy_chaos_mesh(ops_test.model.info.name)
+
+    yield
+
+    destroy_chaos_mesh(ops_test.model.info.name)
+
+
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest) -> None:
+async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
     """Build and deploy three units of MongoDB and one test unit."""
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
     # is a pre-existing cluster.
     mongodb_application_name = await get_application_name(ops_test, APP_NAME)
     if not mongodb_application_name:
-        mongodb_application_name = await deploy_and_scale_mongodb(ops_test)
+        mongodb_application_name = await deploy_and_scale_mongodb(
+            ops_test, charm_path=cmd_mongodb_charm
+        )
     application_name = await get_application_name(ops_test, "application")
     if not application_name:
         application_name = await deploy_and_scale_application(ops_test)
@@ -153,6 +174,45 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
     await verify_writes(ops_test)
 
 
+async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes, cmd_mongodb_charm) -> None:
+    """Verify unique clusters do not share DBs."""
+    # first find primary, write to primary,
+    await insert_record_in_collection(ops_test)
+
+    # deploy new cluster
+    if ANOTHER_DATABASE_APP_NAME not in ops_test.model.applications:
+        await deploy_and_scale_mongodb(
+            ops_test, False, ANOTHER_DATABASE_APP_NAME, 1, cmd_mongodb_charm
+        )
+
+    # write data to new cluster
+    with await get_other_mongodb_direct_client(ops_test, ANOTHER_DATABASE_APP_NAME) as client:
+        db = client["new-db"]
+        test_collection = db["test_ubuntu_collection"]
+        test_collection.insert_one({"release_name": "Jammy Jelly", "version": 22.04, "LTS": False})
+
+        cluster_1_entries = retrieve_entries(
+            client,
+            db_name="new-db",
+            collection_name="test_ubuntu_collection",
+            query_field="release_name",
+        )
+    with await get_mongo_client(ops_test) as client:
+        cluster_2_entries = retrieve_entries(
+            client,
+            db_name="new-db",
+            collection_name="test_ubuntu_collection",
+            query_field="release_name",
+        )
+
+    common_entries = cluster_2_entries.intersection(cluster_1_entries)
+    assert len(common_entries) == 0, "Writes from one cluster are replicated to another cluster."
+
+    # verify that the no writes were skipped
+    await find_record_in_collection(ops_test)
+    await verify_writes(ops_test)
+
+
 async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     # locate primary unit
     hostnames = await get_units_hostnames(ops_test)
@@ -226,8 +286,8 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     # sleep for twice the median election time
     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
-    # verify that a new primary gets elected
-    new_primary = await get_replica_set_primary(ops_test)
+    # verify that a new primary gets elected, old primary is still frozen
+    new_primary = await get_replica_set_primary(ops_test, excluded=[primary])
     assert (
         primary != new_primary
     ), "The mongodb primary has not been reelected after sending a SIGSTOP"
@@ -311,6 +371,60 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     assert new_primary != old_primary
 
     # verify there is only one primary after killing old primary
+    assert (
+        await count_primaries(ops_test) == 1
+    ), "there are more than one primary in the replica set."
+
+    # verify that old primary is up to date.
+    await verify_writes(ops_test)
+
+
+async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
+    app = await get_application_name(ops_test, APP_NAME)
+    primary = await get_replica_set_primary(ops_test)
+
+    primary_unit = None
+    active_unit = None
+    for unit in ops_test.model.applications[app].units:
+        if unit.name == primary:
+            primary_unit = unit
+        else:
+            active_unit = unit
+        if primary_unit and active_unit:
+            break
+
+    # grab unit hosts
+    hostnames = await get_units_hostnames(ops_test)
+
+    # Create networkchaos policy to isolate instance from cluster
+    isolate_instance_from_cluster(ops_test, primary)
+
+    # sleep for twice the median election time
+    time.sleep(MEDIAN_REELECTION_TIME * 2)
+
+    # Wait until Mongodb actually detects isolated instance
+    await wait_until_unit_in_status(ops_test, primary_unit, active_unit, "(not reachable/healthy)")
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    with await get_mongo_client(ops_test, excluded=[primary]) as client:
+        writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        time.sleep(5)
+        more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # verify that a new primary got elected, old primary is still cut off
+    new_primary = await get_replica_set_primary(ops_test, excluded=[primary])
+    assert new_primary != primary
+
+    # Remove networkchaos policy isolating instance from cluster
+    remove_instance_isolation(ops_test)
+
+    await wait_until_unit_in_status(ops_test, primary_unit, active_unit, "SECONDARY")
+
+    # verify presence of primary, replica set member configuration, and number of primaries
+    member_hosts = await fetch_replica_set_members(ops_test)
+    assert set(member_hosts) == set(hostnames)
     assert (
         await count_primaries(ops_test) == 1
     ), "there are more than one primary in the replica set."

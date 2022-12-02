@@ -1,35 +1,54 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
+import os
+import string
 import subprocess
+import tempfile
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import ops
 import yaml
+from juju.unit import Unit
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
-from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+from tenacity import (
+    RetryError,
+    Retrying,
+    retry,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_fixed,
+)
 
 from tests.integration.helpers import APP_NAME, get_password, mongodb_uri, primary_host
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGODB_CONTAINER_NAME = "mongod"
+MONGODB_SERVICE_NAME = "mongod"
+MONGOD_PROCESS_NAME = "mongod"
 APPLICATION_DEFAULT_APP_NAME = "application"
 TIMEOUT = 15 * 60
 TEST_DB = "continuous_writes_database"
 TEST_COLLECTION = "test_collection"
+ANOTHER_DATABASE_APP_NAME = "another-database-a"
+EXCLUDED_APPS = [ANOTHER_DATABASE_APP_NAME]
 
 mongodb_charm, application_charm = None, None
 
 
+class ProcessRunningError(Exception):
+    """Raised when a process is running when it is not expected to be."""
+
+
 async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
     """Returns the Application in the juju model that matches the provided application name.
-
-    This enables us to retrieve the name of the deployed application in an existing model.
-
+    This enables us to retrieve the name of the deployed application in an existing model, while
+     ignoring some test specific applications.
     Note: if multiple applications with the application name exist, the first one found will be
      returned.
     """
@@ -38,7 +57,10 @@ async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
     for application in ops_test.model.applications:
         # note that format of the charm field is not exactly "mongodb" but instead takes the form
         # of `local:focal/mongodb-6`
-        if application_name in status["applications"][application]["charm"]:
+        if (
+            application_name in status["applications"][application]["charm"]
+            and application not in EXCLUDED_APPS
+        ):
             return application
 
     return None
@@ -48,7 +70,6 @@ async def scale_application(
     ops_test: OpsTest, application_name: str, desired_count: int, wait: bool = True
 ) -> None:
     """Scale a given application to the desired unit count.
-
     Args:
         ops_test: The ops test framework
         application_name: The name of the application
@@ -77,7 +98,6 @@ async def relate_mongodb_and_application(
     ops_test: OpsTest, mongodb_application_name: str, application_name: str
 ) -> None:
     """Relates the mongodb and application charms.
-
     Args:
         ops_test: The ops test framework
         mongodb_application_name: The mongodb charm application name
@@ -103,23 +123,29 @@ async def deploy_and_scale_mongodb(
     ops_test: OpsTest,
     check_for_existing_application: bool = True,
     mongodb_application_name: str = APP_NAME,
+    num_units: int = 3,
+    charm_path: Optional[Path] = None,
 ) -> str:
     """Deploys and scales the mongodb application charm.
-
     Args:
         ops_test: The ops test framework
         check_for_existing_application: Whether to check for existing mongodb applications
             in the model
         mongodb_application_name: The name of the mongodb application if it is to be deployed
+        num_units: The desired number of units
+        charm_path: The location of a prebuilt mongodb-k8s charm
     """
-    application_name = await get_application_name(ops_test, "mongodb")
+    application_name = await get_application_name(ops_test, mongodb_application_name)
 
     if check_for_existing_application and application_name:
-        await scale_application(ops_test, application_name, 3)
+        await scale_application(ops_test, application_name, num_units)
 
         return application_name
 
     global mongodb_charm
+    # if provided an existing charm, use it instead of building
+    if charm_path:
+        mongodb_charm = charm_path
     if not mongodb_charm:
         charm = await ops_test.build_charm(".")
         # Cache the built charm to avoid rebuilding it between tests
@@ -132,7 +158,7 @@ async def deploy_and_scale_mongodb(
             mongodb_charm,
             application_name=mongodb_application_name,
             resources=resources,
-            num_units=3,
+            num_units=num_units,
         )
 
         await ops_test.model.wait_for_idle(
@@ -147,7 +173,6 @@ async def deploy_and_scale_mongodb(
 
 async def deploy_and_scale_application(ops_test: OpsTest) -> str:
     """Deploys and scales the test application charm.
-
     Args:
         ops_test: The ops test framework
     """
@@ -183,7 +208,6 @@ async def deploy_and_scale_application(ops_test: OpsTest) -> str:
 
 def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) -> bool:
     """Check if a relation is joined.
-
     Args:
         ops_test: The ops test object passed into every test case
         endpoint_one: The first endpoint of the relation
@@ -200,7 +224,6 @@ async def get_process_pid(
     ops_test: OpsTest, unit_name: str, container_name: str, process: str
 ) -> int:
     """Return the pid of a process running in a given unit.
-
     Args:
         ops_test: The ops test object passed into every test case
         unit_name: The name of the unit
@@ -224,6 +247,8 @@ async def get_process_pid(
     ), f"Failed getting pid, unit={unit_name}, container={container_name}, process={process}"
 
     stripped_pid = pid.strip()
+    if not stripped_pid:
+        raise Exception()
     assert (
         stripped_pid
     ), f"Failed stripping pid, unit={unit_name}, container={container_name}, process={process}, {pid}"
@@ -235,7 +260,6 @@ async def send_signal_to_pod_container_process(
     ops_test: OpsTest, unit_name: str, container_name: str, process: str, signal_code: str
 ) -> None:
     """Send the specified signal to a pod container process.
-
     Args:
         ops_test: The ops test framework
         unit_name: The name of the unit to send signal to
@@ -279,9 +303,9 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
     return True
 
 
-async def get_replica_set_primary(ops_test: OpsTest) -> Optional[str]:
+async def get_replica_set_primary(ops_test: OpsTest, excluded: List[str] = []) -> Optional[str]:
     """Returns the primary unit name based no the replica set host."""
-    with await get_mongo_client(ops_test) as client:
+    with await get_mongo_client(ops_test, excluded) as client:
         data = client.admin.command("replSetGetStatus")
 
     return host_to_unit(primary_host(data))
@@ -297,7 +321,6 @@ async def count_primaries(ops_test: OpsTest) -> int:
 
 async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
     """Fetches the hosts listed as replica set members in the MongoDB replica set configuration.
-
     Args:
         ops_test: reference to deployment.
     """
@@ -488,3 +511,114 @@ async def verify_writes(ops_test: OpsTest) -> int:
             total_expected_writes == actual_writes
         ), f"{role} {unit.name} missed writes to the db."
     return total_expected_writes
+
+
+async def get_other_mongodb_direct_client(ops_test: OpsTest, app_name: str) -> MongoClient:
+    """Returns a direct mongodb client to the second mongodb cluster."""
+    unit = ops_test.model.applications[app_name].units[0]
+    action = await unit.run_action("get-password")
+    action = await action.wait()
+    password = action.results["operator-password"]
+    status = await ops_test.model.get_status()
+    address = status["applications"][app_name]["units"][unit.name]["address"]
+
+    return MongoClient(f"mongodb://operator:{password}@{address}/admin", directConnection=True)
+
+
+def retrieve_entries(client, db_name, collection_name, query_field):
+    """Retries entries from a specified collection from a provided client."""
+    db = client[db_name]
+    test_collection = db[collection_name]
+
+    # read all entries from original cluster
+    cursor = test_collection.find({})
+    cluster_entries = set()
+    for document in cursor:
+        cluster_entries.add(document[query_field])
+
+    return cluster_entries
+
+
+def deploy_chaos_mesh(namespace: str) -> None:
+    """Deploy chaos mesh to the provided namespace.
+    Args:
+        namespace: The namespace to deploy chaos mesh to
+    """
+    env = os.environ
+    env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
+
+    subprocess.check_output(
+        " ".join(
+            [
+                "tests/integration/ha_tests/scripts/deploy_chaos_mesh.sh",
+                namespace,
+            ]
+        ),
+        shell=True,
+        env=env,
+    )
+
+
+def destroy_chaos_mesh(namespace: str) -> None:
+    """Deploy chaos mesh to the provided namespace.
+    Args:
+        namespace: The namespace to deploy chaos mesh to
+    """
+    env = os.environ
+    env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
+
+    subprocess.check_output(
+        f"tests/integration/ha_tests/scripts/destroy_chaos_mesh.sh {namespace}",
+        shell=True,
+        env=env,
+    )
+
+
+def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
+    """Apply a NetworkChaos file to use chaos-mesh to simulate a network cut."""
+    with tempfile.NamedTemporaryFile() as temp_file:
+        with open(
+            "tests/integration/ha_tests/manifests/chaos_network_loss.yml", "r"
+        ) as chaos_network_loss_file:
+            template = string.Template(chaos_network_loss_file.read())
+            chaos_network_loss = template.substitute(
+                namespace=ops_test.model.info.name,
+                pod=unit_name.replace("/", "-"),
+            )
+
+            temp_file.write(str.encode(chaos_network_loss))
+            temp_file.flush()
+
+        env = os.environ
+        env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
+        subprocess.check_output(
+            " ".join(["microk8s", "kubectl", "apply", "-f", temp_file.name]), shell=True, env=env
+        )
+
+
+def remove_instance_isolation(ops_test: OpsTest) -> None:
+    """Delete the NetworkChaos that is isolating the primary unit of the cluster."""
+    env = os.environ
+    env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
+    subprocess.check_output(
+        f"microk8s kubectl -n {ops_test.model.info.name} delete networkchaos network-loss-primary",
+        shell=True,
+        env=env,
+    )
+
+
+@retry(
+    stop=stop_after_attempt(10),
+    wait=wait_fixed(5),
+    reraise=True,
+)
+async def wait_until_unit_in_status(
+    ops_test: OpsTest, unit_to_check: Unit, online_unit: Unit, status: str
+) -> None:
+    """Waits until a specified unit is in a given status or timeout occurs."""
+    with await get_direct_mongo_client(ops_test, online_unit.name) as client:
+        data = client.admin.command("replSetGetStatus")
+
+    for member in data["members"]:
+        if unit_to_check.name == host_to_unit(member["name"].split(":")[0]):
+            assert member["stateStr"] == status, f"{unit_to_check.name} status is not {status}"
