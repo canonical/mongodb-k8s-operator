@@ -1,6 +1,7 @@
 # Copyright 2022 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import os
 import string
 import subprocess
@@ -8,7 +9,7 @@ import tempfile
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import ops
 import yaml
@@ -70,7 +71,6 @@ async def scale_application(
     ops_test: OpsTest, application_name: str, desired_count: int, wait: bool = True
 ) -> None:
     """Scale a given application to the desired unit count.
-
     Args:
         ops_test: The ops test framework
         application_name: The name of the application
@@ -99,7 +99,6 @@ async def relate_mongodb_and_application(
     ops_test: OpsTest, mongodb_application_name: str, application_name: str
 ) -> None:
     """Relates the mongodb and application charms.
-
     Args:
         ops_test: The ops test framework
         mongodb_application_name: The mongodb charm application name
@@ -129,7 +128,6 @@ async def deploy_and_scale_mongodb(
     charm_path: Optional[Path] = None,
 ) -> str:
     """Deploys and scales the mongodb application charm.
-
     Args:
         ops_test: The ops test framework
         check_for_existing_application: Whether to check for existing mongodb applications
@@ -177,7 +175,6 @@ async def deploy_and_scale_mongodb(
 
 async def deploy_and_scale_application(ops_test: OpsTest) -> str:
     """Deploys and scales the test application charm.
-
     Args:
         ops_test: The ops test framework
     """
@@ -214,7 +211,6 @@ async def deploy_and_scale_application(ops_test: OpsTest) -> str:
 
 def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) -> bool:
     """Check if a relation is joined.
-
     Args:
         ops_test: The ops test object passed into every test case
         endpoint_one: The first endpoint of the relation
@@ -231,7 +227,6 @@ async def get_process_pid(
     ops_test: OpsTest, unit_name: str, container_name: str, process: str
 ) -> int:
     """Return the pid of a process running in a given unit.
-
     Args:
         ops_test: The ops test object passed into every test case
         unit_name: The name of the unit
@@ -255,6 +250,8 @@ async def get_process_pid(
     ), f"Failed getting pid, unit={unit_name}, container={container_name}, process={process}"
 
     stripped_pid = pid.strip()
+    if not stripped_pid:
+        raise Exception()
     assert (
         stripped_pid
     ), f"Failed stripping pid, unit={unit_name}, container={container_name}, process={process}, {pid}"
@@ -266,7 +263,6 @@ async def send_signal_to_pod_container_process(
     ops_test: OpsTest, unit_name: str, container_name: str, process: str, signal_code: str
 ) -> None:
     """Send the specified signal to a pod container process.
-
     Args:
         ops_test: The ops test framework
         unit_name: The name of the unit to send signal to
@@ -333,7 +329,6 @@ async def count_primaries(ops_test: OpsTest) -> int:
 
 async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
     """Fetches the hosts listed as replica set members in the MongoDB replica set configuration.
-
     Args:
         ops_test: reference to deployment.
     """
