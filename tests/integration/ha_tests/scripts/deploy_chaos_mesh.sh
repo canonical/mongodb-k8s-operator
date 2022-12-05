@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Utility script to install chaosmesh in the K8S cluster, so test can use it to simulate
+# infrastructure failures
+
 chaos_mesh_ns=$1
 chaos_mesh_version="2.4.1"
 

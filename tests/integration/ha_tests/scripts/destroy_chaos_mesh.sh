@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Utility script to removing chaosmesh from the K8S cluster, to clean up test artefacts
+
 chaos_mesh_ns=$1
 
 if [ -z "${chaos_mesh_ns}" ]; then

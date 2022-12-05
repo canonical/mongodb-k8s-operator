@@ -155,7 +155,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 
     # check that the primary is one of the remaining units
     assert (
-        f"{primary.replace('/', '-')}.mongodb-k8s-endpoints" in hostnames
+        f"{primary.name.replace('/', '-')}.mongodb-k8s-endpoints" in hostnames
     ), "replica set primary is not one of the available units"
 
     # verify that the configuration of mongodb no longer has the deleted ip
@@ -219,12 +219,12 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     primary = await get_replica_set_primary(ops_test)
 
     mongodb_pid = await get_process_pid(
-        ops_test, primary, MONGODB_CONTAINER_NAME, MONGOD_PROCESS_NAME
+        ops_test, primary.name, MONGODB_CONTAINER_NAME, MONGOD_PROCESS_NAME
     )
 
     await send_signal_to_pod_container_process(
         ops_test,
-        primary,
+        primary.name,
         MONGODB_CONTAINER_NAME,
         MONGOD_PROCESS_NAME,
         "SIGKILL",
@@ -235,17 +235,17 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
-    with await get_mongo_client(ops_test, excluded=[primary]) as client:
+    with await get_mongo_client(ops_test, excluded=[primary.name]) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert more_writes > writes, "writes not continuing to DB"
 
     # verify that db service got restarted and is ready
-    old_primary_unit = int(primary.split("/")[1])
+    old_primary_unit = int(primary.name.split("/")[1])
     assert await mongod_ready(ops_test, old_primary_unit)
     new_mongodb_pid = await get_process_pid(
-        ops_test, primary, MONGODB_CONTAINER_NAME, MONGOD_PROCESS_NAME
+        ops_test, primary.name, MONGODB_CONTAINER_NAME, MONGOD_PROCESS_NAME
     )
     assert (
         mongodb_pid != new_mongodb_pid
@@ -254,7 +254,7 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     # verify that a new primary gets elected (ie old primary is secondary)
     new_primary = await get_replica_set_primary(ops_test)
     assert (
-        primary != new_primary
+        primary.name != new_primary.name
     ), "The mongodb primary has not been reelected after sending a SIGKILL"
 
     # verify all units are running under the same replset
@@ -277,7 +277,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
     await send_signal_to_pod_container_process(
         ops_test,
-        primary,
+        primary.name,
         MONGODB_CONTAINER_NAME,
         MONGOD_PROCESS_NAME,
         "SIGSTOP",
@@ -287,14 +287,14 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
     # verify that a new primary gets elected, old primary is still frozen
-    new_primary = await get_replica_set_primary(ops_test, excluded=[primary])
+    new_primary = await get_replica_set_primary(ops_test, excluded=[primary.name])
     assert (
-        primary != new_primary
+        primary.name != new_primary.name
     ), "The mongodb primary has not been reelected after sending a SIGSTOP"
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
-    with await get_mongo_client(ops_test, excluded=[primary]) as client:
+    with await get_mongo_client(ops_test, excluded=[primary.name]) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
@@ -302,7 +302,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     # un-freeze the old primary
     await send_signal_to_pod_container_process(
         ops_test,
-        primary,
+        primary.name,
         MONGODB_CONTAINER_NAME,
         MONGOD_PROCESS_NAME,
         "SIGCONT",
@@ -313,7 +313,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     assert more_writes > writes, "writes not continuing to DB"
 
     # verify that db service got restarted and is ready
-    old_primary_unit = int(primary.split("/")[1])
+    old_primary_unit = int(primary.name.split("/")[1])
     assert await mongod_ready(ops_test, old_primary_unit)
 
     # verify all units are running under the same replset
@@ -327,7 +327,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
     # verify that the old primary does not "reclaim" primary status after un-freezing old primary
     new_primary = await get_replica_set_primary(ops_test)
-    assert new_primary != primary, "un-frozen primary should be secondary."
+    assert new_primary.name != primary.name, "un-frozen primary should be secondary."
 
     # verify that no writes were missed.
     await verify_writes(ops_test)
@@ -341,7 +341,7 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     sig_term_time = datetime.now(timezone.utc)
     await send_signal_to_pod_container_process(
         ops_test,
-        old_primary,
+        old_primary.name,
         MONGODB_CONTAINER_NAME,
         MONGOD_PROCESS_NAME,
         "SIGTERM",
@@ -356,19 +356,19 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
-    with await get_mongo_client(ops_test, excluded=[old_primary]) as client:
+    with await get_mongo_client(ops_test, excluded=[old_primary.name]) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert more_writes > writes, "writes not continuing to DB"
 
     # verify that db service got restarted and is ready
-    old_primary_unit = int(old_primary.split("/")[1])
+    old_primary_unit = int(old_primary.name.split("/")[1])
     assert await mongod_ready(ops_test, old_primary_unit)
 
     # verify that a new primary gets elected (ie old primary is secondary)
     new_primary = await get_replica_set_primary(ops_test)
-    assert new_primary != old_primary
+    assert new_primary.name != old_primary.name
 
     # verify there is only one primary after killing old primary
     assert (
@@ -381,53 +381,47 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
 
 async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     app = await get_application_name(ops_test, APP_NAME)
-    primary = await get_replica_set_primary(ops_test)
 
-    primary_unit = None
-    active_unit = None
-    for unit in ops_test.model.applications[app].units:
-        if unit.name == primary:
-            primary_unit = unit
-        else:
-            active_unit = unit
-        if primary_unit and active_unit:
-            break
+    # retrieve a primary unit and a non-primary unit (active-unit). The primary unit will have its
+    # network disrupted, while the active unit allows us to communicate to `mongod`
+    primary = await get_replica_set_primary(ops_test)
+    active_unit = list(set(ops_test.model.applications[app].units) - set([primary]))[0]
 
     # grab unit hosts
     hostnames = await get_units_hostnames(ops_test)
 
     # Create networkchaos policy to isolate instance from cluster
-    isolate_instance_from_cluster(ops_test, primary)
+    isolate_instance_from_cluster(ops_test, primary.name)
 
     # sleep for twice the median election time
     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
     # Wait until Mongodb actually detects isolated instance
-    await wait_until_unit_in_status(ops_test, primary_unit, active_unit, "(not reachable/healthy)")
+    await wait_until_unit_in_status(ops_test, primary.name, active_unit, "(not reachable/healthy)")
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
-    with await get_mongo_client(ops_test, excluded=[primary]) as client:
+    with await get_mongo_client(ops_test, excluded=[primary.name]) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert more_writes > writes, "writes not continuing to DB"
 
     # verify that a new primary got elected, old primary is still cut off
-    new_primary = await get_replica_set_primary(ops_test, excluded=[primary])
-    assert new_primary != primary
+    new_primary = await get_replica_set_primary(ops_test, excluded=[primary.name])
+    assert new_primary.name != primary.name
 
     # Remove networkchaos policy isolating instance from cluster
     remove_instance_isolation(ops_test)
 
-    await wait_until_unit_in_status(ops_test, primary_unit, active_unit, "SECONDARY")
+    await wait_until_unit_in_status(ops_test, primary.name, active_unit, "SECONDARY")
 
     # verify presence of primary, replica set member configuration, and number of primaries
     member_hosts = await fetch_replica_set_members(ops_test)
     assert set(member_hosts) == set(hostnames)
     assert (
         await count_primaries(ops_test) == 1
-    ), "there are more than one primary in the replica set."
+    ), "there is more than one primary in the replica set."
 
     # verify that old primary is up to date.
     await verify_writes(ops_test)

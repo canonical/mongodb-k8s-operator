@@ -308,12 +308,17 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
     return True
 
 
-async def get_replica_set_primary(ops_test: OpsTest, excluded: List[str] = []) -> Optional[str]:
+async def get_replica_set_primary(ops_test: OpsTest, excluded: List[str] = []) -> Optional[Unit]:
     """Returns the primary unit name based no the replica set host."""
     with await get_mongo_client(ops_test, excluded) as client:
         data = client.admin.command("replSetGetStatus")
 
-    return host_to_unit(primary_host(data))
+    unit_name = host_to_unit(primary_host(data))
+    if unit_name:
+        mongodb_name = await get_application_name(ops_test, APP_NAME)
+        for unit in ops_test.model.applications[mongodb_name].units:
+            if unit.name == unit_name:
+                return unit
 
 
 async def count_primaries(ops_test: OpsTest) -> int:
@@ -482,7 +487,7 @@ async def kubectl_delete(ops_test: OpsTest, unit: ops.model.Unit, wait: bool = T
 async def insert_record_in_collection(ops_test: OpsTest) -> None:
     """Inserts the Focal Fossa data into the MongoDB cluster via primary replica."""
     primary = await get_replica_set_primary(ops_test)
-    with await get_direct_mongo_client(ops_test, primary) as client:
+    with await get_direct_mongo_client(ops_test, primary.name) as client:
         db = client["new-db"]
         test_collection = db["test_ubuntu_collection"]
         test_collection.insert_one({"release_name": "Focal Fossa", "version": 20.04, "LTS": True})
@@ -510,7 +515,7 @@ async def verify_writes(ops_test: OpsTest) -> int:
 
     total_expected_writes = await get_total_writes(ops_test)
     for unit in ops_test.model.applications[app].units:
-        role = "Primary" if unit.name == primary else "Secondary"
+        role = "Primary" if unit.name == primary.name else "Secondary"
         with await get_direct_mongo_client(ops_test, unit.name) as client:
             actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         assert (
@@ -521,6 +526,8 @@ async def verify_writes(ops_test: OpsTest) -> int:
 
 async def get_other_mongodb_direct_client(ops_test: OpsTest, app_name: str) -> MongoClient:
     """Returns a direct mongodb client to the second mongodb cluster."""
+    # Since the other mongodb-k8s application will have separate IPs and credentials, connection
+    # URI must be generated separately.
     unit = ops_test.model.applications[app_name].units[0]
     action = await unit.run_action("get-password")
     action = await action.wait()
@@ -548,6 +555,8 @@ def retrieve_entries(client, db_name, collection_name, query_field):
 def deploy_chaos_mesh(namespace: str) -> None:
     """Deploy chaos mesh to the provided namespace.
 
+    Chaos mesh can them be used by the tests to simulate a variety of failures.
+
     Args:
         namespace: The namespace to deploy chaos mesh to
     """
@@ -569,6 +578,8 @@ def deploy_chaos_mesh(namespace: str) -> None:
 def destroy_chaos_mesh(namespace: str) -> None:
     """Deploy chaos mesh to the provided namespace.
 
+    Cleans up the test K8S from test related dependencies.
+
     Args:
         namespace: The namespace to deploy chaos mesh to
     """
@@ -588,6 +599,7 @@ def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
         with open(
             "tests/integration/ha_tests/manifests/chaos_network_loss.yml", "r"
         ) as chaos_network_loss_file:
+            # Generates a manifest for chaosmesh to simulate a network failure for a pod
             template = string.Template(chaos_network_loss_file.read())
             chaos_network_loss = template.substitute(
                 namespace=ops_test.model.info.name,
@@ -597,6 +609,7 @@ def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
             temp_file.write(str.encode(chaos_network_loss))
             temp_file.flush()
 
+        # Apply the generated manifest, chaosmesh would then make the pod inaccessible
         env = os.environ
         env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
         subprocess.check_output(
@@ -623,10 +636,12 @@ def remove_instance_isolation(ops_test: OpsTest) -> None:
 async def wait_until_unit_in_status(
     ops_test: OpsTest, unit_to_check: Unit, online_unit: Unit, status: str
 ) -> None:
-    """Waits until a specified unit is in a given status or timeout occurs."""
+    """Waits until a replica is in the provided status as reported by MongoDB or timeout occurs."""
     with await get_direct_mongo_client(ops_test, online_unit.name) as client:
         data = client.admin.command("replSetGetStatus")
 
     for member in data["members"]:
         if unit_to_check.name == host_to_unit(member["name"].split(":")[0]):
             assert member["stateStr"] == status, f"{unit_to_check.name} status is not {status}"
+            return
+    assert False, f"{unit_to_check.name} not found"

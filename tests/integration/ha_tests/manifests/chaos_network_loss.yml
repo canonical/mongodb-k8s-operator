@@ -1,5 +1,7 @@
 apiVersion: chaos-mesh.org/v1alpha1
 kind: NetworkChaos
+# Directive for chaosmesh to simulate a network loss for a pod for the network cut HA test.
+# Namespace and pod ID are templated and populated by the test.
 metadata:
   name: network-loss-primary
   namespace: $namespace
