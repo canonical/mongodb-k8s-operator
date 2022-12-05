@@ -525,9 +525,11 @@ async def verify_writes(ops_test: OpsTest) -> int:
 
 
 async def get_other_mongodb_direct_client(ops_test: OpsTest, app_name: str) -> MongoClient:
-    """Returns a direct mongodb client to the second mongodb cluster."""
-    # Since the other mongodb-k8s application will have separate IPs and credentials, connection
-    # URI must be generated separately.
+    """Returns a direct mongodb client to the second mongodb cluster.
+
+    Since the second mongodb-k8s application will have separate IPs and credentials, connection URI
+     must be generated separately.
+    """
     unit = ops_test.model.applications[app_name].units[0]
     action = await unit.run_action("get-password")
     action = await action.wait()
@@ -576,7 +578,7 @@ def deploy_chaos_mesh(namespace: str) -> None:
 
 
 def destroy_chaos_mesh(namespace: str) -> None:
-    """Deploy chaos mesh to the provided namespace.
+    """Destroy chaos mesh on a provided namespace.
 
     Cleans up the test K8S from test related dependencies.
 
@@ -596,10 +598,10 @@ def destroy_chaos_mesh(namespace: str) -> None:
 def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
     """Apply a NetworkChaos file to use chaos-mesh to simulate a network cut."""
     with tempfile.NamedTemporaryFile() as temp_file:
+        # Generates a manifest for chaosmesh to simulate network failure for a pod
         with open(
             "tests/integration/ha_tests/manifests/chaos_network_loss.yml", "r"
         ) as chaos_network_loss_file:
-            # Generates a manifest for chaosmesh to simulate a network failure for a pod
             template = string.Template(chaos_network_loss_file.read())
             chaos_network_loss = template.substitute(
                 namespace=ops_test.model.info.name,
