@@ -385,7 +385,9 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     # retrieve a primary unit and a non-primary unit (active-unit). The primary unit will have its
     # network disrupted, while the active unit allows us to communicate to `mongod`
     primary = await get_replica_set_primary(ops_test)
-    active_unit = list(set(ops_test.model.applications[app].units) - set([primary]))[0]
+    active_unit = [
+        unit for unit in ops_test.model.applications[app].units if unit.name != primary.name
+    ][0]
 
     # grab unit hosts
     hostnames = await get_units_hostnames(ops_test)
@@ -397,7 +399,7 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
     # Wait until Mongodb actually detects isolated instance
-    await wait_until_unit_in_status(ops_test, primary.name, active_unit, "(not reachable/healthy)")
+    await wait_until_unit_in_status(ops_test, primary, active_unit, "(not reachable/healthy)")
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
@@ -414,7 +416,7 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     # Remove networkchaos policy isolating instance from cluster
     remove_instance_isolation(ops_test)
 
-    await wait_until_unit_in_status(ops_test, primary.name, active_unit, "SECONDARY")
+    await wait_until_unit_in_status(ops_test, primary, active_unit, "SECONDARY")
 
     # verify presence of primary, replica set member configuration, and number of primaries
     member_hosts = await fetch_replica_set_members(ops_test)
