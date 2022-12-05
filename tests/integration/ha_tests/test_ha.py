@@ -444,7 +444,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, restart_policy, continuous_
     assert set(member_hosts) == set(hostnames)
     assert (
         await count_primaries(ops_test) == 1
-    ), "there are more than one primary in the replica set."
+    ), "there is more than one primary in the replica set."
 
     # verify that no writes to the db were missed
     await verify_writes(ops_test)

@@ -605,6 +605,7 @@ def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
         with open(
             "tests/integration/ha_tests/manifests/chaos_network_loss.yml", "r"
         ) as chaos_network_loss_file:
+            # Generates a manifest for chaosmesh to simulate a network failure for a pod
             template = string.Template(chaos_network_loss_file.read())
             chaos_network_loss = template.substitute(
                 namespace=ops_test.model.info.name,
