@@ -24,12 +24,12 @@ def sigterm_handler(_signo, _stack_frame):
 
 def continous_writes(connection_string: str, starting_number: int):
     write_value = starting_number
+    client = MongoClient(
+        connection_string,
+        socketTimeoutMS=5000,
+    )
 
     while run:
-        client = MongoClient(
-            connection_string,
-            socketTimeoutMS=5000,
-        )
         db = client["continuous_writes_database"]
         test_collection = db["test_collection"]
         try:
@@ -50,11 +50,10 @@ def continous_writes(connection_string: str, starting_number: int):
             continue
         except PyMongoError as e:
             print(e)
-        finally:
-            client.close()
 
         write_value += 1
 
+    client.close()
     with open("/tmp/last_written_value", "w") as fd:
         fd.write(str(write_value - 1))
 
