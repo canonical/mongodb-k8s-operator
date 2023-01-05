@@ -69,6 +69,8 @@ jobs:
           provider: microk8s
           # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
           bootstrap-options: "--agent-version 2.9.29"
+      - name: Install Helm
+        run: /usr/bin/sudo snap install helm3
       - name: Install tox
         run: python3 -m pip install tox
       - name: Run HA integration tests
