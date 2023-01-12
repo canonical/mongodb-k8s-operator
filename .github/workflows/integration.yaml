@@ -1,0 +1,80 @@
+name: Integration Tests
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  integration-test-microk8s:
+    name: Integration tests (microk8s)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: microk8s
+          # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
+          bootstrap-options: "--agent-version 2.9.29"
+      - name: Install tox
+        run: python3 -m pip install tox
+      - name: Run integration tests
+        # set a predictable model name so it can be consumed by charm-logdump-action
+        run: sg microk8s -c "tox -e integration -- --model testing"
+      - name: Dump logs
+        uses: canonical/charm-logdump-action@main
+        if: failure()
+        with:
+          # TEMPLATE-TODO: Replace the application name
+          app: operator-template
+          model: testing
+  ha-integration-test-microk8s:
+    name: HA Integration tests (microk8s)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: microk8s
+          # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
+          bootstrap-options: "--agent-version 2.9.29"
+      - name: Install Helm
+        run: /usr/bin/sudo snap install helm3
+      - name: Install tox
+        run: python3 -m pip install tox
+      - name: Run HA integration tests
+        # set a predictable model name so it can be consumed by charm-logdump-action
+        run: sg microk8s -c "tox -e ha-integration -- --model testing"
+      - name: Dump logs
+        uses: canonical/charm-logdump-action@main
+        if: failure()
+        with:
+          # TEMPLATE-TODO: Replace the application name
+          app: operator-template
+          model: testing
+  tls-integration-test-microk8s:
+    name: TLS Integration tests (microk8s)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup operator environment
+        uses: charmed-kubernetes/actions-operator@main
+        with:
+          provider: microk8s
+          # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
+          bootstrap-options: "--agent-version 2.9.29"
+      - name: Install tox
+        run: python3 -m pip install tox
+      - name: Run tls integration tests
+        # set a predictable model name so it can be consumed by charm-logdump-action
+        run: sg microk8s -c "tox -e tls-integration -- --model testing"
+      - name: Dump logs
+        uses: canonical/charm-logdump-action@main
+        if: failure()
+        with:
+          # TEMPLATE-TODO: Replace the application name
+          app: operator-template
+          model: testing

@@ -1,0 +1,16 @@
+name: Unit Tests
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Install tox
+        run: python3 -m pip install tox
+      - name: Run linters
+        run: tox -e lint
