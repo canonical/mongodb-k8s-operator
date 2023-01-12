@@ -29,12 +29,12 @@ tls internal key - `string`;  TLS external key for encryption inside the cluster
 ### Basic Usage
 To deploy a single unit of MongoDB using its default configuration
 ```shell
-juju deploy ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4
+juju deploy ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=dataplatformoci/mongodb:5.0
 ```
 
 It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number to prohibit a "split-brain" scenario) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
 ```shell
-juju deploy ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=mongo:4.4
+juju deploy ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=dataplatformoci/mongodb:5.0
  -n <number_of_replicas>
 ```
 
