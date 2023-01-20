@@ -17,7 +17,9 @@ jobs:
       - name: Check libs
         uses: canonical/charming-actions/check-libraries@2.1.1
         with:
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}" # FIXME: current token will expire in 2023-07-04
+          # FIXME: CHARMHUB_TOKEN will expire in 2024-01-20
+          # NOTE: CHARMHUB_TOKEN is only allowed in latest/edge, latest/candidate
+          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
   ci-tests:
