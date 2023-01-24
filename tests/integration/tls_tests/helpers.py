@@ -10,7 +10,7 @@ import yaml
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
-from tests.integration.helpers import get_password
+from tests.integration.helpers import get_password, get_mongo_cmd
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +62,10 @@ async def run_tls_check(ops_test: OpsTest, unit: ops.model.Unit) -> int:
     password = await get_password(ops_test, unit_id=0)
     mongo_uri = f"mongodb://operator:{password}@{hosts}/admin?"
 
-    mongo_cmd = (
-        f"/usr/bin/mongosh {mongo_uri} --eval 'rs.status()'"
+    mongo_cmd = await get_mongo_cmd(ops_test, unit.name)
+
+    mongo_cmd += (
+        f" {mongo_uri} --eval 'rs.status()'"
         f" --tls --tlsCAFile /etc/mongodb/external-ca.crt"
         f" --tlsCertificateKeyFile /etc/mongodb/external-cert.pem"
     )
