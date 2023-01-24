@@ -27,12 +27,12 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     async with ops_test.fast_forward():
         my_charm = await ops_test.build_charm(".")
         resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
-        await ops_test.model.deploy(my_charm, num_units=3, resources=resources, series="focal")
+        await ops_test.model.deploy(my_charm, num_units=3, resources=resources)
         await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=2000)
 
         config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
         await ops_test.model.deploy(
-            TLS_CERTIFICATES_APP_NAME, channel="beta", config=config, series="focal"
+            TLS_CERTIFICATES_APP_NAME, channel="beta", config=config
         )
         await ops_test.model.wait_for_idle(
             apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=1000
