@@ -67,8 +67,9 @@ async def get_password(ops_test: OpsTest, unit_id: int) -> str:
     action = await action.wait()
     return action.results["operator-password"]
 
+
 async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
-    ls_code, _, _ = await ops_test.juju(f"ssh --container {unit.name} ls /usr/bin/mongosh")
+    ls_code, _, _ = await ops_test.juju(f"ssh --container {unit_name} ls /usr/bin/mongosh")
 
     mongo_cmd = "/usr/bin/mongo" if ls_code != 0 else "/usr/bin/mongosh"
     return mongo_cmd

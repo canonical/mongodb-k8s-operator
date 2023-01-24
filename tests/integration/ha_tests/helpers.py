@@ -24,7 +24,13 @@ from tenacity import (
     wait_fixed,
 )
 
-from tests.integration.helpers import APP_NAME, get_password, mongodb_uri, primary_host, get_mongo_cmd
+from tests.integration.helpers import (
+    APP_NAME,
+    get_mongo_cmd,
+    get_password,
+    mongodb_uri,
+    primary_host,
+)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGODB_CONTAINER_NAME = "mongod"
