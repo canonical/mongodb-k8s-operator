@@ -35,7 +35,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             TLS_CERTIFICATES_APP_NAME,
             channel="beta",
             config=config,
-            series="jammy",
+            series="focal",
         )
         await ops_test.model.wait_for_idle(
             apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=1000
