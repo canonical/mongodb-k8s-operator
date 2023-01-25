@@ -24,7 +24,13 @@ from tenacity import (
     wait_fixed,
 )
 
-from tests.integration.helpers import APP_NAME, get_password, mongodb_uri, primary_host
+from tests.integration.helpers import (
+    APP_NAME,
+    get_mongo_cmd,
+    get_password,
+    mongodb_uri,
+    primary_host,
+)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGODB_CONTAINER_NAME = "mongod"
@@ -440,7 +446,7 @@ async def set_log_level(ops_test: OpsTest, level: int, component: str = None) ->
         "--container",
         MONGODB_CONTAINER_NAME,
         "",
-        "mongosh",
+        await get_mongo_cmd(ops_test, pass_unit),
         "-u",
         "operator",
         "-p",
