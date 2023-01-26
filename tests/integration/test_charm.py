@@ -37,7 +37,11 @@ async def test_build_and_deploy(ops_test: OpsTest):
     charm = await ops_test.build_charm(".")
     resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
-        charm, resources=resources, application_name=APP_NAME, num_units=len(UNIT_IDS)
+        charm,
+        resources=resources,
+        application_name=APP_NAME,
+        num_units=len(UNIT_IDS),
+        series="jammy",
     )
 
     # issuing dummy update_status just to trigger an event

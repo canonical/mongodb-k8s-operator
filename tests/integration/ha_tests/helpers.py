@@ -168,6 +168,7 @@ async def deploy_and_scale_mongodb(
             application_name=mongodb_application_name,
             resources=resources,
             num_units=num_units,
+            series="jammy",
         )
 
         await ops_test.model.wait_for_idle(
@@ -204,6 +205,7 @@ async def deploy_and_scale_application(ops_test: OpsTest) -> str:
             application_charm,
             application_name=APPLICATION_DEFAULT_APP_NAME,
             num_units=1,
+            series="jammy",
         )
 
         await ops_test.model.wait_for_idle(

@@ -247,7 +247,7 @@ class MongoDBTLS(Object):
         return [
             f"{self.charm.app.name}-{unit_id}",
             socket.getfqdn(),
-             f"{self.charm.app.name}-{unit_id}.{self.charm.app.name}-endpoints",
+            f"{self.charm.app.name}-{unit_id}.{self.charm.app.name}-endpoints",
             str(self.charm.model.get_binding(self.peer_relation).network.bind_address),
         ]
 

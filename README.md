@@ -12,7 +12,7 @@ This operator charm deploys and operates MongoDB on Kubernetes. It offers featur
 - at least 2 CPU threads per host.
 - For production deployment: at least 60GB of available storage on each host.
 - Access to the internet for downloading the charm.
-- Machine is running Ubuntu 20.04(focal) or later.
+- Machine is running Ubuntu 22.04(jammy) or later.
 
 ## Config options
 auto-delete - `boolean`; When a relation is removed, auto-delete ensures that any relevant databases
@@ -29,13 +29,12 @@ tls internal key - `string`;  TLS external key for encryption inside the cluster
 ### Basic Usage
 To deploy a single unit of MongoDB using its default configuration
 ```shell
-juju deploy ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=dataplatformoci/mongodb:5.0
+juju deploy ./mongodb-k8s_ubuntu-22.04-amd64.charm --resource mongodb-image=dataplatformoci/mongodb:5.0
 ```
 
 It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number to prohibit a "split-brain" scenario) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
 ```shell
-juju deploy ./mongodb-k8s_ubuntu-20.04-amd64.charm --resource mongodb-image=dataplatformoci/mongodb:5.0
- -n <number_of_replicas>
+juju deploy ./mongodb-k8s_ubuntu-22.04-amd64.charm --resource mongodb-image=dataplatformoci/mongodb:5.0 -n <number_of_replicas>
 ```
 
 ### Replication
