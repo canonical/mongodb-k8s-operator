@@ -9,7 +9,8 @@ import pytest
 import pytest_asyncio
 from pytest_operator.plugin import OpsTest
 
-from tests.integration.ha_tests.helpers import (
+from ..helpers import APP_NAME
+from .helpers import (
     ANOTHER_DATABASE_APP_NAME,
     MONGOD_PROCESS_NAME,
     MONGODB_CONTAINER_NAME,
@@ -43,7 +44,6 @@ from tests.integration.ha_tests.helpers import (
     verify_writes,
     wait_until_unit_in_status,
 )
-from tests.integration.helpers import APP_NAME
 
 MEDIAN_REELECTION_TIME = 12
 

@@ -10,7 +10,8 @@ from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 
 from charm import MongoDBCharm
-from tests.unit.helpers import patch_network_get
+
+from .helpers import patch_network_get
 
 PYMONGO_EXCEPTIONS = [
     (ConnectionFailure("error message"), ConnectionFailure),

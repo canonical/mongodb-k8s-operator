@@ -6,12 +6,7 @@ import time
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from tests.integration.tls_tests.helpers import (
-    METADATA,
-    check_tls,
-    time_file_created,
-    time_process_started,
-)
+from .helpers import METADATA, check_tls, time_file_created, time_process_started
 
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 DATABASE_APP_NAME = "mongodb-k8s"
