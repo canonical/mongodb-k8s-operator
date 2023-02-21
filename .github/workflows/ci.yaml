@@ -43,12 +43,9 @@ jobs:
       fail-fast: false
       matrix:
         tox-environments:
-          - integration-charm
-          - integration-database-relation
-          - integration-osm-mysql
-          - integration-replication
-          - integration-self-healing
-          - integration-tls
+          - integration
+          - ha-integration
+          - tls-integration
     name: ${{ matrix.tox-environments }}
     needs:
       - lint
