@@ -440,12 +440,17 @@ class MongoDBCharm(CharmBase):
         if not self.get_secret("app", "monitor-password"):
             self.set_secret("app", "monitor-password", generate_password())
 
+        peers = self.model.get_relation(PEER)
+        hosts = [self.get_hostname_by_unit(self.unit.name)] + [
+            self.get_hostname_by_unit(unit.name) for unit in peers.units
+        ]
+
         return MongoDBConfiguration(
             replset=self.app.name,
             database="",
             username="monitor",
             password=self.get_secret("app", "monitor-password"),
-            hosts=set(self._unit_ips),
+            hosts=set(hosts),
             roles={"monitor"},
             tls_external=self.tls.get_tls_files("unit") is not None,
             tls_internal=self.tls.get_tls_files("app") is not None,
