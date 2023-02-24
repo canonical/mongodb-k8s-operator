@@ -65,7 +65,7 @@ async def get_password(ops_test: OpsTest, unit_id: int) -> str:
     """
     action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action("get-password")
     action = await action.wait()
-    return action.results["operator-password"]
+    return action.results["password"]
 
 
 async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):

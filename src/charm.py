@@ -421,7 +421,7 @@ class MongoDBCharm(CharmBase):
                 f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}"
             )
             return
-        event.set_results({f"{username}-password": self.get_secret("app", f"{username}_password")})
+        event.set_results({"password": self.get_secret("app", f"{username}_password")})
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the specified user."""
@@ -445,7 +445,7 @@ class MongoDBCharm(CharmBase):
 
         if new_password == self.get_secret("app", f"{username}_password"):
             event.log("The old and new passwords are equal.")
-            event.set_results({f"{username}-password": new_password})
+            event.set_results({"password": new_password})
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -460,7 +460,7 @@ class MongoDBCharm(CharmBase):
                 event.fail(f"Failed changing the password: {e}")
                 return
         self.set_secret("app", f"{username}_password", new_password)
-        event.set_results({f"{username}-password": new_password})
+        event.set_results({"password": new_password})
 
 
 if __name__ == "__main__":

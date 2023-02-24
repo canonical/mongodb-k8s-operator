@@ -541,7 +541,7 @@ async def get_other_mongodb_direct_client(ops_test: OpsTest, app_name: str) -> M
     unit = ops_test.model.applications[app_name].units[0]
     action = await unit.run_action("get-password")
     action = await action.wait()
-    password = action.results["operator-password"]
+    password = action.results["password"]
     status = await ops_test.model.get_status()
     address = status["applications"][app_name]["units"][unit.name]["address"]
 
