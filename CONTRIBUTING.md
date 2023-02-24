@@ -47,11 +47,11 @@ export PATH=$PATH:$HOME/.local/bin
 ### Testing
 
 ```shell
-tox -e fmt           # update your code according to linting rules
-tox -e lint          # code style
-tox -e unit          # unit tests
-tox -e integration   # integration tests
-tox                  # runs 'fmt', 'lint' and 'unit' environments
+tox run -e fmt           # update your code according to linting rules
+tox run -e lint          # code style
+tox run -e unit          # unit tests
+tox run -e integration   # integration tests
+tox                      # runs 'fmt', 'lint' and 'unit' environments
 ```
 
 ## Build charm

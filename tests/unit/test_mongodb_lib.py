@@ -4,9 +4,8 @@
 import unittest
 from unittest.mock import call, patch
 
+from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
-
-from lib.charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError
 
 MONGO_CONFIG = {
     "replset": "mongo-k8s",
@@ -24,8 +23,8 @@ PYMONGO_EXCEPTIONS = [
 
 
 class TestMongoServer(unittest.TestCase):
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_is_ready_error_handling(self, config, mock_client):
         """Test failure to check ready of replica returns False.
 
@@ -42,8 +41,8 @@ class TestMongoServer(unittest.TestCase):
             # verify we close connection
             (mock_client.return_value.close).assert_called()
 
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_init_replset_error_handling(self, config, mock_client):
         """Test failure to initialise replica set raises an error.
 
@@ -58,8 +57,8 @@ class TestMongoServer(unittest.TestCase):
             # verify we close connection
             (mock_client.return_value.close).assert_called()
 
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_get_replset_members_error_handling(self, config, mock_client):
         """Test failure to get replica set members raises an error.
 
@@ -74,8 +73,8 @@ class TestMongoServer(unittest.TestCase):
             # verify we close connection
             (mock_client.return_value.close).assert_called()
 
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_add_replset_members_pymongo_error_handling(self, config, mock_client):
         """Test failures related to PyMongo properly get handled in add_replset_member.
 
@@ -91,9 +90,9 @@ class TestMongoServer(unittest.TestCase):
             # verify we close connection
             (mock_client.return_value.close).assert_called()
 
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConnection._is_any_sync")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConnection._is_any_sync")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_add_replset_member_wait_to_sync(self, config, mock_client, any_sync):
         """Tests that adding replica set members raises NotReadyError if another member is syncing.
 
@@ -112,8 +111,8 @@ class TestMongoServer(unittest.TestCase):
         no_reconfig = call("replSetReconfig") not in actual_calls
         self.assertEqual(no_reconfig, True)
 
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_remove_replset_members_pymongo_error_handling(self, config, mock_client):
         """Test failures related to PyMongo properly get handled in remove_replset_member.
 
@@ -129,9 +128,9 @@ class TestMongoServer(unittest.TestCase):
             # verify we close connection
             (mock_client.return_value.close).assert_called()
 
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConnection._is_any_removing")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConnection._is_any_removing")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_remove_replset_member_wait_to_remove(self, config, mock_client, any_remove):
         """Tests removing replica set members raises NotReadyError if another member is removing.
 
@@ -150,9 +149,9 @@ class TestMongoServer(unittest.TestCase):
         no_reconfig = call("replSetReconfig") not in actual_calls
         self.assertEqual(no_reconfig, True)
 
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConnection._is_any_removing")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConnection._is_any_removing")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_create_user_error_handling(self, config, mock_client, any_remove):
         """Test failures related to PyMongo properly get handled when creating a user.
 
@@ -167,8 +166,8 @@ class TestMongoServer(unittest.TestCase):
             # verify we close connection
             (mock_client.return_value.close).assert_called()
 
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_update_user_error_handling(self, config, mock_client):
         """Test failures related to PyMongo properly get handled when updating a user.
 
@@ -183,8 +182,8 @@ class TestMongoServer(unittest.TestCase):
             # verify we close connection
             (mock_client.return_value.close).assert_called()
 
-    @patch("lib.charms.mongodb.v0.mongodb.MongoClient")
-    @patch("lib.charms.mongodb.v0.mongodb.MongoDBConfiguration")
+    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_drop_user_error_handling(self, config, mock_client):
         """Test failures related to PyMongo properly get handled when dropping a user.
 
