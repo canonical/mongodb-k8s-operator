@@ -32,10 +32,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
         config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
         await ops_test.model.deploy(
-            TLS_CERTIFICATES_APP_NAME,
-            channel="beta",
-            config=config,
-            series="focal",
+            TLS_CERTIFICATES_APP_NAME, channel="beta", config=config, series="jammy"
         )
         await ops_test.model.wait_for_idle(
             apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=1000
