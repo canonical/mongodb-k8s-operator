@@ -41,6 +41,10 @@ from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 logger = logging.getLogger(__name__)
 PEER = "database-peers"
+MONITOR_PRIVILEGES = {
+    "resource": {"db": "", "collection": ""},
+    "actions": ["listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find"],
+}
 
 
 class MongoDBCharm(CharmBase):
@@ -159,6 +163,7 @@ class MongoDBCharm(CharmBase):
                 direct_mongo.init_replset()
                 logger.info("User initialization")
                 self._init_user(container)
+                self._init_monitor_user()
                 logger.info("Reconcile relations")
                 self.client_relations.oversee_users(None, event)
             except ExecError as e:
@@ -410,6 +415,41 @@ class MongoDBCharm(CharmBase):
         logger.debug("User created: %s", stdout)
 
         self.app_peer_data["user_created"] = "True"
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_monitor_user(self):
+        """Creates the monitor user on the MongoDB database."""
+        if "monitor_user_created" in self.app_peer_data:
+            return
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            logger.debug("creating the monitor user roles...")
+            mongo.create_role(role_name="explainRole", privileges=MONITOR_PRIVILEGES)
+            logger.debug("creating the monitor user...")
+            mongo.create_user(self.monitor_config)
+            self.app_peer_data["monitor_user_created"] = "True"
+
+    @property
+    def monitor_config(self) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
+        if not self.get_secret("app", "monitor-password"):
+            self.set_secret("app", "monitor-password", generate_password())
+
+        return MongoDBConfiguration(
+            replset=self.app.name,
+            database="",
+            username="monitor",
+            password=self.get_secret("app", "monitor-password"),
+            hosts=set(self._unit_ips),
+            roles={"monitor"},
+            tls_external=self.tls.get_tls_files("unit") is not None,
+            tls_internal=self.tls.get_tls_files("app") is not None,
+        )
 
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
