@@ -20,6 +20,8 @@ from .helpers import (
     generate_collection_id,
     get_address_of_unit,
     get_leader_id,
+    get_mongo_cmd,
+    get_password,
     primary_host,
     run_mongo_op,
     secondary_mongo_uris_with_sync_delay,
@@ -93,6 +95,22 @@ async def test_application_primary(ops_test: OpsTest):
     assert (
         primary == f"mongodb-k8s-{leader_id}.mongodb-k8s-endpoints:27017"
     ), "primary not leader on deployment"
+
+
+async def test_monitor_user(ops_test: OpsTest) -> None:
+    """Test verifies that the monitor user can perform operations such as 'rs.conf()'."""
+    unit = ops_test.model.applications[APP_NAME].units[0]
+    password = await get_password(ops_test, unit_id=0, username="monitor")
+    addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in UNIT_IDS]
+    hosts = ",".join(addresses)
+    mongo_uri = f"mongodb://monitor:{password}@{hosts}/admin?"
+
+    admin_mongod_cmd = await get_mongo_cmd(ops_test, unit.name)
+    admin_mongod_cmd += f" {mongo_uri} --eval 'rs.conf()'"
+    complete_command = f"ssh --container mongod {unit.name} {admin_mongod_cmd}"
+
+    return_code, _, stderr = await ops_test.juju(*complete_command.split())
+    assert return_code == 0, f"command rs.conf() on monitor user does not work, error: {stderr}"
 
 
 async def test_scale_up(ops_test: OpsTest):

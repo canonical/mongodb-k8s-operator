@@ -29,13 +29,13 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
 
 # List of system usernames needed for correct work on the charm.
-CHARM_USERS = ["operator"]
+CHARM_USERS = ["operator", "backup", "monitor"]
 
 
 @dataclass
@@ -242,8 +242,8 @@ class MongoDBConnection:
         self.client.admin.command("replSetReconfig", rs_config["config"])
 
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(5),
+        stop=stop_after_attempt(20),
+        wait=wait_fixed(3),
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
@@ -263,8 +263,7 @@ class MongoDBConnection:
             # before giving up.
             raise NotReadyError
 
-        # avoid downtime we need to reelect new primary
-        # if removable member is the primary.
+        # avoid downtime we need to reelect new primary if removable member is the primary.
         logger.debug("primary: %r", self._is_primary(rs_status, hostname))
         if self._is_primary(rs_status, hostname):
             self.client.admin.command("replSetStepDown", {"stepDownSecs": "60"})
@@ -306,6 +305,23 @@ class MongoDBConnection:
             pwd=password,
         )
 
+    def create_role(self, role_name: str, privileges: dict, roles: dict = []):
+        """Creates a new role.
+
+        Args:
+            role_name: name of the role to be added.
+            privileges: privledges to be associated with the role.
+            roles: List of roles from which this role inherits privileges.
+        """
+        try:
+            self.client.admin.command(
+                "createRole", role_name, privileges=[privileges], roles=roles
+            )
+        except OperationFailure as e:
+            if not e.code == 51002:  # Role already exists
+                logger.error("Cannot add role. error=%r", e)
+                raise e
+
     @staticmethod
     def _get_roles(config: MongoDBConfiguration) -> List[dict]:
         """Generate roles List."""
@@ -314,6 +330,18 @@ class MongoDBConnection:
                 {"role": "userAdminAnyDatabase", "db": "admin"},
                 {"role": "readWriteAnyDatabase", "db": "admin"},
                 {"role": "userAdmin", "db": "admin"},
+            ],
+            "monitor": [
+                {"role": "explainRole", "db": "admin"},
+                {"role": "clusterMonitor", "db": "admin"},
+                {"role": "read", "db": "local"},
+            ],
+            "backup": [
+                {"db": "admin", "role": "readWrite", "collection": ""},
+                {"db": "admin", "role": "backup"},
+                {"db": "admin", "role": "clusterMonitor"},
+                {"db": "admin", "role": "restore"},
+                {"db": "admin", "role": "pbmAnyAction"},
             ],
             "default": [
                 {"role": "readWrite", "db": config.database},

@@ -57,15 +57,17 @@ async def get_address_of_unit(ops_test: OpsTest, unit_id: int) -> str:
     return status["applications"][APP_NAME]["units"][f"{APP_NAME}/{unit_id}"]["address"]
 
 
-async def get_password(ops_test: OpsTest, unit_id: int) -> str:
+async def get_password(ops_test: OpsTest, unit_id: int, username="operator") -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
         String with the password stored on the peer relation databag.
     """
-    action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action("get-password")
+    action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
+        "get-password", **{"username": username}
+    )
     action = await action.wait()
-    return action.results["operator-password"]
+    return action.results["password"]
 
 
 async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
