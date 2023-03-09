@@ -46,6 +46,9 @@ MONITOR_PRIVILEGES = {
     "resource": {"db": "", "collection": ""},
     "actions": ["listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find"],
 }
+DATA_DIR = "/var/lib/mongodb"
+UNIX_USER = "mongodb"
+UNIX_GROUP = "mongodb"
 
 
 class MongoDBCharm(CharmBase):
@@ -91,6 +94,8 @@ class MongoDBCharm(CharmBase):
         try:
             self._push_certificate_to_workload(container)
             self._push_keyfile_to_workload(container)
+            self._fix_data_dir(container)
+
         except (PathError, ProtocolError) as e:
             logger.error("Cannot put keyFile: %r", e)
             event.defer()
@@ -240,8 +245,8 @@ class MongoDBCharm(CharmBase):
                     "summary": "mongod",
                     "command": "mongod " + get_mongod_args(self.mongodb_config),
                     "startup": "enabled",
-                    "user": "mongodb",
-                    "group": "mongodb",
+                    "user": UNIX_USER,
+                    "group": UNIX_GROUP,
                 }
             },
         }
@@ -323,8 +328,8 @@ class MongoDBCharm(CharmBase):
             self.get_secret("app", "keyfile"),
             make_dirs=True,
             permissions=0o400,
-            user="mongodb",
-            group="mongodb",
+            user=UNIX_USER,
+            group=UNIX_GROUP,
         )
 
     def _push_certificate_to_workload(self, container: Container) -> None:
@@ -337,8 +342,8 @@ class MongoDBCharm(CharmBase):
                 external_ca,
                 make_dirs=True,
                 permissions=0o400,
-                user="mongodb",
-                group="mongodb",
+                user=UNIX_USER,
+                group=UNIX_GROUP,
             )
         if external_pem is not None:
             logger.debug("Uploading external pem to workload container")
@@ -347,8 +352,8 @@ class MongoDBCharm(CharmBase):
                 external_pem,
                 make_dirs=True,
                 permissions=0o400,
-                user="mongodb",
-                group="mongodb",
+                user=UNIX_USER,
+                group=UNIX_GROUP,
             )
 
         internal_ca, internal_pem = self.tls.get_tls_files("app")
@@ -359,8 +364,8 @@ class MongoDBCharm(CharmBase):
                 internal_ca,
                 make_dirs=True,
                 permissions=0o400,
-                user="mongodb",
-                group="mongodb",
+                user=UNIX_USER,
+                group=UNIX_GROUP,
             )
         if internal_pem is not None:
             logger.debug("Uploading internal pem to workload container")
@@ -369,9 +374,18 @@ class MongoDBCharm(CharmBase):
                 internal_pem,
                 make_dirs=True,
                 permissions=0o400,
-                user="mongodb",
-                group="mongodb",
+                user=UNIX_USER,
+                group=UNIX_GROUP,
             )
+
+    def _fix_data_dir(self, container: Container) -> None:
+        # Fix permissions incorrectly with chown.
+        # Wait for the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
+        paths = container.list_files(DATA_DIR, itself=True)
+        assert len(paths) == 1, "list_files doesn't return only directory itself"
+        logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
+        if paths[0].user != UNIX_USER or paths[0].group != UNIX_GROUP:
+            container.exec(f"chown -o {UNIX_USER} -g {UNIX_GROUP} -R {DATA_DIR}".split(" "))
 
     def get_hostname_by_unit(self, unit_name: str) -> str:
         """Create a DNS name for a MongoDB unit.
