@@ -22,7 +22,7 @@ from charms.mongodb.v0.helpers import (
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
-    get_mongod_cmd,
+    get_mongod_args,
 )
 from charms.mongodb.v0.mongodb import (
     CHARM_USERS,
@@ -97,12 +97,12 @@ class MongoDBCharm(CharmBase):
         # This function can be run in two cases:
         # 1) during regular charm start.
         # 2) if we forcefully want to apply new
-        # mongod cmd line arguments (returned from get_mongod_cmd).
+        # mongod cmd line arguments (returned from get_mongod_args).
         # In the second case, we should restart mongod
         # service only if arguments changed.
         services = container.get_services("mongod")
         if services and services["mongod"].is_running():
-            new_command = get_mongod_cmd(self.mongodb_config)
+            new_command = "mongod " + get_mongod_args(self.mongodb_config)
             cur_command = container.get_plan().services["mongod"].command
             if new_command != cur_command:
                 logger.debug("restart MongoDB due to arguments change: %s", new_command)
@@ -236,7 +236,7 @@ class MongoDBCharm(CharmBase):
                 "mongod": {
                     "override": "replace",
                     "summary": "mongod",
-                    "command": get_mongod_cmd(self.mongodb_config),
+                    "command": "mongod "+get_mongod_args(self.mongodb_config),
                     "startup": "enabled",
                     "user": "mongodb",
                     "group": "mongodb",
