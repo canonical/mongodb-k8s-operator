@@ -32,7 +32,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 4
 
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,6 @@ class MongoDBTLS(Object):
             event.fail(str(e))
 
     def _request_certificate(self, scope: str, param: Optional[str]):
-
         if param is None:
             key = generate_private_key()
         else:
@@ -90,6 +89,7 @@ class MongoDBTLS(Object):
             subject=self.get_host(self.charm.unit),
             organization=self.charm.app.name,
             sans=self._get_sans(),
+            sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
         )
 
         self.charm.set_secret(scope, "key", key.decode("utf-8"))
@@ -227,6 +227,7 @@ class MongoDBTLS(Object):
             subject=self.get_host(self.charm.unit),
             organization=self.charm.app.name,
             sans=self._get_sans(),
+            sans_ip=[str(self.charm.model.get_binding(self.peer_relation).network.bind_address)],
         )
         logger.debug("Requesting a certificate renewal.")
 
