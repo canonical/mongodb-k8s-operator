@@ -11,8 +11,8 @@ from .helpers import METADATA, check_tls, time_file_created, time_process_starte
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 DATABASE_APP_NAME = "mongodb-k8s"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
-EXTERNAL_CERT_PATH = "/etc/mongodb/external-ca.crt"
-INTERNAL_CERT_PATH = "/etc/mongodb/internal-ca.crt"
+EXTERNAL_CERT_PATH = "/etc/mongod/external-ca.crt"
+INTERNAL_CERT_PATH = "/etc/mongod/internal-ca.crt"
 DB_SERVICE = "mongod.service"
 
 
