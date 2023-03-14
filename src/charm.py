@@ -344,7 +344,7 @@ class MongoDBCharm(CharmBase):
         if external_pem is not None:
             logger.debug("Uploading external pem to workload container")
             container.push(
-                TLS_EXT_PEM_FILE,
+                CONF_DIR + "/" + TLS_EXT_PEM_FILE,
                 external_pem,
                 make_dirs=True,
                 permissions=0o400,
@@ -356,7 +356,7 @@ class MongoDBCharm(CharmBase):
         if internal_ca is not None:
             logger.debug("Uploading internal ca to workload container")
             container.push(
-                TLS_INT_CA_FILE,
+                CONF_DIR + "/" + TLS_INT_CA_FILE,
                 internal_ca,
                 make_dirs=True,
                 permissions=0o400,
@@ -366,7 +366,7 @@ class MongoDBCharm(CharmBase):
         if internal_pem is not None:
             logger.debug("Uploading internal pem to workload container")
             container.push(
-                TLS_INT_PEM_FILE,
+                CONF_DIR + "/" + TLS_INT_PEM_FILE,
                 internal_pem,
                 make_dirs=True,
                 permissions=0o400,
