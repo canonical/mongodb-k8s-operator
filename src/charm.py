@@ -14,6 +14,7 @@ import logging
 from typing import Dict, Optional
 
 from charms.mongodb.v0.helpers import (
+    CONF_DIR,
     KEY_FILE,
     TLS_EXT_CA_FILE,
     TLS_EXT_PEM_FILE,
@@ -82,6 +83,7 @@ class MongoDBCharm(CharmBase):
         # Get a reference the container attribute
         container = self.unit.get_container("mongod")
         # mongod needs keyFile and TLS certificates on filesystem
+
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
             event.defer()
@@ -236,13 +238,14 @@ class MongoDBCharm(CharmBase):
                 "mongod": {
                     "override": "replace",
                     "summary": "mongod",
-                    "command": "mongod "+get_mongod_args(self.mongodb_config),
+                    "command": "mongod " + get_mongod_args(self.mongodb_config),
                     "startup": "enabled",
                     "user": "mongodb",
                     "group": "mongodb",
                 }
             },
         }
+        print(layer_config)
         return Layer(layer_config)
 
     @property
@@ -317,7 +320,7 @@ class MongoDBCharm(CharmBase):
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
         container.push(
-            KEY_FILE,
+            CONF_DIR + "/" + KEY_FILE,
             self.get_secret("app", "keyfile"),
             make_dirs=True,
             permissions=0o400,
@@ -331,7 +334,7 @@ class MongoDBCharm(CharmBase):
         if external_ca is not None:
             logger.debug("Uploading external ca to workload container")
             container.push(
-                TLS_EXT_CA_FILE,
+                CONF_DIR + "/" + TLS_EXT_CA_FILE,
                 external_ca,
                 make_dirs=True,
                 permissions=0o400,

@@ -54,10 +54,11 @@ class TestCharm(unittest.TestCase):
                     "override": "replace",
                     "summary": "mongod",
                     "command": (
-                        "mongod --bind_ip_all --auth "
+                        "mongod --bind_ip_all "
                         "--replSet=mongodb-k8s "
+                        "--dbpath=/var/lib/mongodb --auth "
                         "--clusterAuthMode=keyFile "
-                        "--keyFile=/etc/mongodb/keyFile"
+                        "--keyFile=/etc/mongod/keyFile \n"
                     ),
                     "startup": "enabled",
                 }
