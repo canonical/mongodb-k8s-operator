@@ -66,8 +66,8 @@ async def run_tls_check(ops_test: OpsTest, unit: ops.model.Unit) -> int:
 
     mongo_cmd += (
         f" {mongo_uri} --eval 'rs.status()'"
-        f" --tls --tlsCAFile /etc/mongodb/external-ca.crt"
-        f" --tlsCertificateKeyFile /etc/mongodb/external-cert.pem"
+        f" --tls --tlsCAFile /etc/mongod/external-ca.crt"
+        f" --tlsCertificateKeyFile /etc/mongod/external-cert.pem"
     )
 
     complete_command = f"ssh --container mongod {unit.name} {mongo_cmd}"

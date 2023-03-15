@@ -14,6 +14,7 @@ import logging
 from typing import Dict, Optional
 
 from charms.mongodb.v0.helpers import (
+    CONF_DIR,
     KEY_FILE,
     TLS_EXT_CA_FILE,
     TLS_EXT_PEM_FILE,
@@ -22,7 +23,7 @@ from charms.mongodb.v0.helpers import (
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
-    get_mongod_cmd,
+    get_mongod_args,
 )
 from charms.mongodb.v0.mongodb import (
     CHARM_USERS,
@@ -82,6 +83,7 @@ class MongoDBCharm(CharmBase):
         # Get a reference the container attribute
         container = self.unit.get_container("mongod")
         # mongod needs keyFile and TLS certificates on filesystem
+
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
             event.defer()
@@ -97,12 +99,12 @@ class MongoDBCharm(CharmBase):
         # This function can be run in two cases:
         # 1) during regular charm start.
         # 2) if we forcefully want to apply new
-        # mongod cmd line arguments (returned from get_mongod_cmd).
+        # mongod cmd line arguments (returned from get_mongod_args).
         # In the second case, we should restart mongod
         # service only if arguments changed.
         services = container.get_services("mongod")
         if services and services["mongod"].is_running():
-            new_command = get_mongod_cmd(self.mongodb_config)
+            new_command = "mongod " + get_mongod_args(self.mongodb_config)
             cur_command = container.get_plan().services["mongod"].command
             if new_command != cur_command:
                 logger.debug("restart MongoDB due to arguments change: %s", new_command)
@@ -236,7 +238,7 @@ class MongoDBCharm(CharmBase):
                 "mongod": {
                     "override": "replace",
                     "summary": "mongod",
-                    "command": get_mongod_cmd(self.mongodb_config),
+                    "command": "mongod " + get_mongod_args(self.mongodb_config),
                     "startup": "enabled",
                     "user": "mongodb",
                     "group": "mongodb",
@@ -317,7 +319,7 @@ class MongoDBCharm(CharmBase):
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
         container.push(
-            KEY_FILE,
+            CONF_DIR + "/" + KEY_FILE,
             self.get_secret("app", "keyfile"),
             make_dirs=True,
             permissions=0o400,
@@ -331,7 +333,7 @@ class MongoDBCharm(CharmBase):
         if external_ca is not None:
             logger.debug("Uploading external ca to workload container")
             container.push(
-                TLS_EXT_CA_FILE,
+                CONF_DIR + "/" + TLS_EXT_CA_FILE,
                 external_ca,
                 make_dirs=True,
                 permissions=0o400,
@@ -341,7 +343,7 @@ class MongoDBCharm(CharmBase):
         if external_pem is not None:
             logger.debug("Uploading external pem to workload container")
             container.push(
-                TLS_EXT_PEM_FILE,
+                CONF_DIR + "/" + TLS_EXT_PEM_FILE,
                 external_pem,
                 make_dirs=True,
                 permissions=0o400,
@@ -353,7 +355,7 @@ class MongoDBCharm(CharmBase):
         if internal_ca is not None:
             logger.debug("Uploading internal ca to workload container")
             container.push(
-                TLS_INT_CA_FILE,
+                CONF_DIR + "/" + TLS_INT_CA_FILE,
                 internal_ca,
                 make_dirs=True,
                 permissions=0o400,
@@ -363,7 +365,7 @@ class MongoDBCharm(CharmBase):
         if internal_pem is not None:
             logger.debug("Uploading internal pem to workload container")
             container.push(
-                TLS_INT_PEM_FILE,
+                CONF_DIR + "/" + TLS_INT_PEM_FILE,
                 internal_pem,
                 make_dirs=True,
                 permissions=0o400,

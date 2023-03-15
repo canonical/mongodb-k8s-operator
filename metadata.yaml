@@ -3,11 +3,11 @@
 
 name: mongodb-k8s
 display-name: |
-    Charmed Operator for MongoDB
+  Charmed Operator for MongoDB
 description: |
-    MongoDB is a general purpose distributed document database.  This
-    charm deploys and operates MongoDB on kubernetes Clusters. It
-    supports replicated MongoDB databases.
+  MongoDB is a general purpose distributed document database.  This
+  charm deploys and operates MongoDB on kubernetes Clusters. It
+  supports replicated MongoDB databases.
 summary: A MongoDB operator charm for Kubernetes
 peers:
   database-peers:
@@ -26,13 +26,13 @@ containers:
     resource: mongodb-image
     mounts:
       - storage: db
-        location: /data/db
+        location: /var/lib/mongodb
 resources:
   mongodb-image:
     type: oci-image
     description: OCI image for mongodb
-    upstream-source: 'dataplatformoci/mongodb:5.0'
+    upstream-source: "ghcr.io/canonical/charmed-mongodb:5.0.14-22.04_edge"
 storage:
   db:
     type: filesystem
-    location: /data/db
+    location: /var/lib/mongodb
