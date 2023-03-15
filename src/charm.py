@@ -245,7 +245,6 @@ class MongoDBCharm(CharmBase):
                 }
             },
         }
-        print(layer_config)
         return Layer(layer_config)
 
     @property
