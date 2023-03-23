@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 from unittest.mock import patch
 
+from charms.mongodb.v0.helpers import CONF_DIR, DATA_DIR, KEY_FILE
 from ops.model import ActiveStatus, ModelError
 from ops.pebble import APIError, ExecError, PathError, ProtocolError
 from ops.testing import Harness
@@ -44,7 +45,8 @@ class TestCharm(unittest.TestCase):
         self.addCleanup(self.harness.cleanup)
 
     @patch("ops.framework.EventBase.defer")
-    def test_mongod_pebble_ready(self, defer):
+    @patch("charm.MongoDBCharm._fix_data_dir")
+    def test_mongod_pebble_ready(self, fix_data_dir, defer):
         # Expected plan after Pebble ready with default config
         expected_plan = {
             "services": {
@@ -56,9 +58,9 @@ class TestCharm(unittest.TestCase):
                     "command": (
                         "mongod --bind_ip_all "
                         "--replSet=mongodb-k8s "
-                        "--dbpath=/var/lib/mongodb --auth "
+                        f"--dbpath={DATA_DIR} --auth "
                         "--clusterAuthMode=keyFile "
-                        "--keyFile=/etc/mongod/keyFile \n"
+                        f"--keyFile={CONF_DIR}/{KEY_FILE} \n"
                     ),
                     "startup": "enabled",
                 }
