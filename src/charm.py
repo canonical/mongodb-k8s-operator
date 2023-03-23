@@ -379,8 +379,11 @@ class MongoDBCharm(CharmBase):
             )
 
     def _fix_data_dir(self, container: Container) -> None:
-        # Fix permissions incorrectly with chown.
-        # Wait for the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
+        """
+        Ensure the data directory for mongodb is writable for the "mongodb" user.
+        
+        Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext is available we fix permissions incorrectly with chown.
+        """
         paths = container.list_files(DATA_DIR, itself=True)
         assert len(paths) == 1, "list_files doesn't return only directory itself"
         logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
