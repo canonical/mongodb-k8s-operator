@@ -15,6 +15,7 @@ from typing import Dict, Optional
 
 from charms.mongodb.v0.helpers import (
     CONF_DIR,
+    DATA_DIR,
     KEY_FILE,
     TLS_EXT_CA_FILE,
     TLS_EXT_PEM_FILE,
@@ -46,7 +47,6 @@ MONITOR_PRIVILEGES = {
     "resource": {"db": "", "collection": ""},
     "actions": ["listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find"],
 }
-DATA_DIR = "/var/lib/mongodb"
 UNIX_USER = "mongodb"
 UNIX_GROUP = "mongodb"
 
@@ -379,10 +379,10 @@ class MongoDBCharm(CharmBase):
             )
 
     def _fix_data_dir(self, container: Container) -> None:
-        """
-        Ensure the data directory for mongodb is writable for the "mongodb" user.
-        
-        Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext is available we fix permissions incorrectly with chown.
+        """Ensure the data directory for mongodb is writable for the "mongodb" user.
+
+        Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
+        is available we fix permissions incorrectly with chown.
         """
         paths = container.list_files(DATA_DIR, itself=True)
         assert len(paths) == 1, "list_files doesn't return only directory itself"
