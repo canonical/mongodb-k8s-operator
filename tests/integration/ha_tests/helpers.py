@@ -246,6 +246,7 @@ async def get_process_pid(
         container_name,
         unit_name,
         "pgrep",
+        "-x",
         process,
     ]
     return_code, pid, _ = await ops_test.juju(*get_pid_commands)
