@@ -44,9 +44,10 @@ class TestCharm(unittest.TestCase):
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
 
+    @patch("charm.MongoDBCharm._pull_licenses")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._fix_data_dir")
-    def test_mongod_pebble_ready(self, fix_data_dir, defer):
+    def test_mongod_pebble_ready(self, fix_data_dir, defer, pull_licenses):
         # Expected plan after Pebble ready with default config
         expected_plan = {
             "services": {

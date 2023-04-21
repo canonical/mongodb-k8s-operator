@@ -94,6 +94,7 @@ class MongoDBCharm(CharmBase):
         try:
             self._push_certificate_to_workload(container)
             self._push_keyfile_to_workload(container)
+            self._pull_licenses(container)
             self._fix_data_dir(container)
 
         except (PathError, ProtocolError) as e:
@@ -320,6 +321,24 @@ class MongoDBCharm(CharmBase):
             tls_external=external_ca is not None,
             tls_internal=internal_ca is not None,
         )
+
+    def _pull_licenses(self, container: Container) -> None:
+        """Pull licenses from workload."""
+        licenses = [
+            "snap",
+            "mongodb-exporter",
+            "percona-backup-mongodb",
+            "percona-server",
+        ]
+
+        for license_name in licenses:
+            try:
+                license_file = container.pull(path=f"/licenses/LICENSE-{license_name}")
+                f = open(f"src/licenses/LICENSE-{license_name}", "x")
+                f.write(str(license_file.read()))
+                f.close()
+            except FileExistsError:
+                pass
 
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
