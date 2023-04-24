@@ -22,7 +22,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
     model_name = ops_test.model.info.name
     subprocess.check_output(
-        f"juju set-model-constraints --model={model_name} cores=2 mem=1G".split()
+        f"juju set-model-constraints --model={model_name} cores=2 mem=2G".split()
     )
 
     async with ops_test.fast_forward():

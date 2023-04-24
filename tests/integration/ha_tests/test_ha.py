@@ -91,7 +91,7 @@ async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
     """Build and deploy three units of MongoDB and one test unit."""
     model_name = ops_test.model.info.name
     subprocess.check_output(
-        f"juju set-model-constraints --model={model_name} cores=2 mem=1G".split()
+        f"juju set-model-constraints --model={model_name} cores=2 mem=2G".split()
     )
 
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
