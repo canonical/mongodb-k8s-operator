@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import subprocess
 import time
 
 import pytest
@@ -36,6 +37,11 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
     Assert on the unit status before any relations/configurations take place.
     """
+    model_name = ops_test.model.info.name
+    subprocess.check_output(
+        f"juju set-model-constraints --model={model_name} cores=2 mem=1G".split()
+    )
+
     # build and deploy charm from local source folder
     charm = await ops_test.build_charm(".")
     resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
