@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """Charm for MongoDB on Kubernetes.
@@ -326,6 +326,7 @@ class MongoDBCharm(CharmBase):
         """Pull licenses from workload."""
         licenses = [
             "snap",
+            "rock",
             "mongodb-exporter",
             "percona-backup-mongodb",
             "percona-server",
