@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-import subprocess
 import time
 from datetime import datetime, timezone
 
@@ -89,11 +88,6 @@ def chaos_mesh(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
     """Build and deploy three units of MongoDB and one test unit."""
-    model_name = ops_test.model.info.name
-    subprocess.check_output(
-        f"juju set-model-constraints --model={model_name} cores=2 mem=2G".split()
-    )
-
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
     # is a pre-existing cluster.
     mongodb_application_name = await get_application_name(ops_test, APP_NAME)
