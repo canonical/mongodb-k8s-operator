@@ -78,6 +78,9 @@ class MongoDBCharm(CharmBase):
         if not self.get_secret("app", "operator_password"):
             self.set_secret("app", "operator_password", generate_password())
 
+        if not self.get_secret("app", "monitor_password"):
+            self.set_secret("app", "monitor_password", generate_password())
+
         if not self.get_secret("app", "keyfile"):
             self.set_secret("app", "keyfile", generate_keyfile())
 
@@ -120,6 +123,10 @@ class MongoDBCharm(CharmBase):
         container.add_layer("mongod", self._mongod_layer, combine=True)
         # Restart changed services and start startup-enabled services.
         container.replan()
+
+        # when a network cuts and the pod restarts - reconnect to the eporter
+        self._connect_mongodb_exporter()
+
         # TODO: rework status
         self.unit.status = ActiveStatus()
 
@@ -192,6 +199,8 @@ class MongoDBCharm(CharmBase):
 
         The amount replicas in the MongoDB replica set is updated.
         """
+        self._connect_mongodb_exporter()
+
         if not self.unit.is_leader():
             return
 
@@ -233,6 +242,26 @@ class MongoDBCharm(CharmBase):
             except PyMongoError as e:
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
+
+    @property
+    def _mongodb_exporter_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for mongod."""
+        layer_config = {
+            "summary": "mongodb_exporter layer",
+            "description": "Pebble config layer for mongodb_exporter",
+            "services": {
+                "mongodb_exporter": {
+                    "override": "replace",
+                    "summary": "mongodb_exporter",
+                    # todo pass URI in correct way
+                    "command": f"mongodb_exporter --mongodb.uri={self.monitor_config.uri}  --collector.diagnosticdata --compatible-mode",
+                    "startup": "enabled",
+                    "user": UNIX_USER,
+                    "group": UNIX_GROUP,
+                }
+            },
+        }
+        return Layer(layer_config)
 
     @property
     def _mongod_layer(self) -> Layer:
@@ -326,7 +355,6 @@ class MongoDBCharm(CharmBase):
         """Pull licenses from workload."""
         licenses = [
             "snap",
-            "rock",
             "mongodb-exporter",
             "percona-backup-mongodb",
             "percona-server",
@@ -455,6 +483,23 @@ class MongoDBCharm(CharmBase):
 
         self.app_peer_data["user_created"] = "True"
 
+    def _connect_mongodb_exporter(self) -> None:
+        """Exposes the endpoint to mongodb_exporter."""
+        container = self.unit.get_container("mongod")
+
+        if not container.can_connect():
+            return
+
+        # must wait for leader to set URI before connecting
+        if not self.get_secret("app", "monitor_password"):
+            return
+
+        # Add initial Pebble config layer using the Pebble API
+        # mongodb_exporter --mongodb.uri=
+        container.add_layer("mongodb_exporter", self._mongodb_exporter_layer, combine=True)
+        # Restart changed services and start startup-enabled services.
+        container.replan()
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(5),
@@ -471,25 +516,19 @@ class MongoDBCharm(CharmBase):
             mongo.create_role(role_name="explainRole", privileges=MONITOR_PRIVILEGES)
             logger.debug("creating the monitor user...")
             mongo.create_user(self.monitor_config)
+            self._connect_mongodb_exporter()
             self.app_peer_data["monitor_user_created"] = "True"
 
     @property
     def monitor_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
-        if not self.get_secret("app", "monitor_password"):
-            self.set_secret("app", "monitor_password", generate_password())
-
-        peers = self.model.get_relation(PEER)
-        hosts = [self.get_hostname_by_unit(self.unit.name)] + [
-            self.get_hostname_by_unit(unit.name) for unit in peers.units
-        ]
-
         return MongoDBConfiguration(
             replset=self.app.name,
             database="",
             username="monitor",
+            # MongoDB Exporter can only connect to one replica - not the entire set.
             password=self.get_secret("app", "monitor_password"),
-            hosts=set(hosts),
+            hosts=[self.get_hostname_by_unit(self.unit.name)],
             roles={"monitor"},
             tls_external=self.tls.get_tls_files("unit") is not None,
             tls_internal=self.tls.get_tls_files("app") is not None,
