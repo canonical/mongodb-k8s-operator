@@ -37,9 +37,8 @@ async def verify_endpoints(ops_test: OpsTest, app_name=DATABASE_APP_NAME):
     """Verifies mongodb endpoint is functional on a given unit."""
     http = urllib3.PoolManager()
 
-    unit_address = await get_address(ops_test=ops_test, app_name=app_name)
-    mongodb_exporter_url = f"http://{unit_address}:{MONGODB_EXPORTER_PORT}/metrics"
-    mongo_resp = http.request("GET", mongodb_exporter_url)
+    app_address = await get_address(ops_test=ops_test, app_name=app_name)
+    mongo_resp = http.request("GET", f"http://{app_address}:{MONGODB_EXPORTER_PORT}/metrics")
 
     assert mongo_resp.status == 200
 
