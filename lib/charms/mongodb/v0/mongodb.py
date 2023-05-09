@@ -310,7 +310,7 @@ class MongoDBConnection:
 
         Args:
             role_name: name of the role to be added.
-            privileges: privledges to be associated with the role.
+            privileges: privileges to be associated with the role.
             roles: List of roles from which this role inherits privileges.
         """
         try:
