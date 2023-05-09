@@ -26,10 +26,18 @@ provides:
     interface: mongodb_client
   obsolete:
     interface: mongodb
+  metrics-endpoint:
+    interface: prometheus_scrape
+  grafana-dashboard:
+    interface: grafana_dashboard
 requires:
   certificates:
     interface: tls-certificates
     limit: 1
+  logging:
+    interface: loki_push_api
+    limit: 1
+    optional: true
 containers:
   mongod:
     resource: mongodb-image

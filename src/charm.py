@@ -6,13 +6,15 @@
 
 Run the developer's favourite document database — MongoDB! Charm for MongoDB is a fully supported,
 automated solution from Canonical for running production-grade MongoDB on Kubernetes. It offers
-a simple, secure and highly available setup with automatic recovery on fail-over. The solution
+simple, secure and highly available setup with automatic recovery on fail-over. The solution
 includes scaling and other capabilities.
 """
 
 import logging
 from typing import Dict, Optional
 
+from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
+from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.mongodb.v0.helpers import (
     CONF_DIR,
     DATA_DIR,
@@ -34,6 +36,7 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
+from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import ActionEvent, CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Container
@@ -49,6 +52,7 @@ MONITOR_PRIVILEGES = {
 }
 UNIX_USER = "mongodb"
 UNIX_GROUP = "mongodb"
+MONGODB_EXPORTER_PORT = 9216
 
 
 class MongoDBCharm(CharmBase):
@@ -68,11 +72,24 @@ class MongoDBCharm(CharmBase):
         self.client_relations = MongoDBProvider(self)
         self.tls = MongoDBTLS(self, PEER)
 
+        self.metrics_endpoint = MetricsEndpointProvider(
+            self,
+            refresh_event=self.on.start,
+            jobs=[{"static_configs": [{"targets": [f"*:{MONGODB_EXPORTER_PORT}"]}]}],
+        )
+        self.grafana_dashboards = GrafanaDashboardProvider(self)
+        self.loki_push = LogProxyConsumer(
+            self,
+            log_files=["/var/log/mongodb/mongodb.log"],
+            relation_name="logging",
+            container_name="mongod",
+        )
+
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
 
-        The same keyFile and operator password on all members are needed.
-        It means it is needed to generate them once and share between members.
+        The same keyFile and operator password on all members needed.
+        It means, it is needed to generate them once and share between members.
         NB: only leader should execute this function.
         """
         if not self.get_secret("app", "operator_password"):
@@ -136,17 +153,16 @@ class MongoDBCharm(CharmBase):
         Initialization of replSet should be made once after start.
         MongoDB needs some time to become fully started.
         This event handler is deferred if initialization of MongoDB
-        replica set fails.
-        By doing so, it is guaranteed that another attempt at initialization
-        will be made.
+        replica set fails. By doing so it is guaranteed that another
+        attempt at initialization will be made.
 
         Initial operator user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
-        unfortunately, pymongo unable to create a connection that is considered
-        as local connection by MongoDB, even if a socket connection is used.
-        As a result, there are only hackish ways to create initial user.
-        It is needed to install mongodb-clients inside the charm container
-        to make this function work correctly.
+        unfortunately, pymongo unable to create connection that considered
+        as local connection by MongoDB, even if socket connection used.
+        As result, where are only hackish ways to create initial user.
+        It is needed to install mongodb-clients inside charm container to make
+        this function work correctly.
         """
         if not self.unit.is_leader():
             return
@@ -196,7 +212,7 @@ class MongoDBCharm(CharmBase):
             self.app_peer_data["db_initialised"] = "True"
 
     def _reconfigure(self, event) -> None:
-        """Reconfigure replica set.
+        """Reconfigure replicat set.
 
         The amount replicas in the MongoDB replica set is updated.
         """
@@ -217,12 +233,12 @@ class MongoDBCharm(CharmBase):
             try:
                 replset_members = mongo.get_replset_members()
 
-                # compare a set of mongod replica set members and juju hosts
-                # to avoid unnecessary reconfiguration.
+                # compare set of mongod replica set members and juju hosts
+                # to avoid the unnecessary reconfiguration.
                 if replset_members == self.mongodb_config.hosts:
                     return
 
-                # to remove members first, it is faster
+                # remove members first, it is faster
                 logger.info("Reconfigure replica set")
                 for member in replset_members - self.mongodb_config.hosts:
                     logger.debug("Removing %s from replica set", member)
@@ -255,10 +271,11 @@ class MongoDBCharm(CharmBase):
                     "override": "replace",
                     "summary": "mongodb_exporter",
                     # todo pass URI in correct way
-                    "command": f"mongodb_exporter --mongodb.uri={self.monitor_config.uri}  --collector.diagnosticdata --compatible-mode",
+                    "command": f"mongodb_exporter --collector.diagnosticdata --compatible-mode",
                     "startup": "enabled",
                     "user": UNIX_USER,
                     "group": UNIX_GROUP,
+                    "environment": {"MONGODB_URI": self.monitor_config.uri},
                 }
             },
         }
@@ -428,12 +445,11 @@ class MongoDBCharm(CharmBase):
                 group=UNIX_GROUP,
             )
 
-    @staticmethod
-    def _fix_data_dir(container: Container) -> None:
+    def _fix_data_dir(self, container: Container) -> None:
         """Ensure the data directory for mongodb is writable for the "mongodb" user.
 
         Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
-        is available, we fix permissions incorrectly with chown.
+        is available we fix permissions incorrectly with chown.
         """
         paths = container.list_files(DATA_DIR, itself=True)
         assert len(paths) == 1, "list_files doesn't return only directory itself"
@@ -464,11 +480,11 @@ class MongoDBCharm(CharmBase):
 
         Initial operator user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
-        unfortunately, pymongo unable to create a connection that is considered
-        as local connection by MongoDB, even if a socket connection is used.
-        As a result, there are only hackish ways to create initial user.
-        It is needed to install mongodb-clients inside the charm container
-        to make this function work correctly.
+        unfortunately, pymongo unable to create connection that considered
+        as local connection by MongoDB, even if socket connection used.
+        As a result, where are only hackish ways to create initial user.
+        It is needed to install mongodb-clients inside charm container to make
+        this function work correctly.
         """
         if "user_created" in self.app_peer_data:
             return
