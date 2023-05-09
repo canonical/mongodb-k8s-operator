@@ -2,15 +2,14 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import time
-import yaml
+from pathlib import Path
 
-import ops
 import pytest
 import urllib3
+import yaml
 from pytest_operator.plugin import OpsTest
-from pathlib import Path
-from ..ha_tests import helpers as ha_helpers
 
+from ..ha_tests import helpers as ha_helpers
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 DATABASE_APP_NAME = "mongodb-k8s"
