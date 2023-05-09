@@ -34,11 +34,11 @@ async def get_address(ops_test: OpsTest, app_name=DATABASE_APP_NAME, unit_num=0)
     return address
 
 
-async def verify_endpoints(ops_test: OpsTest, unit: ops.model.Unit) -> str:
+async def verify_endpoints(ops_test: OpsTest, app_name=DATABASE_APP_NAME):
     """Verifies mongodb endpoint is functional on a given unit."""
     http = urllib3.PoolManager()
 
-    unit_address = await get_address(ops_test=ops_test)
+    unit_address = await get_address(ops_test=ops_test, app_name=app_name)
     mongodb_exporter_url = f"http://{unit_address}:{MONGODB_EXPORTER_PORT}/metrics"
     mongo_resp = http.request("GET", mongodb_exporter_url)
 
@@ -52,6 +52,11 @@ async def verify_endpoints(ops_test: OpsTest, unit: ops.model.Unit) -> str:
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
+    # no need to build and deploy charm if provided
+    mongodb_application_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
+    if mongodb_application_name:
+        return
+
     async with ops_test.fast_forward():
         my_charm = await ops_test.build_charm(".")
         resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
@@ -61,20 +66,19 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 async def test_endpoints(ops_test: OpsTest):
     """Sanity check that endpoints are running."""
-    application = ops_test.model.applications[DATABASE_APP_NAME]
-
-    for unit in application.units:
-        await verify_endpoints(ops_test, unit)
+    mongodb_application_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
+    await verify_endpoints(ops_test, mongodb_application_name)
 
 
 async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     """Verify that endpoint still function correctly after a network cut."""
     # retrieve a primary unit and a non-primary unit (active-unit). The primary unit will have its
     # network disrupted, while the active unit allows us to communicate to `mongod`
+    mongodb_application_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
     primary = await ha_helpers.get_replica_set_primary(ops_test)
     active_unit = [
         unit
-        for unit in ops_test.model.applications[DATABASE_APP_NAME].units
+        for unit in ops_test.model.applications[mongodb_application_name].units
         if unit.name != primary.name
     ][0]
 
@@ -90,4 +94,4 @@ async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     # Wait for the network to be restored
     await ha_helpers.wait_until_unit_in_status(ops_test, primary, active_unit, "SECONDARY")
 
-    await verify_endpoints(ops_test, primary)
+    await verify_endpoints(ops_test, mongodb_application_name)

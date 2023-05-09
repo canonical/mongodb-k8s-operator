@@ -355,6 +355,7 @@ class MongoDBCharm(CharmBase):
         """Pull licenses from workload."""
         licenses = [
             "snap",
+            "rock",
             "mongodb-exporter",
             "percona-backup-mongodb",
             "percona-server",
