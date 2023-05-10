@@ -13,8 +13,6 @@ includes scaling and other capabilities.
 import logging
 from typing import Dict, Optional
 
-from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
-from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.mongodb.v0.helpers import (
     CONF_DIR,
     DATA_DIR,
@@ -36,6 +34,8 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
+from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
+from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import ActionEvent, CharmBase
 from ops.main import main
@@ -373,7 +373,6 @@ class MongoDBCharm(CharmBase):
         """Pull licenses from workload."""
         licenses = [
             "snap",
-            "rock",
             "mongodb-exporter",
             "percona-backup-mongodb",
             "percona-server",
