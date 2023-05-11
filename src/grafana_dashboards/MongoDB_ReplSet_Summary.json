@@ -27,7 +27,7 @@
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 1,
-    "id": 19,
+    "id": 9,
     "links": [],
     "liveNow": false,
     "panels": [
@@ -440,7 +440,7 @@
             "dashLength": 10,
             "dashes": false,
             "datasource": {
-                "type": "datasource",
+                "type": "prometheus",
                 "uid": "${prometheusds}"
             },
             "decimals": 2,
@@ -517,10 +517,12 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
+                    "editorMode": "code",
                     "expr": "avg by(service_name, type) (rate(mongodb_op_counters_repl_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[$interval]) or irate(mongodb_op_counters_repl_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\"}[5m]))",
                     "interval": "$interval",
                     "intervalFactor": 1,
                     "legendFormat": "repl - ",
+                    "range": true,
                     "refId": "A",
                     "step": 300
                 },
@@ -2186,355 +2188,6 @@
             "yaxis": {
                 "align": false
             }
-        },
-        {
-            "collapsed": false,
-            "datasource": {
-                "type": "datasource",
-                "uid": "${prometheusds}"
-            },
-            "gridPos": {
-                "h": 1,
-                "w": 24,
-                "x": 0,
-                "y": 97
-            },
-            "id": 1403,
-            "panels": [],
-            "targets": [
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "refId": "A"
-                }
-            ],
-            "title": "Nodes Summary",
-            "type": "row"
-        },
-        {
-            "aliasColors": {
-                "Max Core Utilization": "#bf1b00",
-                "idle": "#806EB7",
-                "iowait": "#E24D42",
-                "nice": "#1F78C1",
-                "softirq": "#FFF899",
-                "steal": "#8F3BB8",
-                "system": "#EAB839",
-                "user": "#508642"
-            },
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": {
-                "type": "datasource",
-                "uid": "${prometheusds}"
-            },
-            "decimals": 2,
-            "description": "The CPU time is measured in clock ticks or seconds. It is useful to measure CPU time as a percentage of the CPU's capacity, which is called the CPU usage.",
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "links": []
-                },
-                "overrides": []
-            },
-            "fill": 6,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 8,
-                "w": 24,
-                "x": 0,
-                "y": 98
-            },
-            "height": "",
-            "hiddenSeries": false,
-            "id": 337,
-            "legend": {
-                "alignAsTable": true,
-                "avg": true,
-                "current": false,
-                "hideEmpty": true,
-                "hideZero": true,
-                "max": true,
-                "min": true,
-                "rightSide": false,
-                "show": true,
-                "sort": "avg",
-                "sortDesc": true,
-                "total": false,
-                "values": true
-            },
-            "lines": true,
-            "linewidth": 1,
-            "links": [],
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "paceLength": 10,
-            "percentage": false,
-            "pluginVersion": "9.2.1",
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "repeat": "node_name",
-            "repeatDirection": "h",
-            "seriesOverrides": [
-                {
-                    "alias": "Max Core Utilization",
-                    "lines": false,
-                    "pointradius": 1,
-                    "points": true,
-                    "stack": false
-                }
-            ],
-            "spaceLength": 10,
-            "stack": true,
-            "steppedLine": true,
-            "targets": [
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "expr": "clamp_max(((avg by(mode) ((clamp_max(rate(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode!=\"idle\",node_name=~\"$node_name\"}[$interval]), 1)) or (clamp_max(irate(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode!=\"idle\",mode!=\"system\",mode!=\"user\",node_name=~\"$node_name\"}[5m]), 1)))) * 100 or (avg_over_time(node_cpu_average{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode!=\"idle\",mode!=\"system\",mode!=\"total\",mode!=\"user\",node_name=~\"$node_name\"}[$interval]) or avg_over_time(node_cpu_average{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode!=\"idle\",mode!=\"system\",mode!=\"total\",mode!=\"user\",node_name=~\"$node_name\"}[5m]))), 100)",
-                    "format": "time_series",
-                    "interval": "$interval",
-                    "intervalFactor": 1,
-                    "legendFormat": "",
-                    "refId": "B"
-                },
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "expr": "clamp_max(max(sum by(cpu) ((clamp_max(rate(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode!=\"idle\",mode!=\"iowait\",node_name=~\"$node_name\"}[$interval]), 1)) or (clamp_max(irate(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode!=\"idle\",mode!=\"iowait\",node_name=~\"$node_name\"}[5m]), 1)))), 1)",
-                    "format": "time_series",
-                    "hide": true,
-                    "interval": "$interval",
-                    "intervalFactor": 1,
-                    "legendFormat": "Max Core Utilization",
-                    "refId": "C"
-                },
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "exemplar": true,
-                    "expr": "clamp_max(avg(rate(container_cpu_system_seconds_total{container!~\"POD|pmm-client|\",id=~\"/kubepods.*\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",node_name=~\"$node_name\"}[$interval])) or ((avg((clamp_max(rate(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode=\"system\",node_name=~\"$node_name\"}[$interval]), 1)) or (clamp_max(irate(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode=\"system\",node_name=~\"$node_name\"}[5m]), 1)))) * 100 or (avg_over_time(node_cpu_average{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode=\"system\",node_name=~\"$node_name\"}[$interval]) or avg_over_time(node_cpu_average{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode=\"system\",node_name=~\"$node_name\"}[5m]))), 100)",
-                    "hide": false,
-                    "interval": "$interval",
-                    "legendFormat": "system",
-                    "refId": "A"
-                },
-                {
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "exemplar": true,
-                    "expr": "clamp_max(avg(rate(container_cpu_user_seconds_total{container!~\"POD|pmm-client|\",id=~\"/kubepods.*\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",node_name=~\"$node_name\"}[$interval])) or ((avg((clamp_max(rate(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode=\"user\",node_name=~\"$node_name\"}[$interval]), 1)) or (clamp_max(irate(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode=\"user\",node_name=~\"$node_name\"}[5m]), 1)))) * 100 or (avg_over_time(node_cpu_average{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode=\"user\",node_name=~\"$node_name\"}[$interval]) or avg_over_time(node_cpu_average{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode=\"user\",node_name=~\"$node_name\"}[5m]))), 100)",
-                    "hide": false,
-                    "interval": "$interval",
-                    "legendFormat": "user",
-                    "refId": "D"
-                }
-            ],
-            "thresholds": [],
-            "timeRegions": [],
-            "title": "CPU Usage - $node_name",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 5,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "mode": "time",
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "decimals": 2,
-                    "format": "percent",
-                    "label": "",
-                    "logBase": 1,
-                    "max": "100",
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "short",
-                    "logBase": 1,
-                    "min": 0,
-                    "show": false
-                }
-            ],
-            "yaxis": {
-                "align": false
-            }
-        },
-        {
-            "aliasColors": {
-                "Allocated": "#E0752D",
-                "CPU Load": "#64B0C8",
-                "IO Load ": "#EA6460",
-                "Limit": "#1F78C1",
-                "Max CPU Core Utilization": "#bf1b00",
-                "Max Core Usage": "#bf1b00",
-                "Normalized CPU Load": "#6ED0E0"
-            },
-            "bars": false,
-            "dashLength": 10,
-            "dashes": false,
-            "datasource": {
-                "type": "datasource",
-                "uid": "${prometheusds}"
-            },
-            "decimals": 2,
-            "description": "When a system is running with maximum CPU utilization, the transmitting and receiving threads must all share the available CPU. This will cause data to be queued more frequently to cope with the lack of CPU. CPU Saturation may be measured as the length of a wait queue, or the time spent waiting on the queue.",
-            "editable": true,
-            "error": false,
-            "fieldConfig": {
-                "defaults": {
-                    "links": []
-                },
-                "overrides": []
-            },
-            "fill": 2,
-            "fillGradient": 0,
-            "grid": {},
-            "gridPos": {
-                "h": 8,
-                "w": 24,
-                "x": 0,
-                "y": 106
-            },
-            "hiddenSeries": false,
-            "id": 339,
-            "legend": {
-                "alignAsTable": true,
-                "avg": true,
-                "current": false,
-                "hideEmpty": false,
-                "max": true,
-                "min": true,
-                "rightSide": false,
-                "show": true,
-                "sort": "avg",
-                "sortDesc": true,
-                "total": false,
-                "values": true
-            },
-            "lines": true,
-            "linewidth": 2,
-            "links": [],
-            "nullPointMode": "null",
-            "options": {
-                "alertThreshold": true
-            },
-            "paceLength": 10,
-            "percentage": false,
-            "pluginVersion": "9.2.1",
-            "pointradius": 5,
-            "points": false,
-            "renderer": "flot",
-            "repeat": "node_name",
-            "repeatDirection": "h",
-            "seriesOverrides": [
-                {
-                    "alias": "Max CPU Core Utilization",
-                    "lines": false,
-                    "pointradius": 1,
-                    "points": true,
-                    "yaxis": 2
-                }
-            ],
-            "spaceLength": 10,
-            "stack": false,
-            "steppedLine": true,
-            "targets": [
-                {
-                    "calculatedInterval": "2s",
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "datasourceErrors": {},
-                    "errors": {},
-                    "expr": "((sum(avg_over_time(container_processes{container!~\"POD|pmm-client|\",id=~\"/kubepods.*\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",node_name=~\"$node_name\"}[$interval])) - 1) / avg(machine_cpu_cores{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"})) or avg((avg_over_time(node_procs_running{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",node_name=~\"$node_name\"}[$interval]) - 1) / scalar(count(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode=\"user\",node_name=~\"$node_name\"})) or (avg_over_time(node_procs_running{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",node_name=~\"$node_name\"}[5m]) - 1) / scalar(count(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode=\"user\",node_name=~\"$node_name\"})))",
-                    "format": "time_series",
-                    "hide": false,
-                    "interval": "$interval",
-                    "intervalFactor": 1,
-                    "legendFormat": "Normalized CPU Load",
-                    "metric": "",
-                    "refId": "B",
-                    "step": 300,
-                    "target": ""
-                },
-                {
-                    "calculatedInterval": "2s",
-                    "datasource": {
-                        "type": "datasource",
-                        "uid": "${prometheusds}"
-                    },
-                    "datasourceErrors": {},
-                    "errors": {},
-                    "expr": "clamp_max(sum(rate(container_cpu_usage_seconds_total{container!~\"POD|pmm-client|\",id=~\"/kubepods.*\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",node_name=~\"$node_name\"}[$interval]) or rate(container_cpu_usage_seconds_total{container!~\"POD|pmm-client|\",id=~\"/kubepods.*\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",node_name=\"$node_name\"}[5m])) or max(sum by(cpu) ((clamp_max(rate(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode!=\"idle\",mode!=\"iowait\",node_name=~\"$node_name\"}[$interval]), 1)) or (clamp_max(irate(node_cpu_seconds_total{juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",mode!=\"idle\",mode!=\"iowait\",node_name=~\"$node_name\"}[5m]), 1)))), 1)",
-                    "format": "time_series",
-                    "interval": "$interval",
-                    "intervalFactor": 1,
-                    "legendFormat": "Max CPU Core Utilization",
-                    "metric": "",
-                    "refId": "A",
-                    "step": 300,
-                    "target": ""
-                }
-            ],
-            "thresholds": [],
-            "timeRegions": [],
-            "title": "CPU Saturation and Max Core Usage - $node_name",
-            "tooltip": {
-                "msResolution": false,
-                "shared": true,
-                "sort": 5,
-                "value_type": "individual"
-            },
-            "type": "graph",
-            "xaxis": {
-                "mode": "time",
-                "show": true,
-                "values": []
-            },
-            "yaxes": [
-                {
-                    "decimals": 2,
-                    "format": "short",
-                    "label": "",
-                    "logBase": 1,
-                    "min": 0,
-                    "show": true
-                },
-                {
-                    "format": "percentunit",
-                    "logBase": 1,
-                    "max": "1",
-                    "min": 0,
-                    "show": false
-                }
-            ],
-            "yaxis": {
-                "align": false
-            }
         }
     ],
     "refresh": false,
@@ -2549,8 +2202,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "juju_cos_19cc1e23-1056-404d-84fc-5fa5ce7223cb_loki_0",
-                    "value": "juju_cos_19cc1e23-1056-404d-84fc-5fa5ce7223cb_loki_0"
+                    "text": "juju_cos_63c33696-c62f-4ae5-8f04-98ad336fe5e1_loki_0",
+                    "value": "juju_cos_63c33696-c62f-4ae5-8f04-98ad336fe5e1_loki_0"
                 },
                 "hide": 0,
                 "includeAll": false,
@@ -2558,6 +2211,7 @@
                 "name": "lokids",
                 "options": [],
                 "query": "loki",
+                "queryValue": "",
                 "refresh": 1,
                 "regex": "",
                 "skipUrlSync": false,
@@ -2566,8 +2220,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "juju_cos_19cc1e23-1056-404d-84fc-5fa5ce7223cb_prometheus_0",
-                    "value": "juju_cos_19cc1e23-1056-404d-84fc-5fa5ce7223cb_prometheus_0"
+                    "text": "juju_cos_63c33696-c62f-4ae5-8f04-98ad336fe5e1_prometheus_0",
+                    "value": "juju_cos_63c33696-c62f-4ae5-8f04-98ad336fe5e1_prometheus_0"
                 },
                 "hide": 0,
                 "includeAll": false,
@@ -2575,6 +2229,7 @@
                 "name": "prometheusds",
                 "options": [],
                 "query": "prometheus",
+                "queryValue": "",
                 "refresh": 1,
                 "regex": "",
                 "skipUrlSync": false,
@@ -2583,8 +2238,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "mongodb/0",
-                    "value": "mongodb/0"
+                    "text": "mongodb-k8s/0",
+                    "value": "mongodb-k8s/0"
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
@@ -2613,8 +2268,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "mongodb",
-                    "value": "mongodb"
+                    "text": "mongodb-k8s",
+                    "value": "mongodb-k8s"
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
@@ -2643,8 +2298,8 @@
             {
                 "current": {
                     "selected": false,
-                    "text": "dfa571f5-bce4-4d91-8b8a-9c595fc435ae",
-                    "value": "dfa571f5-bce4-4d91-8b8a-9c595fc435ae"
+                    "text": "6ef281fa-7711-4924-87a8-151ee02b2405",
+                    "value": "6ef281fa-7711-4924-87a8-151ee02b2405"
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
@@ -2672,18 +2327,22 @@
             },
             {
                 "current": {
-                    "selected": false,
-                    "text": "default",
-                    "value": "default"
+                    "selected": true,
+                    "text": [
+                        "mod"
+                    ],
+                    "value": [
+                        "mod"
+                    ]
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
                 },
                 "definition": "label_values(up,juju_model)",
                 "hide": 0,
-                "includeAll": false,
+                "includeAll": true,
                 "label": "Juju model",
-                "multi": false,
+                "multi": true,
                 "name": "juju_model",
                 "options": [],
                 "query": {
@@ -2760,6 +2419,7 @@
                     }
                 ],
                 "query": "1s,5s,1m,5m,1h,6h,1d",
+                "queryValue": "",
                 "refresh": 2,
                 "skipUrlSync": false,
                 "type": "interval"
@@ -2798,8 +2458,8 @@
                 "allFormat": "glob",
                 "current": {
                     "selected": false,
-                    "text": "mongodb",
-                    "value": "mongodb"
+                    "text": "mongodb-k8s",
+                    "value": "mongodb-k8s"
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
@@ -2856,9 +2516,13 @@
             {
                 "allFormat": "glob",
                 "current": {
-                    "selected": false,
-                    "text": "All",
-                    "value": "$__all"
+                    "selected": true,
+                    "text": [
+                        "All"
+                    ],
+                    "value": [
+                        "$__all"
+                    ]
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
@@ -3130,8 +2794,8 @@
         ]
     },
     "time": {
-        "from": "2023-03-27T08:51:52.293Z",
-        "to": "2023-04-12T08:51:52.293Z"
+        "from": "2023-05-10T21:00:10.388Z",
+        "to": "2023-05-11T21:00:10.388Z"
     },
     "timepicker": {
         "hidden": false,
