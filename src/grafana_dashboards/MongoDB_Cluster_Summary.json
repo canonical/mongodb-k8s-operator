@@ -120,7 +120,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "sum by(state) (max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}[5m]))",
+                    "expr": "sum by(state) (max_over_time(mongodb_connections{cluster=\"$cluster\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\"}[5m]))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -228,7 +228,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "sum by(service_name) (max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"current\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"current\"}[5m]))",
+                    "expr": "sum by(service_name) (max_over_time(mongodb_connections{cluster=\"$cluster\",service_name=~\"$service_name\",state=\"current\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\",service_name=~\"$service_name\",state=\"current\"}[5m]))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -338,7 +338,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "sum by(service_name) (max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"available\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",state=\"available\"}[5m]))",
+                    "expr": "sum by(service_name) (max_over_time(mongodb_connections{cluster=\"$cluster\",service_name=~\"$service_name\",state=\"available\"}[$interval]) or max_over_time(mongodb_connections{cluster=\"$cluster\",service_name=~\"$service_name\",state=\"available\"}[5m]))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -478,7 +478,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "sum by(type) (rate(mongodb_op_counters_total{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",type!=\"command\"}[$interval]) or irate(mongodb_op_counters_total{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",service_name=~\"$service_name\",type!=\"command\"}[5m]))",
+                    "expr": "sum by(type) (rate(mongodb_op_counters_total{cluster=\"$cluster\",service_name=~\"$service_name\",type!=\"command\"}[$interval]) or irate(mongodb_op_counters_total{cluster=\"$cluster\",service_name=~\"$service_name\",type!=\"command\"}[5m]))",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
@@ -619,7 +619,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "max by(set) (max by(service_name) (mongodb_mongod_replset_oplog_head_timestamp{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"} - mongodb_mongod_replset_oplog_tail_timestamp{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"}) * on(service_name) group_right() mongodb_mongod_replset_my_state{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"} / mongodb_mongod_replset_my_state{cluster=\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\"})",
+                    "expr": "max by(set) (max by(service_name) (mongodb_mongod_replset_oplog_head_timestamp{cluster=\"$cluster\"} - mongodb_mongod_replset_oplog_tail_timestamp{cluster=\"$cluster\"}) * on(service_name) group_right() mongodb_mongod_replset_my_state{cluster=\"$cluster\"} / mongodb_mongod_replset_my_state{cluster=\"$cluster\"})",
                     "format": "time_series",
                     "hide": false,
                     "interval": "$interval",
