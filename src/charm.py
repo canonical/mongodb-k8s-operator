@@ -13,6 +13,8 @@ includes scaling and other capabilities.
 import logging
 from typing import Dict, Optional
 
+from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
+from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.mongodb.v0.helpers import (
     CONF_DIR,
     DATA_DIR,
@@ -34,8 +36,6 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
-from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
-from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import ActionEvent, CharmBase
 from ops.main import main
@@ -157,11 +157,11 @@ class MongoDBCharm(CharmBase):
 
         Initial operator user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
-        unfortunately, pymongo unable to create connection that considered
-        as local connection by MongoDB, even if socket connection used.
-        As result, where are only hackish ways to create initial user.
-        It is needed to install mongodb-clients inside charm container to make
-        this function work correctly.
+        unfortunately, pymongo unable to create a connection that is considered
+        as local connection by MongoDB, even if a socket connection is used.
+        As a result, there are only hackish ways to create initial user.
+        It is needed to install mongodb-clients inside the charm container
+        to make this function work correctly.
         """
         if not self.unit.is_leader():
             return
@@ -270,7 +270,7 @@ class MongoDBCharm(CharmBase):
                     "override": "replace",
                     "summary": "mongodb_exporter",
                     # todo pass URI in correct way
-                    "command": f"mongodb_exporter --collector.diagnosticdata --compatible-mode",
+                    "command": "mongodb_exporter --collector.diagnosticdata --compatible-mode",
                     "startup": "enabled",
                     "user": UNIX_USER,
                     "group": UNIX_GROUP,
