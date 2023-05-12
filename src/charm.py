@@ -444,7 +444,8 @@ class MongoDBCharm(CharmBase):
                 group=UNIX_GROUP,
             )
 
-    def _fix_data_dir(self, container: Container) -> None:
+    @staticmethod
+    def _fix_data_dir(container: Container) -> None:
         """Ensure the data directory for mongodb is writable for the "mongodb" user.
 
         Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
