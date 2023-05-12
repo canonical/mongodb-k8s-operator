@@ -122,7 +122,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "count by(set) (group by(service_name, set) (mongodb_mongod_replset_number_of_members{cluster=~\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",set=~\"$replset\"} or mongodb_mongod_replset_my_state{cluster=~\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",set=~\"$replset\"}))",
+                    "expr": "(mongodb_mongod_replset_number_of_members{cluster=~\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",set=~\"$replset\"} or mongodb_mongod_replset_my_state{cluster=~\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",set=~\"$replset\"})",
                     "interval": "5m",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -2794,8 +2794,8 @@
         ]
     },
     "time": {
-        "from": "2023-05-10T21:00:10.388Z",
-        "to": "2023-05-11T21:00:10.388Z"
+        "from": "now-12h",
+        "to": "now"
     },
     "timepicker": {
         "hidden": false,
