@@ -21,7 +21,7 @@ groups:
           description: "MongoDB replica member is not healthy\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
 
       - alert: MongodbReplicationLag
-        expr: 'mongodb_rs_members_optimeDate{member_state="PRIMARY",rs_state="1"} - on (set) group_right mongodb_rs_members_optimeDate{member_state="SECONDARY",rs_state="2"} > 10'
+        expr: 'max by (instance) (mongodb_rs_members_optimeDate{member_state="PRIMARY",instance=~"$instance"} - on (set) group_right mongodb_rs_members_optimeDate{member_state="SECONDARY",instance=~"$instance"} > 10)'
         for: 0m
         labels:
           severity: critical
