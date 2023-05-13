@@ -1,10 +1,11 @@
 """Simple functions, which can be used in both K8s and VM charms."""
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
 import secrets
 import string
+import subprocess
 from typing import List
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
@@ -19,7 +20,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 
 # path to store mongodb ketFile
@@ -179,3 +180,10 @@ def build_unit_status(mongodb_config: MongoDBConfiguration, unit_ip: str) -> Sta
         # auto-reconnect will be made by pymongo.
         logger.debug("Got error: %s, while checking replica set status", str(e))
         return WaitingStatus("Waiting to reconnect to unit..")
+
+
+def copy_licenses_to_unit():
+    """Copies licenses packaged in the snap to the charm's licenses directory."""
+    subprocess.check_output(
+        "cp -r /snap/charmed-mongodb/current/licenses/* src/licenses", shell=True
+    )

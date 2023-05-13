@@ -1,5 +1,5 @@
 """Code for interactions with MongoDB."""
-# Copyright 2022 Canonical Ltd.
+# Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
@@ -29,7 +29,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 6
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -310,7 +310,7 @@ class MongoDBConnection:
 
         Args:
             role_name: name of the role to be added.
-            privileges: privileges to be associated with the role.
+            privileges: privledges to be associated with the role.
             roles: List of roles from which this role inherits privileges.
         """
         try:
@@ -414,10 +414,7 @@ class MongoDBConnection:
             rs_status: current state of replica set as reported by mongod.
         """
         return any(
-            member["stateStr"] == "STARTUP"
-            or member["stateStr"] == "STARTUP2"
-            or member["stateStr"] == "ROLLBACK"
-            or member["stateStr"] == "RECOVERING"
+            member["stateStr"] in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]
             for member in rs_status["members"]
         )
 
