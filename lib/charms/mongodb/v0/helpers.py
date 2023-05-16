@@ -20,7 +20,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 6
 
 
 # path to store mongodb ketFile
@@ -36,6 +36,7 @@ MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
 DATA_DIR = "/var/lib/mongodb"
 CONF_DIR = "/etc/mongod"
+MONGODB_LOG_FILENAME = "mongodb.log"
 logger = logging.getLogger(__name__)
 
 
@@ -82,9 +83,11 @@ def get_mongod_args(
     Returns:
         A string representing the command used to start MongoDB.
     """
-    #
     full_data_dir = f"{MONGODB_COMMON_DIR}{DATA_DIR}" if snap_install else DATA_DIR
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
+    # in k8s the default logging options that are used for the vm charm are ignored and logs are
+    # the output of the container. To enable logging to a file it must be set explicitly
+    logging_options = "" if snap_install else f"--logpath={full_data_dir}/{MONGODB_LOG_FILENAME}"
     cmd = [
         # bind to localhost and external interfaces
         "--bind_ip_all",
@@ -92,6 +95,7 @@ def get_mongod_args(
         f"--replSet={config.replset}",
         # db must be located within the snap common directory since the snap is strictly confined
         f"--dbpath={full_data_dir}",
+        logging_options,
     ]
     if auth:
         cmd.extend(["--auth"])
