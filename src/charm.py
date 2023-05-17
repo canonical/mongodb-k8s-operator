@@ -19,7 +19,6 @@ from charms.mongodb.v0.helpers import (
     CONF_DIR,
     DATA_DIR,
     KEY_FILE,
-    MONGODB_LOG_FILENAME,
     TLS_EXT_CA_FILE,
     TLS_EXT_PEM_FILE,
     TLS_INT_CA_FILE,
@@ -81,7 +80,6 @@ class MongoDBCharm(CharmBase):
         self.grafana_dashboards = GrafanaDashboardProvider(self)
         self.loki_push = LogProxyConsumer(
             self,
-            log_files=[f"{DATA_DIR}/{MONGODB_LOG_FILENAME}"],
             relation_name="logging",
             container_name="mongod",
         )
