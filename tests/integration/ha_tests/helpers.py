@@ -8,9 +8,10 @@ import tempfile
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 import ops
+import json
 import yaml
 from juju.unit import Unit
 from pymongo import MongoClient
@@ -650,3 +651,87 @@ async def wait_until_unit_in_status(
             assert member["stateStr"] == status, f"{unit_to_check.name} status is not {status}"
             return
     assert False, f"{unit_to_check.name} not found"
+
+
+async def retrieve_current_mongod_command(ops_test: OpsTest, unit_name) -> str:
+    pid = await get_process_pid(ops_test, unit_name, MONGODB_CONTAINER_NAME, MONGOD_PROCESS_NAME)
+
+    # client = kubernetes.client.api.core_v1_api.CoreV1Api()
+
+    # response = kubernetes.stream.stream(
+    #     client.connect_get_namespaced_pod_exec,
+    #     pod_name,
+    #     ops_test.model.info.name,
+    #     container=MONGODB_CONTAINER_NAME,
+    #     command=f"ps -o fp {pid}",
+    #     stdin=False,
+    #     stdout=True,
+    #     stderr=True,
+    #     tty=False,
+    #     _preload_content=False,
+    # )
+
+    get_CMD_command = [
+        "ssh",
+        "--container",
+        MONGODB_CONTAINER_NAME,
+        unit_name,
+        "ps",
+        "-o",
+        "cmd",
+        "fp",
+        pid,
+    ]
+    # this gives us a truncated output of the entire output - this is the last thing that is needed to solve this
+    return_code, mongod_cmd, _ = await ops_test.juju(*get_CMD_command)
+
+    assert (
+        return_code == 0
+    ), f"Failed getting CMD, unit={unit_name}, container={MONGODB_CONTAINER_NAME}, pid={pid}"
+
+    stripped_pid = mongod_cmd.split("\n")
+    assert len(stripped_pid) > 1, f"no CMD for pid={pid}"
+    return stripped_pid[1]
+
+
+async def update_pebble_plans(ops_test: OpsTest, override: Dict[str, str]) -> None:
+    """Injects a given override in mongod services and replans."""
+    layer = json.dumps({"services": {MONGODB_SERVICE_NAME: {"override": "merge", **override}}})
+    base_cmd = (
+        "ssh",
+        "--container",
+        MONGODB_CONTAINER_NAME,
+    )
+    now = datetime.now().isoformat()
+
+    for unit in ops_test.model.applications[APP_NAME].units:
+        echo_cmd = (
+            *base_cmd,
+            unit.name,
+            "echo",
+            f"'{layer}'",
+            ">",
+            "/ha_test.yaml",
+        )
+        ret_code, _, _ = await ops_test.juju(*echo_cmd)
+        assert ret_code == 0, f"Failed to create layer for {unit.name}"
+        add_plan_cmd = (
+            *base_cmd,
+            unit.name,
+            "/charm/bin/pebble",
+            "add",
+            # layer name label should be unique
+            f"ha_test_{now}",
+            "ha_test.yaml",
+        )
+        ret_code, _, _ = await ops_test.juju(*add_plan_cmd)
+        assert ret_code == 0, f"Failed to set pebble plan for unit {unit.name}"
+
+        replan_cmd = (
+            *base_cmd,
+            unit.name,
+            "/charm/bin/pebble",
+            "replan",
+        )
+        ret_code, _, _ = await ops_test.juju(*replan_cmd)
+        assert ret_code == 0, f"Failed to replan for unit {unit.name}"
