@@ -140,7 +140,7 @@ class MongoDBCharm(CharmBase):
         # Restart changed services and start startup-enabled services.
         container.replan()
 
-        # when a network cuts and the pod restarts - reconnect to the eporter
+        # when a network cuts and the pod restarts - reconnect to the exporter
         self._connect_mongodb_exporter()
 
         # TODO: rework status
