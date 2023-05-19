@@ -7,7 +7,7 @@ from typing import Optional
 import yaml
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
-
+from urllib.parse import urlparse, parse_qs
 
 async def get_application_relation_data(
     ops_test: OpsTest,
@@ -97,3 +97,34 @@ async def verify_application_data(
         return False
 
     return True
+
+def get_info_from_mongo_connection_string(connection_string: str) -> dict:
+    # Parse the MongoDB URL using urlparse
+    parsed_url = urlparse(connection_string)
+
+    # Extract the netloc and path part from the parsed URL
+    netloc = parsed_url.netloc
+    path = parsed_url.path.lstrip('/')  # Remove leading slash to get the database name
+
+    # Extract the query string and convert it to dict
+    query_dict = parse_qs(parsed_url.query)
+
+    # Split the netloc into potential username/password and hosts
+    user_info, hosts = netloc.split('@')
+
+    # Split the user_info into username and password
+    username, password = user_info.split(':')
+
+    # Get the hostnames by splitting the hosts part using comma as the delimiter
+    host_list = hosts.split(',')
+
+    # Get the replicaSet value from the query dictionary
+    replica_set = query_dict.get('replicaSet', [None])[0]
+
+    return {
+        "username": username,
+        "password": password,
+        "hosts": host_list,
+        "database": path,
+        "replicaSet": replica_set
+    }

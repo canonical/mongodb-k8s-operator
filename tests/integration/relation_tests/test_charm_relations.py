@@ -8,9 +8,12 @@ from pymongo import MongoClient
 from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
+from lightkube.core.client import Client
+from lightkube.resources.core_v1 import Pod
+
 
 from ..ha_tests.helpers import get_replica_set_primary as replica_set_primary
-from .helpers import get_application_relation_data, verify_application_data
+from .helpers import get_application_relation_data, verify_application_data, get_info_from_mongo_connection_string
 from  .constants import *
 
 @pytest.mark.abort_on_fail
@@ -45,7 +48,6 @@ async def test_deploy_charms(ops_test: OpsTest):
                                        wait_for_units=1, 
                                        timeout=1000)
 
-
 @pytest.mark.abort_on_fail
 async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     """Test basic functionality of database relation interface."""
@@ -60,6 +62,15 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     database = await get_application_relation_data(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "database"
     )
+    connection_params = get_info_from_mongo_connection_string(connection_string)
+    model = ops_test.model.info
+    client = Client(namespace=model.name)
+    ips = []
+    for host in connection_params["hosts"]:
+        pod = client.get(Pod, name=host.split(".")[0])
+        ips.append(pod.status.podIP)
+    connection_params["hosts"] = ips
+    connection_string = f"mongodb://{connection_params['username']}:{connection_params['password']}@{','.join(connection_params['hosts'])}/{connection_params['database']}?replicaSet={connection_params['replicaSet']}"  
     client = MongoClient(
         connection_string,
         directConnection=False,
@@ -320,7 +331,7 @@ async def test_an_application_can_connect_to_multiple_aliased_database_clusters(
     assert application_connection_string != another_application_connection_string
 
 
-async def test_an_application_can_request_multiple_databases(ops_test: OpsTest, application_charm):
+async def test_an_application_can_request_multiple_databases(ops_test: OpsTest):
     """Test that an application can request additional databases using the same interface."""
     # Relate the charms using another relation and wait for them exchanging some connection data.
     await ops_test.model.add_relation(
@@ -340,7 +351,7 @@ async def test_an_application_can_request_multiple_databases(ops_test: OpsTest, 
     assert first_database_connection_string != second_database_connection_string
 
 
-async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
+async def test_removed_relation_no_longer_has_access(ops_test:  OpsTest):
     """Verify removed applications no longer have access to the database."""
     # before removing relation we need its authorisation via connection string
     connection_string = await get_application_relation_data(
