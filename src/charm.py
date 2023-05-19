@@ -147,13 +147,14 @@ class MongoDBCharm(CharmBase):
         self.unit.status = ActiveStatus()
 
     def _on_start(self, event) -> None:
-        """Initialize MongoDB.
+        """Initialise MongoDB.
 
-        Initialization of replSet should be made once after start.
+        Initialisation of replSet should be made once after start.
         MongoDB needs some time to become fully started.
-        This event handler is deferred if initialization of MongoDB
-        replica set fails. By doing so it is guaranteed that another
-        attempt at initialization will be made.
+        This event handler is deferred if initialisation of MongoDB
+        replica set fails.
+        By doing so, it is guaranteed that another
+        attempt at initialisation will be made.
 
         Initial operator user can be created only through localhost connection.
         see https://www.mongodb.com/docs/manual/core/localhost-exception/
@@ -173,7 +174,7 @@ class MongoDBCharm(CharmBase):
             return
 
         if not container.exists("/tmp/mongodb-27017.sock"):
-            logger.debug("mongod socket is not ready yet.")
+            logger.debug("The mongod socket is not ready yet.")
             event.defer()
             return
 
@@ -232,7 +233,7 @@ class MongoDBCharm(CharmBase):
             try:
                 replset_members = mongo.get_replset_members()
 
-                # compare set of mongod replica set members and juju hosts
+                # compare sets of mongod replica set members and juju hosts
                 # to avoid unnecessary reconfiguration.
                 if replset_members == self.mongodb_config.hosts:
                     return
@@ -240,10 +241,10 @@ class MongoDBCharm(CharmBase):
                 # remove members first, it is faster
                 logger.info("Reconfigure replica set")
                 for member in replset_members - self.mongodb_config.hosts:
-                    logger.debug("Removing %s from replica set", member)
+                    logger.debug("Removing %s from the replica set", member)
                     mongo.remove_replset_member(member)
                 for member in self.mongodb_config.hosts - replset_members:
-                    logger.debug("Adding %s to replica set", member)
+                    logger.debug("Adding %s to the replica set", member)
                     with MongoDBConnection(
                         self.mongodb_config, member, direct=True
                     ) as direct_mongo:
@@ -269,7 +270,6 @@ class MongoDBCharm(CharmBase):
                 "mongodb_exporter": {
                     "override": "replace",
                     "summary": "mongodb_exporter",
-                    # todo pass URI in correct way
                     "command": "mongodb_exporter --collector.diagnosticdata --compatible-mode",
                     "startup": "enabled",
                     "user": UNIX_USER,
@@ -368,8 +368,9 @@ class MongoDBCharm(CharmBase):
             tls_internal=internal_ca is not None,
         )
 
-    def _pull_licenses(self, container: Container) -> None:
-        """Pull licenses from workload."""
+    @staticmethod
+    def _pull_licenses(container: Container) -> None:
+        """Pull licences from workload."""
         licenses = [
             "snap",
             "rock",
@@ -381,7 +382,7 @@ class MongoDBCharm(CharmBase):
         for license_name in licenses:
             try:
                 license_file = container.pull(path=f"/licenses/LICENSE-{license_name}")
-                f = open(f"src/licenses/LICENSE-{license_name}", "x")
+                f = open("LICENSE", "x")
                 f.write(str(license_file.read()))
                 f.close()
             except FileExistsError:
@@ -452,7 +453,7 @@ class MongoDBCharm(CharmBase):
         is available, we fix permissions incorrectly with chown.
         """
         paths = container.list_files(DATA_DIR, itself=True)
-        assert len(paths) == 1, "list_files doesn't return only directory itself"
+        assert len(paths) == 1, "list_files doesn't return only the directory itself"
         logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
         if paths[0].user != UNIX_USER or paths[0].group != UNIX_GROUP:
             container.exec(f"chown -o {UNIX_USER} -g {UNIX_GROUP} -R {DATA_DIR}".split(" "))
@@ -547,7 +548,7 @@ class MongoDBCharm(CharmBase):
             username="monitor",
             # MongoDB Exporter can only connect to one replica - not the entire set.
             password=self.get_secret("app", "monitor_password"),
-            hosts=[self.get_hostname_by_unit(self.unit.name)],
+            hosts={self.get_hostname_by_unit(self.unit.name)},
             roles={"monitor"},
             tls_external=self.tls.get_tls_files("unit") is not None,
             tls_internal=self.tls.get_tls_files("app") is not None,
@@ -595,7 +596,7 @@ class MongoDBCharm(CharmBase):
                 mongo.set_user_password(username, new_password)
             except NotReadyError:
                 event.fail(
-                    "Failed changing the password: Not all members healthy or finished initial sync."
+                    "Failed to change the password: Not all members healthy or finished initial sync."
                 )
                 return
             except PyMongoError as e:
