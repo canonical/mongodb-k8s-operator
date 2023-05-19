@@ -1,0 +1,21 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: application
+description: |
+  Data platform libs application charm used in integration tests.
+summary: |
+  Data platform libs application meant to be used
+  only for testing of the libs in this repository.
+series:
+  - focal
+
+requires:
+  first-database:
+    interface: mongodb_client
+  second-database:
+    interface: mongodb_client
+  multiple-database-clusters:
+    interface: mongodb_client
+  aliased-multiple-database-clusters:
+    interface: mongodb_client
+    limit: 2
