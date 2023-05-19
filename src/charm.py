@@ -456,7 +456,7 @@ class MongoDBCharm(CharmBase):
         assert len(paths) == 1, "list_files doesn't return only the directory itself"
         logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
         if paths[0].user != UNIX_USER or paths[0].group != UNIX_GROUP:
-            container.exec(f"chown -o {UNIX_USER} -g {UNIX_GROUP} -R {DATA_DIR}".split(" "))
+            container.exec(f"chown {UNIX_USER}:{UNIX_GROUP} -R {DATA_DIR}".split(" "))
 
     def get_hostname_by_unit(self, unit_name: str) -> str:
         """Create a DNS name for a MongoDB unit.
