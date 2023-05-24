@@ -85,7 +85,6 @@ class MongoDBCharm(CharmBase):
             container_name="mongod",
         )
 
-
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
 
@@ -254,7 +253,7 @@ class MongoDBCharm(CharmBase):
                             event.defer()
                             return
                     mongo.add_replset_member(member)
-                
+
                 # app relations should be made aware of the new set of hosts
                 self._update_app_relation_data(mongo.get_users())
             except NotReadyError:
@@ -263,8 +262,6 @@ class MongoDBCharm(CharmBase):
             except PyMongoError as e:
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
-
-        
 
     def _update_app_relation_data(self, database_users):
         """Helper function to update application relation data."""
@@ -277,7 +274,6 @@ class MongoDBCharm(CharmBase):
                 data["endpoints"] = ",".join(config.hosts)
                 data["uris"] = config.uri
                 relation.data[self.app].update(data)
-
 
     @property
     def _mongodb_exporter_layer(self) -> Layer:

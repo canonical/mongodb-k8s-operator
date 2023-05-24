@@ -97,12 +97,12 @@ async def run_mongo_op(
     suffix: str = "",
     expecting_output: bool = True,
     stringify: bool = True,
-    ignore_errors: bool = False
+    ignore_errors: bool = False,
 ) -> SimpleNamespace():
     """Runs provided MongoDB operation in a separate container."""
     if mongo_uri is None:
         mongo_uri = await mongodb_uri(ops_test)
-    
+
     if stringify:
         mongo_cmd = f"mongo --quiet --eval 'JSON.stringify({mongo_op})' {mongo_uri}{suffix}"
     else:
