@@ -8,16 +8,13 @@ from pathlib import Path
 
 import pytest
 import yaml
+from pymongo.uri_parser import parse_uri
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ..ha_tests.helpers import get_replica_set_primary as replica_set_primary
 from ..helpers import run_mongo_op
-from .helpers import (
-    get_application_relation_data,
-    get_info_from_mongo_connection_string,
-    verify_application_data,
-)
+from .helpers import get_application_relation_data, verify_application_data
 
 logger = logging.getLogger(__name__)
 
@@ -157,9 +154,9 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "uris"
     )
 
-    connection_data = get_info_from_mongo_connection_string(connection_string)
-    assert len(connection_data["hosts"]) == 1
-    assert connection_data["hosts"][0] == "mongodb-k8s-0.mongodb-k8s-endpoints"
+    connection_data = parse_uri(connection_string)
+    assert len(connection_data["nodelist"]) == 1
+    assert connection_data["nodelist"][0][0] == "mongodb-k8s-0.mongodb-k8s-endpoints"
 
     # verify application metadata is correct after adding units.
     await ops_test.model.applications[DATABASE_APP_NAME].add_units(count=2)
@@ -182,14 +179,14 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "uris"
     )
 
-    scaled_up_data = get_info_from_mongo_connection_string(scaled_up_string)
-    assert len(scaled_up_data["hosts"]) == 3
-    scaled_up_data["hosts"].sort()
+    scaled_up_data = parse_uri(scaled_up_string)
+    assert len(scaled_up_data["nodelist"]) == 3
+    scaled_up_data["nodelist"].sort()
     assert all(
         [
-            a == b
+            a[0] == b
             for a, b in zip(
-                scaled_up_data["hosts"],
+                scaled_up_data["nodelist"],
                 [
                     "mongodb-k8s-0.mongodb-k8s-endpoints",
                     "mongodb-k8s-1.mongodb-k8s-endpoints",
@@ -217,14 +214,15 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     scaled_down_string = await get_application_relation_data(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "uris"
     )
-    scaled_down_data = get_info_from_mongo_connection_string(scaled_down_string)
-    assert len(scaled_down_data["hosts"]) == 2
-    scaled_down_data["hosts"].sort()
+
+    scaled_down_data = parse_uri(scaled_down_string)
+    assert len(scaled_down_data["nodelist"]) == 2
+    scaled_down_data["nodelist"].sort()
     assert all(
         [
-            a == b
+            a[0] == b
             for a, b in zip(
-                scaled_down_data["hosts"],
+                scaled_down_data["nodelist"],
                 ["mongodb-k8s-0.mongodb-k8s-endpoints", "mongodb-k8s-1.mongodb-k8s-endpoints"],
             )
         ]
@@ -251,9 +249,9 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     scaled_down_string = await get_application_relation_data(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "uris"
     )
-    scaled_down_data = get_info_from_mongo_connection_string(scaled_down_string)
-    assert len(scaled_down_data["hosts"]) == 1
-    assert scaled_down_data["hosts"][0] == "mongodb-k8s-0.mongodb-k8s-endpoints"
+    scaled_down_data = parse_uri(scaled_down_string)
+    assert len(scaled_down_data["nodelist"]) == 1
+    assert scaled_down_data["nodelist"][0][0] == "mongodb-k8s-0.mongodb-k8s-endpoints"
 
     # test crud operations
     await verify_crud_operations(ops_test, scaled_down_string)

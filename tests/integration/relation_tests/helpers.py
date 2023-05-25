@@ -3,7 +3,6 @@
 # See LICENSE file for licensing details.
 import json
 from typing import Optional
-from urllib.parse import parse_qs, urlparse
 
 import yaml
 from pytest_operator.plugin import OpsTest
@@ -98,29 +97,3 @@ async def verify_application_data(
         return False
 
     return True
-
-
-def get_info_from_mongo_connection_string(connection_string: str) -> dict:
-    parsed_url = urlparse(connection_string)
-
-    netloc = parsed_url.netloc
-
-    path = parsed_url.path.lstrip("/")  # Remove leading slash to get the database name
-
-    query_dict = parse_qs(parsed_url.query)
-
-    user_info, hosts = netloc.split("@")
-
-    username, password = user_info.split(":")
-
-    host_list = hosts.split(",")
-
-    replica_set = query_dict.get("replicaSet", [None])[0]
-
-    return {
-        "username": username,
-        "password": password,
-        "hosts": host_list,
-        "database": path,
-        "replicaSet": replica_set,
-    }
