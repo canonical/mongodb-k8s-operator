@@ -268,12 +268,12 @@ class MongoDBCharm(CharmBase):
         for relation in self.model.relations[REL_NAME]:
             username = self.client_relations._get_username_from_relation_id(relation.id)
             password = relation.data[self.app]["password"]
-            config = self.client_relations._get_config(username, password)
             if username in database_users:
-                data = relation.data[self.app]
-                data["endpoints"] = ",".join(config.hosts)
-                data["uris"] = config.uri
-                relation.data[self.app].update(data)
+                config = self.client_relations._get_config(username, password)
+                relation.data[self.app].update({
+                    'endpoints': ",".join(config.hosts),
+                    'uris': config.uri,
+                })
 
     @property
     def _mongodb_exporter_layer(self) -> Layer:
