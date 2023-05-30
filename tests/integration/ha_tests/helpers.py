@@ -311,14 +311,16 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
     return True
 
 
-async def get_replica_set_primary(ops_test: OpsTest, excluded: List[str] = []) -> Optional[Unit]:
+async def get_replica_set_primary(
+    ops_test: OpsTest, excluded: List[str] = [], application_name: str = APP_NAME
+) -> Optional[Unit]:
     """Returns the primary unit name based no the replica set host."""
     with await get_mongo_client(ops_test, excluded) as client:
         data = client.admin.command("replSetGetStatus")
 
     unit_name = host_to_unit(primary_host(data))
     if unit_name:
-        mongodb_name = await get_application_name(ops_test, APP_NAME)
+        mongodb_name = await get_application_name(ops_test, application_name)
         for unit in ops_test.model.applications[mongodb_name].units:
             if unit.name == unit_name:
                 return unit
