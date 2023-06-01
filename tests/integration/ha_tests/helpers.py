@@ -1,6 +1,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import os
 import string
 import subprocess
@@ -8,10 +9,9 @@ import tempfile
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 
 import ops
-import json
 import yaml
 from juju.unit import Unit
 from pymongo import MongoClient
@@ -671,7 +671,7 @@ async def retrieve_current_mongod_command(ops_test: OpsTest, unit_name) -> str:
     #     _preload_content=False,
     # )
 
-    get_CMD_command = [
+    get_cmd_command = [
         "ssh",
         "--container",
         MONGODB_CONTAINER_NAME,
@@ -682,8 +682,9 @@ async def retrieve_current_mongod_command(ops_test: OpsTest, unit_name) -> str:
         "fp",
         pid,
     ]
-    # this gives us a truncated output of the entire output - this is the last thing that is needed to solve this
-    return_code, mongod_cmd, _ = await ops_test.juju(*get_CMD_command)
+    # This gives us a truncated output of the entire output
+    # - this is the last thing that is needed to solve this.
+    return_code, mongod_cmd, _ = await ops_test.juju(*get_cmd_command)
 
     assert (
         return_code == 0
