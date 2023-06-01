@@ -69,6 +69,19 @@ async def test_endpoints(ops_test: OpsTest):
     await verify_endpoints(ops_test, mongodb_application_name)
 
 
+async def test_endpoints_new_password(ops_test: OpsTest):
+    """Verify that endpoints still function correctly after the monitor user password changes."""
+    mongodb_application_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
+    leader_unit = await ha_helpers.find_unit(ops_test, leader=True)
+    action = await leader_unit.run_action("set-password", **{"username": "monitor"})
+    action = await action.wait()
+    # wait for non-leader units to receive relation changed event.
+    time.sleep(3)
+    await ops_test.model.wait_for_idle()
+
+    await verify_endpoints(ops_test, mongodb_application_name)
+
+
 async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     """Verify that endpoint still function correctly after a network cut."""
     # retrieve a primary unit and a non-primary unit (active-unit). The primary unit will have its

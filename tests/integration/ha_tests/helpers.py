@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 import json
+import logging
 import os
 import string
 import subprocess
@@ -35,8 +36,10 @@ APPLICATION_DEFAULT_APP_NAME = "application"
 TIMEOUT = 15 * 60
 TEST_DB = "continuous_writes_database"
 TEST_COLLECTION = "test_collection"
-ANOTHER_DATABASE_APP_NAME = "another-database-a"
+ANOTHER_DATABASE_APP_NAME = "another-database"
 EXCLUDED_APPS = [ANOTHER_DATABASE_APP_NAME]
+
+logger = logging.getLogger(__name__)
 
 mongodb_charm, application_charm = None, None
 
@@ -312,17 +315,25 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
     return True
 
 
-async def get_replica_set_primary(ops_test: OpsTest, excluded: List[str] = []) -> Optional[Unit]:
+async def get_replica_set_primary(
+    ops_test: OpsTest, excluded: List[str] = [], application_name=APP_NAME
+) -> Optional[Unit]:
     """Returns the primary unit name based no the replica set host."""
     with await get_mongo_client(ops_test, excluded) as client:
         data = client.admin.command("replSetGetStatus")
-
     unit_name = host_to_unit(primary_host(data))
+
     if unit_name:
-        mongodb_name = await get_application_name(ops_test, APP_NAME)
+        mongodb_name = await get_application_name(ops_test, application_name)
         for unit in ops_test.model.applications[mongodb_name].units:
+            logger.info(
+                f"Unit name: {unit.name}. Target unit name: {unit_name}, {unit.name == unit_name}"
+            )
             if unit.name == unit_name:
                 return unit
+        logger.error(
+            f"Target unit name {unit_name} not found in {ops_test.model.applications[mongodb_name].units}"
+        )
 
 
 async def count_primaries(ops_test: OpsTest) -> int:

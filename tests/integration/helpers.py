@@ -96,13 +96,19 @@ async def run_mongo_op(
     mongo_uri: str = None,
     suffix: str = "",
     expecting_output: bool = True,
+    stringify: bool = True,
+    ignore_errors: bool = False,
 ) -> SimpleNamespace():
     """Runs provided MongoDB operation in a separate container."""
     if mongo_uri is None:
         mongo_uri = await mongodb_uri(ops_test)
 
-    mongo_cmd = f"mongo --quiet --eval 'JSON.stringify({mongo_op})' {mongo_uri}{suffix}"
+    if stringify:
+        mongo_cmd = f"mongo --quiet --eval 'JSON.stringify({mongo_op})' {mongo_uri}{suffix}"
+    else:
+        mongo_cmd = f"mongo --quiet --eval '{mongo_op}' {mongo_uri}{suffix}"
 
+    logger.info("Running mongo command: %r", mongo_cmd)
     kubectl_cmd = (
         "microk8s",
         "kubectl",
@@ -127,6 +133,11 @@ async def run_mongo_op(
     if ret_code != 0:
         logger.error("code %r; stdout %r; stderr: %r", ret_code, stdout, stderr)
         output.failed = True
+        output.data = {
+            "code": ret_code,
+            "stdout": stdout,
+            "stderr": stderr,
+        }
         return output
 
     output.succeeded = True
@@ -136,12 +147,14 @@ async def run_mongo_op(
         except Exception:
             logger.error(
                 "Could not serialize the output into json.{}{}".format(
-                    f"\n\tOut: {stdout}" if stdout else "",
-                    f"\n\tErr: {stderr}" if stderr else "",
+                    f"\n\tSTDOUT:\n\t {stdout}" if stdout else "",
+                    f"\n\tSTDERR:\n\t {stderr}" if stderr else "",
                 )
             )
-            raise
-
+            if not ignore_errors:
+                raise
+            else:
+                output.data = stdout
     return output
 
 
