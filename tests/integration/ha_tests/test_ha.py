@@ -36,10 +36,12 @@ from .helpers import (
     mongod_ready,
     relate_mongodb_and_application,
     remove_instance_isolation,
+    retrieve_current_mongod_command,
     retrieve_entries,
     scale_application,
     send_signal_to_pod_container_process,
     set_log_level,
+    update_pebble_plans,
     verify_writes,
     wait_until_unit_in_status,
 )
@@ -69,10 +71,19 @@ async def continuous_writes(ops_test: OpsTest) -> None:
 @pytest_asyncio.fixture
 async def change_logging(ops_test: OpsTest):
     """Increases and resets election logging verbosity."""
+    mongodb_application_name = await get_application_name(ops_test, APP_NAME)
+    unit_name = ops_test.model.applications[mongodb_application_name].units[0].name
+    current_mongod_command = await retrieve_current_mongod_command(ops_test, unit_name)
+    current_mongod_command = "mongod --bind_ip_all --replSet=mongodb-k8s --dbpath=/var/lib/mongodb --logpath=/var/lib/mongodb/mongodb.log --auth --clusterAuthMode=keyFile --keyFile=/etc/mongod/keyFile"
+
+    updated_mongod_command = current_mongod_command.replace(
+        "--logpath=/var/lib/mongodb/mongodb.log", ""
+    )
+    await update_pebble_plans(ops_test, {"command": updated_mongod_command})
     await set_log_level(ops_test, 5, "replication.election")
 
     yield
-
+    await update_pebble_plans(ops_test, {"command": current_mongod_command})
     await set_log_level(ops_test, -1, "replication.election")
 
 
