@@ -53,6 +53,7 @@ MONITOR_PRIVILEGES = {
 UNIX_USER = "mongodb"
 UNIX_GROUP = "mongodb"
 MONGODB_EXPORTER_PORT = 9216
+REL_NAME = "database"
 
 
 class MongoDBCharm(CharmBase):
@@ -253,12 +254,29 @@ class MongoDBCharm(CharmBase):
                             event.defer()
                             return
                     mongo.add_replset_member(member)
+
+                # app relations should be made aware of the new set of hosts
+                self._update_app_relation_data(mongo.get_users())
             except NotReadyError:
                 logger.info("Deferring reconfigure: another member doing sync right now")
                 event.defer()
             except PyMongoError as e:
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
+
+    def _update_app_relation_data(self, database_users):
+        """Helper function to update application relation data."""
+        for relation in self.model.relations[REL_NAME]:
+            username = self.client_relations._get_username_from_relation_id(relation.id)
+            password = relation.data[self.app]["password"]
+            if username in database_users:
+                config = self.client_relations._get_config(username, password)
+                relation.data[self.app].update(
+                    {
+                        "endpoints": ",".join(config.hosts),
+                        "uris": config.uri,
+                    }
+                )
 
     @property
     def _mongodb_exporter_layer(self) -> Layer:
