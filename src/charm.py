@@ -603,6 +603,10 @@ class MongoDBCharm(CharmBase):
                 event.fail(f"Failed changing the password: {e}")
                 return
         self.set_secret("app", f"{username}_password", new_password)
+
+        if username == "monitor":
+            self._connect_mongodb_exporter()
+
         event.set_results({"password": new_password})
 
 
