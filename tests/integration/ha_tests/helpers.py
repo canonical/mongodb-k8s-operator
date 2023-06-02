@@ -259,7 +259,7 @@ async def get_process_pid(
         return_code == 0
     ), f"Failed getting pid, unit={unit_name}, container={container_name}, process={process}"
 
-    stripped_pid = pid.strip().replace('\r', '').replace('\n', '')
+    stripped_pid = pid.strip().replace("\r", "").replace("\n", "")
     assert (
         stripped_pid
     ), f"Failed stripping pid, unit={unit_name}, container={container_name}, process={process}, {pid}"
@@ -675,13 +675,14 @@ async def retrieve_current_mongod_command(ops_test: OpsTest, unit_name) -> str:
         "cat",
         f"/proc/{pid}/cmdline",
     ]
-    
+
     return_code, mongod_cmd, _ = await ops_test.juju(*get_cmd_command)
-    assert len(mongod_cmd) > 0, f"Failed getting CMD, unit={unit_name}, container={MONGODB_CONTAINER_NAME}, pid={pid}, return_code={return_code}"
+    assert (
+        len(mongod_cmd) > 0
+    ), f"Failed getting CMD, unit={unit_name}, container={MONGODB_CONTAINER_NAME}, pid={pid}, return_code={return_code}"
     assert (
         return_code == 0
     ), f"Failed getting CMD, unit={unit_name}, container={MONGODB_CONTAINER_NAME}, pid={pid}, return_code={return_code}"
-
 
     return mongod_cmd.replace("--", " --")
 
