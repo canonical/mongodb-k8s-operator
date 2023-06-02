@@ -73,7 +73,7 @@ async def test_scale_up_scale_down_sometimes_fail(ops_test: OpsTest):
 @pytest.mark.abort_on_fail
 async def test_scale_up_scale_down_will_fail(ops_test: OpsTest):
     """Scale up and down the application and verify the replica set is healthy."""
-    scales = [6, -6, 7, 7]
+    scales = [6, -6, 7, -7]
     for count in scales:
         logger.info(f"Scaling up by {count} units")
         await scale_and_verify(ops_test, count=count)
