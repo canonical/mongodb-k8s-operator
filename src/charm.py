@@ -38,13 +38,12 @@ from charms.mongodb.v0.mongodb import (
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from ops.charm import ActionEvent, CharmBase, RelationChangedEvent, RelationDepartedEvent
+from ops.charm import ActionEvent, CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Container
 from ops.pebble import ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
-
 
 logger = logging.getLogger(__name__)
 PEER = "database-peers"
@@ -241,26 +240,14 @@ class MongoDBCharm(CharmBase):
                 # to avoid unnecessary reconfiguration.
                 if replset_members == self.mongodb_config.hosts:
                     return
-                
-                peers = self.model.get_relation(PEER)
-                hosts = [self.get_hostname_by_unit(self.unit.name)] + [
-                    self.get_hostname_by_unit(unit.name) for unit in peers.units
-                ]
-                unit_statuses = [{unit.name: unit.status} for unit in peers.units]
-                logger.info(">>>>>>>>>>>> HOSTS %r", hosts)
-                logger.info(">>>>>>>>>>>> UNIT STATUSES %r", unit_statuses)
 
                 # remove members first, it is faster
-                
-                if type(event) is RelationDepartedEvent:
-                    logger.info(">>>>>>>>>>>> Reconfigure replica set. Unit departed  %s: %s", event.departing_unit, event.departing_unit.status)
-                if type(event) is RelationChangedEvent:
-                    logger.info(">>>>>>>>>>>> Reconfigure replica set. Relation changed %s: %s", event.unit.name, event.unit.status)
+                logger.info("Reconfigure replica set")
                 for member in replset_members - self.mongodb_config.hosts:
-                    logger.info(">>>>>>>>>>>> Removing %s from the replica set", member)
+                    logger.debug("Removing %s from the replica set", member)
                     mongo.remove_replset_member(member)
                 for member in self.mongodb_config.hosts - replset_members:
-                    logger.info(">>>>>>>>>>>> Adding %s to the replica set", member)
+                    logger.debug("Adding %s to the replica set", member)
                     with MongoDBConnection(
                         self.mongodb_config, member, direct=True
                     ) as direct_mongo:
@@ -273,10 +260,10 @@ class MongoDBCharm(CharmBase):
                 # app relations should be made aware of the new set of hosts
                 self._update_app_relation_data(mongo.get_users())
             except NotReadyError:
-                logger.info("!!!!!!!!!! Deferring reconfigure: another member doing sync right now")
+                logger.info("Deferring reconfigure: another member doing sync right now")
                 event.defer()
             except PyMongoError as e:
-                logger.info("!!!!!!!!!! Deferring reconfigure: error=%r", e)
+                logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
     def _update_app_relation_data(self, database_users):
