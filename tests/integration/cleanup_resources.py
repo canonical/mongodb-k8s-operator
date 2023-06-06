@@ -4,10 +4,12 @@
 
 import argparse
 import json
+import logging
 import os
 import subprocess
-import logging
+
 logger = logging.getLogger(__name__)
+
 
 def cleanup_chaos_mesh(namespace) -> None:
     logger.info(f"Cleaning up chaos mesh in {namespace}")
@@ -29,6 +31,7 @@ def cleanup_juju_models() -> None:
         logger.info(f"Destroying model {model}")
         delete_cmd = ["juju", "destroy-model", model, "--destroy-storage", "-y"]
         subprocess.check_output(delete_cmd)
+
 
 def cleanup_all(namespace: str) -> None:
     cleanup_chaos_mesh(namespace)
