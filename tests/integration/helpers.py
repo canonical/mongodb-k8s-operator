@@ -36,6 +36,8 @@ TEST_DOCUMENTS = """[
     }
 ]"""
 
+SERIES = "jammy"
+
 logger = logging.getLogger(__name__)
 
 
