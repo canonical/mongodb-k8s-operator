@@ -6,10 +6,11 @@ import argparse
 import json
 import os
 import subprocess
-
+import logging
+logger = logging.getLogger(__name__)
 
 def cleanup_chaos_mesh(namespace) -> None:
-    print(f"Cleaning up chaos mesh in {namespace}")
+    logger.info(f"Cleaning up chaos mesh in {namespace}")
     env = os.environ
     env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
 
@@ -18,16 +19,16 @@ def cleanup_chaos_mesh(namespace) -> None:
         shell=True,
         env=env,
     )
+    logger.info("Destroy chaos mesh output:")
     for line in output.decode("utf-8").splitlines():
-        print(line)
+        logger.info(line)
 
 
 def cleanup_juju_models() -> None:
     for model in _filter_tests_models("admin/test-"):
-        print(f"Destroying model {model}")
+        logger.info(f"Destroying model {model}")
         delete_cmd = ["juju", "destroy-model", model, "--destroy-storage", "-y"]
-        subprocess.check_output(delete_cmd).decode("utf-8")
-
+        subprocess.check_output(delete_cmd)
 
 def cleanup_all(namespace: str) -> None:
     cleanup_chaos_mesh(namespace)
