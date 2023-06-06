@@ -31,6 +31,7 @@ from charms.mongodb.v0.helpers import (
 )
 from charms.mongodb.v0.mongodb import (
     CHARM_USERS,
+    DEFAULT_CHARM_USER,
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
@@ -574,16 +575,17 @@ class MongoDBCharm(CharmBase):
             tls_internal=self.tls.get_tls_files("app") is not None,
         )
 
+    def _get_user_or_fail(self, event: ActionEvent, valid_users=CHARM_USERS) ->  str:
+        username = event.params.get("username", DEFAULT_CHARM_USER)
+        if username not in valid_users:
+            event.fail(
+                f"The action can be run only for users used by the charm: q{valid_users} not {username}"
+            )
+            return ""
+        
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
-        username = "operator"
-        if "username" in event.params:
-            username = event.params["username"]
-        if username not in CHARM_USERS:
-            event.fail(
-                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}"
-            )
-            return
+        username = self._get_user_or_fail(event)
         event.set_results({"password": self.get_secret("app", f"{username}_password")})
 
     def _on_set_password(self, event: ActionEvent) -> None:
@@ -593,19 +595,9 @@ class MongoDBCharm(CharmBase):
             event.fail("The action can be run only on leader unit.")
             return
 
-        username = "operator"
-        if "username" in event.params:
-            username = event.params["username"]
-        if username not in CHARM_USERS:
-            event.fail(
-                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}."
-            )
-            return
-
-        new_password = generate_password()
-        if "password" in event.params:
-            new_password = event.params["password"]
-
+        username = self._get_user_or_fail(event)
+        new_password = event.params.get("password", generate_password())
+        
         if new_password == self.get_secret("app", f"{username}_password"):
             event.log("The old and new passwords are equal.")
             event.set_results({"password": new_password})

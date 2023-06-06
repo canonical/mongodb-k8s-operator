@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # List of system usernames needed for correct work on the charm.
 CHARM_USERS = ["operator", "backup", "monitor"]
-
+DEFAULT_CHARM_USER = CHARM_USERS[0]
 
 @dataclass
 class MongoDBConfiguration:
