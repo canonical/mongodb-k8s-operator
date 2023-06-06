@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import logging
 import time
 from datetime import datetime, timezone
 
@@ -45,6 +46,8 @@ from .helpers import (
     verify_writes,
     wait_until_unit_in_status,
 )
+
+logger = logging.getLogger(__name__)
 
 MEDIAN_REELECTION_TIME = 12
 
@@ -404,15 +407,17 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
 
     # Create networkchaos policy to isolate instance from cluster
     isolate_instance_from_cluster(ops_test, primary.name)
-
+    logger.info(f"Primary instance {primary.name} isolated from cluster")
     # sleep for twice the median election time
     time.sleep(MEDIAN_REELECTION_TIME * 2)
 
     # Wait until Mongodb actually detects isolated instance
+    logger.info(f"Waiting until Mongodb detects primary instance {primary.name} is not reachable")
     await wait_until_unit_in_status(ops_test, primary, active_unit, "(not reachable/healthy)")
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
+    logger.info("Validating writes are continuing to DB")
     with await get_mongo_client(ops_test, excluded=[primary.name]) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)

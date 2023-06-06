@@ -11,17 +11,20 @@ fi
 destroy_chaos_mesh() {
     echo "deleting api-resources"
     for i in $(kubectl api-resources | grep chaos-mesh | awk '{print $1}'); do timeout 30 kubectl delete ${i} --all --all-namespaces || :; done
-
+    
     if [ "$(kubectl -n ${chaos_mesh_ns} get mutatingwebhookconfiguration | grep 'choas-mesh-mutation' | wc -l)" = "1" ]; then
+        echo "deleting chaos-mesh-mutation"    
         timeout 30 kubectl -n ${chaos_mesh_ns} delete mutatingwebhookconfiguration chaos-mesh-mutation || :
     fi
 
-    if [ "$(kubectl -n ${chaos_mesh_ns} get validatingwebhookconfiguration | grep 'chaos-mesh-validation' | wc -l)" = "1" ]; then
-        timeout 30 kubectl -n ${chaos_mesh_ns} delete validatingwebhookconfiguration chaos-mesh-validation || :
+    if [ "$(kubectl -n ${chaos_mesh_ns} get validatingwebhookconfiguration | grep 'chaos-mesh-validation-auth' | wc -l)" = "1" ]; then
+        echo "deleting chaos-mesh-validation-auth"
+        timeout 30 kubectl -n ${chaos_mesh_ns} delete validatingwebhookconfiguration chaos-mesh-validation-auth || :
     fi
 
-    if [ "$(kubectl -n ${chaos_mesh_ns}) get validatingwebhookconfiguration | grep 'chaos-mesh-validate-auth' | wc -l)" = "1" ]; then
-        timeout 30 kubectl -n ${chaos_mesh_ns} delete validatingwebhookconfiguration chaos-mesh-validate-auth || :
+    if [ "$(kubectl -n ${chaos_mesh_ns} get validatingwebhookconfiguration | grep 'chaos-mesh-validation' | wc -l)" = "1" ]; then
+        echo 'deleting chaos-mesh-validation'
+        timeout 30 kubectl -n ${chaos_mesh_ns} delete validatingwebhookconfiguration chaos-mesh-validation || :
     fi
 
     if [ "$(kubectl get clusterrolebinding | grep 'chaos-mesh' | awk '{print $1}' | wc -l)" != "0" ]; then

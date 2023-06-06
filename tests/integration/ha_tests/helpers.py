@@ -259,7 +259,7 @@ async def get_process_pid(
         return_code == 0
     ), f"Failed getting pid, unit={unit_name}, container={container_name}, process={process}"
 
-    stripped_pid = pid.strip()
+    stripped_pid = pid.strip().replace("\r", "").replace("\n", "")
     assert (
         stripped_pid
     ), f"Failed stripping pid, unit={unit_name}, container={container_name}, process={process}, {pid}"
@@ -667,43 +667,24 @@ async def wait_until_unit_in_status(
 async def retrieve_current_mongod_command(ops_test: OpsTest, unit_name) -> str:
     pid = await get_process_pid(ops_test, unit_name, MONGODB_CONTAINER_NAME, MONGOD_PROCESS_NAME)
 
-    # client = kubernetes.client.api.core_v1_api.CoreV1Api()
-
-    # response = kubernetes.stream.stream(
-    #     client.connect_get_namespaced_pod_exec,
-    #     pod_name,
-    #     ops_test.model.info.name,
-    #     container=MONGODB_CONTAINER_NAME,
-    #     command=f"ps -o fp {pid}",
-    #     stdin=False,
-    #     stdout=True,
-    #     stderr=True,
-    #     tty=False,
-    #     _preload_content=False,
-    # )
-
     get_cmd_command = [
         "ssh",
         "--container",
         MONGODB_CONTAINER_NAME,
         unit_name,
-        "ps",
-        "-o",
-        "cmd",
-        "fp",
-        pid,
+        "cat",
+        f"/proc/{pid}/cmdline",
     ]
-    # This gives us a truncated output of the entire output
-    # - this is the last thing that is needed to solve this.
-    return_code, mongod_cmd, _ = await ops_test.juju(*get_cmd_command)
 
+    return_code, mongod_cmd, _ = await ops_test.juju(*get_cmd_command)
+    assert (
+        len(mongod_cmd) > 0
+    ), f"Failed getting CMD, unit={unit_name}, container={MONGODB_CONTAINER_NAME}, pid={pid}, return_code={return_code}"
     assert (
         return_code == 0
-    ), f"Failed getting CMD, unit={unit_name}, container={MONGODB_CONTAINER_NAME}, pid={pid}"
+    ), f"Failed getting CMD, unit={unit_name}, container={MONGODB_CONTAINER_NAME}, pid={pid}, return_code={return_code}"
 
-    stripped_pid = mongod_cmd.split("\n")
-    assert len(stripped_pid) > 1, f"no CMD for pid={pid}"
-    return stripped_pid[1]
+    return mongod_cmd.replace("--", " --")
 
 
 async def update_pebble_plans(ops_test: OpsTest, override: Dict[str, str]) -> None:
