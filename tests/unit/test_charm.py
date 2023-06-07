@@ -154,7 +154,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_user")
+    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     def test_start_cannot_retrieve_container(self, connection, init_user, provider, defer):
         """Verifies that failures to get container result in a ModelError being raised.
@@ -181,7 +181,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_user")
+    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     def test_start_container_cannot_connect(self, connection, init_user, provider, defer):
         """Tests inability to connect results in deferral.
@@ -208,7 +208,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_user")
+    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     def test_start_container_does_not_exist(self, connection, init_user, provider, defer):
         """Tests lack of existence of files on container results in deferral.
@@ -236,7 +236,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_user")
+    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     def test_start_container_exists_fails(self, connection, init_user, provider, defer):
         """Tests failure in checking file existence on container raises an APIError.
@@ -265,7 +265,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_user")
+    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     def test_start_already_initialised(self, connection, init_user, provider, defer):
         """Tests that if the replica set has already been set up that we return.
@@ -294,7 +294,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_user")
+    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     def test_start_mongod_not_ready(self, connection, init_user, provider, defer):
         """Tests that if mongod is not ready that we defer and return.
@@ -325,7 +325,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_user")
+    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     def test_start_mongod_error_initalising_replica_set(
         self, connection, init_user, provider, defer
@@ -357,7 +357,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_user")
+    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     def test_start_mongod_error_initalising_user(self, connection, init_user, provider, defer):
         """Tests that failure to initialise users set is properly handled.
@@ -385,7 +385,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_user")
+    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     def test_start_mongod_error_overseeing_users(self, connection, init_user, provider, defer):
         """Tests failures related to pymongo are properly handled when overseeing users.
@@ -580,7 +580,7 @@ class TestCharm(unittest.TestCase):
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongoDBConnection")
-    def test_start_init_user_after_second_call(self, connection, oversee_users, defer):
+    def test_start_init_operator_user_after_second_call(self, connection, oversee_users, defer):
         """Tests that the creation of the admin user is only performed once.
 
         Verifies that if the user is already set up, that no attempts to set it up again are
@@ -601,7 +601,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.start.emit()
 
         # verify app data
-        self.assertEqual("user_created" in self.harness.charm.app_peer_data, True)
+        self.assertEqual("operator_user_created" in self.harness.charm.app_peer_data, True)
         defer.assert_called()
 
         # the second call to init user should fail if "exec" is called, but shouldn't happen
@@ -613,7 +613,7 @@ class TestCharm(unittest.TestCase):
         # re-run the start method without a failing oversee_users
         self.harness.charm.on.start.emit()
 
-        # _init_user should have returned before reaching the "exec" call
+        # _init_operator_user should have returned before reaching the "exec" call
         mock_container.return_value.exec.assert_not_called()
 
         defer.assert_not_called()
