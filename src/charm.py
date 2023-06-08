@@ -11,6 +11,7 @@ includes scaling and other capabilities.
 """
 
 import logging
+import time
 from typing import Dict, Optional
 
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
@@ -38,7 +39,7 @@ from charms.mongodb.v0.mongodb import (
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from ops.charm import ActionEvent, CharmBase
+from ops.charm import ActionEvent, CharmBase, RelationDepartedEvent
 from ops.main import main
 from ops.model import ActiveStatus, Container
 from ops.pebble import ExecError, Layer, PathError, ProtocolError
@@ -55,6 +56,7 @@ UNIX_USER = "mongodb"
 UNIX_GROUP = "mongodb"
 MONGODB_EXPORTER_PORT = 9216
 REL_NAME = "database"
+ON_STOP_TIMEOUT = 1000
 
 
 class MongoDBCharm(CharmBase):
@@ -70,6 +72,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on[PEER].relation_departed, self._reconfigure)
         self.framework.observe(self.on.get_password_action, self._on_get_password)
         self.framework.observe(self.on.set_password_action, self._on_set_password)
+        self.framework.observe(self.on.stop, self._on_stop)
 
         self.client_relations = MongoDBProvider(self)
         self.tls = MongoDBTLS(self, PEER)
@@ -214,6 +217,31 @@ class MongoDBCharm(CharmBase):
 
             self.app_peer_data["db_initialised"] = "True"
 
+    def is_unit_in_replica_set(self) -> bool:
+        """Check if the unit is in the replica set."""
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                replset_members = mongo.get_replset_members()
+                return self.get_hostname_by_unit(self.unit.name) in replset_members
+            except NotReadyError as e:
+                logger.error(f"{self.unit.name}.is_unit_in_replica_set NotReadyError={e}")
+            except PyMongoError as e:
+                logger.error(f"{self.unit.name}.is_unit_in_replica_set PyMongoError={e}")
+
+    def _on_stop(self, event) -> None:
+        if "True" == self.unit_peer_data.get("unit_departed", "False"):
+            logger.debug(f"{self.unit.name} blocking on_stop")
+            is_in_replica_set = True
+            timeout = ON_STOP_TIMEOUT
+            while is_in_replica_set and timeout > 0:
+                is_in_replica_set = self.is_unit_in_replica_set()
+                time.sleep(1)
+                timeout -= 1
+                if timeout < 0:
+                    raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
+            logger.debug(f"{self.unit.name} releasing on_stop")
+            self.unit_peer_data["unit_departed"] = ""
+
     def _reconfigure(self, event) -> None:
         """Reconfigure replica set.
 
@@ -221,9 +249,12 @@ class MongoDBCharm(CharmBase):
         """
         self._connect_mongodb_exporter()
 
+        if type(event) is RelationDepartedEvent:
+            if event.departing_unit.name == self.unit.name:
+                self.unit_peer_data.setdefault("unit_departed", "True")
+
         if not self.unit.is_leader():
             return
-
         # Admin password and keyFile should be created before running MongoDB.
         # This code runs on leader_elected event before mongod_pebble_ready
         self._generate_passwords()
@@ -232,6 +263,9 @@ class MongoDBCharm(CharmBase):
         if "db_initialised" not in self.app_peer_data:
             return
 
+        self._reconfigure_replica_set(event)
+
+    def _reconfigure_replica_set(self, event) -> None:
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 replset_members = mongo.get_replset_members()
