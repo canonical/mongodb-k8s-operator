@@ -23,7 +23,10 @@ wait-remove:
 
 remove:
 # remove app from current model
-	juju remove-application --destroy-storage $(app)
+	juju remove-application $(app)
+	juju status --storage --format=json 2>/dev/null \
+		| jq -r '.storage.volumes[] | select( .status.current == "detached" ) | .storage' \
+		| xargs juju remove-storage
 
 # redeployment chain
 redeploy: remove build wait-remove deploy-local
