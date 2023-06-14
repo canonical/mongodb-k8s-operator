@@ -502,7 +502,7 @@ class MongoDBCharm(CharmBase):
         self.app_peer_data[f"{user.get_username()}-user-created"] = "True"
 
     def _get_mongodb_config_for_user(
-        self, user: MongoDBUser, hosts: list[str]
+        self, user: MongoDBUser, hosts: List[str]
     ) -> MongoDBConfiguration:
         external_ca, _ = self.tls.get_tls_files("unit")
         internal_ca, _ = self.tls.get_tls_files("app")
