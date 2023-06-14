@@ -84,6 +84,8 @@ class TestCharm(unittest.TestCase):
         # Ensure we set an ActiveStatus with no message
         assert self.harness.model.unit.status == ActiveStatus()
         defer.assert_not_called()
+        # Ensure that _connect_mongodb_exporter was called
+        connect_exporter.assert_called_once()
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._push_keyfile_to_workload")
@@ -617,3 +619,64 @@ class TestCharm(unittest.TestCase):
         mock_container.return_value.exec.assert_not_called()
 
         defer.assert_not_called()
+
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
+    def test_connect_to_mongo_exporter_on_set_password(self, connect_exporter, connection):
+        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user."""
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
+        self.harness.charm.on.mongod_pebble_ready.emit(container)
+        self.harness.set_leader(True)
+
+        action_event = mock.Mock()
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_set_password(action_event)
+        connect_exporter.assert_called()
+
+    @patch("charm.MongoDBCharm._pull_licenses")
+    @patch("ops.framework.EventBase.defer")
+    @patch("charm.MongoDBCharm._fix_data_dir")
+    @patch("charm.MongoDBConnection")
+    def test__connect_mongodb_exporter_success(
+        self, connection, fix_data_dir, defer, pull_licenses
+    ):
+        """Tests the _connect_mongodb_exporter method has been called."""
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
+        self.harness.charm.on.mongod_pebble_ready.emit(container)
+        password = self.harness.charm.app_peer_data["monitor_password"]
+
+        uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints/?replicaSet=mongodb-k8s&authSource=admin"
+
+        expected_config = {
+            "override": "replace",
+            "summary": "mongodb_exporter",
+            "command": "mongodb_exporter --collector.diagnosticdata --compatible-mode",
+            "startup": "enabled",
+            "user": "mongodb",
+            "group": "mongodb",
+            "environment": {"MONGODB_URI": uri_template.format(password=password)},
+        }
+
+        container_plan = self.harness.get_container_pebble_plan("mongod").to_dict()
+        exporter_config = container_plan.get("services").get("mongodb_exporter")
+        self.assertEqual(expected_config, exporter_config)
+
+        service = self.harness.model.unit.get_container("mongod").get_service("mongodb_exporter")
+        assert service.is_running()
+
+        action_event = mock.Mock()
+        action_event.params = {"username": "monitor", "password": "mongo123"}
+        self.harness.charm._on_set_password(action_event)
+        password = self.harness.charm.app_peer_data["monitor_password"]
+
+        updated_plan = self.harness.get_container_pebble_plan("mongod").to_dict()
+        new_uri = (
+            updated_plan.get("services")
+            .get("mongodb_exporter")
+            .get("environment")
+            .get("MONGODB_URI")
+        )
+        expected_uri = uri_template.format(password="mongo123")
+        self.assertEqual(expected_uri, new_uri)
