@@ -189,23 +189,7 @@ class MongoDBCharm(CharmBase):
 
     # END: properties
 
-
-    def _generate_passwords(self) -> None:
-        """Generate passwords and put them into peer relation.
-
-        The same keyFile and operator password on all members are needed.
-        It means it is needed to generate them once and share between members.
-        NB: only leader should execute this function.
-        """
-        if not self.get_secret("app", "operator_password"):
-            self.set_secret("app", "operator_password", generate_password())
-
-        if not self.get_secret("app", "monitor_password"):
-            self.set_secret("app", "monitor_password", generate_password())
-
-        if not self.get_secret("app", "keyfile"):
-            self.set_secret("app", "keyfile", generate_keyfile())
-
+    # BEGIN: charm events
     def on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
         # Get a reference the container attribute
@@ -251,7 +235,7 @@ class MongoDBCharm(CharmBase):
 
         # TODO: rework status
         self.unit.status = ActiveStatus()
-
+    
     def _on_start(self, event) -> None:
         """Initialise MongoDB.
 
@@ -368,6 +352,24 @@ class MongoDBCharm(CharmBase):
             except PyMongoError as e:
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
+
+    # END: charm events    
+
+    def _generate_passwords(self) -> None:
+        """Generate passwords and put them into peer relation.
+
+        The same keyFile and operator password on all members are needed.
+        It means it is needed to generate them once and share between members.
+        NB: only leader should execute this function.
+        """
+        if not self.get_secret("app", "operator_password"):
+            self.set_secret("app", "operator_password", generate_password())
+
+        if not self.get_secret("app", "monitor_password"):
+            self.set_secret("app", "monitor_password", generate_password())
+
+        if not self.get_secret("app", "keyfile"):
+            self.set_secret("app", "keyfile", generate_keyfile())
 
     def _update_app_relation_data(self, database_users):
         """Helper function to update application relation data."""
