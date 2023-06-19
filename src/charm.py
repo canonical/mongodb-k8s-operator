@@ -523,26 +523,6 @@ class MongoDBCharm(CharmBase):
         else:
             raise RuntimeError("Unknown secret scope.")
 
-    @staticmethod
-    def _pull_licenses(container: Container) -> None:
-        """Pull licences from workload."""
-        licenses = [
-            "snap",
-            "rock",
-            "mongodb-exporter",
-            "percona-backup-mongodb",
-            "percona-server",
-        ]
-
-        for license_name in licenses:
-            try:
-                license_file = container.pull(path=f"/licenses/LICENSE-{license_name}")
-                f = open("LICENSE", "x")
-                f.write(str(license_file.read()))
-                f.close()
-            except FileExistsError:
-                pass
-
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
         container.push(
@@ -600,19 +580,6 @@ class MongoDBCharm(CharmBase):
                 group=UNIX_GROUP,
             )
 
-    @staticmethod
-    def _fix_data_dir(container: Container) -> None:
-        """Ensure the data directory for mongodb is writable for the "mongodb" user.
-
-        Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
-        is available, we fix permissions incorrectly with chown.
-        """
-        paths = container.list_files(DATA_DIR, itself=True)
-        assert len(paths) == 1, "list_files doesn't return only the directory itself"
-        logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
-        if paths[0].user != UNIX_USER or paths[0].group != UNIX_GROUP:
-            container.exec(f"chown {UNIX_USER}:{UNIX_GROUP} -R {DATA_DIR}".split(" "))
-
     def get_hostname_by_unit(self, unit_name: str) -> str:
         """Create a DNS name for a MongoDB unit.
 
@@ -641,6 +608,44 @@ class MongoDBCharm(CharmBase):
         container.add_layer("mongodb_exporter", self._monitor_layer, combine=True)
         # Restart changed services and start startup-enabled services.
         container.replan()
+
+    # BEGIN: static methods
+
+    @staticmethod
+    def _pull_licenses(container: Container) -> None:
+        """Pull licences from workload."""
+        licenses = [
+            "snap",
+            "rock",
+            "mongodb-exporter",
+            "percona-backup-mongodb",
+            "percona-server",
+        ]
+
+        for license_name in licenses:
+            try:
+                license_file = container.pull(path=f"/licenses/LICENSE-{license_name}")
+                f = open("LICENSE", "x")
+                f.write(str(license_file.read()))
+                f.close()
+            except FileExistsError:
+                pass
+
+
+    @staticmethod
+    def _fix_data_dir(container: Container) -> None:
+        """Ensure the data directory for mongodb is writable for the "mongodb" user.
+
+        Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
+        is available, we fix permissions incorrectly with chown.
+        """
+        paths = container.list_files(DATA_DIR, itself=True)
+        assert len(paths) == 1, "list_files doesn't return only the directory itself"
+        logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
+        if paths[0].user != UNIX_USER or paths[0].group != UNIX_GROUP:
+            container.exec(f"chown {UNIX_USER}:{UNIX_GROUP} -R {DATA_DIR}".split(" "))
+    
+    # END: static methods
 
 if __name__ == "__main__":
     main(MongoDBCharm)
