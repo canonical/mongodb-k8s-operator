@@ -87,22 +87,109 @@ class MongoDBCharm(CharmBase):
             container_name="mongod",
         )
 
-    def _generate_passwords(self) -> None:
-        """Generate passwords and put them into peer relation.
+    # BEGIN: properties
+    @property
+    def mongodb_config(self) -> MongoDBConfiguration:
+        """Create a configuration object with settings.
 
-        The same keyFile and operator password on all members are needed.
-        It means it is needed to generate them once and share between members.
-        NB: only leader should execute this function.
+        Needed for correct handling interactions with MongoDB.
+
+        Returns:
+            A MongoDBConfiguration object
         """
-        if not self.get_secret("app", "operator_password"):
-            self.set_secret("app", "operator_password", generate_password())
+        peers = self.model.get_relation(PEER)
+        hosts = [self.get_hostname_by_unit(self.unit.name)] + [
+            self.get_hostname_by_unit(unit.name) for unit in peers.units
+        ]
+        external_ca, _ = self.tls.get_tls_files("unit")
+        internal_ca, _ = self.tls.get_tls_files("app")
 
-        if not self.get_secret("app", "monitor_password"):
-            self.set_secret("app", "monitor_password", generate_password())
+        return MongoDBConfiguration(
+            replset=self.app.name,
+            database="admin",
+            username="operator",
+            password=self.get_secret("app", "operator_password"),
+            hosts=set(hosts),
+            roles={"default"},
+            tls_external=external_ca is not None,
+            tls_internal=internal_ca is not None,
+        )
 
-        if not self.get_secret("app", "keyfile"):
-            self.set_secret("app", "keyfile", generate_keyfile())
+    @property
+    def monitor_config(self) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
+        return MongoDBConfiguration(
+            replset=self.app.name,
+            database="",
+            username="monitor",
+            # MongoDB Exporter can only connect to one replica - not the entire set.
+            password=self.get_secret("app", "monitor_password"),
+            hosts={self.get_hostname_by_unit(self.unit.name)},
+            roles={"monitor"},
+            tls_external=self.tls.get_tls_files("unit") is not None,
+            tls_internal=self.tls.get_tls_files("app") is not None,
+        )
 
+    @property
+    def _monitor_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for mongod."""
+        layer_config = {
+            "summary": "mongodb_exporter layer",
+            "description": "Pebble config layer for mongodb_exporter",
+            "services": {
+                "mongodb_exporter": {
+                    "override": "replace",
+                    "summary": "mongodb_exporter",
+                    "command": "mongodb_exporter --collector.diagnosticdata --compatible-mode",
+                    "startup": "enabled",
+                    "user": UNIX_USER,
+                    "group": UNIX_GROUP,
+                    "environment": {"MONGODB_URI": self.monitor_config.uri},
+                }
+            },
+        }
+        return Layer(layer_config)
+
+    @property
+    def _mongod_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for mongod."""
+        layer_config = {
+            "summary": "mongod layer",
+            "description": "Pebble config layer for replicated mongod",
+            "services": {
+                "mongod": {
+                    "override": "replace",
+                    "summary": "mongod",
+                    "command": "mongod " + get_mongod_args(self.mongodb_config),
+                    "startup": "enabled",
+                    "user": UNIX_USER,
+                    "group": UNIX_GROUP,
+                }
+            },
+        }
+        return Layer(layer_config)
+
+    @property
+    def unit_peer_data(self) -> Dict:
+        """Peer relation data object."""
+        relation = self.model.get_relation(PEER)
+        if relation is None:
+            return {}
+
+        return relation.data[self.unit]
+
+    @property
+    def app_peer_data(self) -> Dict:
+        """Peer relation data object."""
+        relation = self.model.get_relation(PEER)
+        if relation is None:
+            return {}
+
+        return relation.data[self.app]
+
+    # END: properties
+
+    # BEGIN: charm events
     def on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
         # Get a reference the container attribute
@@ -197,7 +284,7 @@ class MongoDBCharm(CharmBase):
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
                 logger.info("User initialization")
-                self._init_user(container)
+                self._init_operator_user(container)
                 self._init_monitor_user()
                 logger.info("Reconcile relations")
                 self.client_relations.oversee_users(None, event)
@@ -226,7 +313,7 @@ class MongoDBCharm(CharmBase):
 
         # Admin password and keyFile should be created before running MongoDB.
         # This code runs on leader_elected event before mongod_pebble_ready
-        self._generate_passwords()
+        self._generate_secrets()
 
         # reconfiguration can be successful only if a replica set is initialised.
         if "db_initialised" not in self.app_peer_data:
@@ -266,6 +353,138 @@ class MongoDBCharm(CharmBase):
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
+    # END: charm events
+
+    # BEGIN: actions
+    def _on_get_password(self, event: ActionEvent) -> None:
+        """Returns the password for the user as an action response."""
+        username = "operator"
+        if "username" in event.params:
+            username = event.params["username"]
+        if username not in CHARM_USERS:
+            event.fail(
+                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}"
+            )
+            return
+        event.set_results({"password": self.get_secret("app", f"{username}_password")})
+
+    def _on_set_password(self, event: ActionEvent) -> None:
+        """Set the password for the specified user."""
+        # only leader can write the new password into peer relation.
+        if not self.unit.is_leader():
+            event.fail("The action can be run only on leader unit.")
+            return
+
+        username = "operator"
+        if "username" in event.params:
+            username = event.params["username"]
+        if username not in CHARM_USERS:
+            event.fail(
+                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}."
+            )
+            return
+
+        new_password = generate_password()
+        if "password" in event.params:
+            new_password = event.params["password"]
+
+        if new_password == self.get_secret("app", f"{username}_password"):
+            event.log("The old and new passwords are equal.")
+            event.set_results({"password": new_password})
+            return
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                mongo.set_user_password(username, new_password)
+            except NotReadyError:
+                event.fail(
+                    "Failed to change the password: Not all members healthy or finished initial sync."
+                )
+                return
+            except PyMongoError as e:
+                event.fail(f"Failed changing the password: {e}")
+                return
+        self.set_secret("app", f"{username}_password", new_password)
+
+        if username == "monitor":
+            self._connect_mongodb_exporter()
+
+        event.set_results({"password": new_password})
+
+    # END: actions
+
+    # BEGIN: user management
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_operator_user(self, container: Container) -> None:
+        """Creates initial operator user for MongoDB.
+
+        Initial operator user can be created only through localhost connection.
+        see https://www.mongodb.com/docs/manual/core/localhost-exception/
+        unfortunately, pymongo unable to create a connection that is considered
+        as local connection by MongoDB, even if a socket connection is used.
+        As a result, there are only hackish ways to create initial user.
+        It is needed to install mongodb-clients inside the charm container
+        to make this function work correctly.
+        """
+        if "user_created" in self.app_peer_data:
+            return
+
+        mongo_cmd = (
+            "/usr/bin/mongosh" if container.exists("/usr/bin/mongosh") else "/usr/bin/mongo"
+        )
+
+        process = container.exec(
+            command=get_create_user_cmd(self.mongodb_config, mongo_cmd),
+            stdin=self.mongodb_config.password,
+        )
+        stdout, _ = process.wait_output()
+        logger.debug("User created: %s", stdout)
+
+        self.app_peer_data["user_created"] = "True"
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_monitor_user(self):
+        """Creates the monitor user on the MongoDB database."""
+        if "monitor_user_created" in self.app_peer_data:
+            return
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            logger.debug("creating the monitor user roles...")
+            mongo.create_role(role_name="explainRole", privileges=MONITOR_PRIVILEGES)
+            logger.debug("creating the monitor user...")
+            mongo.create_user(self.monitor_config)
+            self._connect_mongodb_exporter()
+            self.app_peer_data["monitor_user_created"] = "True"
+
+    # END: user management
+
+    # BEGIN: helper functions
+    def _generate_secrets(self) -> None:
+        """Generate passwords and put them into peer relation.
+
+        The same keyFile and operator password on all members are needed.
+        It means it is needed to generate them once and share between members.
+        NB: only leader should execute this function.
+        """
+        if not self.get_secret("app", "operator_password"):
+            self.set_secret("app", "operator_password", generate_password())
+
+        if not self.get_secret("app", "monitor_password"):
+            self.set_secret("app", "monitor_password", generate_password())
+
+        if not self.get_secret("app", "keyfile"):
+            self.set_secret("app", "keyfile", generate_keyfile())
+
     def _update_app_relation_data(self, database_users):
         """Helper function to update application relation data."""
         for relation in self.model.relations[REL_NAME]:
@@ -279,63 +498,6 @@ class MongoDBCharm(CharmBase):
                         "uris": config.uri,
                     }
                 )
-
-    @property
-    def _mongodb_exporter_layer(self) -> Layer:
-        """Returns a Pebble configuration layer for mongod."""
-        layer_config = {
-            "summary": "mongodb_exporter layer",
-            "description": "Pebble config layer for mongodb_exporter",
-            "services": {
-                "mongodb_exporter": {
-                    "override": "replace",
-                    "summary": "mongodb_exporter",
-                    "command": "mongodb_exporter --collector.diagnosticdata --compatible-mode",
-                    "startup": "enabled",
-                    "user": UNIX_USER,
-                    "group": UNIX_GROUP,
-                    "environment": {"MONGODB_URI": self.monitor_config.uri},
-                }
-            },
-        }
-        return Layer(layer_config)
-
-    @property
-    def _mongod_layer(self) -> Layer:
-        """Returns a Pebble configuration layer for mongod."""
-        layer_config = {
-            "summary": "mongod layer",
-            "description": "Pebble config layer for replicated mongod",
-            "services": {
-                "mongod": {
-                    "override": "replace",
-                    "summary": "mongod",
-                    "command": "mongod " + get_mongod_args(self.mongodb_config),
-                    "startup": "enabled",
-                    "user": UNIX_USER,
-                    "group": UNIX_GROUP,
-                }
-            },
-        }
-        return Layer(layer_config)
-
-    @property
-    def app_peer_data(self) -> Dict:
-        """Peer relation data object."""
-        relation = self.model.get_relation(PEER)
-        if relation is None:
-            return {}
-
-        return relation.data[self.app]
-
-    @property
-    def unit_peer_data(self) -> Dict:
-        """Peer relation data object."""
-        relation = self.model.get_relation(PEER)
-        if relation is None:
-            return {}
-
-        return relation.data[self.unit]
 
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get TLS secret from the secret storage."""
@@ -360,53 +522,6 @@ class MongoDBCharm(CharmBase):
             self.app_peer_data.update({key: value})
         else:
             raise RuntimeError("Unknown secret scope.")
-
-    @property
-    def mongodb_config(self) -> MongoDBConfiguration:
-        """Create a configuration object with settings.
-
-        Needed for correct handling interactions with MongoDB.
-
-        Returns:
-            A MongoDBConfiguration object
-        """
-        peers = self.model.get_relation(PEER)
-        hosts = [self.get_hostname_by_unit(self.unit.name)] + [
-            self.get_hostname_by_unit(unit.name) for unit in peers.units
-        ]
-        external_ca, _ = self.tls.get_tls_files("unit")
-        internal_ca, _ = self.tls.get_tls_files("app")
-
-        return MongoDBConfiguration(
-            replset=self.app.name,
-            database="admin",
-            username="operator",
-            password=self.get_secret("app", "operator_password"),
-            hosts=set(hosts),
-            roles={"default"},
-            tls_external=external_ca is not None,
-            tls_internal=internal_ca is not None,
-        )
-
-    @staticmethod
-    def _pull_licenses(container: Container) -> None:
-        """Pull licences from workload."""
-        licenses = [
-            "snap",
-            "rock",
-            "mongodb-exporter",
-            "percona-backup-mongodb",
-            "percona-server",
-        ]
-
-        for license_name in licenses:
-            try:
-                license_file = container.pull(path=f"/licenses/LICENSE-{license_name}")
-                f = open("LICENSE", "x")
-                f.write(str(license_file.read()))
-                f.close()
-            except FileExistsError:
-                pass
 
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
@@ -465,19 +580,6 @@ class MongoDBCharm(CharmBase):
                 group=UNIX_GROUP,
             )
 
-    @staticmethod
-    def _fix_data_dir(container: Container) -> None:
-        """Ensure the data directory for mongodb is writable for the "mongodb" user.
-
-        Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
-        is available, we fix permissions incorrectly with chown.
-        """
-        paths = container.list_files(DATA_DIR, itself=True)
-        assert len(paths) == 1, "list_files doesn't return only the directory itself"
-        logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
-        if paths[0].user != UNIX_USER or paths[0].group != UNIX_GROUP:
-            container.exec(f"chown {UNIX_USER}:{UNIX_GROUP} -R {DATA_DIR}".split(" "))
-
     def get_hostname_by_unit(self, unit_name: str) -> str:
         """Create a DNS name for a MongoDB unit.
 
@@ -489,39 +591,6 @@ class MongoDBCharm(CharmBase):
         """
         unit_id = unit_name.split("/")[1]
         return f"{self.app.name}-{unit_id}.{self.app.name}-endpoints"
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(5),
-        reraise=True,
-        before=before_log(logger, logging.DEBUG),
-    )
-    def _init_user(self, container: Container) -> None:
-        """Creates initial operator user for MongoDB.
-
-        Initial operator user can be created only through localhost connection.
-        see https://www.mongodb.com/docs/manual/core/localhost-exception/
-        unfortunately, pymongo unable to create a connection that is considered
-        as local connection by MongoDB, even if a socket connection is used.
-        As a result, there are only hackish ways to create initial user.
-        It is needed to install mongodb-clients inside the charm container
-        to make this function work correctly.
-        """
-        if "user_created" in self.app_peer_data:
-            return
-
-        mongo_cmd = (
-            "/usr/bin/mongosh" if container.exists("/usr/bin/mongosh") else "/usr/bin/mongo"
-        )
-
-        process = container.exec(
-            command=get_create_user_cmd(self.mongodb_config, mongo_cmd),
-            stdin=self.mongodb_config.password,
-        )
-        stdout, _ = process.wait_output()
-        logger.debug("User created: %s", stdout)
-
-        self.app_peer_data["user_created"] = "True"
 
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""
@@ -536,98 +605,47 @@ class MongoDBCharm(CharmBase):
 
         # Add initial Pebble config layer using the Pebble API
         # mongodb_exporter --mongodb.uri=
-        container.add_layer("mongodb_exporter", self._mongodb_exporter_layer, combine=True)
+        container.add_layer("mongodb_exporter", self._monitor_layer, combine=True)
         # Restart changed services and start startup-enabled services.
         container.replan()
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(5),
-        reraise=True,
-        before=before_log(logger, logging.DEBUG),
-    )
-    def _init_monitor_user(self):
-        """Creates the monitor user on the MongoDB database."""
-        if "monitor_user_created" in self.app_peer_data:
-            return
+    # END: helper functions
 
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            logger.debug("creating the monitor user roles...")
-            mongo.create_role(role_name="explainRole", privileges=MONITOR_PRIVILEGES)
-            logger.debug("creating the monitor user...")
-            mongo.create_user(self.monitor_config)
-            self._connect_mongodb_exporter()
-            self.app_peer_data["monitor_user_created"] = "True"
+    # BEGIN: static methods
+    @staticmethod
+    def _pull_licenses(container: Container) -> None:
+        """Pull licences from workload."""
+        licenses = [
+            "snap",
+            "rock",
+            "mongodb-exporter",
+            "percona-backup-mongodb",
+            "percona-server",
+        ]
 
-    @property
-    def monitor_config(self) -> MongoDBConfiguration:
-        """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
-        return MongoDBConfiguration(
-            replset=self.app.name,
-            database="",
-            username="monitor",
-            # MongoDB Exporter can only connect to one replica - not the entire set.
-            password=self.get_secret("app", "monitor_password"),
-            hosts={self.get_hostname_by_unit(self.unit.name)},
-            roles={"monitor"},
-            tls_external=self.tls.get_tls_files("unit") is not None,
-            tls_internal=self.tls.get_tls_files("app") is not None,
-        )
-
-    def _on_get_password(self, event: ActionEvent) -> None:
-        """Returns the password for the user as an action response."""
-        username = "operator"
-        if "username" in event.params:
-            username = event.params["username"]
-        if username not in CHARM_USERS:
-            event.fail(
-                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}"
-            )
-            return
-        event.set_results({"password": self.get_secret("app", f"{username}_password")})
-
-    def _on_set_password(self, event: ActionEvent) -> None:
-        """Set the password for the specified user."""
-        # only leader can write the new password into peer relation.
-        if not self.unit.is_leader():
-            event.fail("The action can be run only on leader unit.")
-            return
-
-        username = "operator"
-        if "username" in event.params:
-            username = event.params["username"]
-        if username not in CHARM_USERS:
-            event.fail(
-                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}."
-            )
-            return
-
-        new_password = generate_password()
-        if "password" in event.params:
-            new_password = event.params["password"]
-
-        if new_password == self.get_secret("app", f"{username}_password"):
-            event.log("The old and new passwords are equal.")
-            event.set_results({"password": new_password})
-            return
-
-        with MongoDBConnection(self.mongodb_config) as mongo:
+        for license_name in licenses:
             try:
-                mongo.set_user_password(username, new_password)
-            except NotReadyError:
-                event.fail(
-                    "Failed to change the password: Not all members healthy or finished initial sync."
-                )
-                return
-            except PyMongoError as e:
-                event.fail(f"Failed changing the password: {e}")
-                return
-        self.set_secret("app", f"{username}_password", new_password)
+                license_file = container.pull(path=f"/licenses/LICENSE-{license_name}")
+                f = open("LICENSE", "x")
+                f.write(str(license_file.read()))
+                f.close()
+            except FileExistsError:
+                pass
 
-        if username == "monitor":
-            self._connect_mongodb_exporter()
+    @staticmethod
+    def _fix_data_dir(container: Container) -> None:
+        """Ensure the data directory for mongodb is writable for the "mongodb" user.
 
-        event.set_results({"password": new_password})
+        Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
+        is available, we fix permissions incorrectly with chown.
+        """
+        paths = container.list_files(DATA_DIR, itself=True)
+        assert len(paths) == 1, "list_files doesn't return only the directory itself"
+        logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
+        if paths[0].user != UNIX_USER or paths[0].group != UNIX_GROUP:
+            container.exec(f"chown {UNIX_USER}:{UNIX_GROUP} -R {DATA_DIR}".split(" "))
+
+    # END: static methods
 
 
 if __name__ == "__main__":
