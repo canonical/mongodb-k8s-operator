@@ -114,7 +114,7 @@ class MongoDBCharm(CharmBase):
             tls_external=external_ca is not None,
             tls_internal=internal_ca is not None,
         )
-    
+
     @property
     def monitor_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
@@ -168,7 +168,7 @@ class MongoDBCharm(CharmBase):
             },
         }
         return Layer(layer_config)
-    
+
     @property
     def unit_peer_data(self) -> Dict:
         """Peer relation data object."""
@@ -235,7 +235,7 @@ class MongoDBCharm(CharmBase):
 
         # TODO: rework status
         self.unit.status = ActiveStatus()
-    
+
     def _on_start(self, event) -> None:
         """Initialise MongoDB.
 
@@ -410,6 +410,7 @@ class MongoDBCharm(CharmBase):
             self._connect_mongodb_exporter()
 
         event.set_results({"password": new_password})
+
     # END: actions
 
     # BEGIN: user management
@@ -445,7 +446,7 @@ class MongoDBCharm(CharmBase):
         logger.debug("User created: %s", stdout)
 
         self.app_peer_data["user_created"] = "True"
-    
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(5),
@@ -497,7 +498,7 @@ class MongoDBCharm(CharmBase):
                         "uris": config.uri,
                     }
                 )
-    
+
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get TLS secret from the secret storage."""
         if scope == "unit":
@@ -643,8 +644,9 @@ class MongoDBCharm(CharmBase):
         logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
         if paths[0].user != UNIX_USER or paths[0].group != UNIX_GROUP:
             container.exec(f"chown {UNIX_USER}:{UNIX_GROUP} -R {DATA_DIR}".split(" "))
-    
+
     # END: static methods
+
 
 if __name__ == "__main__":
     main(MongoDBCharm)
