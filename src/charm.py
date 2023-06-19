@@ -353,7 +353,65 @@ class MongoDBCharm(CharmBase):
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
-    # END: charm events    
+    # END: charm events
+
+    # BEGIN: actions
+
+    def _on_get_password(self, event: ActionEvent) -> None:
+        """Returns the password for the user as an action response."""
+        username = "operator"
+        if "username" in event.params:
+            username = event.params["username"]
+        if username not in CHARM_USERS:
+            event.fail(
+                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}"
+            )
+            return
+        event.set_results({"password": self.get_secret("app", f"{username}_password")})
+
+    def _on_set_password(self, event: ActionEvent) -> None:
+        """Set the password for the specified user."""
+        # only leader can write the new password into peer relation.
+        if not self.unit.is_leader():
+            event.fail("The action can be run only on leader unit.")
+            return
+
+        username = "operator"
+        if "username" in event.params:
+            username = event.params["username"]
+        if username not in CHARM_USERS:
+            event.fail(
+                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}."
+            )
+            return
+
+        new_password = generate_password()
+        if "password" in event.params:
+            new_password = event.params["password"]
+
+        if new_password == self.get_secret("app", f"{username}_password"):
+            event.log("The old and new passwords are equal.")
+            event.set_results({"password": new_password})
+            return
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                mongo.set_user_password(username, new_password)
+            except NotReadyError:
+                event.fail(
+                    "Failed to change the password: Not all members healthy or finished initial sync."
+                )
+                return
+            except PyMongoError as e:
+                event.fail(f"Failed changing the password: {e}")
+                return
+        self.set_secret("app", f"{username}_password", new_password)
+
+        if username == "monitor":
+            self._connect_mongodb_exporter()
+
+        event.set_results({"password": new_password})
+    # END: actions
 
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -580,60 +638,7 @@ class MongoDBCharm(CharmBase):
             self._connect_mongodb_exporter()
             self.app_peer_data["monitor_user_created"] = "True"
 
-    def _on_get_password(self, event: ActionEvent) -> None:
-        """Returns the password for the user as an action response."""
-        username = "operator"
-        if "username" in event.params:
-            username = event.params["username"]
-        if username not in CHARM_USERS:
-            event.fail(
-                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}"
-            )
-            return
-        event.set_results({"password": self.get_secret("app", f"{username}_password")})
 
-    def _on_set_password(self, event: ActionEvent) -> None:
-        """Set the password for the specified user."""
-        # only leader can write the new password into peer relation.
-        if not self.unit.is_leader():
-            event.fail("The action can be run only on leader unit.")
-            return
-
-        username = "operator"
-        if "username" in event.params:
-            username = event.params["username"]
-        if username not in CHARM_USERS:
-            event.fail(
-                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}."
-            )
-            return
-
-        new_password = generate_password()
-        if "password" in event.params:
-            new_password = event.params["password"]
-
-        if new_password == self.get_secret("app", f"{username}_password"):
-            event.log("The old and new passwords are equal.")
-            event.set_results({"password": new_password})
-            return
-
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            try:
-                mongo.set_user_password(username, new_password)
-            except NotReadyError:
-                event.fail(
-                    "Failed to change the password: Not all members healthy or finished initial sync."
-                )
-                return
-            except PyMongoError as e:
-                event.fail(f"Failed changing the password: {e}")
-                return
-        self.set_secret("app", f"{username}_password", new_password)
-
-        if username == "monitor":
-            self._connect_mongodb_exporter()
-
-        event.set_results({"password": new_password})
 
 
 if __name__ == "__main__":
