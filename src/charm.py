@@ -87,6 +87,109 @@ class MongoDBCharm(CharmBase):
             container_name="mongod",
         )
 
+    # BEGIN: properties
+    @property
+    def mongodb_config(self) -> MongoDBConfiguration:
+        """Create a configuration object with settings.
+
+        Needed for correct handling interactions with MongoDB.
+
+        Returns:
+            A MongoDBConfiguration object
+        """
+        peers = self.model.get_relation(PEER)
+        hosts = [self.get_hostname_by_unit(self.unit.name)] + [
+            self.get_hostname_by_unit(unit.name) for unit in peers.units
+        ]
+        external_ca, _ = self.tls.get_tls_files("unit")
+        internal_ca, _ = self.tls.get_tls_files("app")
+
+        return MongoDBConfiguration(
+            replset=self.app.name,
+            database="admin",
+            username="operator",
+            password=self.get_secret("app", "operator_password"),
+            hosts=set(hosts),
+            roles={"default"},
+            tls_external=external_ca is not None,
+            tls_internal=internal_ca is not None,
+        )
+    
+    @property
+    def monitor_config(self) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
+        return MongoDBConfiguration(
+            replset=self.app.name,
+            database="",
+            username="monitor",
+            # MongoDB Exporter can only connect to one replica - not the entire set.
+            password=self.get_secret("app", "monitor_password"),
+            hosts={self.get_hostname_by_unit(self.unit.name)},
+            roles={"monitor"},
+            tls_external=self.tls.get_tls_files("unit") is not None,
+            tls_internal=self.tls.get_tls_files("app") is not None,
+        )
+
+    @property
+    def _monitor_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for mongod."""
+        layer_config = {
+            "summary": "mongodb_exporter layer",
+            "description": "Pebble config layer for mongodb_exporter",
+            "services": {
+                "mongodb_exporter": {
+                    "override": "replace",
+                    "summary": "mongodb_exporter",
+                    "command": "mongodb_exporter --collector.diagnosticdata --compatible-mode",
+                    "startup": "enabled",
+                    "user": UNIX_USER,
+                    "group": UNIX_GROUP,
+                    "environment": {"MONGODB_URI": self.monitor_config.uri},
+                }
+            },
+        }
+        return Layer(layer_config)
+
+    @property
+    def _mongod_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for mongod."""
+        layer_config = {
+            "summary": "mongod layer",
+            "description": "Pebble config layer for replicated mongod",
+            "services": {
+                "mongod": {
+                    "override": "replace",
+                    "summary": "mongod",
+                    "command": "mongod " + get_mongod_args(self.mongodb_config),
+                    "startup": "enabled",
+                    "user": UNIX_USER,
+                    "group": UNIX_GROUP,
+                }
+            },
+        }
+        return Layer(layer_config)
+    
+    @property
+    def unit_peer_data(self) -> Dict:
+        """Peer relation data object."""
+        relation = self.model.get_relation(PEER)
+        if relation is None:
+            return {}
+
+        return relation.data[self.unit]
+
+    @property
+    def app_peer_data(self) -> Dict:
+        """Peer relation data object."""
+        relation = self.model.get_relation(PEER)
+        if relation is None:
+            return {}
+
+        return relation.data[self.app]
+
+    # END: properties
+
+
     def _generate_passwords(self) -> None:
         """Generate passwords and put them into peer relation.
 
@@ -279,64 +382,7 @@ class MongoDBCharm(CharmBase):
                         "uris": config.uri,
                     }
                 )
-
-    @property
-    def _mongodb_exporter_layer(self) -> Layer:
-        """Returns a Pebble configuration layer for mongod."""
-        layer_config = {
-            "summary": "mongodb_exporter layer",
-            "description": "Pebble config layer for mongodb_exporter",
-            "services": {
-                "mongodb_exporter": {
-                    "override": "replace",
-                    "summary": "mongodb_exporter",
-                    "command": "mongodb_exporter --collector.diagnosticdata --compatible-mode",
-                    "startup": "enabled",
-                    "user": UNIX_USER,
-                    "group": UNIX_GROUP,
-                    "environment": {"MONGODB_URI": self.monitor_config.uri},
-                }
-            },
-        }
-        return Layer(layer_config)
-
-    @property
-    def _mongod_layer(self) -> Layer:
-        """Returns a Pebble configuration layer for mongod."""
-        layer_config = {
-            "summary": "mongod layer",
-            "description": "Pebble config layer for replicated mongod",
-            "services": {
-                "mongod": {
-                    "override": "replace",
-                    "summary": "mongod",
-                    "command": "mongod " + get_mongod_args(self.mongodb_config),
-                    "startup": "enabled",
-                    "user": UNIX_USER,
-                    "group": UNIX_GROUP,
-                }
-            },
-        }
-        return Layer(layer_config)
-
-    @property
-    def app_peer_data(self) -> Dict:
-        """Peer relation data object."""
-        relation = self.model.get_relation(PEER)
-        if relation is None:
-            return {}
-
-        return relation.data[self.app]
-
-    @property
-    def unit_peer_data(self) -> Dict:
-        """Peer relation data object."""
-        relation = self.model.get_relation(PEER)
-        if relation is None:
-            return {}
-
-        return relation.data[self.unit]
-
+    
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get TLS secret from the secret storage."""
         if scope == "unit":
@@ -360,33 +406,6 @@ class MongoDBCharm(CharmBase):
             self.app_peer_data.update({key: value})
         else:
             raise RuntimeError("Unknown secret scope.")
-
-    @property
-    def mongodb_config(self) -> MongoDBConfiguration:
-        """Create a configuration object with settings.
-
-        Needed for correct handling interactions with MongoDB.
-
-        Returns:
-            A MongoDBConfiguration object
-        """
-        peers = self.model.get_relation(PEER)
-        hosts = [self.get_hostname_by_unit(self.unit.name)] + [
-            self.get_hostname_by_unit(unit.name) for unit in peers.units
-        ]
-        external_ca, _ = self.tls.get_tls_files("unit")
-        internal_ca, _ = self.tls.get_tls_files("app")
-
-        return MongoDBConfiguration(
-            replset=self.app.name,
-            database="admin",
-            username="operator",
-            password=self.get_secret("app", "operator_password"),
-            hosts=set(hosts),
-            roles={"default"},
-            tls_external=external_ca is not None,
-            tls_internal=internal_ca is not None,
-        )
 
     @staticmethod
     def _pull_licenses(container: Container) -> None:
@@ -536,7 +555,7 @@ class MongoDBCharm(CharmBase):
 
         # Add initial Pebble config layer using the Pebble API
         # mongodb_exporter --mongodb.uri=
-        container.add_layer("mongodb_exporter", self._mongodb_exporter_layer, combine=True)
+        container.add_layer("mongodb_exporter", self._monitor_layer, combine=True)
         # Restart changed services and start startup-enabled services.
         container.replan()
 
@@ -558,21 +577,6 @@ class MongoDBCharm(CharmBase):
             mongo.create_user(self.monitor_config)
             self._connect_mongodb_exporter()
             self.app_peer_data["monitor_user_created"] = "True"
-
-    @property
-    def monitor_config(self) -> MongoDBConfiguration:
-        """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
-        return MongoDBConfiguration(
-            replset=self.app.name,
-            database="",
-            username="monitor",
-            # MongoDB Exporter can only connect to one replica - not the entire set.
-            password=self.get_secret("app", "monitor_password"),
-            hosts={self.get_hostname_by_unit(self.unit.name)},
-            roles={"monitor"},
-            tls_external=self.tls.get_tls_files("unit") is not None,
-            tls_internal=self.tls.get_tls_files("app") is not None,
-        )
 
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
