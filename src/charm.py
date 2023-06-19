@@ -356,7 +356,6 @@ class MongoDBCharm(CharmBase):
     # END: charm events
 
     # BEGIN: actions
-
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
         username = "operator"
@@ -447,7 +446,6 @@ class MongoDBCharm(CharmBase):
 
         self.app_peer_data["user_created"] = "True"
     
-
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(5),
@@ -469,6 +467,7 @@ class MongoDBCharm(CharmBase):
 
     # END: user management
 
+    # BEGIN: helper functions
     def _generate_secrets(self) -> None:
         """Generate passwords and put them into peer relation.
 
@@ -609,8 +608,9 @@ class MongoDBCharm(CharmBase):
         # Restart changed services and start startup-enabled services.
         container.replan()
 
-    # BEGIN: static methods
+    # END: helper functions
 
+    # BEGIN: static methods
     @staticmethod
     def _pull_licenses(container: Container) -> None:
         """Pull licences from workload."""
@@ -630,7 +630,6 @@ class MongoDBCharm(CharmBase):
                 f.close()
             except FileExistsError:
                 pass
-
 
     @staticmethod
     def _fix_data_dir(container: Container) -> None:
