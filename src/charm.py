@@ -284,7 +284,7 @@ class MongoDBCharm(CharmBase):
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
                 logger.info("User initialization")
-                self._init_user(container)
+                self._init_operator_user(container)
                 self._init_monitor_user()
                 logger.info("Reconcile relations")
                 self.client_relations.oversee_users(None, event)
@@ -313,7 +313,7 @@ class MongoDBCharm(CharmBase):
 
         # Admin password and keyFile should be created before running MongoDB.
         # This code runs on leader_elected event before mongod_pebble_ready
-        self._generate_passwords()
+        self._generate_secrets()
 
         # reconfiguration can be successful only if a replica set is initialised.
         if "db_initialised" not in self.app_peer_data:
@@ -413,7 +413,63 @@ class MongoDBCharm(CharmBase):
         event.set_results({"password": new_password})
     # END: actions
 
-    def _generate_passwords(self) -> None:
+    # BEGIN: user management
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_operator_user(self, container: Container) -> None:
+        """Creates initial operator user for MongoDB.
+
+        Initial operator user can be created only through localhost connection.
+        see https://www.mongodb.com/docs/manual/core/localhost-exception/
+        unfortunately, pymongo unable to create a connection that is considered
+        as local connection by MongoDB, even if a socket connection is used.
+        As a result, there are only hackish ways to create initial user.
+        It is needed to install mongodb-clients inside the charm container
+        to make this function work correctly.
+        """
+        if "user_created" in self.app_peer_data:
+            return
+
+        mongo_cmd = (
+            "/usr/bin/mongosh" if container.exists("/usr/bin/mongosh") else "/usr/bin/mongo"
+        )
+
+        process = container.exec(
+            command=get_create_user_cmd(self.mongodb_config, mongo_cmd),
+            stdin=self.mongodb_config.password,
+        )
+        stdout, _ = process.wait_output()
+        logger.debug("User created: %s", stdout)
+
+        self.app_peer_data["user_created"] = "True"
+    
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_monitor_user(self):
+        """Creates the monitor user on the MongoDB database."""
+        if "monitor_user_created" in self.app_peer_data:
+            return
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            logger.debug("creating the monitor user roles...")
+            mongo.create_role(role_name="explainRole", privileges=MONITOR_PRIVILEGES)
+            logger.debug("creating the monitor user...")
+            mongo.create_user(self.monitor_config)
+            self._connect_mongodb_exporter()
+            self.app_peer_data["monitor_user_created"] = "True"
+
+    # END: user management
+
+    def _generate_secrets(self) -> None:
         """Generate passwords and put them into peer relation.
 
         The same keyFile and operator password on all members are needed.
@@ -569,39 +625,6 @@ class MongoDBCharm(CharmBase):
         unit_id = unit_name.split("/")[1]
         return f"{self.app.name}-{unit_id}.{self.app.name}-endpoints"
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(5),
-        reraise=True,
-        before=before_log(logger, logging.DEBUG),
-    )
-    def _init_user(self, container: Container) -> None:
-        """Creates initial operator user for MongoDB.
-
-        Initial operator user can be created only through localhost connection.
-        see https://www.mongodb.com/docs/manual/core/localhost-exception/
-        unfortunately, pymongo unable to create a connection that is considered
-        as local connection by MongoDB, even if a socket connection is used.
-        As a result, there are only hackish ways to create initial user.
-        It is needed to install mongodb-clients inside the charm container
-        to make this function work correctly.
-        """
-        if "user_created" in self.app_peer_data:
-            return
-
-        mongo_cmd = (
-            "/usr/bin/mongosh" if container.exists("/usr/bin/mongosh") else "/usr/bin/mongo"
-        )
-
-        process = container.exec(
-            command=get_create_user_cmd(self.mongodb_config, mongo_cmd),
-            stdin=self.mongodb_config.password,
-        )
-        stdout, _ = process.wait_output()
-        logger.debug("User created: %s", stdout)
-
-        self.app_peer_data["user_created"] = "True"
-
     def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""
         container = self.unit.get_container("mongod")
@@ -618,28 +641,6 @@ class MongoDBCharm(CharmBase):
         container.add_layer("mongodb_exporter", self._monitor_layer, combine=True)
         # Restart changed services and start startup-enabled services.
         container.replan()
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(5),
-        reraise=True,
-        before=before_log(logger, logging.DEBUG),
-    )
-    def _init_monitor_user(self):
-        """Creates the monitor user on the MongoDB database."""
-        if "monitor_user_created" in self.app_peer_data:
-            return
-
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            logger.debug("creating the monitor user roles...")
-            mongo.create_role(role_name="explainRole", privileges=MONITOR_PRIVILEGES)
-            logger.debug("creating the monitor user...")
-            mongo.create_user(self.monitor_config)
-            self._connect_mongodb_exporter()
-            self.app_peer_data["monitor_user_created"] = "True"
-
-
-
 
 if __name__ == "__main__":
     main(MongoDBCharm)
