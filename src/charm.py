@@ -187,6 +187,19 @@ class MongoDBCharm(CharmBase):
 
         return relation.data[self.app]
 
+    @property
+    def _db_initialised(self) -> bool:
+        return "db_initialised" in self.app_peer_data
+
+    @_db_initialised.setter
+    def _db_initialised(self, value):
+        if isinstance(value, bool):
+            self.app_peer_data["db_initialised"] = str(value)
+        else:
+            raise ValueError(
+                f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
+            )
+
     # END: properties
 
     # BEGIN: charm events
@@ -268,7 +281,7 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        if "db_initialised" in self.app_peer_data:
+        if self._db_initialised:
             # The replica set should be initialised only once. Check should be
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
@@ -299,7 +312,7 @@ class MongoDBCharm(CharmBase):
                 event.defer()
                 return
 
-            self.app_peer_data["db_initialised"] = "True"
+            self._db_initialised = True
 
     def _reconfigure(self, event) -> None:
         """Reconfigure replica set.
@@ -316,7 +329,7 @@ class MongoDBCharm(CharmBase):
         self._generate_secrets()
 
         # reconfiguration can be successful only if a replica set is initialised.
-        if "db_initialised" not in self.app_peer_data:
+        if not self._db_initialised:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
