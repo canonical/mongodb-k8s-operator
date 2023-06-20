@@ -70,7 +70,7 @@ class _OperatorUser(MongoDBUser):
     """Operator user for MongoDB."""
 
     _username = "operator"
-    _password_key_name = f"{_username}_password"
+    _password_key_name = f"{_username}-password"
     _database_name = "admin"
     _roles = ["default"]
     _hosts = []
@@ -80,7 +80,7 @@ class _MonitorUser(MongoDBUser):
     """Monitor user for MongoDB."""
 
     _username = "monitor"
-    _password_key_name = f"{_username}_password"
+    _password_key_name = f"{_username}-password"
     _database_name = ""
     _roles = ["monitor"]
     _privileges = {
@@ -95,7 +95,7 @@ class _BackupUser(MongoDBUser):
     """Backup user for MongoDB."""
 
     _username = "backup"
-    _password_key_name = f"{_username}_password"
+    _password_key_name = f"{_username}-password"
     _database_name = ""
     _roles = ["backup"]
     _mongodb_role = "pbmAnyAction"

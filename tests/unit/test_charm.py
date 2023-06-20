@@ -603,7 +603,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.start.emit()
 
         # verify app data
-        self.assertEqual("operator_user_created" in self.harness.charm.app_peer_data, True)
+        self.assertEqual("operator-user-created" in self.harness.charm.app_peer_data, True)
         defer.assert_called()
 
         # the second call to init user should fail if "exec" is called, but shouldn't happen
@@ -645,7 +645,7 @@ class TestCharm(unittest.TestCase):
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         self.harness.charm.on.mongod_pebble_ready.emit(container)
-        password = self.harness.charm.app_peer_data["monitor_password"]
+        password = self.harness.charm.app_peer_data["monitor-password"]
 
         uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints/?replicaSet=mongodb-k8s&authSource=admin"
 
@@ -669,7 +669,7 @@ class TestCharm(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {"username": "monitor", "password": "mongo123"}
         self.harness.charm._on_set_password(action_event)
-        password = self.harness.charm.app_peer_data["monitor_password"]
+        password = self.harness.charm.app_peer_data["monitor-password"]
 
         updated_plan = self.harness.get_container_pebble_plan("mongod").to_dict()
         new_uri = (
