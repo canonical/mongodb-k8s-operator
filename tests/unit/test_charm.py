@@ -603,7 +603,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.start.emit()
 
         # verify app data
-        self.assertEqual("user_created" in self.harness.charm.app_peer_data, True)
+        self.assertEqual("operator_user_created" in self.harness.charm.app_peer_data, True)
         defer.assert_called()
 
         # the second call to init user should fail if "exec" is called, but shouldn't happen

@@ -30,13 +30,13 @@ from charms.mongodb.v0.helpers import (
     get_mongod_args,
 )
 from charms.mongodb.v0.mongodb import (
-    CHARM_USERS,
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
 )
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
+from charms.mongodb.v0.users import CHARM_USERS, MongoDBUser, MonitorUser, OperatorUser
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import ActionEvent, CharmBase
 from ops.main import main
@@ -44,6 +44,8 @@ from ops.model import ActiveStatus, Container
 from ops.pebble import ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+
+from exceptions import AdminUserCreationError
 
 logger = logging.getLogger(__name__)
 PEER = "database-peers"
@@ -101,33 +103,13 @@ class MongoDBCharm(CharmBase):
         hosts = [self.get_hostname_by_unit(self.unit.name)] + [
             self.get_hostname_by_unit(unit.name) for unit in peers.units
         ]
-        external_ca, _ = self.tls.get_tls_files("unit")
-        internal_ca, _ = self.tls.get_tls_files("app")
-
-        return MongoDBConfiguration(
-            replset=self.app.name,
-            database="admin",
-            username="operator",
-            password=self.get_secret("app", "operator_password"),
-            hosts=set(hosts),
-            roles={"default"},
-            tls_external=external_ca is not None,
-            tls_internal=internal_ca is not None,
-        )
+        return self._get_mongodb_config_for_user(OperatorUser, hosts)
 
     @property
     def monitor_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
-        return MongoDBConfiguration(
-            replset=self.app.name,
-            database="",
-            username="monitor",
-            # MongoDB Exporter can only connect to one replica - not the entire set.
-            password=self.get_secret("app", "monitor_password"),
-            hosts={self.get_hostname_by_unit(self.unit.name)},
-            roles={"monitor"},
-            tls_external=self.tls.get_tls_files("unit") is not None,
-            tls_internal=self.tls.get_tls_files("app") is not None,
+        return self._get_mongodb_config_for_user(
+            MonitorUser, [self.get_hostname_by_unit(self.unit.name)]
         )
 
     @property
@@ -371,15 +353,13 @@ class MongoDBCharm(CharmBase):
     # BEGIN: actions
     def _on_get_password(self, event: ActionEvent) -> None:
         """Returns the password for the user as an action response."""
-        username = "operator"
-        if "username" in event.params:
-            username = event.params["username"]
-        if username not in CHARM_USERS:
-            event.fail(
-                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}"
-            )
+        username = self._get_user_or_fail_event(
+            event, default_username=OperatorUser.get_username()
+        )
+        if not username:
             return
-        event.set_results({"password": self.get_secret("app", f"{username}_password")})
+        key_name = MongoDBUser.get_password_key_name_for_user(username)
+        event.set_results({"password": self.get_secret("app", key_name)})
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the specified user."""
@@ -388,20 +368,17 @@ class MongoDBCharm(CharmBase):
             event.fail("The action can be run only on leader unit.")
             return
 
-        username = "operator"
-        if "username" in event.params:
-            username = event.params["username"]
-        if username not in CHARM_USERS:
-            event.fail(
-                f"The action can be run only for users used by the charm: {CHARM_USERS} not {username}."
-            )
+        username = self._get_user_or_fail_event(
+            event, default_username=OperatorUser.get_username()
+        )
+        if not username:
             return
 
-        new_password = generate_password()
-        if "password" in event.params:
-            new_password = event.params["password"]
+        new_password = event.params.get("password", generate_password())
 
-        if new_password == self.get_secret("app", f"{username}_password"):
+        if new_password == self.get_secret(
+            "app", MonitorUser.get_password_key_name_for_user(username)
+        ):
             event.log("The old and new passwords are equal.")
             event.set_results({"password": new_password})
             return
@@ -417,9 +394,10 @@ class MongoDBCharm(CharmBase):
             except PyMongoError as e:
                 event.fail(f"Failed changing the password: {e}")
                 return
-        self.set_secret("app", f"{username}_password", new_password)
 
-        if username == "monitor":
+        self.set_secret("app", MongoDBUser.get_password_key_name_for_user(username), new_password)
+
+        if username == MonitorUser.get_username():
             self._connect_mongodb_exporter()
 
         event.set_results({"password": new_password})
@@ -444,7 +422,7 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
-        if "user_created" in self.app_peer_data:
+        if self._is_user_created(OperatorUser):
             return
 
         mongo_cmd = (
@@ -455,10 +433,14 @@ class MongoDBCharm(CharmBase):
             command=get_create_user_cmd(self.mongodb_config, mongo_cmd),
             stdin=self.mongodb_config.password,
         )
-        stdout, _ = process.wait_output()
-        logger.debug("User created: %s", stdout)
+        try:
+            process.wait_output()
+        except Exception as e:
+            logger.exception("Failed to create the operator user: %s", e)
+            raise AdminUserCreationError
 
-        self.app_peer_data["user_created"] = "True"
+        logger.debug(f"{OperatorUser.get_username()} user created")
+        self._set_user_created(OperatorUser)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -468,20 +450,63 @@ class MongoDBCharm(CharmBase):
     )
     def _init_monitor_user(self):
         """Creates the monitor user on the MongoDB database."""
-        if "monitor_user_created" in self.app_peer_data:
+        if self._is_user_created(MonitorUser):
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             logger.debug("creating the monitor user roles...")
-            mongo.create_role(role_name="explainRole", privileges=MONITOR_PRIVILEGES)
+            mongo.create_role(
+                role_name=MonitorUser.get_mongodb_role(), privileges=MonitorUser.get_privileges()
+            )
             logger.debug("creating the monitor user...")
             mongo.create_user(self.monitor_config)
-            self._connect_mongodb_exporter()
-            self.app_peer_data["monitor_user_created"] = "True"
+            self._set_user_created(MonitorUser)
+
+        self._connect_mongodb_exporter()
 
     # END: user management
 
     # BEGIN: helper functions
+
+    def _is_user_created(self, user: MongoDBUser) -> bool:
+        return f"{user.get_username()}_user_created" in self.app_peer_data
+
+    def _set_user_created(self, user: MongoDBUser) -> None:
+        self.app_peer_data[f"{user.get_username()}_user_created"] = "True"
+
+    def _get_mongodb_config_for_user(
+        self, user: MongoDBUser, hosts: list[str]
+    ) -> MongoDBConfiguration:
+        external_ca, _ = self.tls.get_tls_files("unit")
+        internal_ca, _ = self.tls.get_tls_files("app")
+
+        return MongoDBConfiguration(
+            replset=self.app.name,
+            database=user.get_database_name(),
+            username=user.get_username(),
+            password=self.get_secret("app", user.get_password_key_name()),
+            hosts=set(hosts),
+            roles=set(user.get_roles()),
+            tls_external=external_ca is not None,
+            tls_internal=internal_ca is not None,
+        )
+
+    def _get_user_or_fail_event(self, event: ActionEvent, default_username: str) -> Optional[str]:
+        """Returns MongoDBUser object or raises ActionFail if user doesn't exist."""
+        username = event.params.get("username", default_username)
+        if username not in CHARM_USERS:
+            event.fail(
+                f"The action can be run only for users used by the charm:"
+                f" {', '.join(CHARM_USERS)} not {username}"
+            )
+            return
+        return username
+
+    def _check_or_set_user_password(self, user: MongoDBUser) -> None:
+        key = user.get_password_key_name()
+        if not self.get_secret("app", key):
+            self.set_secret("app", key, generate_password())
+
     def _generate_secrets(self) -> None:
         """Generate passwords and put them into peer relation.
 
@@ -489,11 +514,8 @@ class MongoDBCharm(CharmBase):
         It means it is needed to generate them once and share between members.
         NB: only leader should execute this function.
         """
-        if not self.get_secret("app", "operator_password"):
-            self.set_secret("app", "operator_password", generate_password())
-
-        if not self.get_secret("app", "monitor_password"):
-            self.set_secret("app", "monitor_password", generate_password())
+        self._check_or_set_user_password(OperatorUser)
+        self._check_or_set_user_password(MonitorUser)
 
         if not self.get_secret("app", "keyfile"):
             self.set_secret("app", "keyfile", generate_keyfile())
@@ -613,7 +635,7 @@ class MongoDBCharm(CharmBase):
             return
 
         # must wait for leader to set URI before connecting
-        if not self.get_secret("app", "monitor_password"):
+        if not self.get_secret("app", MonitorUser.get_password_key_name()):
             return
 
         # Add initial Pebble config layer using the Pebble API

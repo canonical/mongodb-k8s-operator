@@ -34,9 +34,6 @@ LIBPATCH = 6
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
 
-# List of system usernames needed for correct work on the charm.
-CHARM_USERS = ["operator", "backup", "monitor"]
-
 
 @dataclass
 class MongoDBConfiguration:
