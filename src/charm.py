@@ -469,10 +469,10 @@ class MongoDBCharm(CharmBase):
     # BEGIN: helper functions
 
     def _is_user_created(self, user: MongoDBUser) -> bool:
-        return f"{user.get_username()}_user_created" in self.app_peer_data
+        return f"{user.get_username()}-user-created" in self.app_peer_data
 
     def _set_user_created(self, user: MongoDBUser) -> None:
-        self.app_peer_data[f"{user.get_username()}_user_created"] = "True"
+        self.app_peer_data[f"{user.get_username()}-user-created"] = "True"
 
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: list[str]
