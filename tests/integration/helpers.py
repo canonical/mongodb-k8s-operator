@@ -153,6 +153,7 @@ async def run_mongo_op(
                     f"\n\tSTDERR:\n\t {stderr}" if stderr else "",
                 )
             )
+            logger.error(f"Failed to serialize output: {output}".format(output=stdout))
             if not ignore_errors:
                 raise
             else:
