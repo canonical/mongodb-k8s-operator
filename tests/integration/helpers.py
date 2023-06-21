@@ -72,6 +72,21 @@ async def get_password(ops_test: OpsTest, unit_id: int, username="operator") -> 
     return action.results["password"]
 
 
+async def set_password(
+    ops_test: OpsTest, unit_id: int, username: str = "operator", password: str = "secret"
+) -> str:
+    """Use the charm action to retrieve the password from provided unit.
+
+    Returns:
+        String with the password stored on the peer relation databag.
+    """
+    action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
+        "set-password", **{"username": username, "password": password}
+    )
+    action = await action.wait()
+    return action.results
+
+
 async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
     ls_code, _, _ = await ops_test.juju(f"ssh --container {unit_name} ls /usr/bin/mongosh")
 
