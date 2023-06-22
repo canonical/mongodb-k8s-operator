@@ -6,7 +6,7 @@ from unittest import mock
 from unittest.mock import patch
 
 from charms.mongodb.v0.helpers import CONF_DIR, DATA_DIR, KEY_FILE
-from ops.model import ActiveStatus, ModelError
+from ops.model import ModelError
 from ops.pebble import APIError, ExecError, PathError, ProtocolError
 from ops.testing import Harness
 from pymongo.errors import (
@@ -81,8 +81,6 @@ class TestCharm(unittest.TestCase):
         # Check the service was started
         service = self.harness.model.unit.get_container("mongod").get_service("mongod")
         assert service.is_running()
-        # Ensure we set an ActiveStatus with no message
-        assert self.harness.model.unit.status == ActiveStatus()
         defer.assert_not_called()
         # Ensure that _connect_mongodb_exporter was called
         connect_exporter.assert_called_once()
@@ -107,7 +105,7 @@ class TestCharm(unittest.TestCase):
         push_keyfile_to_workload.assert_not_called()
         mock_container.add_layer.assert_not_called()
         mock_container.replan.assert_not_called()
-        defer.assert_not_called()
+        defer.assert_called_once()
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._push_keyfile_to_workload")

@@ -42,7 +42,7 @@ containers:
   mongod:
     resource: mongodb-image
     mounts:
-      - storage: db
+      - storage: mongodb
         location: /var/lib/mongodb
 resources:
   mongodb-image:
@@ -50,6 +50,6 @@ resources:
     description: OCI image for mongodb
     upstream-source: "ghcr.io/canonical/charmed-mongodb:5.0.14-22.04_edge"
 storage:
-  db:
+  mongodb:
     type: filesystem
     location: /var/lib/mongodb

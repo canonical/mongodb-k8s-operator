@@ -58,7 +58,7 @@ class TestMongoProvider(unittest.TestCase):
                 self.harness.remove_relation_unit(relation_id, "consumer/0")
 
         oversee_users.assert_not_called()
-        defer.assert_not_called()
+        defer.assert_called_once()
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("ops.framework.EventBase.defer")

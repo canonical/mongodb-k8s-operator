@@ -1,17 +1,11 @@
 #!/usr/bin/env python3
+"""Charm code for MongoDB service on Kubernetes."""
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-"""Charm for MongoDB on Kubernetes.
-
-Run the developer's favourite document database — MongoDB! Charm for MongoDB is a fully supported,
-automated solution from Canonical for running production-grade MongoDB on Kubernetes. It offers
-a simple, secure and highly available setup with automatic recovery on fail-over. The solution
-includes scaling and other capabilities.
-"""
-
+import json
 import logging
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
@@ -30,12 +24,21 @@ from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.users import CHARM_USERS, MongoDBUser, MonitorUser, OperatorUser
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from ops.charm import ActionEvent, CharmBase
+from ops.charm import (
+    ActionEvent,
+    CharmBase,
+    LeaderElectedEvent,
+    RelationDepartedEvent,
+    RelationEvent,
+    RelationJoinedEvent,
+    StartEvent,
+    StorageDetachingEvent,
+)
 from ops.main import main
-from ops.model import ActiveStatus, Container
+from ops.model import ActiveStatus, Container, Relation, Unit, WaitingStatus
 from ops.pebble import ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
-from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError
@@ -51,11 +54,23 @@ class MongoDBCharm(CharmBase):
 
         self.framework.observe(self.on.mongod_pebble_ready, self.on_mongod_pebble_ready)
         self.framework.observe(self.on.start, self._on_start)
-        self.framework.observe(self.on.leader_elected, self._reconfigure)
-        self.framework.observe(self.on[Config.Relations.PEERS].relation_changed, self._reconfigure)
+
         self.framework.observe(
-            self.on[Config.Relations.PEERS].relation_departed, self._reconfigure
+            self.on[Config.Relations.PEERS].relation_joined, self._on_relation_joined
         )
+
+        self.framework.observe(
+            self.on[Config.Relations.PEERS].relation_changed, self._on_relation_handler
+        )
+
+        self.framework.observe(
+            self.on[Config.Relations.PEERS].relation_departed, self._on_relation_departed
+        )
+
+        # if a new leader has been elected update hosts of MongoDB
+        self.framework.observe(self.on.leader_elected, self._on_leader_elected)
+        self.framework.observe(self.on.mongodb_storage_detaching, self._on_storage_detaching)
+
         self.framework.observe(self.on.get_password_action, self._on_get_password)
         self.framework.observe(self.on.set_password_action, self._on_set_password)
 
@@ -74,6 +89,27 @@ class MongoDBCharm(CharmBase):
         )
 
     # BEGIN: properties
+
+    @property
+    def _unit_hosts(self) -> List[str]:
+        """Retrieve IP addresses associated with MongoDB application.
+
+        Returns:
+            a list of IP address associated with MongoDB application.
+        """
+        return [self._get_hostname_for_unit(self.unit)] + [
+            self._get_hostname_for_unit(unit) for unit in self._peers.units
+        ]
+
+    @property
+    def _peers(self) -> Optional[Relation]:
+        """Fetch the peer relation.
+
+        Returns:
+             An `ops.model.Relation` object representing the peer relation.
+        """
+        return self.model.get_relation(Config.Relations.PEERS)
+
     @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Create a configuration object with settings.
@@ -83,22 +119,18 @@ class MongoDBCharm(CharmBase):
         Returns:
             A MongoDBConfiguration object
         """
-        peers = self.model.get_relation(Config.Relations.PEERS)
-        hosts = [self.get_hostname_by_unit(self.unit.name)] + [
-            self.get_hostname_by_unit(unit.name) for unit in peers.units
-        ]
-        return self._get_mongodb_config_for_user(OperatorUser, hosts)
+        return self._get_mongodb_config_for_user(OperatorUser, self._unit_hosts)
 
     @property
     def monitor_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
         return self._get_mongodb_config_for_user(
-            MonitorUser, [self.get_hostname_by_unit(self.unit.name)]
+            MonitorUser, [self._get_hostname_for_unit(self.unit)]
         )
 
     @property
     def _monitor_layer(self) -> Layer:
-        """Returns a Pebble configuration layer for mongod."""
+        """Returns a Pebble configuration layer for mongodb_exporter."""
         layer_config = {
             "summary": "mongodb_exporter layer",
             "description": "Pebble config layer for mongodb_exporter",
@@ -212,9 +244,6 @@ class MongoDBCharm(CharmBase):
         # when a network cuts and the pod restarts - reconnect to the exporter
         self._connect_mongodb_exporter()
 
-        # TODO: rework status
-        self.unit.status = ActiveStatus()
-
     def _on_start(self, event) -> None:
         """Initialise MongoDB.
 
@@ -233,9 +262,6 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
-        if not self.unit.is_leader():
-            return
-
         container = self.unit.get_container(Config.CONTAINER_NAME)
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
@@ -247,90 +273,159 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        if self._db_initialised:
-            # The replica set should be initialised only once. Check should be
-            # external (e.g., check initialisation inside peer relation). We
-            # shouldn't rely on MongoDB response because the data directory
-            # can be corrupted.
-            return
-
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
                 logger.debug("mongodb service is not ready yet.")
                 event.defer()
                 return
-            try:
-                logger.info("Replica Set initialization")
-                direct_mongo.init_replset()
-                logger.info("User initialization")
-                self._init_operator_user(container)
-                self._init_monitor_user()
-                logger.info("Reconcile relations")
-                self.client_relations.oversee_users(None, event)
-            except ExecError as e:
-                logger.error(
-                    "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
-                )
-                event.defer()
-                return
-            except PyMongoError as e:
-                logger.error("Deferring on_start since: error=%r", e)
-                event.defer()
-                return
 
-            self._db_initialised = True
-
-    def _reconfigure(self, event) -> None:
-        """Reconfigure replica set.
-
-        The amount replicas in the MongoDB replica set is updated.
-        """
+        # mongod is now active
+        self.unit.status = ActiveStatus()
         self._connect_mongodb_exporter()
 
+        self._initialise_replica_set(event)
+
+    def _on_relation_joined(self, event: RelationJoinedEvent) -> None:
+        """Add peer to replica set.
+
+        Args:
+            event: The triggering relation joined event.
+        """
         if not self.unit.is_leader():
             return
 
-        # Admin password and keyFile should be created before running MongoDB.
-        # This code runs on leader_elected event before mongod_pebble_ready
-        self._generate_secrets()
+        self._on_relation_handler(event)
 
-        # reconfiguration can be successful only if a replica set is initialised.
-        if not self._db_initialised:
+        # app relations should be made aware of the new set of hosts
+        try:
+            self._update_app_relation_data()
+        except PyMongoError as e:
+            logger.error(
+                "_on_relation_joined: Deferring on updating app relation data since: error: %r", e
+            )
+            event.defer()
+            return
+
+    def _on_relation_handler(self, event: RelationEvent) -> None:
+        """Adds the unit as a replica to the MongoDB replica set.
+
+        Args:
+            event: The triggering relation joined/changed event.
+        """
+        # changing the monitor password will lead to non-leader units receiving a relation changed
+        # event. We must update the monitor and pbm URI if the password changes so that COS/pbm
+        # can continue to work
+        self._connect_mongodb_exporter()
+
+        # only leader should configure replica set and app-changed-events can trigger the relation
+        # changed hook resulting in no JUJU_REMOTE_UNIT if this is the case we should return
+        # further reconfiguration can be successful only if a replica set is initialised.
+        if not (self.unit.is_leader() and event.unit) or not self._db_initialised:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 replset_members = mongo.get_replset_members()
-
-                # compare sets of mongod replica set members and juju hosts
-                # to avoid unnecessary reconfiguration.
+                # compare set of mongod replica set members and juju hosts to avoid the unnecessary
+                # reconfiguration.
                 if replset_members == self.mongodb_config.hosts:
                     return
 
-                # remove members first, it is faster
-                logger.info("Reconfigure replica set")
-                for member in replset_members - self.mongodb_config.hosts:
-                    logger.debug("Removing %s from the replica set", member)
-                    mongo.remove_replset_member(member)
                 for member in self.mongodb_config.hosts - replset_members:
-                    logger.debug("Adding %s to the replica set", member)
+                    logger.debug("Adding %s to replica set", member)
                     with MongoDBConnection(
                         self.mongodb_config, member, direct=True
                     ) as direct_mongo:
                         if not direct_mongo.is_ready:
+                            self.unit.status = WaitingStatus("waiting to reconfigure replica set")
                             logger.debug("Deferring reconfigure: %s is not ready yet.", member)
                             event.defer()
                             return
                     mongo.add_replset_member(member)
-
-                # app relations should be made aware of the new set of hosts
-                self._update_app_relation_data(mongo.get_users())
+                    self.unit.status = ActiveStatus()
             except NotReadyError:
-                logger.info("Deferring reconfigure: another member doing sync right now")
+                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+                logger.error("Deferring reconfigure: another member doing sync right now")
                 event.defer()
             except PyMongoError as e:
-                logger.info("Deferring reconfigure: error=%r", e)
+                self.unit.status = WaitingStatus("waiting to reconfigure replica set")
+                logger.error("Deferring reconfigure: error=%r", e)
                 event.defer()
+
+    def _on_relation_departed(self, event: RelationDepartedEvent) -> None:
+        """Remove peer from replica set if it wasn't able to remove itself.
+
+        Args:
+            event: The triggering relation departed event.
+        """
+        # allow leader to update relation data and hosts if it isn't leaving
+        if not self.unit.is_leader() or event.departing_unit == self.unit:
+            return
+
+        self._update_hosts(event)
+
+        # app relations should be made aware of the new set of hosts
+        try:
+            self._update_app_relation_data()
+        except PyMongoError as e:
+            logger.error(
+                "_on_relation_departed: Deferring on updating app relation data since: error: %r",
+                e,
+            )
+            event.defer()
+            return
+
+    def _on_leader_elected(self, event: LeaderElectedEvent) -> None:
+        """Handle leader elected event."""
+        if not self.get_secret("app", "keyfile"):
+            self._generate_secrets()
+
+        self._update_hosts(event)
+
+        # app relations should be made aware of the new set of hosts
+        try:
+            self._update_app_relation_data()
+        except PyMongoError as e:
+            logger.error(
+                "_on_leader_elected: Deferring on updating app relation data since: error: %r", e
+            )
+            event.defer()
+            return
+
+    def _on_storage_detaching(self, event: StorageDetachingEvent) -> None:
+        """Before storage detaches, allow removing unit to remove itself from the set.
+
+        If the removing unit is primary also allow it to step down and elect another unit as
+        primary while it still has access to its storage.
+        """
+        # if we are removing the last replica it will not be able to step down as primary and we
+        # cannot reconfigure the replica set to have 0 members. To prevent retrying for 10 minutes
+        # set this flag to True. please note that planned_units will always be >=1. When planned
+        # units is 1 that means there are no other peers expected.
+        single_node_replica_set = self.app.planned_units() == 1 and len(self._peers.units) == 0
+        if single_node_replica_set:
+            return
+
+        try:
+            # retries over a period of 10 minutes in an attempt to resolve race conditions it is
+            # not possible to defer in storage detached.
+            logger.debug("Removing %s from replica set", self._get_hostname_for_unit(self.unit))
+            for attempt in Retrying(
+                stop=stop_after_attempt(10),
+                wait=wait_fixed(1),
+                reraise=True,
+            ):
+                with attempt:
+                    # remove_replset_member retries for 60 seconds
+                    with MongoDBConnection(self.mongodb_config) as mongo:
+                        hostname = self._get_hostname_for_unit(self.unit)
+                        mongo.remove_replset_member(hostname)
+        except NotReadyError:
+            logger.info(
+                "Failed to remove %s from replica set, another member is syncing", self.unit.name
+            )
+        except PyMongoError as e:
+            logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
     # END: charm events
 
@@ -395,7 +490,7 @@ class MongoDBCharm(CharmBase):
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
-    def _init_operator_user(self, container: Container) -> None:
+    def _init_operator_user(self) -> None:
         """Creates initial operator user for MongoDB.
 
         Initial operator user can be created only through localhost connection.
@@ -408,6 +503,8 @@ class MongoDBCharm(CharmBase):
         """
         if self._is_user_created(OperatorUser):
             return
+
+        container = self.unit.get_container(Config.CONTAINER_NAME)
 
         mongo_cmd = (
             "/usr/bin/mongosh" if container.exists("/usr/bin/mongosh") else "/usr/bin/mongo"
@@ -504,8 +601,11 @@ class MongoDBCharm(CharmBase):
         if not self.get_secret("app", "keyfile"):
             self.set_secret("app", "keyfile", generate_keyfile())
 
-    def _update_app_relation_data(self, database_users):
+    def _update_app_relation_data(self):
         """Helper function to update application relation data."""
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            database_users = mongo.get_users()
+
         for relation in self.model.relations[Config.Relations.NAME]:
             username = self.client_relations._get_username_from_relation_id(relation.id)
             password = relation.data[self.app]["password"]
@@ -517,6 +617,64 @@ class MongoDBCharm(CharmBase):
                         "uris": config.uri,
                     }
                 )
+
+    def _update_hosts(self, event) -> None:
+        """Update replica set hosts and remove any unremoved replicas from the config."""
+        if not self._db_initialised:
+            return
+
+        self._process_unremoved_units(event)
+        self.app_peer_data["replica_set_hosts"] = json.dumps(self._unit_hosts)
+
+    def _process_unremoved_units(self, event: LeaderElectedEvent) -> None:
+        """Removes replica set members that are no longer running as a juju hosts."""
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                replset_members = mongo.get_replset_members()
+                for member in replset_members - self.mongodb_config.hosts:
+                    logger.debug("Removing %s from replica set", member)
+                    mongo.remove_replset_member(member)
+            except NotReadyError:
+                logger.info("Deferring process_unremoved_units: another member is syncing")
+                event.defer()
+            except PyMongoError as e:
+                logger.error("Deferring process_unremoved_units: error=%r", e)
+                event.defer()
+
+    def _initialise_replica_set(self, event: StartEvent) -> None:
+        """Initialise replica set and create users."""
+        if self._db_initialised:
+            # The replica set should be initialised only once. Check should be
+            # external (e.g., check initialisation inside peer relation). We
+            # shouldn't rely on MongoDB response because the data directory
+            # can be corrupted.
+            return
+
+        # only leader should initialise the replica set
+        if not self.unit.is_leader():
+            return
+
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+            try:
+                logger.info("Replica Set initialization")
+                direct_mongo.init_replset()
+                logger.info("User initialization")
+                self._init_operator_user()
+                self._init_monitor_user()
+                logger.info("Reconcile relations")
+                self.client_relations.oversee_users(None, event)
+            except ExecError as e:
+                logger.error(
+                    "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
+                )
+                event.defer()
+                return
+            except PyMongoError as e:
+                logger.error("Deferring on_start since: error=%r", e)
+                event.defer()
+                return
+
+            self._db_initialised = True
 
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get TLS secret from the secret storage."""
@@ -599,7 +757,7 @@ class MongoDBCharm(CharmBase):
                 group=Config.UNIX_GROUP,
             )
 
-    def get_hostname_by_unit(self, unit_name: str) -> str:
+    def _get_hostname_for_unit(self, unit: Unit) -> str:
         """Create a DNS name for a MongoDB unit.
 
         Args:
@@ -608,7 +766,7 @@ class MongoDBCharm(CharmBase):
         Returns:
             A string representing the hostname of the MongoDB unit.
         """
-        unit_id = unit_name.split("/")[1]
+        unit_id = unit.name.split("/")[1]
         return f"{self.app.name}-{unit_id}.{self.app.name}-endpoints"
 
     def _connect_mongodb_exporter(self) -> None:
