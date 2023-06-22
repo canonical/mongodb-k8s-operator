@@ -16,14 +16,6 @@ from typing import Dict, Optional
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.mongodb.v0.helpers import (
-    CONF_DIR,
-    DATA_DIR,
-    KEY_FILE,
-    MONGODB_LOG_FILENAME,
-    TLS_EXT_CA_FILE,
-    TLS_EXT_PEM_FILE,
-    TLS_INT_CA_FILE,
-    TLS_INT_PEM_FILE,
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
@@ -45,18 +37,10 @@ from ops.pebble import ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
+from config import Config
 from exceptions import AdminUserCreationError
 
 logger = logging.getLogger(__name__)
-PEER = "database-peers"
-MONITOR_PRIVILEGES = {
-    "resource": {"db": "", "collection": ""},
-    "actions": ["listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find"],
-}
-UNIX_USER = "mongodb"
-UNIX_GROUP = "mongodb"
-MONGODB_EXPORTER_PORT = 9216
-REL_NAME = "database"
 
 
 class MongoDBCharm(CharmBase):
@@ -68,25 +52,25 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.mongod_pebble_ready, self.on_mongod_pebble_ready)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.leader_elected, self._reconfigure)
-        self.framework.observe(self.on[PEER].relation_changed, self._reconfigure)
-        self.framework.observe(self.on[PEER].relation_departed, self._reconfigure)
+        self.framework.observe(self.on[Config.Relations.PEERS].relation_changed, self._reconfigure)
+        self.framework.observe(
+            self.on[Config.Relations.PEERS].relation_departed, self._reconfigure
+        )
         self.framework.observe(self.on.get_password_action, self._on_get_password)
         self.framework.observe(self.on.set_password_action, self._on_set_password)
 
         self.client_relations = MongoDBProvider(self)
-        self.tls = MongoDBTLS(self, PEER)
+        self.tls = MongoDBTLS(self, Config.Relations.PEERS)
 
         self.metrics_endpoint = MetricsEndpointProvider(
-            self,
-            refresh_event=self.on.start,
-            jobs=[{"static_configs": [{"targets": [f"*:{MONGODB_EXPORTER_PORT}"]}]}],
+            self, refresh_event=self.on.start, jobs=Config.Monitoring.JOBS
         )
         self.grafana_dashboards = GrafanaDashboardProvider(self)
         self.loki_push = LogProxyConsumer(
             self,
-            log_files=[f"{DATA_DIR}/{MONGODB_LOG_FILENAME}"],
-            relation_name="logging",
-            container_name="mongod",
+            log_files=Config.LOG_FILES,
+            relation_name=Config.Relations.LOGGING,
+            container_name=Config.CONTAINER_NAME,
         )
 
     # BEGIN: properties
@@ -99,7 +83,7 @@ class MongoDBCharm(CharmBase):
         Returns:
             A MongoDBConfiguration object
         """
-        peers = self.model.get_relation(PEER)
+        peers = self.model.get_relation(Config.Relations.PEERS)
         hosts = [self.get_hostname_by_unit(self.unit.name)] + [
             self.get_hostname_by_unit(unit.name) for unit in peers.units
         ]
@@ -124,8 +108,8 @@ class MongoDBCharm(CharmBase):
                     "summary": "mongodb_exporter",
                     "command": "mongodb_exporter --collector.diagnosticdata --compatible-mode",
                     "startup": "enabled",
-                    "user": UNIX_USER,
-                    "group": UNIX_GROUP,
+                    "user": Config.UNIX_USER,
+                    "group": Config.UNIX_GROUP,
                     "environment": {"MONGODB_URI": self.monitor_config.uri},
                 }
             },
@@ -144,8 +128,8 @@ class MongoDBCharm(CharmBase):
                     "summary": "mongod",
                     "command": "mongod " + get_mongod_args(self.mongodb_config),
                     "startup": "enabled",
-                    "user": UNIX_USER,
-                    "group": UNIX_GROUP,
+                    "user": Config.UNIX_USER,
+                    "group": Config.UNIX_GROUP,
                 }
             },
         }
@@ -154,7 +138,7 @@ class MongoDBCharm(CharmBase):
     @property
     def unit_peer_data(self) -> Dict:
         """Peer relation data object."""
-        relation = self.model.get_relation(PEER)
+        relation = self.model.get_relation(Config.Relations.PEERS)
         if relation is None:
             return {}
 
@@ -163,7 +147,7 @@ class MongoDBCharm(CharmBase):
     @property
     def app_peer_data(self) -> Dict:
         """Peer relation data object."""
-        relation = self.model.get_relation(PEER)
+        relation = self.model.get_relation(Config.Relations.PEERS)
         if relation is None:
             return {}
 
@@ -188,7 +172,7 @@ class MongoDBCharm(CharmBase):
     def on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
         # Get a reference the container attribute
-        container = self.unit.get_container("mongod")
+        container = self.unit.get_container(Config.CONTAINER_NAME)
         # mongod needs keyFile and TLS certificates on filesystem
 
         if not container.can_connect():
@@ -212,13 +196,13 @@ class MongoDBCharm(CharmBase):
         # mongod cmd line arguments (returned from get_mongod_args).
         # In the second case, we should restart mongod
         # service only if arguments changed.
-        services = container.get_services("mongod")
-        if services and services["mongod"].is_running():
+        services = container.get_services(Config.SERVICE_NAME)
+        if services and services[Config.SERVICE_NAME].is_running():
             new_command = "mongod " + get_mongod_args(self.mongodb_config)
-            cur_command = container.get_plan().services["mongod"].command
+            cur_command = container.get_plan().services[Config.SERVICE_NAME].command
             if new_command != cur_command:
                 logger.debug("restart MongoDB due to arguments change: %s", new_command)
-                container.stop("mongod")
+                container.stop(Config.SERVICE_NAME)
 
         # Add initial Pebble config layer using the Pebble API
         container.add_layer("mongod", self._mongod_layer, combine=True)
@@ -252,13 +236,13 @@ class MongoDBCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
-        container = self.unit.get_container("mongod")
+        container = self.unit.get_container(Config.CONTAINER_NAME)
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
             event.defer()
             return
 
-        if not container.exists("/tmp/mongodb-27017.sock"):
+        if not container.exists(Config.SOCKET_PATH):
             logger.debug("The mongod socket is not ready yet.")
             event.defer()
             return
@@ -359,7 +343,7 @@ class MongoDBCharm(CharmBase):
         if not username:
             return
         key_name = MongoDBUser.get_password_key_name_for_user(username)
-        event.set_results({"password": self.get_secret("app", key_name)})
+        event.set_results({Config.Actions.PASSWORD_PARAM_NAME: self.get_secret("app", key_name)})
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the specified user."""
@@ -374,13 +358,13 @@ class MongoDBCharm(CharmBase):
         if not username:
             return
 
-        new_password = event.params.get("password", generate_password())
+        new_password = event.params.get(Config.Actions.PASSWORD_PARAM_NAME, generate_password())
 
         if new_password == self.get_secret(
             "app", MonitorUser.get_password_key_name_for_user(username)
         ):
             event.log("The old and new passwords are equal.")
-            event.set_results({"password": new_password})
+            event.set_results({Config.Actions.PASSWORD_PARAM_NAME: new_password})
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -400,7 +384,7 @@ class MongoDBCharm(CharmBase):
         if username == MonitorUser.get_username():
             self._connect_mongodb_exporter()
 
-        event.set_results({"password": new_password})
+        event.set_results({Config.Actions.PASSWORD_PARAM_NAME: new_password})
 
     # END: actions
 
@@ -493,7 +477,7 @@ class MongoDBCharm(CharmBase):
 
     def _get_user_or_fail_event(self, event: ActionEvent, default_username: str) -> Optional[str]:
         """Returns MongoDBUser object or raises ActionFail if user doesn't exist."""
-        username = event.params.get("username", default_username)
+        username = event.params.get(Config.Actions.USERNAME_PARAM_NAME, default_username)
         if username not in CHARM_USERS:
             event.fail(
                 f"The action can be run only for users used by the charm:"
@@ -522,7 +506,7 @@ class MongoDBCharm(CharmBase):
 
     def _update_app_relation_data(self, database_users):
         """Helper function to update application relation data."""
-        for relation in self.model.relations[REL_NAME]:
+        for relation in self.model.relations[Config.Relations.NAME]:
             username = self.client_relations._get_username_from_relation_id(relation.id)
             password = relation.data[self.app]["password"]
             if username in database_users:
@@ -561,12 +545,12 @@ class MongoDBCharm(CharmBase):
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
         container.push(
-            CONF_DIR + "/" + KEY_FILE,
+            Config.CONF_DIR + "/" + Config.TLS.KEY_FILE_NAME,
             self.get_secret("app", "keyfile"),
             make_dirs=True,
             permissions=0o400,
-            user=UNIX_USER,
-            group=UNIX_GROUP,
+            user=Config.UNIX_USER,
+            group=Config.UNIX_GROUP,
         )
 
     def _push_certificate_to_workload(self, container: Container) -> None:
@@ -575,44 +559,44 @@ class MongoDBCharm(CharmBase):
         if external_ca is not None:
             logger.debug("Uploading external ca to workload container")
             container.push(
-                CONF_DIR + "/" + TLS_EXT_CA_FILE,
+                Config.CONF_DIR + "/" + Config.TLS.EXT_CA_FILE,
                 external_ca,
                 make_dirs=True,
                 permissions=0o400,
-                user=UNIX_USER,
-                group=UNIX_GROUP,
+                user=Config.UNIX_USER,
+                group=Config.UNIX_GROUP,
             )
         if external_pem is not None:
             logger.debug("Uploading external pem to workload container")
             container.push(
-                CONF_DIR + "/" + TLS_EXT_PEM_FILE,
+                Config.CONF_DIR + "/" + Config.TLS.EXT_PEM_FILE,
                 external_pem,
                 make_dirs=True,
                 permissions=0o400,
-                user=UNIX_USER,
-                group=UNIX_GROUP,
+                user=Config.UNIX_USER,
+                group=Config.UNIX_GROUP,
             )
 
         internal_ca, internal_pem = self.tls.get_tls_files("app")
         if internal_ca is not None:
             logger.debug("Uploading internal ca to workload container")
             container.push(
-                CONF_DIR + "/" + TLS_INT_CA_FILE,
+                Config.CONF_DIR + "/" + Config.TLS.INT_CA_FILE,
                 internal_ca,
                 make_dirs=True,
                 permissions=0o400,
-                user=UNIX_USER,
-                group=UNIX_GROUP,
+                user=Config.UNIX_USER,
+                group=Config.UNIX_GROUP,
             )
         if internal_pem is not None:
             logger.debug("Uploading internal pem to workload container")
             container.push(
-                CONF_DIR + "/" + TLS_INT_PEM_FILE,
+                Config.CONF_DIR + "/" + Config.TLS.INT_PEM_FILE,
                 internal_pem,
                 make_dirs=True,
                 permissions=0o400,
-                user=UNIX_USER,
-                group=UNIX_GROUP,
+                user=Config.UNIX_USER,
+                group=Config.UNIX_GROUP,
             )
 
     def get_hostname_by_unit(self, unit_name: str) -> str:
@@ -660,7 +644,7 @@ class MongoDBCharm(CharmBase):
 
         for license_name in licenses:
             try:
-                license_file = container.pull(path=f"/licenses/LICENSE-{license_name}")
+                license_file = container.pull(path=Config.get_license_path(license_name))
                 f = open("LICENSE", "x")
                 f.write(str(license_file.read()))
                 f.close()
@@ -674,11 +658,13 @@ class MongoDBCharm(CharmBase):
         Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
         is available, we fix permissions incorrectly with chown.
         """
-        paths = container.list_files(DATA_DIR, itself=True)
+        paths = container.list_files(Config.DATA_DIR, itself=True)
         assert len(paths) == 1, "list_files doesn't return only the directory itself"
         logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
-        if paths[0].user != UNIX_USER or paths[0].group != UNIX_GROUP:
-            container.exec(f"chown {UNIX_USER}:{UNIX_GROUP} -R {DATA_DIR}".split(" "))
+        if paths[0].user != Config.UNIX_USER or paths[0].group != Config.UNIX_GROUP:
+            container.exec(
+                f"chown {Config.UNIX_USER}:{Config.UNIX_GROUP} -R {Config.DATA_DIR}".split(" ")
+            )
 
     # END: static methods
 
