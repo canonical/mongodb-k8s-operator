@@ -46,7 +46,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongoDBCharm._pull_licenses")
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._fix_data_dir")
+    @patch("charm.MongoDBCharm._set_data_dir_permissions")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
     def test_mongod_pebble_ready(self, connect_exporter, fix_data_dir, defer, pull_licenses):
         # Expected plan after Pebble ready with default config
@@ -105,7 +105,7 @@ class TestCharm(unittest.TestCase):
         push_keyfile_to_workload.assert_not_called()
         mock_container.add_layer.assert_not_called()
         mock_container.replan.assert_not_called()
-        defer.assert_called_once()
+        defer.assert_not_called()
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._push_keyfile_to_workload")
@@ -634,7 +634,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongoDBCharm._pull_licenses")
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._fix_data_dir")
+    @patch("charm.MongoDBCharm._set_data_dir_permissions")
     @patch("charm.MongoDBConnection")
     def test__connect_mongodb_exporter_success(
         self, connection, fix_data_dir, defer, pull_licenses

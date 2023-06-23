@@ -49,31 +49,9 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
 
 @pytest.mark.abort_on_fail
-async def test_long_scale_up_scale_down_small_units(ops_test: OpsTest):
+async def test_long_scale_up_scale_down_units(ops_test: OpsTest):
     """Scale up and down the application and verify the replica set is healthy."""
-    scales = [2, -1, -1, 2, -2, 3, -3, 4, -4]
-    for iteration in range(len(scales)):
-        logger.info(f"Running scale up/down test. Iteration: {iteration}")
-        for count in scales:
-            await scale_and_verify(ops_test, count=count)
-
-
-@pytest.mark.skip("Issues with juju teardown")
-@pytest.mark.abort_on_fail
-async def test_long_scale_up_scale_down_medium(ops_test: OpsTest):
-    """Scale up and down the application and verify the replica set is healthy."""
-    scales = [5, -5]
-    for iteration in range(4):
-        logger.info(f"Running scale up/down test. Iteration: {iteration}")
-        for count in scales:
-            await scale_and_verify(ops_test, count=count)
-
-
-@pytest.mark.skip("Issues with juju teardown")
-@pytest.mark.abort_on_fail
-async def test_scale_up_scale_down_large(ops_test: OpsTest):
-    """Scale up and down the application and verify the replica set is healthy."""
-    scales = [6, -6, 7, -7]
+    scales = [2, -1, -1, 2, -2, 3, -3, 4, -4, 5, -5, 6, -6, 7, -7]
     for count in scales:
         await scale_and_verify(ops_test, count=count)
 

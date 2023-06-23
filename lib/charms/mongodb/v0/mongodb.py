@@ -5,7 +5,7 @@
 import logging
 import re
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Set
 from urllib.parse import quote_plus
 
 from bson.json_util import dumps
@@ -49,7 +49,7 @@ class MongoDBConfiguration:
     """
 
     replset: str
-    database: Optional[str]
+    database: str
     username: str
     password: str
     hosts: Set[str]
