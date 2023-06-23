@@ -6,6 +6,7 @@
 class Config:
     """Configuration for MongoDB Charm."""
 
+    SUBSTRATE = "k8s"
     MONGODB_PORT = 27017
     UNIX_USER = "mongodb"
     UNIX_GROUP = "mongodb"

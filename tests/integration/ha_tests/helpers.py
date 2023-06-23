@@ -659,7 +659,9 @@ async def wait_until_unit_in_status(
 
     for member in data["members"]:
         if unit_to_check.name == host_to_unit(member["name"].split(":")[0]):
-            assert member["stateStr"] == status, f"{unit_to_check.name} status is not {status}"
+            assert (
+                member["stateStr"] == status
+            ), f"{unit_to_check.name} status is not {status}. Actual status: {member['stateStr']}"
             return
     assert False, f"{unit_to_check.name} not found"
 

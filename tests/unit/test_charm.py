@@ -6,7 +6,7 @@ from unittest import mock
 from unittest.mock import patch
 
 from charms.mongodb.v0.helpers import CONF_DIR, DATA_DIR, KEY_FILE
-from ops.model import ActiveStatus, ModelError
+from ops.model import ModelError
 from ops.pebble import APIError, ExecError, PathError, ProtocolError
 from ops.testing import Harness
 from pymongo.errors import (
@@ -46,7 +46,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongoDBCharm._pull_licenses")
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._fix_data_dir")
+    @patch("charm.MongoDBCharm._set_data_dir_permissions")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
     def test_mongod_pebble_ready(self, connect_exporter, fix_data_dir, defer, pull_licenses):
         # Expected plan after Pebble ready with default config
@@ -81,8 +81,6 @@ class TestCharm(unittest.TestCase):
         # Check the service was started
         service = self.harness.model.unit.get_container("mongod").get_service("mongod")
         assert service.is_running()
-        # Ensure we set an ActiveStatus with no message
-        assert self.harness.model.unit.status == ActiveStatus()
         defer.assert_not_called()
         # Ensure that _connect_mongodb_exporter was called
         connect_exporter.assert_called_once()
@@ -636,7 +634,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongoDBCharm._pull_licenses")
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._fix_data_dir")
+    @patch("charm.MongoDBCharm._set_data_dir_permissions")
     @patch("charm.MongoDBConnection")
     def test__connect_mongodb_exporter_success(
         self, connection, fix_data_dir, defer, pull_licenses

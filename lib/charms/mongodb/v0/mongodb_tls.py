@@ -42,7 +42,7 @@ TLS_RELATION = "certificates"
 class MongoDBTLS(Object):
     """In this class we manage client database relations."""
 
-    def __init__(self, charm, peer_relation, substrate="k8s"):
+    def __init__(self, charm, peer_relation, substrate):
         """Manager of MongoDB client relations."""
         super().__init__(charm, "client-relations")
         self.charm = charm
@@ -139,13 +139,11 @@ class MongoDBTLS(Object):
             event.defer()
             return
 
-        logger.debug("Restarting mongod with TLS disabled.")
-        if self.substrate == "vm":
-            self.charm.unit.status = MaintenanceStatus("disabling TLS")
-            self.charm.restart_mongod_service()
-            self.charm.unit.status = ActiveStatus()
-        else:
-            self.charm.on_mongod_pebble_ready(event)
+        logger.info("Restarting mongod with TLS disabled.")
+        self.charm.unit.status = MaintenanceStatus("disabling TLS")
+        self.charm.delete_tls_certificate_from_workload()
+        self.charm.restart_mongod_service()
+        self.charm.unit.status = ActiveStatus()
 
     def _on_certificate_available(self, event: CertificateAvailableEvent) -> None:
         """Enable TLS when TLS certificate available."""
@@ -165,9 +163,6 @@ class MongoDBTLS(Object):
             logger.error("An unknown certificate available.")
             return
 
-        old_cert = self.charm.get_secret(scope, "cert")
-        renewal = old_cert and old_cert != event.certificate
-
         if scope == "unit" or (scope == "app" and self.charm.unit.is_leader()):
             self.charm.set_secret(
                 scope, "chain", "\n".join(event.chain) if event.chain is not None else None
@@ -182,17 +177,12 @@ class MongoDBTLS(Object):
             event.defer()
             return
 
-        if renewal and self.substrate == "k8s":
-            self.charm.unit.get_container("mongod").stop("mongod")
-
         logger.debug("Restarting mongod with TLS enabled.")
-        if self.substrate == "vm":
-            self.charm._push_tls_certificate_to_workload()
-            self.charm.unit.status = MaintenanceStatus("enabling TLS")
-            self.charm.restart_mongod_service()
-            self.charm.unit.status = ActiveStatus()
-        else:
-            self.charm.on_mongod_pebble_ready(event)
+
+        self.charm.push_tls_certificate_to_workload()
+        self.charm.unit.status = MaintenanceStatus("enabling TLS")
+        self.charm.restart_mongod_service()
+        self.charm.unit.status = ActiveStatus()
 
     def _waiting_for_certs(self):
         """Returns a boolean indicating whether additional certs are needed."""
@@ -276,4 +266,4 @@ class MongoDBTLS(Object):
         if self.substrate == "vm":
             return self.charm._unit_ip(unit)
         else:
-            return self.charm.get_hostname_by_unit(unit.name)
+            return self.charm.get_hostname_for_unit(unit)
