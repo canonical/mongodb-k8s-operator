@@ -38,7 +38,7 @@ Please see the[ Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhan
 
 #### Licence statement
 
-The Charmed MongoDB Operator is free software, distributed under the [Apache Software License, version 2.0](https://github.com/canonical/mongodb-operator/blob/main/LICENSE). It instals and operates Percona Server for MongoDB, which is licensed under the Server Side Public License (SSPL) version 1.
+The Charmed MongoDB Operator is free software, distributed under the [Apache Software License, version 2.0](https://github.com/canonical/mongodb-operator/blob/main/LICENSE). It installs and operates Percona Server for MongoDB, which is licensed under the Server Side Public License (SSPL) version 1.
 
 #### Trademark Notice
 
