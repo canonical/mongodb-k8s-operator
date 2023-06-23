@@ -279,11 +279,12 @@ class MongoDBCharm(CharmBase):
                 event.defer()
                 return
 
-        # mongod is now active
-        self.unit.status = ActiveStatus()
         self._connect_mongodb_exporter()
 
         self._initialise_replica_set(event)
+
+        # mongod is now active
+        self.unit.status = ActiveStatus()
 
     def _relation_changes_handler(self, event) -> None:
         """Handles different relation events and updates MongoDB replica set."""
@@ -303,24 +304,25 @@ class MongoDBCharm(CharmBase):
             try:
                 replset_members = mongo.get_replset_members()
                 mongodb_hosts = self.mongodb_config.hosts
+
                 # compare sets of mongod replica set members and juju hosts
                 # to avoid unnecessary reconfiguration.
                 if replset_members == mongodb_hosts:
                     self._set_leader_unit_active_if_needed()
                     return
 
-                # remove members first, it is faster
                 logger.info("Reconfigure replica set")
 
-                for member in replset_members - mongodb_hosts:
-                    logger.debug("Removing %s from the replica set", member)
-                    mongo.remove_replset_member(member)
+                # remove members first, it is faster
+                self._remove_units_from_replica_set(event, mongo, replset_members - mongodb_hosts)
 
                 # to avoid potential race conditions -
                 # remove unit before adding new replica set members
                 if type(event) == RelationDepartedEvent and event.unit:
                     mongodb_hosts = mongodb_hosts - set([self.get_hostname_for_unit(event.unit)])
-                self._remove_unit_from_replica_set(event, mongo, mongodb_hosts - replset_members)
+
+                self._add_units_from_replica_set(event, mongo, mongodb_hosts - replset_members)
+
                 # app relations should be made aware of the new set of hosts
                 self._update_app_relation_data(mongo.get_users())
             except NotReadyError:
@@ -592,10 +594,10 @@ class MongoDBCharm(CharmBase):
 
             self._db_initialised = True
 
-    def _remove_unit_from_replica_set(
-        self, event, mongo: MongoDBConnection, units_to_remove: Set[str]
+    def _add_units_from_replica_set(
+        self, event, mongo: MongoDBConnection, units_to_add: Set[str]
     ) -> None:
-        for member in units_to_remove:
+        for member in units_to_add:
             logger.debug("Adding %s to the replica set", member)
             with MongoDBConnection(self.mongodb_config, member, direct=True) as direct_mongo:
                 if not direct_mongo.is_ready:
@@ -603,6 +605,13 @@ class MongoDBCharm(CharmBase):
                     event.defer()
                     return
             mongo.add_replset_member(member)
+
+    def _remove_units_from_replica_set(
+        self, evemt, mongo: MongoDBConnection, units_to_remove: Set[str]
+    ) -> None:
+        for member in units_to_remove:
+            logger.debug("Removing %s from the replica set", member)
+            mongo.remove_replset_member(member)
 
     def _set_leader_unit_active_if_needed(self):
         # This can happen after restart mongod when enable \ disable TLS
