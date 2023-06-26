@@ -302,7 +302,7 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        if not container.exists(Config.SOCKET_PATH):
+        if not self._socket_exists(container):
             logger.debug("The mongod socket is not ready yet.")
             event.defer()
             return
