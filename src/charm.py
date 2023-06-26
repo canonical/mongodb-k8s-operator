@@ -217,16 +217,9 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        if not self.get_secret("app", "keyfile"):
-            if self.unit.is_leader():
-                self._generate_secrets()
-            else:
-                logger.debug(
-                    f"Defer on_mongod_pebble_ready for non-leader unit {self.unit.name}: keyfile not available yet."
-                )
-                event.defer()
-                return
         try:
+            # mongod needs keyFile and TLS certificates on filesystem
+            self.push_tls_certificate_to_workload()
             self._push_keyfile_to_workload(container)
             self._pull_licenses(container)
             self._set_data_dir_permissions(container)
