@@ -10,6 +10,7 @@ from typing import Dict, List, Optional, Set
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.mongodb.v0.helpers import (
+    build_unit_status,
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
@@ -20,6 +21,7 @@ from charms.mongodb.v0.mongodb import (
     MongoDBConnection,
     NotReadyError,
 )
+from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.users import (
@@ -31,7 +33,13 @@ from charms.mongodb.v0.users import (
 )
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops import JujuVersion
-from ops.charm import ActionEvent, CharmBase, RelationDepartedEvent, StartEvent
+from ops.charm import (
+    ActionEvent,
+    CharmBase,
+    RelationDepartedEvent,
+    StartEvent,
+    StorageDetachingEvent,
+)
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -42,7 +50,7 @@ from ops.model import (
     Unit,
     WaitingStatus,
 )
-from ops.pebble import ExecError, Layer, PathError, ProtocolError
+from ops.pebble import ExecError, Layer, PathError, ProtocolError, ServiceInfo
 from pymongo.errors import PyMongoError
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
@@ -66,7 +74,7 @@ class MongoDBCharm(CharmBase):
 
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.start, self._on_start)
-
+        self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(
             self.on[Config.Relations.PEERS].relation_joined, self._relation_changes_handler
         )
@@ -91,6 +99,7 @@ class MongoDBCharm(CharmBase):
 
         self.client_relations = MongoDBProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
+        self.backups = MongoDBBackups(self, substrate=Config.SUBSTRATE)
 
         self.metrics_endpoint = MetricsEndpointProvider(
             self, refresh_event=self.on.start, jobs=Config.Monitoring.JOBS
@@ -151,7 +160,28 @@ class MongoDBCharm(CharmBase):
     def backup_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for backup."""
         self._check_or_set_user_password(BackupUser)
-        return self._get_mongodb_config_for_user(BackupUser, BackupUser.get_hosts())
+        return self._get_mongodb_config_for_user(
+            BackupUser, [self.get_hostname_for_unit(self.unit)]
+        )
+
+    @property
+    def _mongod_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for mongod."""
+        layer_config = {
+            "summary": "mongod layer",
+            "description": "Pebble config layer for replicated mongod",
+            "services": {
+                "mongod": {
+                    "override": "replace",
+                    "summary": "mongod",
+                    "command": "mongod " + get_mongod_args(self.mongodb_config),
+                    "startup": "enabled",
+                    "user": Config.UNIX_USER,
+                    "group": Config.UNIX_GROUP,
+                }
+            },
+        }
+        return Layer(layer_config)  # type: ignore
 
     @property
     def _monitor_layer(self) -> Layer:
@@ -174,19 +204,19 @@ class MongoDBCharm(CharmBase):
         return Layer(layer_config)  # type: ignore
 
     @property
-    def _mongod_layer(self) -> Layer:
-        """Returns a Pebble configuration layer for mongod."""
-        layer_config = {
-            "summary": "mongod layer",
-            "description": "Pebble config layer for replicated mongod",
+    def backup_layer(self) -> Layer:
+        layer_config ={
+            "summary": "pbm layer",
+            "description": "Pebble config layer for pbm",
             "services": {
-                "mongod": {
+            Config.Backup.SERVICE_NAME: {
                     "override": "replace",
-                    "summary": "mongod",
-                    "command": "mongod " + get_mongod_args(self.mongodb_config),
+                    "summary": "pbm",
+                    "command": "pbm-agent",
                     "startup": "enabled",
                     "user": Config.UNIX_USER,
                     "group": Config.UNIX_GROUP,
+                    "environment": {"PBM_MONGODB_URI": self.backup_config.uri},
                 }
             },
         }
@@ -216,11 +246,13 @@ class MongoDBCharm(CharmBase):
         return relation.data[self.app]
 
     @property
-    def _db_initialised(self) -> bool:
+    def db_initialised(self) -> bool:
+        """Check if MongoDB is initialised."""
         return "db_initialised" in self.app_peer_data
 
-    @_db_initialised.setter
-    def _db_initialised(self, value):
+    @db_initialised.setter
+    def db_initialised(self, value):
+        """Set the db_initialised flag."""
         if isinstance(value, bool):
             self.app_peer_data["db_initialised"] = str(value)
         else:
@@ -273,6 +305,7 @@ class MongoDBCharm(CharmBase):
         # when a network cuts and the pod restarts - reconnect to the exporter
         try:
             self._connect_mongodb_exporter()
+            self._connect_pbm_agent()
         except MissingSecretError as e:
             logger.error("Cannot connect mongodb exporter: %r", e)
             event.defer()
@@ -314,6 +347,7 @@ class MongoDBCharm(CharmBase):
                 return
 
         self._connect_mongodb_exporter()
+        self._connect_pbm_agent()
 
         self._initialise_replica_set(event)
 
@@ -324,10 +358,6 @@ class MongoDBCharm(CharmBase):
         """Handles different relation events and updates MongoDB replica set."""
         self._connect_mongodb_exporter()
 
-        if type(event) is RelationDepartedEvent:
-            if event.departing_unit.name == self.unit.name:
-                self.unit_peer_data.setdefault("unit_departed", "True")
-
         if not self.unit.is_leader():
             return
 
@@ -335,7 +365,7 @@ class MongoDBCharm(CharmBase):
         # This code runs on leader_elected event before mongod_pebble_ready
         self._generate_secrets()
 
-        if not self._db_initialised:
+        if not self.db_initialised:
             return
 
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -384,6 +414,40 @@ class MongoDBCharm(CharmBase):
                     raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
             logger.debug(f"{self.unit.name} releasing on_stop")
             self.unit_peer_data["unit_departed"] = ""
+
+    def _on_update_status(self, event: UpdateStatusEvent):
+        # no need to report on replica set status until initialised
+        if not self.db_initialised:
+            return
+
+        # Cannot check more advanced MongoDB statuses if mongod hasn't started.
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+            if not direct_mongo.is_ready:
+                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                return
+
+        # leader should periodically handle configuring the replica set. Incidents such as network
+        # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
+        # in the case that the leader a change in IP address it will not receive a relation event.
+        if self.unit.is_leader():
+            self._relation_changes_handler(event)
+
+        # update the units status based on it's replica set config and backup status. An error in
+        # the status of MongoDB takes precedence over pbm status.
+        mongodb_status = build_unit_status(
+            self.mongodb_config, self.get_hostname_for_unit(self.unit)
+        )
+        pbm_status = self.backups._get_pbm_status()
+        if (
+            not isinstance(mongodb_status, ActiveStatus)
+            or not self.model.get_relation(
+                S3_RELATION
+            )  # if s3 relation doesn't exist only report MongoDB status
+            or isinstance(pbm_status, ActiveStatus)  # pbm is ready then report the MongoDB status
+        ):
+            self.unit.status = mongodb_status
+        else:
+            self.unit.status = pbm_status
 
     # END: charm events
 
@@ -437,6 +501,9 @@ class MongoDBCharm(CharmBase):
         secret_id = self.set_secret(
             APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), new_password
         )
+
+        if username == BackupUser.get_username():
+            self._connect_pbm_agent()
 
         if username == MonitorUser.get_username():
             self._connect_mongodb_exporter()
@@ -632,7 +699,7 @@ class MongoDBCharm(CharmBase):
 
     def _initialise_replica_set(self, event: StartEvent) -> None:
         """Initialise replica set and create users."""
-        if self._db_initialised:
+        if self.db_initialised:
             # The replica set should be initialised only once. Check should be
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
@@ -664,7 +731,7 @@ class MongoDBCharm(CharmBase):
                 event.defer()
                 return
 
-            self._db_initialised = True
+            self.db_initialised = True
 
     def _add_units_from_replica_set(
         self, event, mongo: MongoDBConnection, units_to_add: Set[str]
@@ -838,6 +905,7 @@ class MongoDBCharm(CharmBase):
         container.replan()
 
         self._connect_mongodb_exporter()
+        self._connect_pbm_agent()
 
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
@@ -933,6 +1001,9 @@ class MongoDBCharm(CharmBase):
         if not container.can_connect():
             return
 
+        if not self.db_initialised:
+            return
+
         # must wait for leader to set URI before connecting
         if not self.get_secret(APP_SCOPE, MonitorUser.get_password_key_name()):
             return
@@ -942,18 +1013,16 @@ class MongoDBCharm(CharmBase):
         # Restart changed services and start startup-enabled services.
         container.replan()
 
-    def is_unit_in_replica_set(self) -> bool:
-        """Check if the unit is in the replica set."""
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            try:
-                replset_members = mongo.get_replset_members()
-                return self.get_hostname_for_unit(self.unit) in replset_members
-            except NotReadyError as e:
-                logger.error(f"{self.unit.name}.is_unit_in_replica_set NotReadyError={e}")
-            except PyMongoError as e:
-                logger.error(f"{self.unit.name}.is_unit_in_replica_set PyMongoError={e}")
-        return False
+    def _socket_exists(self, container) -> bool:
+        return container.exists(Config.SOCKET_PATH)
 
+    def get_backup_service(self) -> ServiceInfo:
+        container = self.get_container()
+        return container.get_service(Config.Backup.SERVICE_NAME)
+    
+    def get_container(self) -> Container:
+        return self.unit.get_container(Config.CONTAINER_NAME)
+    
     # END: helper functions
 
     # BEGIN: static methods
