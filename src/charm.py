@@ -21,7 +21,13 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
-from charms.mongodb.v0.users import CHARM_USERS, MongoDBUser, MonitorUser, OperatorUser
+from charms.mongodb.v0.users import (
+    CHARM_USERS,
+    BackupUser,
+    MongoDBUser,
+    MonitorUser,
+    OperatorUser,
+)
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import (
     ActionEvent,
@@ -133,6 +139,12 @@ class MongoDBCharm(CharmBase):
         return self._get_mongodb_config_for_user(
             MonitorUser, [self.get_hostname_for_unit(self.unit)]
         )
+
+    @property
+    def backup_config(self) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for backup."""
+        self._check_or_set_user_password(BackupUser)
+        return self._get_mongodb_config_for_user(BackupUser, BackupUser.get_hosts())
 
     @property
     def _monitor_layer(self) -> Layer:
@@ -475,6 +487,27 @@ class MongoDBCharm(CharmBase):
 
         self._connect_mongodb_exporter()
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _init_backup_user(self):
+        """Creates the backup user on the MongoDB database."""
+        if self._is_user_created(BackupUser):
+            return
+
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            # first we must create the necessary roles for the PBM tool
+            logger.debug("creating the backup user roles...")
+            mongo.create_role(
+                role_name=BackupUser.get_mongodb_role(), privileges=BackupUser.get_privileges()
+            )
+            logger.debug("creating the backup user...")
+            mongo.create_user(self.backup_config)
+            self._set_user_created(BackupUser)
+
     # END: user management
 
     # BEGIN: helper functions
@@ -571,6 +604,7 @@ class MongoDBCharm(CharmBase):
                 direct_mongo.init_replset()
                 logger.info("User initialization")
                 self._init_operator_user()
+                self._init_backup_user()
                 self._init_monitor_user()
                 logger.info("Reconcile relations")
                 self.client_relations.oversee_users(None, event)

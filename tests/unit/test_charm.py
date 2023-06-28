@@ -678,3 +678,45 @@ class TestCharm(unittest.TestCase):
         )
         expected_uri = uri_template.format(password="mongo123")
         self.assertEqual(expected_uri, new_uri)
+
+    @patch("charm.MongoDBCharm._init_operator_user")
+    @patch("charm.MongoDBCharm._init_monitor_user")
+    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
+    @patch("ops.model.Container.exists")
+    @patch("charm.MongoDBCharm._pull_licenses")
+    @patch("ops.framework.EventBase.defer")
+    @patch("charm.MongoDBCharm._set_data_dir_permissions")
+    @patch("charm.MongoDBConnection")
+    def test__backup_user_created(
+        self,
+        connection,
+        fix_data_dir,
+        defer,
+        pull_licenses,
+        _socket_exists,
+        _connect_mongodb_exporter,
+        _init_operator_user,
+        _init_monitor_user,
+    ):
+        """Tests what backup user was created."""
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
+        self.harness.charm.on.start.emit()
+        password = self.harness.charm.app_peer_data["backup-password"]
+        self.assertIsNotNone(password)  # verify the password is set
+
+    @patch("charm.MongoDBConnection")
+    def test_set_password_provided(self, connection):
+        """Tests that a given password is set as the new mongodb password for backup user."""
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_leader(True)
+        self.harness.set_can_connect(container, True)
+        self.harness.charm.on.start.emit()
+        action_event = mock.Mock()
+        action_event.params = {"password": "canonical123", "username": "backup"}
+        self.harness.charm._on_set_password(action_event)
+        new_password = self.harness.charm.app_peer_data["backup-password"]
+
+        # verify app data is updated and results are reported to user
+        self.assertEqual("canonical123", new_password)
+        action_event.set_results.assert_called_with({"password": "canonical123"})
