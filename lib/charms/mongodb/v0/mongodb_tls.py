@@ -69,6 +69,10 @@ class MongoDBTLS(Object):
         self.framework.observe(self.certs.on.certificate_available, self._on_certificate_available)
         self.framework.observe(self.certs.on.certificate_expiring, self._on_certificate_expiring)
 
+    def is_tls_enabled(self, scope):
+        """Getting internal TLS flag (meaning)."""
+        return self.charm.get_secret(scope, CA_LABEL) is not None
+
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
         """Set the TLS private key, which will be used for requesting the certificate."""
         logger.debug("Request to set TLS private key received.")
@@ -135,11 +139,13 @@ class MongoDBTLS(Object):
         self.charm.set_secret(UNIT_SCOPE, CA_LABEL, None)
         self.charm.set_secret(UNIT_SCOPE, CERT_LABEL, None)
         self.charm.set_secret(UNIT_SCOPE, CHAIN_LABEL, None)
+
         if self.charm.unit.is_leader():
             logger.debug("Disabling internal TLS")
             self.charm.set_secret(APP_SCOPE, CA_LABEL, None)
             self.charm.set_secret(APP_SCOPE, CERT_LABEL, None)
             self.charm.set_secret(APP_SCOPE, CHAIN_LABEL, None)
+
         if self.charm.get_secret(APP_SCOPE, CERT_LABEL):
             logger.debug(
                 "Defer until the leader deletes the internal TLS certificate to avoid second restart."
@@ -168,7 +174,7 @@ class MongoDBTLS(Object):
             logger.debug("The internal TLS certificate available.")
             scope = APP_SCOPE  # internal crs
         else:
-            logger.error("An unknown certificate available.")
+            logger.error("An unknown certificate is available -- ignoring.")
             return
 
         if scope == UNIT_SCOPE or (scope == APP_SCOPE and self.charm.unit.is_leader()):
@@ -185,8 +191,10 @@ class MongoDBTLS(Object):
             event.defer()
             return
 
-        logger.debug("Restarting mongod with TLS enabled.")
+        logger.info("Restarting mongod with TLS enabled.")
 
+        # We may wanna add this?
+        # self.charm.delete_tls_certificate_from_workload()
         self.charm.push_tls_certificate_to_workload()
         self.charm.unit.status = MaintenanceStatus("enabling TLS")
         self.charm.restart_mongod_service()
@@ -257,6 +265,11 @@ class MongoDBTLS(Object):
         — CA file should have a full chain.
         — PEM file should have private key and certificate without certificate chain.
         """
+        if not self.is_tls_enabled(scope):
+            logging.info(f"TLS disabled for {scope}")
+            return None, None
+        logging.info(f"TLS *enabled* for {scope}, fetching data for CA and PEM files ")
+
         ca = self.charm.get_secret(scope, CA_LABEL)
         chain = self.charm.get_secret(scope, CHAIN_LABEL)
         ca_file = chain if chain else ca
