@@ -2,6 +2,12 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+from typing import Literal
+
+from literals import APP_SCOPE, UNIT_SCOPE
+
+Scopes = Literal[APP_SCOPE, UNIT_SCOPE]
+
 
 class Config:
     """Configuration for MongoDB Charm."""
