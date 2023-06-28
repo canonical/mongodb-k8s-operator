@@ -51,6 +51,7 @@ from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError
+from literals import APP_SCOPE, UNIT_SCOPE
 
 logger = logging.getLogger(__name__)
 
@@ -380,7 +381,9 @@ class MongoDBCharm(CharmBase):
         if not username:
             return
         key_name = MongoDBUser.get_password_key_name_for_user(username)
-        event.set_results({Config.Actions.PASSWORD_PARAM_NAME: self.get_secret("app", key_name)})
+        event.set_results(
+            {Config.Actions.PASSWORD_PARAM_NAME: self.get_secret(APP_SCOPE, key_name)}
+        )
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the specified user."""
@@ -398,7 +401,7 @@ class MongoDBCharm(CharmBase):
         new_password = event.params.get(Config.Actions.PASSWORD_PARAM_NAME, generate_password())
 
         if new_password == self.get_secret(
-            "app", MonitorUser.get_password_key_name_for_user(username)
+            APP_SCOPE, MonitorUser.get_password_key_name_for_user(username)
         ):
             event.log("The old and new passwords are equal.")
             event.set_results({Config.Actions.PASSWORD_PARAM_NAME: new_password})
@@ -416,7 +419,9 @@ class MongoDBCharm(CharmBase):
                 event.fail(f"Failed changing the password: {e}")
                 return
 
-        self.set_secret("app", MongoDBUser.get_password_key_name_for_user(username), new_password)
+        self.set_secret(
+            APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), new_password
+        )
 
         if username == MonitorUser.get_username():
             self._connect_mongodb_exporter()
@@ -521,9 +526,9 @@ class MongoDBCharm(CharmBase):
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: list[str]
     ) -> MongoDBConfiguration:
-        external_ca, _ = self.tls.get_tls_files("unit")
-        internal_ca, _ = self.tls.get_tls_files("app")
-        password = self.get_secret("app", user.get_password_key_name())
+        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
+        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+        password = self.get_secret(APP_SCOPE, user.get_password_key_name())
 
         return MongoDBConfiguration(
             replset=self.app.name,
@@ -549,15 +554,15 @@ class MongoDBCharm(CharmBase):
 
     def _check_or_set_user_password(self, user: MongoDBUser) -> None:
         key = user.get_password_key_name()
-        if not self.get_secret("app", key):
-            self.set_secret("app", key, generate_password())
+        if not self.get_secret(APP_SCOPE, key):
+            self.set_secret(APP_SCOPE, key, generate_password())
 
     def _check_or_set_keyfile(self) -> None:
-        if not self.get_secret("app", "keyfile"):
+        if not self.get_secret(APP_SCOPE, "keyfile"):
             self._generate_keyfile()
 
     def _generate_keyfile(self) -> None:
-        self.set_secret("app", "keyfile", generate_keyfile())
+        self.set_secret(APP_SCOPE, "keyfile", generate_keyfile())
 
     def _generate_secrets(self) -> None:
         """Generate passwords and put them into peer relation.
@@ -650,21 +655,21 @@ class MongoDBCharm(CharmBase):
 
     def get_secret(self, scope: str, key: str) -> Optional[str]:
         """Get TLS secret from the secret storage."""
-        if scope == "unit":
+        if scope == UNIT_SCOPE:
             return self.unit_peer_data.get(key, None)
-        elif scope == "app":
+        elif scope == APP_SCOPE:
             return self.app_peer_data.get(key, None)
         else:
             raise RuntimeError("Unknown secret scope.")
 
     def set_secret(self, scope: str, key: str, value: Optional[str]) -> None:
         """Set TLS secret in the secret storage."""
-        if scope == "unit":
+        if scope == UNIT_SCOPE:
             if not value:
                 del self.unit_peer_data[key]
                 return
             self.unit_peer_data.update({key: value})
-        elif scope == "app":
+        elif scope == APP_SCOPE:
             if not value:
                 del self.app_peer_data[key]
                 return
@@ -684,7 +689,7 @@ class MongoDBCharm(CharmBase):
 
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
-        keyfile = self.get_secret("app", "keyfile")
+        keyfile = self.get_secret(APP_SCOPE, "keyfile")
 
         container.push(
             Config.CONF_DIR + "/" + Config.TLS.KEY_FILE_NAME,
@@ -698,7 +703,7 @@ class MongoDBCharm(CharmBase):
     def push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
-        external_ca, external_pem = self.tls.get_tls_files("unit")
+        external_ca, external_pem = self.tls.get_tls_files(UNIT_SCOPE)
         if external_ca is not None:
             logger.debug("Uploading external ca to workload container")
             container.push(
@@ -720,7 +725,7 @@ class MongoDBCharm(CharmBase):
                 group=Config.UNIX_GROUP,
             )
 
-        internal_ca, internal_pem = self.tls.get_tls_files("app")
+        internal_ca, internal_pem = self.tls.get_tls_files(APP_SCOPE)
         if internal_ca is not None:
             logger.debug("Uploading internal ca to workload container")
             container.push(
@@ -771,7 +776,7 @@ class MongoDBCharm(CharmBase):
             return
 
         # must wait for leader to set URI before connecting
-        if not self.get_secret("app", MonitorUser.get_password_key_name()):
+        if not self.get_secret(APP_SCOPE, MonitorUser.get_password_key_name()):
             return
         # Add initial Pebble config layer using the Pebble API
         # mongodb_exporter --mongodb.uri=
