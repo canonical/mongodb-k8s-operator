@@ -46,6 +46,7 @@ from ops import (
     WaitingStatus,
 )
 from ops.main import main
+from ops.model import ModelError
 from ops.pebble import ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
 from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
@@ -57,6 +58,12 @@ from literals import APP_SCOPE, UNIT_SCOPE
 logger = logging.getLogger(__name__)
 
 SECRET_KEYFILE_NAME = "keyfile"
+INTERNAL_SECRET_LABEL = "internal-secret"
+
+SECRET_LABEL = "secret"
+SECRET_CACHE_LABEL = "cache"
+
+SECRET_DELETED_LABEL = "None"
 
 
 class MongoDBCharm(CharmBase):
@@ -70,11 +77,6 @@ class MongoDBCharm(CharmBase):
 
         self.framework.observe(
             self.on[Config.Relations.PEERS].relation_joined, self._relation_changes_handler
-        )
-
-        # Secrets should be generated ASAP
-        self.framework.observe(
-            self.on[Config.Relations.PEERS].relation_created, self._relation_changes_handler
         )
 
         self.framework.observe(
@@ -693,74 +695,111 @@ class MongoDBCharm(CharmBase):
         ):
             self.unit.status = ActiveStatus()
 
-    @staticmethod
-    def _mongo_secret_label(scope: Scopes, key: str) -> str:
-        return f"{scope}:{key}"
+    def _mongo_secret_label(self, scope: Scopes) -> str:
+        if scope == APP_SCOPE:
+            return f"{self.app.name}:{INTERNAL_SECRET_LABEL}"
+        elif scope == UNIT_SCOPE:
+            return f"{self.unit.name}:{INTERNAL_SECRET_LABEL}"
 
-    def _juju_secret_get(self, scope: Scopes, key: str) -> Optional[Secret]:
-        """Helper function to get Juju secret."""
-        label = self._mongo_secret_label(scope, key)
-        try:
-            return self.model.get_secret(label=f"{label}")
-        except SecretNotFoundError as e:
-            logging.info(f"No secret found for {label}, {e}")
+    def _juju_fetch_secret_content_safe(self, scope) -> Optional[str]:
+        """THIS FUNCTION SHOULD DISAPPEAR once Juju bug is fixed.
+
+        We experience a Juju misbehavior on secret.get_contents() at times
+        This code should keep us safe from that as long as the bug may be there
+        """
+        secret = self.secrets[scope].get(SECRET_LABEL)
+        if not secret:
             return
+
+        try:
+            return secret.get_content()
+        except ModelError:
+            tmp_secret = Secret(id=self.secrets[scope].id, backend=self.model._backend)
+            # No label is submtted, as due to a bug it triggers
+            # https://github.com/juju/juju/blob/e826f8b6c9be599ccc63aec79b4993f543cc68e6/worker/uniter/runner/context/context.go#L861
+            # as get_content() is "forcing" the usage both of labels and IDs
+            # https://github.com/canonical/operator/blob/6fcda007bff2671fa97924fbf70f480753f862d6/ops/model.py#L1096
+            return tmp_secret.get_content()
+
+    def _juju_secrets_get(self, scope: Scopes) -> Optional[Secret]:
+        """Helper function to get Juju secret."""
+        label = self._mongo_secret_label(scope)
+
+        if SECRET_CACHE_LABEL not in self.secrets[scope]:
+            try:
+                # NOTE: Secret contents are not yet available!
+                secret = self.model.get_secret(label=f"{label}")
+            except SecretNotFoundError as e:
+                logging.debug(f"No secret found for {label}, {e}")
+                return
+
+            logging.debug(f"Secret {label} downloaded")
+
+            # We keep the secret object around -- needed when applying modifications
+            self.secrets[scope][SECRET_LABEL] = secret
+
+            # We retrieve and cache actual secret data for the lifetime of the event scope
+            self.secrets[scope][SECRET_CACHE_LABEL] = self._juju_fetch_secret_content_safe(scope)
+
+        return self.secrets[scope][SECRET_CACHE_LABEL]
 
     def _juju_secret_get_key(self, scope: Scopes, key: str) -> Optional[str]:
         if not key:
             return
 
-        secret = self._juju_secret_get(scope, key)
-
-        if not secret:
-            return
-
-        logging.debug(f"Received secret {secret.label}")
-
-        secret_contents = secret.get_content()
-        return secret_contents.get(key)
+        if self._juju_secrets_get(scope):
+            secret_cache = self.secrets[scope].get(SECRET_CACHE_LABEL)
+            if secret_cache:
+                secret_data = secret_cache.get(key)
+                if secret_data and secret_data != SECRET_DELETED_LABEL:
+                    return secret_data
 
     def get_secret(self, scope: Scopes, key: str) -> Optional[str]:
         """Getting a secret."""
-        if key in self.secrets[scope]:
-            return self.secrets[scope][key]
-
         peer_data = self._peer_data(scope)
-
-        existing_secret_data = peer_data.get(key)
-        if not existing_secret_data:
-            return
 
         juju_version = JujuVersion.from_environ()
 
         if juju_version.has_secrets:
-            self.secrets[scope][key] = self._juju_secret_get_key(scope, key)
+            return self._juju_secret_get_key(scope, key)
         else:
-            self.secrets[scope][key] = existing_secret_data
-
-        return self.secrets[scope][key]
+            return peer_data.get(key)
 
     def _juju_secret_set(self, scope: Scopes, key: str, value: str) -> str:
         """Helper function setting Juju secret."""
         peer_data = self._peer_data(scope)
-        secret = self._juju_secret_get(scope, key)
+        self._juju_secrets_get(scope)
+
+        secret = self.secrets[scope].get(SECRET_LABEL)
+
+        # It's not the first secret for the scope, we can re-use the existing one
+        # that was fetched in the previous call
         if secret:
-            secret.set_content({key: value})
-            logging.debug(
-                f"Secret {key}, ID: {secret.id}, label: {secret.label} is being modified"
-            )
+            secret_cache = self.secrets[scope][SECRET_CACHE_LABEL]
+
+            if secret_cache.get(key) == value:
+                logging.debug(f"Key {scope}:{key} has this value defined already")
+            else:
+                secret_cache[key] = value
+                secret.set_content(secret_cache)
+                logging.debug(f"Secret {scope}:{key} was {key} set")
+
+        # We need to create a brand-new secret for this scope
         else:
             scope_obj = self._scope_opj(scope)
-            label = self._mongo_secret_label(scope, key)
+            label = self._mongo_secret_label(scope)
+
             secret = scope_obj.add_secret({key: value}, label=f"{label}")
             if not secret:
-                raise SecretNotAddedError(f"Couldn't set secret {key}")
-            logging.info(
-                f"Secret {key}, published to Juju Secret Store with label: {label}, ID: {secret.id}"
-            )
-            peer_data.update({key: secret.id})
+                raise SecretNotAddedError(f"Couldn't set secret {scope}:{label}:{key}")
 
-        return secret.id
+            self.secrets[scope][SECRET_LABEL] = secret
+            logging.debug(
+                f"Secret {scope}:{key} published (as first). Secret label: {label}, ID: {secret.id}"
+            )
+            peer_data.update({label: secret.id})
+
+        return self.secrets[scope][SECRET_LABEL].id
 
     def set_secret(self, scope: Scopes, key: str, value: Optional[str]) -> Optional[str]:
         """(Re)defining a secret."""
@@ -776,25 +815,34 @@ class MongoDBCharm(CharmBase):
             peer_data = self._peer_data(scope)
             peer_data.update({key: value})
 
-        self.secrets[scope][key] = value
         return result
 
     def _juju_secret_remove(self, scope: Scopes, key: str) -> None:
         """Remove a Juju 3.x secret."""
-        secret = self._juju_secret_get(scope, key)
-        if secret:
-            secret.remove_all_revisions()
+        self._juju_secrets_get(scope)
+
+        secret = self.secrets[scope].get(SECRET_LABEL)
+        if not secret:
+            logging.error(f"Secret {scope}:{key} wasn't deleted: no secrets are available")
+            return
+
+        secret_cache = self.secrets[scope].get(SECRET_CACHE_LABEL)
+        if not secret_cache or key not in secret_cache:
+            logging.error(f"No secret {scope}:{key}")
+            return
+
+        secret_cache[key] = SECRET_DELETED_LABEL
+        secret.set_content(secret_cache)
+        logging.debug(f"Secret {scope}:{key}")
 
     def remove_secret(self, scope, key) -> None:
         """Removing a secret."""
         juju_version = JujuVersion.from_environ()
         if juju_version.has_secrets:
-            self._juju_secret_remove(scope, key)
+            return self._juju_secret_remove(scope, key)
 
         peer_data = self._peer_data(scope)
         del peer_data[key]
-        if key in self.secrets[scope]:
-            del self.secrets[scope][key]
 
     def restart_mongod_service(self):
         """Restart mongod service."""
@@ -871,7 +919,7 @@ class MongoDBCharm(CharmBase):
 
     def delete_tls_certificate_from_workload(self) -> None:
         """Deletes certificate from the workload container."""
-        logger.error("Deleting TLS certificate from workload container")
+        logger.info("Deleting TLS certificate from workload container")
         container = self.unit.get_container(Config.CONTAINER_NAME)
         for file in [
             Config.TLS.EXT_CA_FILE,
@@ -883,6 +931,8 @@ class MongoDBCharm(CharmBase):
                 container.remove_path(f"{Config.CONF_DIR}/{file}")
             except (PathError, ProtocolError, MissingSecretError) as e:
                 logger.error("Cannot remove keyFile: %r", e)
+            except Exception as e:
+                logger.error("Cannot remove keyFile due to unknown error: %r", e)
 
     def get_hostname_for_unit(self, unit: Unit) -> str:
         """Create a DNS name for a MongoDB unit.
