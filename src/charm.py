@@ -106,6 +106,7 @@ class MongoDBCharm(CharmBase):
             relation_name=Config.Relations.LOGGING,
             container_name=Config.CONTAINER_NAME,
         )
+        self.secrets = {APP_SCOPE: {}, UNIT_SCOPE: {}}
 
     # BEGIN: properties
 
@@ -721,6 +722,9 @@ class MongoDBCharm(CharmBase):
 
     def get_secret(self, scope: Scopes, key: str) -> Optional[str]:
         """Getting a secret."""
+        if key in self.secrets[scope]:
+            return self.secrets[scope][key]
+
         peer_data = self._peer_data(scope)
 
         existing_secret_data = peer_data.get(key)
@@ -730,9 +734,11 @@ class MongoDBCharm(CharmBase):
         juju_version = JujuVersion.from_environ()
 
         if juju_version.has_secrets:
-            return self._juju_secret_get_key(scope, key)
+            self.secrets[scope][key] = self._juju_secret_get_key(scope, key)
         else:
-            return existing_secret_data
+            self.secrets[scope][key] = existing_secret_data
+
+        return self.secrets[scope][key]
 
     def _juju_secret_set(self, scope: Scopes, key: str, value: str) -> str:
         """Helper function setting Juju secret."""
@@ -763,11 +769,15 @@ class MongoDBCharm(CharmBase):
 
         juju_version = JujuVersion.from_environ()
 
+        result = None
         if juju_version.has_secrets:
-            return self._juju_secret_set(scope, key, value)
+            result = self._juju_secret_set(scope, key, value)
         else:
             peer_data = self._peer_data(scope)
             peer_data.update({key: value})
+
+        self.secrets[scope][key] = value
+        return result
 
     def _juju_secret_remove(self, scope: Scopes, key: str) -> None:
         """Remove a Juju 3.x secret."""
@@ -779,10 +789,12 @@ class MongoDBCharm(CharmBase):
         """Removing a secret."""
         juju_version = JujuVersion.from_environ()
         if juju_version.has_secrets:
-            return self._juju_secret_remove(scope, key)
+            self._juju_secret_remove(scope, key)
 
         peer_data = self._peer_data(scope)
         del peer_data[key]
+        if key in self.secrets[scope]:
+            del self.secrets[scope][key]
 
     def restart_mongod_service(self):
         """Restart mongod service."""
