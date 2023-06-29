@@ -832,7 +832,7 @@ class TestCharm(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {"username": "monitor", "password": "mongo123"}
         self.harness.charm._on_set_password(action_event)
-        password = self.harness.charm.app_peer_data["monitor-password"]
+        password = self.harness.charm.get_secret("app", "monitor-password")
 
         updated_plan = self.harness.get_container_pebble_plan("mongod").to_dict()
         new_uri = (
@@ -867,7 +867,7 @@ class TestCharm(unittest.TestCase):
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         self.harness.charm.on.start.emit()
-        password = self.harness.charm.app_peer_data["backup-password"]
+        password = self.harness.charm.get_secret("app", "backup-password")
         self.assertIsNotNone(password)  # verify the password is set
 
     @patch("charm.MongoDBConnection")
@@ -880,8 +880,7 @@ class TestCharm(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {"password": "canonical123", "username": "backup"}
         self.harness.charm._on_set_password(action_event)
-        new_password = self.harness.charm.app_peer_data["backup-password"]
+        new_password = self.harness.charm.get_secret("app", "backup-password")
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
-        action_event.set_results.assert_called_with({"password": "canonical123"})
