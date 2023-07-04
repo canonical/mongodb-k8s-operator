@@ -4,6 +4,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import time
 from typing import List, Optional, Set
 
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
@@ -82,6 +83,7 @@ class MongoDBCharm(CharmBase):
 
         self.framework.observe(self.on.get_password_action, self._on_get_password)
         self.framework.observe(self.on.set_password_action, self._on_set_password)
+        self.framework.observe(self.on.stop, self._on_stop)
 
         self.client_relations = MongoDBProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
@@ -219,6 +221,33 @@ class MongoDBCharm(CharmBase):
     # END: properties
 
     # BEGIN: charm events
+    def is_unit_in_replica_set(self) -> bool:
+        """Check if the unit is in the replica set."""
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                replset_members = mongo.get_replset_members()
+                return self.get_hostname_for_unit(self.unit) in replset_members
+            except NotReadyError as e:
+                logger.error(f"{self.unit.name}.is_unit_in_replica_set NotReadyError={e}")
+            except PyMongoError as e:
+                logger.error(f"{self.unit.name}.is_unit_in_replica_set PyMongoError={e}")
+        return False
+
+    def _on_stop(self, event) -> None:
+        if "True" == self.unit_peer_data.get("unit_departed", "False"):
+            logger.debug(f"{self.unit.name} blocking on_stop")
+            is_in_replica_set = True
+            timeout = 1000
+            while is_in_replica_set and timeout > 0:
+                is_in_replica_set = self.is_unit_in_replica_set()
+                time.sleep(1)
+                timeout -= 1
+                if timeout < 0:
+                    raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
+            logger.debug(f"{self.unit.name} releasing on_stop")
+            self.unit_peer_data["unit_departed"] = ""
+
+
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
         # Get a reference the container attribute
@@ -294,6 +323,10 @@ class MongoDBCharm(CharmBase):
     def _relation_changes_handler(self, event) -> None:
         """Handles different relation events and updates MongoDB replica set."""
         self._connect_mongodb_exporter()
+
+        if type(event) is RelationDepartedEvent:
+            if event.departing_unit.name == self.unit.name:
+                self.unit_peer_data.setdefault("unit_departed", "True")
 
         if not self.unit.is_leader():
             return
