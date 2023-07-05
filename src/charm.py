@@ -30,13 +30,7 @@ from charms.mongodb.v0.users import (
     OperatorUser,
 )
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from ops.charm import (
-    ActionEvent,
-    CharmBase,
-    RelationDepartedEvent,
-    StartEvent,
-    StorageDetachingEvent,
-)
+from ops.charm import ActionEvent, CharmBase, RelationDepartedEvent, StartEvent
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -48,12 +42,14 @@ from ops.model import (
 )
 from ops.pebble import ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
-from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError
 
 logger = logging.getLogger(__name__)
+
+UNIT_REMOVAL_TIMEOUT = 1000
 
 
 class MongoDBCharm(CharmBase):
@@ -346,7 +342,7 @@ class MongoDBCharm(CharmBase):
         if "True" == self.unit_peer_data.get("unit_departed", "False"):
             logger.debug(f"{self.unit.name} blocking on_stop")
             is_in_replica_set = True
-            timeout = 1000
+            timeout = UNIT_REMOVAL_TIMEOUT
             while is_in_replica_set and timeout > 0:
                 is_in_replica_set = self.is_unit_in_replica_set()
                 time.sleep(1)
