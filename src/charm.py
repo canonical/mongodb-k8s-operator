@@ -5,7 +5,7 @@
 
 import logging
 import time
-from typing import List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
@@ -30,13 +30,17 @@ from charms.mongodb.v0.users import (
     OperatorUser,
 )
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from ops import JujuVersion
 from ops.charm import ActionEvent, CharmBase, RelationDepartedEvent, StartEvent
 from ops.main import main
 from ops.model import (
     ActiveStatus,
     Container,
+    ModelError,
     Relation,
     RelationDataContent,
+    Secret,
+    SecretNotFoundError,
     Unit,
     WaitingStatus,
 )
@@ -44,13 +48,21 @@ from ops.pebble import ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
-from config import Config
-from exceptions import AdminUserCreationError
+from config import Config, Scopes
+from exceptions import AdminUserCreationError, MissingSecretError, SecretNotAddedError
 from literals import APP_SCOPE, UNIT_SCOPE
 
 logger = logging.getLogger(__name__)
 
 UNIT_REMOVAL_TIMEOUT = 1000
+
+SECRET_KEYFILE_NAME = "keyfile"
+INTERNAL_SECRET_LABEL = "internal-secret"
+
+SECRET_LABEL = "secret"
+SECRET_CACHE_LABEL = "cache"
+
+SECRET_DELETED_LABEL = "None"
 
 
 class MongoDBCharm(CharmBase):
@@ -81,6 +93,8 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.set_password_action, self._on_set_password)
         self.framework.observe(self.on.stop, self._on_stop)
 
+        self.framework.observe(self.on.secret_remove, self._on_secret_remove)
+
         self.client_relations = MongoDBProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
 
@@ -94,6 +108,7 @@ class MongoDBCharm(CharmBase):
             relation_name=Config.Relations.LOGGING,
             container_name=Config.CONTAINER_NAME,
         )
+        self.secrets = {APP_SCOPE: {}, UNIT_SCOPE: {}}
 
     # BEGIN: properties
 
@@ -184,20 +199,25 @@ class MongoDBCharm(CharmBase):
         return Layer(layer_config)  # type: ignore
 
     @property
-    def unit_peer_data(self) -> RelationDataContent:
+    def relation(self) -> Optional[Relation]:
         """Peer relation data object."""
-        relation = self.model.get_relation(Config.Relations.PEERS)
+        return self.model.get_relation(Config.Relations.PEERS)
+
+    @property
+    def unit_peer_data(self) -> Dict:
+        """Peer relation data object."""
+        relation = self.relation
         if relation is None:
-            return {}  # type: ignore
+            return {}
 
         return relation.data[self.unit]
 
     @property
     def app_peer_data(self) -> RelationDataContent:
         """Peer relation data object."""
-        relation = self.model.get_relation(Config.Relations.PEERS)
+        relation = self.relation
         if relation is None:
-            return {}  # type: ignore
+            return {}
 
         return relation.data[self.app]
 
@@ -216,12 +236,24 @@ class MongoDBCharm(CharmBase):
 
     # END: properties
 
+    # BEGIN: generic helper methods
+
+    def _scope_opj(self, scope: Scopes):
+        if scope == APP_SCOPE:
+            return self.app
+        if scope == UNIT_SCOPE:
+            return self.unit
+
+    def _peer_data(self, scope: Scopes):
+        return self.relation.data[self._scope_opj(scope)]
+
+    # END: generic helper methods
+
     # BEGIN: charm events
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
         # Get a reference the container attribute
         container = self.unit.get_container(Config.CONTAINER_NAME)
-
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
             event.defer()
@@ -234,8 +266,8 @@ class MongoDBCharm(CharmBase):
             self._pull_licenses(container)
             self._set_data_dir_permissions(container)
 
-        except (PathError, ProtocolError) as e:
-            logger.error("Cannot put keyFile: %r", e)
+        except (PathError, ProtocolError, MissingSecretError) as e:
+            logger.error("Cannot initialize workload: %r", e)
             event.defer()
             return
 
@@ -245,7 +277,12 @@ class MongoDBCharm(CharmBase):
         container.replan()
 
         # when a network cuts and the pod restarts - reconnect to the exporter
-        self._connect_mongodb_exporter()
+        try:
+            self._connect_mongodb_exporter()
+        except MissingSecretError as e:
+            logger.error("Cannot connect mongodb exporter: %r", e)
+            event.defer()
+            return
 
     def _on_start(self, event) -> None:
         """Initialise MongoDB.
@@ -332,6 +369,7 @@ class MongoDBCharm(CharmBase):
 
                 # app relations should be made aware of the new set of hosts
                 self._update_app_relation_data(mongo.get_users())
+
             except NotReadyError:
                 logger.info("Deferring reconfigure: another member doing sync right now")
                 event.defer()
@@ -402,14 +440,19 @@ class MongoDBCharm(CharmBase):
                 event.fail(f"Failed changing the password: {e}")
                 return
 
-        self.set_secret(
+        secret_id = self.set_secret(
             APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), new_password
         )
 
         if username == MonitorUser.get_username():
             self._connect_mongodb_exporter()
 
-        event.set_results({Config.Actions.PASSWORD_PARAM_NAME: new_password})
+        event.set_results(
+            {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
+        )
+
+    def _on_secret_remove(self, event):
+        logging.debug(f"Secret {event._id} seems to have no observers, could be removed")
 
     # END: actions
 
@@ -512,17 +555,19 @@ class MongoDBCharm(CharmBase):
         external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
         internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
         password = self.get_secret(APP_SCOPE, user.get_password_key_name())
-
-        return MongoDBConfiguration(
-            replset=self.app.name,
-            database=user.get_database_name(),
-            username=user.get_username(),
-            password=password,  # type: ignore
-            hosts=set(hosts),
-            roles=set(user.get_roles()),
-            tls_external=external_ca is not None,
-            tls_internal=internal_ca is not None,
-        )
+        if not password:
+            raise MissingSecretError("Password for {APP_SCOPE}, {username} couldn't be retrieved")
+        else:
+            return MongoDBConfiguration(
+                replset=self.app.name,
+                database=user.get_database_name(),
+                username=user.get_username(),
+                password=password,  # type: ignore
+                hosts=set(hosts),
+                roles=set(user.get_roles()),
+                tls_external=external_ca is not None,
+                tls_internal=internal_ca is not None,
+            )
 
     def _get_user_or_fail_event(self, event: ActionEvent, default_username: str) -> Optional[str]:
         """Returns MongoDBUser object or raises ActionFail if user doesn't exist."""
@@ -563,7 +608,7 @@ class MongoDBCharm(CharmBase):
         """Helper function to update application relation data."""
         for relation in self.model.relations[Config.Relations.NAME]:
             username = self.client_relations._get_username_from_relation_id(relation.id)
-            password = relation.data[self.app]["password"]
+            password = relation.data[self.app][Config.Actions.PASSWORD_PARAM_NAME]
             if username in database_users:
                 config = self.client_relations._get_config(username, password)
                 relation.data[self.app].update(
@@ -636,29 +681,156 @@ class MongoDBCharm(CharmBase):
         ):
             self.unit.status = ActiveStatus()
 
-    def get_secret(self, scope: str, key: str) -> Optional[str]:
-        """Get TLS secret from the secret storage."""
-        if scope == UNIT_SCOPE:
-            return self.unit_peer_data.get(key, None)
-        elif scope == APP_SCOPE:
-            return self.app_peer_data.get(key, None)
-        else:
-            raise RuntimeError("Unknown secret scope.")
+    def _mongo_secret_label(self, scope: Scopes) -> str:
+        if scope == APP_SCOPE:
+            return f"{self.app.name}:{INTERNAL_SECRET_LABEL}"
+        elif scope == UNIT_SCOPE:
+            return f"{self.unit.name}:{INTERNAL_SECRET_LABEL}"
 
-    def set_secret(self, scope: str, key: str, value: Optional[str]) -> None:
-        """Set TLS secret in the secret storage."""
-        if scope == UNIT_SCOPE:
-            if not value:
-                del self.unit_peer_data[key]
+    def _juju_fetch_secret_content_safe(self, scope) -> Optional[str]:
+        """THIS FUNCTION SHOULD DISAPPEAR once Juju bug is fixed.
+
+        We experience a Juju misbehavior on secret.get_contents() at times
+        This code should keep us safe from that as long as the bug may be there
+        """
+        secret = self.secrets[scope].get(SECRET_LABEL)
+        if not secret:
+            return
+
+        try:
+            return secret.get_content()
+        except ModelError:
+            tmp_secret = Secret(
+                id=self.secrets[scope][SECRET_LABEL].id, backend=self.model._backend
+            )
+            # No label is submtted, as due to a bug it triggers
+            # https://github.com/juju/juju/blob/e826f8b6c9be599ccc63aec79b4993f543cc68e6/worker/uniter/runner/context/context.go#L861
+            # as get_content() is "forcing" the usage both of labels and IDs
+            # https://github.com/canonical/operator/blob/6fcda007bff2671fa97924fbf70f480753f862d6/ops/model.py#L1096
+            return tmp_secret.get_content()
+
+    def _juju_secrets_get(self, scope: Scopes) -> Optional[Secret]:
+        """Helper function to get Juju secret."""
+        label = self._mongo_secret_label(scope)
+
+        if SECRET_CACHE_LABEL not in self.secrets[scope]:
+            try:
+                # NOTE: Secret contents are not yet available!
+                secret = self.model.get_secret(label=f"{label}")
+            except SecretNotFoundError as e:
+                logging.debug(f"No secret found for {label}, {e}")
                 return
-            self.unit_peer_data.update({key: value})
-        elif scope == APP_SCOPE:
-            if not value:
-                del self.app_peer_data[key]
-                return
-            self.app_peer_data.update({key: value})
+
+            logging.debug(f"Secret {label} downloaded")
+
+            # We keep the secret object around -- needed when applying modifications
+            self.secrets[scope][SECRET_LABEL] = secret
+
+            # We retrieve and cache actual secret data for the lifetime of the event scope
+            self.secrets[scope][SECRET_CACHE_LABEL] = self._juju_fetch_secret_content_safe(scope)
+
+        return self.secrets[scope][SECRET_CACHE_LABEL]
+
+    def _juju_secret_get_key(self, scope: Scopes, key: str) -> Optional[str]:
+        if not key:
+            return
+
+        if self._juju_secrets_get(scope):
+            secret_cache = self.secrets[scope].get(SECRET_CACHE_LABEL)
+            if secret_cache:
+                secret_data = secret_cache.get(key)
+                if secret_data and secret_data != SECRET_DELETED_LABEL:
+                    return secret_data
+
+    def get_secret(self, scope: Scopes, key: str) -> Optional[str]:
+        """Getting a secret."""
+        peer_data = self._peer_data(scope)
+
+        juju_version = JujuVersion.from_environ()
+
+        if juju_version.has_secrets:
+            return self._juju_secret_get_key(scope, key)
         else:
-            raise RuntimeError("Unknown secret scope.")
+            return peer_data.get(key)
+
+    def _juju_secret_set(self, scope: Scopes, key: str, value: str) -> str:
+        """Helper function setting Juju secret."""
+        peer_data = self._peer_data(scope)
+        self._juju_secrets_get(scope)
+
+        secret = self.secrets[scope].get(SECRET_LABEL)
+
+        # It's not the first secret for the scope, we can re-use the existing one
+        # that was fetched in the previous call
+        if secret:
+            secret_cache = self.secrets[scope][SECRET_CACHE_LABEL]
+
+            if secret_cache.get(key) == value:
+                logging.debug(f"Key {scope}:{key} has this value defined already")
+            else:
+                secret_cache[key] = value
+                secret.set_content(secret_cache)
+                logging.debug(f"Secret {scope}:{key} was {key} set")
+
+        # We need to create a brand-new secret for this scope
+        else:
+            scope_obj = self._scope_opj(scope)
+            label = self._mongo_secret_label(scope)
+
+            secret = scope_obj.add_secret({key: value}, label=f"{label}")
+            if not secret:
+                raise SecretNotAddedError(f"Couldn't set secret {scope}:{label}:{key}")
+
+            self.secrets[scope][SECRET_LABEL] = secret
+            logging.debug(
+                f"Secret {scope}:{key} published (as first). Secret label: {label}, ID: {secret.id}"
+            )
+            peer_data.update({label: secret.id})
+
+        return self.secrets[scope][SECRET_LABEL].id
+
+    def set_secret(self, scope: Scopes, key: str, value: Optional[str]) -> Optional[str]:
+        """(Re)defining a secret."""
+        if not value:
+            return self.remove_secret(scope, key)
+
+        juju_version = JujuVersion.from_environ()
+
+        result = None
+        if juju_version.has_secrets:
+            result = self._juju_secret_set(scope, key, value)
+        else:
+            peer_data = self._peer_data(scope)
+            peer_data.update({key: value})
+
+        return result
+
+    def _juju_secret_remove(self, scope: Scopes, key: str) -> None:
+        """Remove a Juju 3.x secret."""
+        self._juju_secrets_get(scope)
+
+        secret = self.secrets[scope].get(SECRET_LABEL)
+        if not secret:
+            logging.error(f"Secret {scope}:{key} wasn't deleted: no secrets are available")
+            return
+
+        secret_cache = self.secrets[scope].get(SECRET_CACHE_LABEL)
+        if not secret_cache or key not in secret_cache:
+            logging.error(f"No secret {scope}:{key}")
+            return
+
+        secret_cache[key] = SECRET_DELETED_LABEL
+        secret.set_content(secret_cache)
+        logging.debug(f"Secret {scope}:{key}")
+
+    def remove_secret(self, scope, key) -> None:
+        """Removing a secret."""
+        juju_version = JujuVersion.from_environ()
+        if juju_version.has_secrets:
+            return self._juju_secret_remove(scope, key)
+
+        peer_data = self._peer_data(scope)
+        del peer_data[key]
 
     def restart_mongod_service(self):
         """Restart mongod service."""
@@ -672,21 +844,24 @@ class MongoDBCharm(CharmBase):
 
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
-        keyfile = self.get_secret(APP_SCOPE, "keyfile")
-
-        container.push(
-            Config.CONF_DIR + "/" + Config.TLS.KEY_FILE_NAME,
-            keyfile,  # type: ignore
-            make_dirs=True,
-            permissions=0o400,
-            user=Config.UNIX_USER,
-            group=Config.UNIX_GROUP,
-        )
+        keyfile = self.get_secret(APP_SCOPE, SECRET_KEYFILE_NAME)
+        if not keyfile:
+            raise MissingSecretError(f"No secret defined for {APP_SCOPE}, keyfile")
+        else:
+            container.push(
+                Config.CONF_DIR + "/" + Config.TLS.KEY_FILE_NAME,
+                keyfile,  # type: ignore
+                make_dirs=True,
+                permissions=0o400,
+                user=Config.UNIX_USER,
+                group=Config.UNIX_GROUP,
+            )
 
     def push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
         external_ca, external_pem = self.tls.get_tls_files(UNIT_SCOPE)
+
         if external_ca is not None:
             logger.debug("Uploading external ca to workload container")
             container.push(
@@ -732,12 +907,20 @@ class MongoDBCharm(CharmBase):
 
     def delete_tls_certificate_from_workload(self) -> None:
         """Deletes certificate from the workload container."""
-        logger.error("Deleting TLS certificate from workload container")
+        logger.info("Deleting TLS certificate from workload container")
         container = self.unit.get_container(Config.CONTAINER_NAME)
-        container.remove_path(Config.CONF_DIR + "/" + Config.TLS.EXT_CA_FILE)
-        container.remove_path(Config.CONF_DIR + "/" + Config.TLS.EXT_PEM_FILE)
-        container.remove_path(Config.CONF_DIR + "/" + Config.TLS.INT_CA_FILE)
-        container.remove_path(Config.CONF_DIR + "/" + Config.TLS.INT_PEM_FILE)
+        for file in [
+            Config.TLS.EXT_CA_FILE,
+            Config.TLS.EXT_PEM_FILE,
+            Config.TLS.INT_CA_FILE,
+            Config.TLS.INT_PEM_FILE,
+        ]:
+            try:
+                container.remove_path(f"{Config.CONF_DIR}/{file}")
+            except (PathError, ProtocolError, MissingSecretError) as e:
+                logger.error("Cannot remove keyFile: %r", e)
+            except Exception as e:
+                logger.error("Cannot remove keyFile due to unknown error: %r", e)
 
     def get_hostname_for_unit(self, unit: Unit) -> str:
         """Create a DNS name for a MongoDB unit.
