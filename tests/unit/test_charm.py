@@ -1,14 +1,17 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import logging
+import re
 import unittest
 from unittest import mock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
+import pytest
 from charms.mongodb.v0.helpers import CONF_DIR, DATA_DIR, KEY_FILE
 from ops.model import ModelError
 from ops.pebble import APIError, ExecError, PathError, ProtocolError
 from ops.testing import Harness
+from parameterized import parameterized
 from pymongo.errors import (
     ConfigurationError,
     ConnectionFailure,
@@ -33,6 +36,7 @@ logger = logging.getLogger(__name__)
 class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     def setUp(self):
+        self.maxDiff = None
         self.harness = Harness(MongoDBCharm)
         mongo_resource = {
             "registrypath": "mongo:4.4",
@@ -43,6 +47,15 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(True)
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
+
+    @pytest.fixture
+    def use_caplog(self, caplog):
+        self._caplog = caplog
+
+    def _setup_secrets(self):
+        self.harness.set_leader(True)
+        self.harness.charm._generate_secrets()
+        self.harness.set_leader(False)
 
     @patch("charm.MongoDBCharm._pull_licenses")
     @patch("ops.framework.EventBase.defer")
@@ -618,6 +631,75 @@ class TestCharm(unittest.TestCase):
 
         defer.assert_not_called()
 
+    def test_get_password(self):
+        self._setup_secrets()
+        assert isinstance(self.harness.charm.get_secret("app", "monitor-password"), str)
+        self.harness.charm.get_secret("app", "non-existing-secret") is None
+
+        self.harness.charm.set_secret("unit", "somekey", "bla")
+        assert isinstance(self.harness.charm.get_secret("unit", "somekey"), str)
+        self.harness.charm.get_secret("unit", "non-existing-secret") is None
+
+    def test_set_reset_existing_password_app(self):
+        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        self._setup_secrets()
+
+        # Getting current password
+        self.harness.charm.set_secret("app", "monitor-password", "bla")
+        assert self.harness.charm.get_secret("app", "monitor-password") == "bla"
+
+        self.harness.charm.set_secret("app", "monitor-password", "blablabla")
+        assert self.harness.charm.get_secret("app", "monitor-password") == "blablabla"
+
+    @pytest.mark.usefixtures("only_with_juju_secrets")
+    @parameterized.expand([("app"), ("unit")])
+    def test_set_secret_returning_secret_id(self, scope):
+        secret_id = self.harness.charm.set_secret("app", "somekey", "bla")
+        assert re.match("secret:([a-z0-9-]){36}", secret_id)
+
+    @parameterized.expand([("app"), ("unit")])
+    def test_set_reset_new_secret(self, scope):
+        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        # Getting current password
+        self.harness.charm.set_secret(scope, "new-secret", "bla")
+        assert self.harness.charm.get_secret(scope, "new-secret") == "bla"
+
+        # Reset new secret
+        self.harness.charm.set_secret(scope, "new-secret", "blablabla")
+        assert self.harness.charm.get_secret(scope, "new-secret") == "blablabla"
+
+        # Set another new secret
+        self.harness.charm.set_secret(scope, "new-secret2", "blablabla")
+        assert self.harness.charm.get_secret(scope, "new-secret2") == "blablabla"
+
+    @parameterized.expand([("app"), ("unit")])
+    def test_invalid_secret(self, scope):
+        with self.assertRaises(TypeError):
+            self.harness.charm.set_secret("unit", "somekey", 1)
+
+        self.harness.charm.set_secret("unit", "somekey", "")
+        assert self.harness.charm.get_secret(scope, "somekey") is None
+
+    @pytest.mark.usefixtures("use_caplog")
+    def test_delete_password(self):
+        """NOTE: currently ops.testing seems to allow for non-leader to remove secrets too!"""
+        self._setup_secrets()
+
+        assert self.harness.charm.get_secret("app", "monitor-password")
+        self.harness.charm.remove_secret("app", "monitor-password")
+        assert self.harness.charm.get_secret("app", "monitor-password") is None
+
+        assert self.harness.charm.set_secret("unit", "somekey", "somesecret")
+        self.harness.charm.remove_secret("unit", "somekey")
+        assert self.harness.charm.get_secret("unit", "somekey") is None
+
+        with self._caplog.at_level(logging.ERROR):
+            self.harness.charm.remove_secret("app", "non-existing-secret")
+            assert "No secret app:non-existing-secret" in self._caplog.text
+
+            self.harness.charm.remove_secret("unit", "non-existing-secret")
+            assert "No secret unit:non-existing-secret" in self._caplog.text
+
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
     def test_connect_to_mongo_exporter_on_set_password(self, connect_exporter, connection):
@@ -632,6 +714,89 @@ class TestCharm(unittest.TestCase):
         self.harness.charm._on_set_password(action_event)
         connect_exporter.assert_called()
 
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
+    def test_event_set_password_secrets(self, connect_exporter, connection):
+        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
+
+        Furthermore: in Juju 3.x we want to use secrets
+        """
+        pw = "bla"
+
+        self.harness.set_leader(True)
+
+        action_event = mock.Mock()
+        action_event.set_results = MagicMock()
+        action_event.params = {"username": "monitor", "password": pw}
+        self.harness.charm._on_set_password(action_event)
+        connect_exporter.assert_called()
+
+        action_event.set_results.assert_called()
+        args_pw_set = action_event.set_results.call_args.args[0]
+        assert "secret-id" in args_pw_set
+
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_get_password(action_event)
+        args_pw = action_event.set_results.call_args.args[0]
+        assert "password" in args_pw
+        assert args_pw["password"] == pw
+
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
+    def test_event_auto_reset_password_secrets_when_no_pw_value_shipped(
+        self, connect_exporter, connection
+    ):
+        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
+
+        Furthermore: in Juju 3.x we want to use secrets
+        """
+        self._setup_secrets()
+        self.harness.set_leader(True)
+
+        action_event = mock.Mock()
+        action_event.set_results = MagicMock()
+
+        # Getting current password
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_get_password(action_event)
+        args_pw = action_event.set_results.call_args.args[0]
+        assert "password" in args_pw
+        pw1 = args_pw["password"]
+
+        # No password value was shipped
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_set_password(action_event)
+        connect_exporter.assert_called()
+
+        # New password was generated
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_get_password(action_event)
+        args_pw = action_event.set_results.call_args.args[0]
+        assert "password" in args_pw
+        pw2 = args_pw["password"]
+
+        # a new password was created
+        assert pw1 != pw2
+
+    @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
+    def test_event_any_unit_can_get_password_secrets(self, connect_exporter, connection):
+        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
+
+        Furthermore: in Juju 3.x we want to use secrets
+        """
+        self._setup_secrets()
+
+        action_event = mock.Mock()
+        action_event.set_results = MagicMock()
+
+        # Getting current password
+        action_event.params = {"username": "monitor"}
+        self.harness.charm._on_get_password(action_event)
+        args_pw = action_event.set_results.call_args.args[0]
+        assert "password" in args_pw
+        assert args_pw["password"]
+
     @patch("charm.MongoDBCharm._pull_licenses")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._set_data_dir_permissions")
@@ -643,7 +808,7 @@ class TestCharm(unittest.TestCase):
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         self.harness.charm.on.mongod_pebble_ready.emit(container)
-        password = self.harness.charm.app_peer_data["monitor-password"]
+        password = self.harness.charm.get_secret("app", "monitor-password")
 
         uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints/?replicaSet=mongodb-k8s&authSource=admin"
 
