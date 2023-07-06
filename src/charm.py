@@ -94,6 +94,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.stop, self._on_stop)
 
         self.framework.observe(self.on.secret_remove, self._on_secret_remove)
+        self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
         self.client_relations = MongoDBProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
@@ -454,6 +455,19 @@ class MongoDBCharm(CharmBase):
     def _on_secret_remove(self, event):
         logging.debug(f"Secret {event._id} seems to have no observers, could be removed")
 
+    def _on_secret_changed(self, event):
+        scope_name = event._label.split(":")[0]
+        if scope_name == self.app.name:
+            scope = APP_SCOPE
+        elif scope_name == self.unit.name:
+            scope = UNIT_SCOPE
+        else:
+            logging.debug("Secret {event._id}:{event._label} changed, but it's irrelevant for us")
+            return
+        logging.debug(f"Secret {event._id} for scope {scope} changed, refreshing")
+        self._juju_secrets_get(scope)
+        self._connect_mongodb_exporter()
+
     # END: actions
 
     # BEGIN: user management
@@ -740,7 +754,9 @@ class MongoDBCharm(CharmBase):
             if secret_cache:
                 secret_data = secret_cache.get(key)
                 if secret_data and secret_data != SECRET_DELETED_LABEL:
+                    logging.debug(f"Getting secret {scope}:{key}")
                     return secret_data
+        logging.debug(f"No value found for secret {scope}:{key}")
 
     def get_secret(self, scope: Scopes, key: str) -> Optional[str]:
         """Getting a secret."""
@@ -915,12 +931,7 @@ class MongoDBCharm(CharmBase):
             Config.TLS.INT_CA_FILE,
             Config.TLS.INT_PEM_FILE,
         ]:
-            try:
-                container.remove_path(f"{Config.CONF_DIR}/{file}")
-            except (PathError, ProtocolError, MissingSecretError) as e:
-                logger.error("Cannot remove keyFile: %r", e)
-            except Exception as e:
-                logger.error("Cannot remove keyFile due to unknown error: %r", e)
+            container.remove_path(f"{Config.CONF_DIR}/{file}")
 
     def get_hostname_for_unit(self, unit: Unit) -> str:
         """Create a DNS name for a MongoDB unit.
