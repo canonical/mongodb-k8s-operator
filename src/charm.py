@@ -205,11 +205,12 @@ class MongoDBCharm(CharmBase):
 
     @property
     def backup_layer(self) -> Layer:
-        layer_config ={
+        """Returns a Pebble configuration layer for pbm."""
+        layer_config = {
             "summary": "pbm layer",
             "description": "Pebble config layer for pbm",
             "services": {
-            Config.Backup.SERVICE_NAME: {
+                Config.Backup.SERVICE_NAME: {
                     "override": "replace",
                     "summary": "pbm",
                     "command": "pbm-agent",
@@ -1013,16 +1014,46 @@ class MongoDBCharm(CharmBase):
         # Restart changed services and start startup-enabled services.
         container.replan()
 
-    def _socket_exists(self, container) -> bool:
-        return container.exists(Config.SOCKET_PATH)
+    def _connect_pbm_agent(self) -> None:
+        """Updates URI for pbm-agent."""
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+
+        if not container.can_connect():
+            return
+
+        if not self.db_initialised:
+            return
+
+        # must wait for leader to set URI before any attempts to update are made
+        if not self.get_secret("app", BackupUser.get_password_key_name()):
+            return
+
+        container.add_layer(Config.Backup.SERVICE_NAME, self.backup_layer, combine=True)
+        container.replan()
 
     def get_backup_service(self) -> ServiceInfo:
+        """Returns the backup service."""
         container = self.get_container()
         return container.get_service(Config.Backup.SERVICE_NAME)
-    
+
     def get_container(self) -> Container:
+        """Returns the workload container."""
         return self.unit.get_container(Config.CONTAINER_NAME)
-    
+
+    def execute_in_container(self, cmd, environment) -> str:
+        """Executes a command in the workload container."""
+        container = self.get_container()
+        process = container.exec(cmd, environment=environment)
+        stdout = ""
+        try:
+            stdout, _ = process.wait_output()
+            logger.debug(f"Result of {cmd}: {stdout}")
+        except ExecError as e:
+            logger.error(
+                f"{cmd} with {environment} is exited with code {e.exit_code}. StdOut: {e.stdout}. Stderr: {e.stderr}"
+            )
+        return stdout
+
     # END: helper functions
 
     # BEGIN: static methods

@@ -9,6 +9,8 @@ This user is named "backup".
 """
 
 import logging
+import time
+import traceback
 from typing import Dict
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
@@ -17,9 +19,9 @@ from ops.model import (
     ActiveStatus,
     BlockedStatus,
     MaintenanceStatus,
+    ModelError,
     StatusBase,
     WaitingStatus,
-    ModelError,
 )
 from tenacity import (
     Retrying,
@@ -29,7 +31,6 @@ from tenacity import (
     stop_after_attempt,
     wait_fixed,
 )
-import time
 
 # The unique Charmhub library identifier, never change it
 LIBID = "9f2b91c6128d48d6ba22724bf365da3b"
@@ -56,6 +57,8 @@ S3_RELATION = "s3-credentials"
 REMAPPING_PATTERN = r"\ABackup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: ([^,\s]+)([.] Backup has no data for the config server or sole replicaset)?\Z"
 PBM_CONFIG_FILE_PATH = "/etc/pbm_config.yaml"
 PBM_PATH = "/usr/bin/pbm"
+PBM_STATUS_CMD = [PBM_PATH, "status", "-o", "json"]
+
 
 class ResyncError(Exception):
     """Raised when pbm is resyncing configurations and is not ready to be used."""
@@ -97,34 +100,42 @@ class MongoDBBackups(Object):
             return
 
         try:
-           self.charm.get_backup_service()
+            self.charm.get_backup_service()
         except ModelError as e:
-            logger.error(f"Cannot set PBM configurations, pbm-agent service not found. {e}")
+            trace_str = traceback.format_exc()
+            logger.error(
+                f"Cannot set PBM configurations, pbm-agent service not found. {e}. {trace_str}"
+            )
             event.defer()
         except RuntimeError as e:
-            logger.error(f"Cannot set PBM configurations. Failed to get pbm serivice. {e}")
+            trace_str = traceback.format_exc()
+            logger.error(
+                f"Cannot set PBM configurations. Failed to get pbm serivice. {e}. {trace_str}"
+            )
             self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
 
         try:
             self._set_config_options()
             self._resync_config_options()
         except ResyncError as e:
+            trace_str = traceback.format_exc()
             self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
             event.defer()
-            logger.error(f"Sync-ing configurations needs more time: {e}")
+            logger.error(f"Sync-ing configurations needs more time: {e}. {trace_str}")
             return
         except PBMBusyError as e:
+            trace_str = traceback.format_exc()
             self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
             logger.error(
-                f"Cannot update configs while PBM is running, must wait for PBM action to finish: {e}"
+                f"Cannot update configs while PBM is running, must wait for PBM action to finish: {e} {trace_str}"
             )
             event.defer()
             return
         except Exception as e:
-            logger.error("Syncing configurations failed: %s", str(e))
+            trace_str = traceback.format_exc()
+            logger.error(f"Syncing configurations failed: {e}, {trace_str}")
 
         self.charm.unit.status = self._get_pbm_status()
-
 
     def _on_create_backup_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
@@ -161,35 +172,37 @@ class MongoDBBackups(Object):
     def _get_pbm_status(self) -> StatusBase:
         """Retrieve pbm status."""
         try:
-            pmb_service = self.charm.get_backup_service()
+            self.charm.get_backup_service()
         except ModelError as e:
             return BlockedStatus(f"pbm-agent service not found. {e}")
-        
-        container = self.charm.get_container()
+
         try:
-            pbm_status = container.exec("pbm status")
+            pbm_status = self.charm.execute_in_container(
+                PBM_STATUS_CMD, {"PBM_MONGODB_URI": f"{self.charm.backup_config.uri}"}
+            )
             # pbm is running resync operation
-            if "Resync" in self._current_pbm_op(pbm_status.decode("utf-8")):
+            if "Resync" in self._current_pbm_op(pbm_status):
                 return WaitingStatus("waiting to sync s3 configurations.")
 
             # no operations are currently running with pbm
-            if "(none)" in self._current_pbm_op(pbm_status.decode("utf-8")):
+            if "(none)" in self._current_pbm_op(pbm_status):
                 return ActiveStatus("")
 
-            if "Snapshot backup" in self._current_pbm_op(pbm_status.decode("utf-8")):
+            if "Snapshot backup" in self._current_pbm_op(pbm_status):
                 return MaintenanceStatus("backup started/running")
 
-            if "Snapshot restore" in self._current_pbm_op(pbm_status.decode("utf-8")):
+            if "Snapshot restore" in self._current_pbm_op(pbm_status):
                 return MaintenanceStatus("restore started/running")
 
         except Exception as e:
             # pbm pipes a return code of 1, but its output shows the true error code so it is
             # necessary to parse the output
-            logger.error(f"Failed to get pbm status: {e}")
+            trace_str = traceback.format_exc()
+            logger.error(f"Failed to get pbm status: {e}, {trace_str}")
             return BlockedStatus("PBM error")
-        
+
         return ActiveStatus("")
-    
+
     def _on_list_backups_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
             event.fail("Relation with s3-integrator charm missing, cannot list backups.")
@@ -244,32 +257,30 @@ class MongoDBBackups(Object):
 
         # TODO restore backup
 
-
     # BEGIN: helper functions
     def _set_config_options(self):
         """Applying given configurations with pbm."""
-        # Setting empty pbm 
+        # Setting empty pbm
         container = self.charm.get_container()
         container.push(
             PBM_CONFIG_FILE_PATH,
-            "# this file is to be left empty. Changes in this file will be ignored.", 
+            "# this file is to be left empty. Changes in this file will be ignored.\n",
             make_dirs=True,
             permissions=0o400,
         )
-        mongo_uri = self.charm.backup_config.uri
-        container.exec(
-             f'PBM_MONGODB_URI="{mongo_uri}" {PBM_PATH} config --file {PBM_CONFIG_FILE_PATH}'
+        environment = {"PBM_MONGODB_URI": f"{self.charm.backup_config.uri}"}
+
+        self.charm.execute_in_container(
+            [PBM_PATH, "config", "--file", PBM_CONFIG_FILE_PATH], environment
         )
-        
+
         # the pbm tool can only set one configuration at a time.
-        logger.error(f"_set_config_options.")
-        for pbm_key, pbm_value in self._get_pbm_configs():
-            config_cmd = f'pbm config --set {pbm_key}="{pbm_value}"'
-            try: 
-                logger.error(f"Setting {pbm_key}={pbm_value} with pbm config command.")
-                container.exec(config_cmd)
+        for pbm_key, pbm_value in self._get_pbm_configs().items():
+            config_cmd = f"{PBM_PATH} config --set {pbm_key}={pbm_value}".split(" ")
+            try:
+                self.charm.execute_in_container(config_cmd, environment)
             except Exception as e:
-                logger.error(f"Failed to set {pbm_key}={pbm_value} with pbm config command. {e}")
+                logger.error(f"Failed to set {pbm_key} with pbm config command. {e}")
                 self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
                 return
 
@@ -282,13 +293,12 @@ class MongoDBBackups(Object):
                 continue
 
             pbm_configs[S3_PBM_OPTION_MAP[s3_option]] = s3_value
-        logger.error(f"_get_pbm_configs. {pbm_configs}")
         return pbm_configs
-    
+
     def _resync_config_options(self):
         """Attempts to sync pbm config options and sets status in case of failure."""
         container = self.charm.get_container()
-        container.restart(services=["pbm-agent"])
+        container.restart("pbm-agent")
 
         # pbm has a flakely resync and it is necessary to wait for no actions to be running before
         # resync-ing. See: https://jira.percona.com/browse/PBM-1038
@@ -305,12 +315,12 @@ class MongoDBBackups(Object):
 
                 # if a resync is running restart the service
                 if isinstance(pbm_status, (WaitingStatus)):
-                    container.restart(services=["pbm-agent"])
+                    container.restart("pbm-agent")
                     raise PBMBusyError
 
         # wait for re-sync and update charm status based on pbm syncing status. Need to wait for
         # 2 seconds for pbm_agent to receive the resync command before verifying.
-        #subprocess.check_output("charmed-mongodb.pbm config --force-resync", shell=True)
+        # subprocess.check_output("charmed-mongodb.pbm config --force-resync", shell=True)
         time.sleep(2)
         self._wait_pbm_status()
 
@@ -334,20 +344,22 @@ class MongoDBBackups(Object):
         """
         # on occasion it takes the pbm_agent daemon time to update its configs, meaning that it
         # will error for incorrect configurations for <15s before resolving itself.
-        container = self.charm.get_container()
+
         for attempt in Retrying(
             stop=stop_after_attempt(3),
             wait=wait_fixed(5),
             reraise=True,
         ):
             with attempt:
-                pbm_status = container.exec("pbm status")
-                if "Resync" in self._current_pbm_op(pbm_status.decode("utf-8")):
+                pbm_status = self.charm.execute_in_container(
+                    PBM_STATUS_CMD, {"PBM_MONGODB_URI": f"{self.charm.backup_config.uri}"}
+                )
+                if "Resync" in self._current_pbm_op(pbm_status):
                     # since this process takes several minutes we should let the user know
                     # immediately.
                     self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
                     raise ResyncError
-                
+
     def _current_pbm_op(self, pbm_status: str) -> str:
         """Parses pbm status for the operation that pbm is running."""
         pbm_status_lines = pbm_status.splitlines()
