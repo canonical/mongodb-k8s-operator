@@ -4,6 +4,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import time
 from typing import List, Optional, Set
 
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
@@ -29,13 +30,7 @@ from charms.mongodb.v0.users import (
     OperatorUser,
 )
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from ops.charm import (
-    ActionEvent,
-    CharmBase,
-    RelationDepartedEvent,
-    StartEvent,
-    StorageDetachingEvent,
-)
+from ops.charm import ActionEvent, CharmBase, RelationDepartedEvent, StartEvent
 from ops.main import main
 from ops.model import (
     ActiveStatus,
@@ -47,12 +42,14 @@ from ops.model import (
 )
 from ops.pebble import ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
-from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError
 
 logger = logging.getLogger(__name__)
+
+UNIT_REMOVAL_TIMEOUT = 1000
 
 
 class MongoDBCharm(CharmBase):
@@ -78,10 +75,10 @@ class MongoDBCharm(CharmBase):
 
         # if a new leader has been elected update hosts of MongoDB
         self.framework.observe(self.on.leader_elected, self._relation_changes_handler)
-        self.framework.observe(self.on.mongodb_storage_detaching, self._on_storage_detaching)
 
         self.framework.observe(self.on.get_password_action, self._on_get_password)
         self.framework.observe(self.on.set_password_action, self._on_set_password)
+        self.framework.observe(self.on.stop, self._on_stop)
 
         self.client_relations = MongoDBProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
@@ -295,6 +292,10 @@ class MongoDBCharm(CharmBase):
         """Handles different relation events and updates MongoDB replica set."""
         self._connect_mongodb_exporter()
 
+        if type(event) is RelationDepartedEvent:
+            if event.departing_unit.name == self.unit.name:
+                self.unit_peer_data.setdefault("unit_departed", "True")
+
         if not self.unit.is_leader():
             return
 
@@ -337,37 +338,19 @@ class MongoDBCharm(CharmBase):
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
-    def _on_storage_detaching(self, event: StorageDetachingEvent) -> None:
-        """Before storage detaches, allow removing unit to remove itself from the set.
-
-        If the removing unit is primary also allow it to step down and elect another unit as
-        primary while it still has access to its storage.
-        """
-        # if we are removing the last replica it will not be able to step down as primary and we
-        # cannot reconfigure the replica set to have 0 members. To prevent retrying for 10 minutes
-        # set this flag to True. please note that planned_units will always be >=1. When planned
-        # units is 1 that means there are no other peers expected.
-
-        if self.app.planned_units() == 1 and (not self._peers or len(self._peers.units)) == 0:
-            return
-
-        try:
-            logger.debug("Removing %s from replica set", self.get_hostname_for_unit(self.unit))
-            # retries over a period of 10 minutes in an attempt to resolve race conditions it is
-            # not possible to defer in storage detached.
-            retries = Retrying(stop=stop_after_attempt(10), wait=wait_fixed(1), reraise=True)
-            for attempt in retries:
-                with attempt:
-                    # remove_replset_member retries for 60 seconds
-                    with MongoDBConnection(self.mongodb_config) as mongo:
-                        hostname = self.get_hostname_for_unit(self.unit)
-                        mongo.remove_replset_member(hostname)
-        except NotReadyError:
-            logger.info(
-                "Failed to remove %s from replica set, another member is syncing", self.unit.name
-            )
-        except PyMongoError as e:
-            logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
+    def _on_stop(self, event) -> None:
+        if "True" == self.unit_peer_data.get("unit_departed", "False"):
+            logger.debug(f"{self.unit.name} blocking on_stop")
+            is_in_replica_set = True
+            timeout = UNIT_REMOVAL_TIMEOUT
+            while is_in_replica_set and timeout > 0:
+                is_in_replica_set = self.is_unit_in_replica_set()
+                time.sleep(1)
+                timeout -= 1
+                if timeout < 0:
+                    raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
+            logger.debug(f"{self.unit.name} releasing on_stop")
+            self.unit_peer_data["unit_departed"] = ""
 
     # END: charm events
 
@@ -778,6 +761,18 @@ class MongoDBCharm(CharmBase):
         container.add_layer("mongodb_exporter", self._monitor_layer, combine=True)
         # Restart changed services and start startup-enabled services.
         container.replan()
+
+    def is_unit_in_replica_set(self) -> bool:
+        """Check if the unit is in the replica set."""
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                replset_members = mongo.get_replset_members()
+                return self.get_hostname_for_unit(self.unit) in replset_members
+            except NotReadyError as e:
+                logger.error(f"{self.unit.name}.is_unit_in_replica_set NotReadyError={e}")
+            except PyMongoError as e:
+                logger.error(f"{self.unit.name}.is_unit_in_replica_set PyMongoError={e}")
+        return False
 
     # END: helper functions
 
