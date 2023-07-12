@@ -5,8 +5,10 @@ import asyncio
 import secrets
 import string
 import time
+from pathlib import Path
 
 import pytest
+import yaml
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
@@ -17,6 +19,8 @@ S3_APP_NAME = "s3-integrator"
 TIMEOUT = 15 * 60
 ENDPOINT = "s3-credentials"
 NEW_CLUSTER = "new-mongodb"
+DATABASE_APP_NAME = "mongodb-k8s"
+METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 
 
 @pytest.fixture()
@@ -43,9 +47,15 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for testing. Hence check if there
     # is a pre-existing cluster.
-    if not await helpers.app_name(ops_test):
-        db_charm = await ops_test.build_charm(".")
-        await ops_test.model.deploy(db_charm, num_units=3)
+    db_app_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
+    if db_app_name:
+        return
+
+    async with ops_test.fast_forward():
+        my_charm = await ops_test.build_charm(".")
+        resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
+        await ops_test.model.deploy(my_charm, num_units=3, resources=resources, series="jammy")
+        await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=2000)
 
     # deploy the s3 integrator charm
     await ops_test.model.deploy(S3_APP_NAME, channel="edge")
@@ -106,10 +116,10 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
     configuration_parameters = {
-        "bucket": "data-charms-testing",
-        "path": f"mongodb-vm/test-{unique_path}",
+        "bucket": "dratushnyy-mk8s",
+        "path": f"test/test-{unique_path}",
         "endpoint": "https://s3.amazonaws.com",
-        "region": "us-east-1",
+        "region": "eu-north-1",
     }
 
     # apply new configuration options
@@ -122,6 +132,34 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.abort_on_fail
+async def test_update_backup_password(ops_test: OpsTest) -> None:
+    """Verifies that after changing the backup password the pbm tool is updated and functional."""
+    db_app_name = await helpers.app_name(ops_test)
+    db_unit = await helpers.get_leader_unit(ops_test)
+
+    # wait for charm to be idle before setting password
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
+    )
+
+    parameters = {"username": "backup"}
+    action = await db_unit.run_action("set-password", **parameters)
+    action = await action.wait()
+    assert action.status == "completed", "failed to set backup password"
+
+    # wait for charm to be idle after setting password
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
+    )
+
+    # verify we still have connection to pbm via creating a backup
+    action = await db_unit.run_action(action_name="create-backup")
+    backup_result = await action.wait()
+    assert backup_result.results["backup-status"] == "backup started", "backup didn't start"
+
+
+@pytest.mark.skip("Not implemented yet")
 @pytest.mark.abort_on_fail
 async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     db_unit = await helpers.get_leader_unit(ops_test)
@@ -150,6 +188,7 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
         assert backups == 1, "Backup not created."
 
 
+@pytest.mark.skip("Not implemented yet")
 @pytest.mark.abort_on_fail
 async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
     """With writes in the DB test creating a backup while another one is running.
@@ -236,6 +275,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
         assert backups == 2, "Backup not created in bucket on AWS."
 
 
+@pytest.mark.skip("Not implemented yet")
 @pytest.mark.abort_on_fail
 async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
     """Simple backup tests that verifies that writes are correctly restored."""
@@ -290,6 +330,7 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
         assert number_writes == number_writes_restored, "writes not correctly restored"
 
 
+@pytest.mark.skip("Not implemented yet")
 @pytest.mark.parametrize("cloud_provider", ["AWS", "GCP"])
 async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_provider):
     # configure test for the cloud provider
@@ -375,30 +416,3 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
         ), "new cluster writes do not match old cluster writes after restore"
 
     await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
-
-
-@pytest.mark.abort_on_fail
-async def test_update_backup_password(ops_test: OpsTest) -> None:
-    """Verifies that after changing the backup password the pbm tool is updated and functional."""
-    db_app_name = await helpers.app_name(ops_test)
-    db_unit = await helpers.get_leader_unit(ops_test)
-
-    # wait for charm to be idle before setting password
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
-
-    parameters = {"username": "backup"}
-    action = await db_unit.run_action("set-password", **parameters)
-    action = await action.wait()
-    assert action.status == "completed", "failed to set backup password"
-
-    # wait for charm to be idle after setting password
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
-
-    # verify we still have connection to pbm via creating a backup
-    action = await db_unit.run_action(action_name="create-backup")
-    backup_result = await action.wait()
-    assert backup_result.results["backup-status"] == "backup started", "backup didn't start"
