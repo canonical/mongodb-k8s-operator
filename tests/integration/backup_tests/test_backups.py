@@ -116,10 +116,10 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
     configuration_parameters = {
-        "bucket": "dratushnyy-mk8s",
-        "path": f"test/test-{unique_path}",
+        "bucket": "data-charms-testing",
+        "path": f"mongodb-vm/test-{unique_path}",
         "endpoint": "https://s3.amazonaws.com",
-        "region": "eu-north-1",
+        "region": "us-east-1",
     }
 
     # apply new configuration options
@@ -130,33 +130,6 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(
         apps=[db_app_name], status="active", timeout=TIMEOUT, idle_period=60
     )
-
-
-@pytest.mark.abort_on_fail
-async def test_update_backup_password(ops_test: OpsTest) -> None:
-    """Verifies that after changing the backup password the pbm tool is updated and functional."""
-    db_app_name = await helpers.app_name(ops_test)
-    db_unit = await helpers.get_leader_unit(ops_test)
-
-    # wait for charm to be idle before setting password
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
-
-    parameters = {"username": "backup"}
-    action = await db_unit.run_action("set-password", **parameters)
-    action = await action.wait()
-    assert action.status == "completed", "failed to set backup password"
-
-    # wait for charm to be idle after setting password
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
-
-    # verify we still have connection to pbm via creating a backup
-    action = await db_unit.run_action(action_name="create-backup")
-    backup_result = await action.wait()
-    assert backup_result.results["backup-status"] == "backup started", "backup didn't start"
 
 
 @pytest.mark.skip("Not implemented yet")
@@ -416,3 +389,31 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
         ), "new cluster writes do not match old cluster writes after restore"
 
     await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
+
+
+@pytest.mark.skip("Not implemented yet")
+@pytest.mark.abort_on_fail
+async def test_update_backup_password(ops_test: OpsTest) -> None:
+    """Verifies that after changing the backup password the pbm tool is updated and functional."""
+    db_app_name = await helpers.app_name(ops_test)
+    db_unit = await helpers.get_leader_unit(ops_test)
+
+    # wait for charm to be idle before setting password
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
+    )
+
+    parameters = {"username": "backup"}
+    action = await db_unit.run_action("set-password", **parameters)
+    action = await action.wait()
+    assert action.status == "completed", "failed to set backup password"
+
+    # wait for charm to be idle after setting password
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
+    )
+
+    # verify we still have connection to pbm via creating a backup
+    action = await db_unit.run_action(action_name="create-backup")
+    backup_result = await action.wait()
+    assert backup_result.results["backup-status"] == "backup started", "backup didn't start"

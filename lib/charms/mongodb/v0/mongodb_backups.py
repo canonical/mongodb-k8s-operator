@@ -193,7 +193,7 @@ class MongoDBBackups(Object):
             return self._process_pbm_status(pbm_status)
         except PBMError as e:
             logger.error(f"Failed to get pbm status: {e}")
-            return BlockedStatus(self._process_pbm_error(e.stderr))
+            return BlockedStatus(self._process_pbm_error(e))
         except Exception as e:
             # pbm pipes a return code of 1, but its output shows the true error code so it is
             # necessary to parse the output
@@ -311,6 +311,8 @@ class MongoDBBackups(Object):
         if "status code: 403" in e.stdout:
             message = "s3 credentials are incorrect."
         if "status code: 404" in e.stdout:
+            message = "s3 configurations are incompatible."
+        if "status code: 301" in e.stdout:
             message = "s3 configurations are incompatible."
         return message
 
