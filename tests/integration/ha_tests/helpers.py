@@ -612,7 +612,7 @@ def destroy_chaos_mesh(namespace: str) -> None:
 
 def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
     """Apply a NetworkChaos file to use chaos-mesh to simulate a network cut."""
-    with tempfile.NamedTemporaryFile() as temp_file:
+    with tempfile.NamedTemporaryFile(dir=".") as temp_file:
         # Generates a manifest for chaosmesh to simulate network failure for a pod
         with open(
             "tests/integration/ha_tests/manifests/chaos_network_loss.yml", "r"

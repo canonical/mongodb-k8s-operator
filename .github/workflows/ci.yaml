@@ -68,9 +68,11 @@ jobs:
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: microk8s
+          channel: "1.27-strict/stable"
           # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
-          bootstrap-options: "--agent-version 2.9.29"
+          bootstrap-options: "--agent-version 3.1.5"
           bootstrap-constraints: "cores=2 mem=2G"
+          juju-channel: "3.1/stable"
       - name: Download packed charm(s)
         uses: actions/download-artifact@v3
         with:
@@ -88,7 +90,7 @@ jobs:
           fi
       - name: Run integration tests
         # set a predictable model name so it can be consumed by charm-logdump-action
-        run: sg microk8s -c "tox run -e ${{ matrix.tox-environments }} -- --model testing -m '${{ steps.select-tests.outputs.mark_expression }}'"
+        run: sg snap_microk8s -c "tox run -e ${{ matrix.tox-environments }} -- --model testing -m '${{ steps.select-tests.outputs.mark_expression }}'"
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
       - name: Dump logs
