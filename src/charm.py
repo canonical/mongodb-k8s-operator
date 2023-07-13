@@ -80,8 +80,9 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.set_password_action, self._on_set_password)
         self.framework.observe(self.on.stop, self._on_stop)
 
-        self.client_relations = MongoDBProvider(self)
-        self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
+        # handle provider side of relations
+        self.client_relations = MongoDBProvider(self, substrate=Config.SUBSTRATE)
+        self.tls = MongoDBTLS(self, Config.Relations.PEERS, substrate=Config.SUBSTRATE)
 
         self.metrics_endpoint = MetricsEndpointProvider(
             self, refresh_event=self.on.start, jobs=Config.Monitoring.JOBS
@@ -132,7 +133,7 @@ class MongoDBCharm(CharmBase):
 
     @property
     def monitor_config(self) -> MongoDBConfiguration:
-        """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
+        """Generates a MongoDBConfiguration object for monitoring."""
         return self._get_mongodb_config_for_user(
             MonitorUser, [self.get_hostname_for_unit(self.unit)]
         )
@@ -195,7 +196,7 @@ class MongoDBCharm(CharmBase):
     def app_peer_data(self) -> RelationDataContent:
         """Peer relation data object."""
         relation = self.model.get_relation(Config.Relations.PEERS)
-        if relation is None:
+        if not relation:
             return {}  # type: ignore
 
         return relation.data[self.app]
@@ -215,7 +216,8 @@ class MongoDBCharm(CharmBase):
 
     # END: properties
 
-    # BEGIN: charm events
+    # BEGIN: charm event handlers
+
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
         # Get a reference the container attribute
@@ -246,7 +248,7 @@ class MongoDBCharm(CharmBase):
         # when a network cuts and the pod restarts - reconnect to the exporter
         self._connect_mongodb_exporter()
 
-    def _on_start(self, event) -> None:
+    def _on_start(self, event: StartEvent) -> None:
         """Initialise MongoDB.
 
         Initialisation of replSet should be made once after start.
@@ -275,9 +277,11 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
+        # check if this unit's deployment of MongoDB is ready
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
                 logger.debug("mongodb service is not ready yet.")
+                self.unit.status = WaitingStatus("waiting for MongoDB to start")
                 event.defer()
                 return
 
@@ -408,7 +412,8 @@ class MongoDBCharm(CharmBase):
 
     # END: actions
 
-    # BEGIN: user management
+    # BEGIN: users management
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(5),
@@ -468,6 +473,9 @@ class MongoDBCharm(CharmBase):
             mongo.create_user(self.monitor_config)
             self._set_user_created(MonitorUser)
 
+        # leader should reconnect to exporter after creating the monitor user - since the snap
+        # will have an authorisation error until the the user has been created and the daemon
+        # has been restarted
         self._connect_mongodb_exporter()
 
     @retry(
@@ -491,7 +499,7 @@ class MongoDBCharm(CharmBase):
             mongo.create_user(self.backup_config)
             self._set_user_created(BackupUser)
 
-    # END: user management
+    # END: users management
 
     # BEGIN: helper functions
 
@@ -506,13 +514,12 @@ class MongoDBCharm(CharmBase):
     ) -> MongoDBConfiguration:
         external_ca, _ = self.tls.get_tls_files("unit")
         internal_ca, _ = self.tls.get_tls_files("app")
-        password = self.get_secret("app", user.get_password_key_name())
 
         return MongoDBConfiguration(
             replset=self.app.name,
             database=user.get_database_name(),
             username=user.get_username(),
-            password=password,  # type: ignore
+            password=self.get_secret("app", user.get_password_key_name()),  # type: ignore
             hosts=set(hosts),
             roles=set(user.get_roles()),
             tls_external=external_ca is not None,
@@ -556,11 +563,14 @@ class MongoDBCharm(CharmBase):
 
     def _update_app_relation_data(self, database_users: Set[str]) -> None:
         """Helper function to update application relation data."""
+        if not self._db_initialised:
+            return
+
         for relation in self.model.relations[Config.Relations.NAME]:
             username = self.client_relations._get_username_from_relation_id(relation.id)
             password = relation.data[self.app]["password"]
+            config = self.client_relations._get_config(username, password)
             if username in database_users:
-                config = self.client_relations._get_config(username, password)
                 relation.data[self.app].update(
                     {
                         "endpoints": ",".join(config.hosts),
@@ -589,7 +599,7 @@ class MongoDBCharm(CharmBase):
                 self._init_operator_user()
                 self._init_backup_user()
                 self._init_monitor_user()
-                logger.info("Reconcile relations")
+                logger.info("Manage relations")
                 self.client_relations.oversee_users(None, event)
             except ExecError as e:
                 logger.error(
@@ -602,6 +612,7 @@ class MongoDBCharm(CharmBase):
                 event.defer()
                 return
 
+            # replica set initialised properly and ready to go
             self._db_initialised = True
 
     def _add_units_from_replica_set(
@@ -646,17 +657,17 @@ class MongoDBCharm(CharmBase):
             if not value:
                 del self.unit_peer_data[key]
                 return
-            self.unit_peer_data.update({key: value})
+            self.unit_peer_data.update({key: str(value)})
         elif scope == "app":
             if not value:
                 del self.app_peer_data[key]
                 return
-            self.app_peer_data.update({key: value})
+            self.app_peer_data.update({key: str(value)})
         else:
             raise RuntimeError("Unknown secret scope.")
 
     def restart_mongod_service(self):
-        """Restart mongod service."""
+        """Restarts the mongod service with its associated configuration."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
         container.stop(Config.SERVICE_NAME)
 
