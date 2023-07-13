@@ -807,6 +807,7 @@ class TestCharm(unittest.TestCase):
         """Tests the _connect_mongodb_exporter method has been called."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         self.harness.charm.on.mongod_pebble_ready.emit(container)
         password = self.harness.charm.get_secret("app", "monitor-password")
 

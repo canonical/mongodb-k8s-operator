@@ -21,7 +21,7 @@ from charms.mongodb.v0.mongodb import (
     MongoDBConnection,
     NotReadyError,
 )
-from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups, PBMError
+from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.users import (
@@ -312,8 +312,8 @@ class MongoDBCharm(CharmBase):
 
         # when a network cuts and the pod restarts - reconnect to the exporter
         try:
-            self._connect_mongodb_exporter("_on_mongod_pebble_ready")
-            self._connect_pbm_agent("_on_mongod_pebble_ready")
+            self._connect_mongodb_exporter()
+            self._connect_pbm_agent()
         except MissingSecretError as e:
             logger.error("Cannot connect mongodb exporter: %r", e)
             event.defer()
@@ -355,7 +355,7 @@ class MongoDBCharm(CharmBase):
                 return
 
         try:
-            self._connect_mongodb_exporter("_on_start")
+            self._connect_mongodb_exporter()
         except ChangeError as e:
             logger.error(
                 "An exception occurred when starting mongodb exporter, error: %s.", str(e)
@@ -370,8 +370,8 @@ class MongoDBCharm(CharmBase):
 
     def _relation_changes_handler(self, event) -> None:
         """Handles different relation events and updates MongoDB replica set."""
-        self._connect_mongodb_exporter(f"_relation_changes_handler {event}")
-        self._connect_pbm_agent(f"_relation_changes_handler {event}")
+        self._connect_mongodb_exporter()
+        self._connect_pbm_agent()
 
         if not self.unit.is_leader():
             return
@@ -518,10 +518,10 @@ class MongoDBCharm(CharmBase):
         )
 
         if username == BackupUser.get_username():
-            self._connect_pbm_agent("_on_set_password")
+            self._connect_pbm_agent()
 
         if username == MonitorUser.get_username():
-            self._connect_mongodb_exporter("_on_set_password")
+            self._connect_mongodb_exporter()
 
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
@@ -608,7 +608,7 @@ class MongoDBCharm(CharmBase):
             mongo.create_user(self.monitor_config)
             self._set_user_created(MonitorUser)
 
-        self._connect_mongodb_exporter("_init_monitor_user")
+        self._connect_mongodb_exporter()
 
     @retry(
         stop=stop_after_attempt(3),
@@ -629,7 +629,6 @@ class MongoDBCharm(CharmBase):
             )
 
             self._check_or_set_user_password(BackupUser)
-            logger.info(f">>>>>>>>>>>>>> creating the backup user... {self.backup_config}")
             mongo.create_user(self.backup_config)
             self._set_user_created(BackupUser)
 
@@ -921,8 +920,8 @@ class MongoDBCharm(CharmBase):
         container.add_layer("mongod", self._mongod_layer, combine=True)
         container.replan()
 
-        self._connect_mongodb_exporter("restart_mongod_service")
-        self._connect_pbm_agent("restart_mongod_service")
+        self._connect_mongodb_exporter()
+        self._connect_pbm_agent()
 
     def _push_keyfile_to_workload(self, container: Container) -> None:
         """Upload the keyFile to a workload container."""
@@ -1011,7 +1010,7 @@ class MongoDBCharm(CharmBase):
         unit_id = unit.name.split("/")[1]
         return f"{self.app.name}-{unit_id}.{self.app.name}-endpoints"
 
-    def _connect_mongodb_exporter(self, why) -> None:
+    def _connect_mongodb_exporter(self) -> None:
         """Exposes the endpoint to mongodb_exporter."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
 
@@ -1024,6 +1023,7 @@ class MongoDBCharm(CharmBase):
         # must wait for leader to set URI before connecting
         if not self.get_secret(APP_SCOPE, MonitorUser.get_password_key_name()):
             return
+
         current_service_config = (
             container.get_plan().to_dict().get("services", {}).get("mongodb_exporter", {})
         )
@@ -1039,7 +1039,7 @@ class MongoDBCharm(CharmBase):
         # Restart changed services and start startup-enabled services.
         container.replan()
 
-    def _connect_pbm_agent(self, why) -> None:
+    def _connect_pbm_agent(self) -> None:
         """Updates URI for pbm-agent."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
 
@@ -1052,6 +1052,7 @@ class MongoDBCharm(CharmBase):
         # must wait for leader to set URI before any attempts to update are made
         if not self.get_secret("app", BackupUser.get_password_key_name()):
             return
+
         current_service_config = (
             container.get_plan().to_dict().get("services", {}).get(Config.Backup.SERVICE_NAME, {})
         )
@@ -1089,16 +1090,7 @@ class MongoDBCharm(CharmBase):
         container = self.unit.get_container(Config.CONTAINER_NAME)
         environment = {"PBM_MONGODB_URI": f"{self.backup_config.uri}"}
         process = container.exec(cmd, environment=environment)
-        stdout = ""
-        try:
-            stdout, _ = process.wait_output()
-            logger.debug(f"Result of {cmd}: {stdout}")
-        except ExecError as e:
-            logger.error(
-                f"{cmd} with {environment} is exited with code {e.exit_code}. StdOut: {e.stdout}. Stderr: {e.stderr}"
-            )
-            raise PBMError(e.exit_code, e.stdout, e.stderr)
-
+        stdout, _ = process.wait_output()
         return stdout
 
     # END: helper functions
