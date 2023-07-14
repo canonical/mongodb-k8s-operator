@@ -339,7 +339,7 @@ class MongoDBBackups(Object):
             # TODO VM charm should implement this method
             self.charm.get_backup_service()
         except ModelError:
-            return BlockedStatus("PBM not installed")
+            return WaitingStatus("waiting for pbm to start")
 
         try:
             # TODO VM charm should implement this method
