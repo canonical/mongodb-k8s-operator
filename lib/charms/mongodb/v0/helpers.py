@@ -250,4 +250,4 @@ def process_pbm_status(pbm_status: str) -> StatusBase:
     if "Snapshot restore" in current_pbm_op(pbm_status):
         return MaintenanceStatus("restore started/running")
 
-    return ActiveStatus("")
+    return ActiveStatus()
