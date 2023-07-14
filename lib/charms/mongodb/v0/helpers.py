@@ -214,9 +214,9 @@ def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
         error_string = error_string.decode("utf-8")
     if "status code: 403" in error_string:  # type: ignore
         message = "s3 credentials are incorrect."
-    if "status code: 404" in error_string:  # type: ignore
+    elif "status code: 404" in error_string:  # type: ignore
         message = "s3 configurations are incompatible."
-    if "status code: 301" in error_string:  # type: ignore
+    elif "status code: 301" in error_string:  # type: ignore
         message = "s3 configurations are incompatible."
     return message
 
