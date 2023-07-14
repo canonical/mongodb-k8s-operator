@@ -7,10 +7,16 @@ import os
 import secrets
 import string
 import subprocess
-from typing import List
+from typing import List, Optional, Union
 
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
-from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    StatusBase,
+    WaitingStatus,
+)
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 
 # The unique Charmhub library identifier, never change it
@@ -194,3 +200,54 @@ def copy_licenses_to_unit():
     subprocess.check_output(
         "cp -r /snap/charmed-mongodb/current/licenses/* src/licenses", shell=True
     )
+
+
+_StrOrBytes = Union[str, bytes]
+
+
+def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
+    """Parses pbm error string and returns a user friendly message."""
+    message = "couldn't configure s3 backup option"
+    if not error_string:
+        return message
+    if type(error_string) == bytes:
+        error_string = error_string.decode("utf-8")
+    if "status code: 403" in error_string:  # type: ignore
+        message = "s3 credentials are incorrect."
+    if "status code: 404" in error_string:  # type: ignore
+        message = "s3 configurations are incompatible."
+    if "status code: 301" in error_string:  # type: ignore
+        message = "s3 configurations are incompatible."
+    return message
+
+
+def current_pbm_op(pbm_status: str) -> str:
+    """Parses pbm status for the operation that pbm is running."""
+    pbm_status_lines = pbm_status.splitlines()
+    for i in range(0, len(pbm_status_lines)):
+        line = pbm_status_lines[i]
+
+        # operation is two lines after the line "Currently running:"
+        if line == "Currently running:":
+            return pbm_status_lines[i + 2]
+
+    return ""
+
+
+def process_pbm_status(pbm_status: str) -> StatusBase:
+    """Parses current pbm operation and returns unit status."""
+    # pbm is running resync operation
+    if "Resync" in current_pbm_op(pbm_status):
+        return WaitingStatus("waiting to sync s3 configurations.")
+
+    # no operations are currently running with pbm
+    if "(none)" in current_pbm_op(pbm_status):
+        return ActiveStatus("")
+
+    if "Snapshot backup" in current_pbm_op(pbm_status):
+        return MaintenanceStatus("backup started/running")
+
+    if "Snapshot restore" in current_pbm_op(pbm_status):
+        return MaintenanceStatus("restore started/running")
+
+    return ActiveStatus("")

@@ -15,6 +15,7 @@ from charms.mongodb.v0.helpers import (
     generate_password,
     get_create_user_cmd,
     get_mongod_args,
+    process_pbm_error,
 )
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
@@ -372,6 +373,10 @@ class MongoDBCharm(CharmBase):
         """Handles different relation events and updates MongoDB replica set."""
         self._connect_mongodb_exporter()
         self._connect_pbm_agent()
+
+        if type(event) is RelationDepartedEvent:
+            if event.departing_unit.name == self.unit.name:
+                self.unit_peer_data.setdefault("unit_departed", "True")
 
         if not self.unit.is_leader():
             return
@@ -1069,10 +1074,6 @@ class MongoDBCharm(CharmBase):
         container = self.unit.get_container(Config.CONTAINER_NAME)
         return container.get_service(Config.Backup.SERVICE_NAME)
 
-    def get_container(self) -> Container:
-        """Returns the workload container."""
-        return self.unit.get_container(Config.CONTAINER_NAME)
-
     def is_unit_in_replica_set(self) -> bool:
         """Check if the unit is in the replica set."""
         with MongoDBConnection(self.mongodb_config) as mongo:
@@ -1089,9 +1090,41 @@ class MongoDBCharm(CharmBase):
         """Executes a command in the workload container."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
         environment = {"PBM_MONGODB_URI": f"{self.backup_config.uri}"}
-        process = container.exec(cmd, environment=environment)
+        process = container.exec([Config.Backup.PBM_PATH] + cmd, environment=environment)
         stdout, _ = process.wait_output()
         return stdout
+
+    def set_pbm_config_file(self) -> None:
+        """Sets the pbm config file."""
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+        container.push(
+            Config.Backup.PBM_CONFIG_FILE_PATH,
+            "# this file is to be left empty. Changes in this file will be ignored.\n",
+            make_dirs=True,
+            permissions=0o400,
+        )
+        try:
+            self.run_pbm_command(
+                [
+                    "config",
+                    "--file",
+                    Config.Backup.PBM_CONFIG_FILE_PATH,
+                ]
+            )
+        except ExecError as e:
+            logger.error(f"Failed to set pbm config file. {e}")
+            self.unit.status = BlockedStatus(process_pbm_error(e.stdout))
+        return
+
+    def start_backup_service(self) -> None:
+        """Starts the backup service."""
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+        container.start(Config.Backup.SERVICE_NAME)
+
+    def restart_backup_service(self) -> None:
+        """Restarts the backup service."""
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+        container.restart(Config.Backup.SERVICE_NAME)
 
     # END: helper functions
 

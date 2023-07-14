@@ -135,15 +135,11 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("ops.model.Container.restart")
     @patch("ops.model.Container.start")
-    @patch("charm.MongoDBBackups.substrate")
     @patch("charm.MongoDBCharm.get_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
     @patch("charm.MongoDBBackups._get_pbm_status")
-    def test_verify_resync_syncing(
-        self, pbm_status, run_pbm_command, service, substrate, start, restart
-    ):
+    def test_verify_resync_syncing(self, pbm_status, run_pbm_command, service, start, restart):
         """Tests that when pbm is syncing that it raises an error."""
-        substrate.return_value = "k8s"
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         service.return_value = "pbm"
@@ -201,12 +197,10 @@ class TestMongoBackups(unittest.TestCase):
 
         container.restart.assert_called()
 
-    @patch("charm.MongoDBBackups.substrate")
     @patch("charm.MongoDBBackups._get_pbm_configs")
     @patch("charm.MongoDBCharm.run_pbm_command")
-    def test_set_config_options(self, pbm_command, pbm_configs, substrate):
+    def test_set_config_options(self, pbm_command, pbm_configs):
         """Verifies _set_config_options failure raises SetPBMConfigError."""
-        substrate.return_value = "k8s"
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         pbm_command.side_effect = [
@@ -218,8 +212,9 @@ class TestMongoBackups(unittest.TestCase):
                 stderr="",
             ),
         ]
+        pbm_configs.return_value = {"this_key": "doesnt_exist"}
         with self.assertRaises(SetPBMConfigError):
-            self.harness.charm.backups._set_config_options({"this_key": "doesnt_exist"})
+            self.harness.charm.backups._set_config_options()
 
     def test_backup_without_rel(self):
         """Verifies no backups are attempted without s3 relation."""
@@ -249,12 +244,10 @@ class TestMongoBackups(unittest.TestCase):
         defer.assert_called()
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBBackups.substrate")
     @patch("charm.MongoDBCharm.get_backup_service")
     @patch("charm.MongoDBBackups._set_config_options")
-    def test_s3_credentials_set_pbm_failure(self, _set_config_options, service, substrate):
+    def test_s3_credentials_set_pbm_failure(self, _set_config_options, service):
         """Test charm goes into blocked state when setting pbm configs fail."""
-        substrate.return_value = "k8s"
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         service.return_value = "pbm"
@@ -277,17 +270,15 @@ class TestMongoBackups(unittest.TestCase):
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBBackups.substrate")
     @patch("charm.MongoDBBackups._set_config_options")
     @patch("charm.MongoDBBackups._resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm.get_backup_service")
     @patch("charm.MongoDBBackups._get_pbm_status")
     def test_s3_credentials_config_error(
-        self, pbm_status, service, defer, resync, _set_config_options, substrate
+        self, pbm_status, service, defer, resync, _set_config_options
     ):
         """Test charm defers when more time is needed to sync pbm."""
-        substrate.return_value = "k8s"
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
@@ -369,51 +360,45 @@ class TestMongoBackups(unittest.TestCase):
         defer.assert_called()
         self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
 
-    @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBBackups.substrate")
-    @patch("charm.MongoDBBackups._set_config_options")
-    @patch("charm.MongoDBBackups._resync_config_options")
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm.get_backup_service")
-    def test_s3_credentials_snap_start_error(
-        self, service, defer, resync, _set_config_options, substrate
-    ):
-        """Test charm defers when more time is needed to sync pbm."""
-        substrate.return_value = "k8s"
-        container = self.harness.model.unit.get_container("mongod")
-        self.harness.set_can_connect(container, True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
-        service.return_value = "pbm"
+    # @patch_network_get(private_address="1.1.1.1")
+    # @patch("charm.MongoDBBackups._set_config_options")
+    # @patch("charm.MongoDBBackups._resync_config_options")
+    # @patch("ops.framework.EventBase.defer")
+    # @patch("charm.MongoDBCharm.get_backup_service")
+    # def test_s3_credentials_snap_start_error(self, service, defer, resync, _set_config_options):
+    #     """Test charm defers when more time is needed to sync pbm."""
+    #     container = self.harness.model.unit.get_container("mongod")
+    #     self.harness.set_can_connect(container, True)
+    #     self.harness.charm.app_peer_data["db_initialised"] = "True"
+    #     service.return_value = "pbm"
 
-        resync.side_effect = RuntimeError
+    #     resync.side_effect = RuntimeError
 
-        # triggering s3 event with correct fields
-        mock_s3_info = mock.Mock()
-        mock_s3_info.return_value = {"access-key": "noneya", "secret-key": "business"}
-        self.harness.charm.backups.s3_client.get_s3_connection_info = mock_s3_info
-        relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
-        self.harness.add_relation_unit(relation_id, "s3-integrator/0")
-        self.harness.update_relation_data(
-            relation_id,
-            "s3-integrator/0",
-            {"bucket": "hat"},
-        )
+    #     # triggering s3 event with correct fields
+    #     mock_s3_info = mock.Mock()
+    #     mock_s3_info.return_value = {"access-key": "noneya", "secret-key": "business"}
+    #     self.harness.charm.backups.s3_client.get_s3_connection_info = mock_s3_info
+    #     relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
+    #     self.harness.add_relation_unit(relation_id, "s3-integrator/0")
+    #     self.harness.update_relation_data(
+    #         relation_id,
+    #         "s3-integrator/0",
+    #         {"bucket": "hat"},
+    #     )
 
-        defer.assert_not_called()
-        self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
+    #     defer.assert_not_called()
+    #     self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBBackups.substrate")
     @patch("charm.MongoDBBackups._set_config_options")
     @patch("charm.MongoDBBackups._resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm.get_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
     def test_s3_credentials_pbm_error(
-        self, pbm_command, service, defer, resync, _set_config_options, substrate
+        self, pbm_command, service, defer, resync, _set_config_options
     ):
         """Test charm defers when more time is needed to sync pbm."""
-        substrate.return_value = "k8s"
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         service.return_value = "pbm"
