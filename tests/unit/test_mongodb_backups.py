@@ -277,15 +277,17 @@ class TestMongoBackups(unittest.TestCase):
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBBackups.substrate")
     @patch("charm.MongoDBBackups._set_config_options")
     @patch("charm.MongoDBBackups._resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm.get_backup_service")
     @patch("charm.MongoDBBackups._get_pbm_status")
     def test_s3_credentials_config_error(
-        self, pbm_status, service, defer, resync, _set_config_options
+        self, pbm_status, service, defer, resync, _set_config_options, substrate
     ):
         """Test charm defers when more time is needed to sync pbm."""
+        substrate.return_value = "k8s"
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
@@ -368,12 +370,16 @@ class TestMongoBackups(unittest.TestCase):
         self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBBackups.substrate")
     @patch("charm.MongoDBBackups._set_config_options")
     @patch("charm.MongoDBBackups._resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm.get_backup_service")
-    def test_s3_credentials_snap_start_error(self, service, defer, resync, _set_config_options):
+    def test_s3_credentials_snap_start_error(
+        self, service, defer, resync, _set_config_options, substrate
+    ):
         """Test charm defers when more time is needed to sync pbm."""
+        substrate.return_value = "k8s"
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
@@ -397,15 +403,17 @@ class TestMongoBackups(unittest.TestCase):
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
     @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBBackups.substrate")
     @patch("charm.MongoDBBackups._set_config_options")
     @patch("charm.MongoDBBackups._resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm.get_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
     def test_s3_credentials_pbm_error(
-        self, pbm_command, service, defer, resync, _set_config_options
+        self, pbm_command, service, defer, resync, _set_config_options, substrate
     ):
         """Test charm defers when more time is needed to sync pbm."""
+        substrate.return_value = "k8s"
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         service.return_value = "pbm"

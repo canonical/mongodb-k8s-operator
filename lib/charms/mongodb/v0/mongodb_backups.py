@@ -106,37 +106,18 @@ class MongoDBBackups(Object):
             event.defer()
             return
 
-        # TODO sync with VM lib
         try:
-            self.charm.get_backup_service()
-        except ModelError as e:
-            logger.error(f"Cannot set PBM configurations, pbm-agent service not found. {e}.")
+            # TODO sync with VM lib
+            if self.substrate() == "k8s":
+                self.charm.get_backup_service()
+        except ModelError:
+            logger.error("Cannot set PBM configurations, pbm-agent service not found.")
             event.defer()
-        except RuntimeError as e:
-            logger.error(f"Cannot set PBM configurations. Failed to get pbm serivice. {e}.")
+        except RuntimeError:
+            logger.error("Cannot set PBM configurations. Failed to get pbm serivice.")
             self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
-        try:
-            self._set_config_options(self._get_pbm_configs())
-            self._resync_config_options()
-        except SetPBMConfigError:
-            self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
-            return
-        except ResyncError as e:
-            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
-            event.defer()
-            logger.error(f"Sync-ing configurations needs more time: {e}.")
-            return
-        except PBMBusyError as e:
-            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
-            logger.error(
-                f"Cannot update configs while PBM is running, must wait for PBM action to finish: {e}."
-            )
-            event.defer()
-            return
-        except Exception as e:
-            logger.error(f"Syncing configurations failed: {e}.")
 
-        self.charm.unit.status = self._get_pbm_status()
+        self._configure_pbm_options(event)
 
     def _on_create_backup_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
@@ -169,65 +150,6 @@ class MongoDBBackups(Object):
             return
 
         # TODO create backup
-
-    def _check_pbm_installed(self) -> bool:
-        if self.substrate() == "k8s":
-            try:
-                self.charm.get_backup_service()
-            except ModelError:
-                return False
-        else:
-            # TODO check if snap is installed
-            return False
-        return True
-
-    def _get_pbm_status(self) -> StatusBase:
-        """Retrieve pbm status."""
-        if not self._check_pbm_installed():
-            return BlockedStatus("pbm not installed.")
-        try:
-            pbm_status = ""
-            if self.substrate() == "k8s":
-                pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
-            else:
-                pbm_status = subprocess.check_output(
-                    "charmed-mongodb.pbm status", shell=True, stderr=subprocess.STDOUT
-                ).decode("utf-8")
-            return self._process_pbm_status(pbm_status)
-        except ExecError as e:
-            logger.error(f"Failed to get pbm status: {e}")
-            return BlockedStatus(self._process_pbm_error(e))
-
-        except subprocess.CalledProcessError as e:
-            # pbm pipes a return code of 1, but its output shows the true error code so it is
-            # necessary to parse the output
-            error_message = e.output.decode("utf-8")
-            if "status code: 403" in error_message:
-                return BlockedStatus("s3 credentials are incorrect.")
-
-            return BlockedStatus("s3 configurations are incompatible.")
-        except Exception as e:
-            # pbm pipes a return code of 1, but its output shows the true error code so it is
-            # necessary to parse the output
-            logger.error(f"Failed to get pbm status: {e}")
-            return BlockedStatus("PBM error")
-
-    def _process_pbm_status(self, pbm_status: str) -> StatusBase:
-        # pbm is running resync operation
-        if "Resync" in self._current_pbm_op(pbm_status):
-            return WaitingStatus("waiting to sync s3 configurations.")
-
-        # no operations are currently running with pbm
-        if "(none)" in self._current_pbm_op(pbm_status):
-            return ActiveStatus("")
-
-        if "Snapshot backup" in self._current_pbm_op(pbm_status):
-            return MaintenanceStatus("backup started/running")
-
-        if "Snapshot restore" in self._current_pbm_op(pbm_status):
-            return MaintenanceStatus("restore started/running")
-
-        return ActiveStatus("")
 
     def _on_list_backups_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
@@ -285,6 +207,38 @@ class MongoDBBackups(Object):
         # TODO restore backup
 
     # BEGIN: helper functions
+
+    def _configure_pbm_options(self, event) -> None:
+        try:
+            self._set_config_options(self._get_pbm_configs())
+            self._resync_config_options()
+        except SetPBMConfigError:
+            self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
+            return
+        except RuntimeError as e:  # TODO on VM charm here should be snap.SnapError
+            logger.error("An exception occurred when starting pbm agent, error: %s.", str(e))
+            self.charm.unit.status = BlockedStatus("couldn't start pbm")
+            return
+        except ResyncError:
+            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
+            event.defer()
+            logger.error("Sync-ing configurations needs more time.")
+            return
+        except PBMBusyError:
+            self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
+            logger.error(
+                "Cannot update configs while PBM is running, must wait for PBM action to finish."
+            )
+            event.defer()
+            return
+        except ExecError as e:
+            self.charm.unit.status = BlockedStatus(self._process_pbm_error(e))
+            return
+        except subprocess.CalledProcessError as e:
+            logger.error("Syncing configurations failed: %s", str(e))
+
+        self.charm.unit.status = self._get_pbm_status()
+
     def _set_config_options(self, pbm_configs):
         """Applying given configurations with pbm."""
         self._set_pbm_config_file()
@@ -403,17 +357,24 @@ class MongoDBBackups(Object):
             reraise=True,
         ):
             with attempt:
-                if self.substrate() == "k8s":
-                    pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
-                else:
-                    pbm_status = subprocess.check_output("charmed-mongodb.pbm status", shell=True)
-                    pbm_status = pbm_status.decode("utf-8")
+                try:
+                    if self.substrate() == "k8s":
+                        pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
+                    else:
+                        pbm_status = subprocess.check_output(
+                            "charmed-mongodb.pbm status", shell=True
+                        )
+                        pbm_status = pbm_status.decode("utf-8")
 
-                if "Resync" in self._current_pbm_op(pbm_status):
-                    # since this process takes several minutes we should let the user know
-                    # immediately.
-                    self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
-                    raise ResyncError
+                    if "Resync" in self._current_pbm_op(pbm_status):
+                        # since this process takes several minutes we should let the user know
+                        # immediately.
+                        self.charm.unit.status = WaitingStatus(
+                            "waiting to sync s3 configurations."
+                        )
+                        raise ResyncError
+                except ExecError as e:
+                    self.charm.unit.status = BlockedStatus(self._process_pbm_error(e))
 
     def _current_pbm_op(self, pbm_status: str) -> str:
         """Parses pbm status for the operation that pbm is running."""
@@ -430,7 +391,67 @@ class MongoDBBackups(Object):
     def _pbm_set_config(self, key: str, value: str) -> None:
         """Runs the charmed-mongodb.pbm config command for the provided key and value."""
         if self.substrate() == "k8s":
-            self.charm.run_pbm_command(f"config --set {key}={value}")
+            config_cmd = [PBM_PATH, "config", "--set", f"{key}={value}"]
+            self.charm.run_pbm_command(config_cmd)
         else:
             config_cmd = f'charmed-mongodb.pbm config --set {key}="{value}"'
             subprocess.check_output(config_cmd, shell=True)
+
+    def _check_pbm_installed(self) -> bool:
+        if self.substrate() == "k8s":
+            try:
+                self.charm.get_backup_service()
+            except ModelError:
+                return False
+        else:
+            # TODO check if snap is installed
+            return False
+        return True
+
+    def _get_pbm_status(self) -> StatusBase:
+        """Retrieve pbm status."""
+        if not self._check_pbm_installed():
+            return BlockedStatus("pbm not installed.")
+        try:
+            pbm_status = ""
+            if self.substrate() == "k8s":
+                pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
+            else:
+                pbm_status = subprocess.check_output(
+                    "charmed-mongodb.pbm status", shell=True, stderr=subprocess.STDOUT
+                ).decode("utf-8")
+            return self._process_pbm_status(pbm_status)
+        except ExecError as e:
+            logger.error("Failed to get pbm status.")
+            return BlockedStatus(self._process_pbm_error(e))
+
+        except subprocess.CalledProcessError as e:
+            # pbm pipes a return code of 1, but its output shows the true error code so it is
+            # necessary to parse the output
+            error_message = e.output.decode("utf-8")
+            if "status code: 403" in error_message:
+                return BlockedStatus("s3 credentials are incorrect.")
+
+            return BlockedStatus("s3 configurations are incompatible.")
+        except Exception as e:
+            # pbm pipes a return code of 1, but its output shows the true error code so it is
+            # necessary to parse the output
+            logger.error(f"Failed to get pbm status: {e}")
+            return BlockedStatus("PBM error")
+
+    def _process_pbm_status(self, pbm_status: str) -> StatusBase:
+        # pbm is running resync operation
+        if "Resync" in self._current_pbm_op(pbm_status):
+            return WaitingStatus("waiting to sync s3 configurations.")
+
+        # no operations are currently running with pbm
+        if "(none)" in self._current_pbm_op(pbm_status):
+            return ActiveStatus("")
+
+        if "Snapshot backup" in self._current_pbm_op(pbm_status):
+            return MaintenanceStatus("backup started/running")
+
+        if "Snapshot restore" in self._current_pbm_op(pbm_status):
+            return MaintenanceStatus("restore started/running")
+
+        return ActiveStatus("")
