@@ -360,35 +360,6 @@ class TestMongoBackups(unittest.TestCase):
         defer.assert_called()
         self.assertTrue(isinstance(self.harness.charm.unit.status, WaitingStatus))
 
-    # @patch_network_get(private_address="1.1.1.1")
-    # @patch("charm.MongoDBBackups._set_config_options")
-    # @patch("charm.MongoDBBackups._resync_config_options")
-    # @patch("ops.framework.EventBase.defer")
-    # @patch("charm.MongoDBCharm.get_backup_service")
-    # def test_s3_credentials_snap_start_error(self, service, defer, resync, _set_config_options):
-    #     """Test charm defers when more time is needed to sync pbm."""
-    #     container = self.harness.model.unit.get_container("mongod")
-    #     self.harness.set_can_connect(container, True)
-    #     self.harness.charm.app_peer_data["db_initialised"] = "True"
-    #     service.return_value = "pbm"
-
-    #     resync.side_effect = RuntimeError
-
-    #     # triggering s3 event with correct fields
-    #     mock_s3_info = mock.Mock()
-    #     mock_s3_info.return_value = {"access-key": "noneya", "secret-key": "business"}
-    #     self.harness.charm.backups.s3_client.get_s3_connection_info = mock_s3_info
-    #     relation_id = self.harness.add_relation(RELATION_NAME, "s3-integrator")
-    #     self.harness.add_relation_unit(relation_id, "s3-integrator/0")
-    #     self.harness.update_relation_data(
-    #         relation_id,
-    #         "s3-integrator/0",
-    #         {"bucket": "hat"},
-    #     )
-
-    #     defer.assert_not_called()
-    #     self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
-
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBBackups._set_config_options")
     @patch("charm.MongoDBBackups._resync_config_options")

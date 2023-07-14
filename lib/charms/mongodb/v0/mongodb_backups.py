@@ -19,6 +19,7 @@ from charms.mongodb.v0.helpers import (
     process_pbm_error,
     process_pbm_status,
 )
+from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
 from ops.model import (
     BlockedStatus,
@@ -107,7 +108,7 @@ class MongoDBBackups(Object):
             # TODO VM charm should implement this  methodx§
             self.charm.get_backup_service()
         except ModelError:
-            logger.error("Cannot set PBM configurations, pbm-agent service not found.")
+            logger.info("Deferring: set PBM configurations, pbm-agent service not found.")
             event.defer()
 
         self._configure_pbm_options(event)
@@ -208,7 +209,7 @@ class MongoDBBackups(Object):
         except SetPBMConfigError:
             self.charm.unit.status = BlockedStatus("couldn't configure s3 backup options.")
             return
-        except RuntimeError as e:  # TODO on VM charm here should be snap.SnapError
+        except snap.SnapError as e:
             logger.error("An exception occurred when starting pbm agent, error: %s.", str(e))
             self.charm.unit.status = BlockedStatus("couldn't start pbm")
             return
@@ -334,8 +335,12 @@ class MongoDBBackups(Object):
 
     def _get_pbm_status(self) -> StatusBase:
         """Retrieve pbm status."""
-        # TODO VM charm should implement this method
-        self.charm.get_backup_service()
+        try:
+            # TODO VM charm should implement this method
+            self.charm.get_backup_service()
+        except ModelError:
+            return BlockedStatus("PBM not installed")
+
         try:
             # TODO VM charm should implement this method
             pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
@@ -343,7 +348,6 @@ class MongoDBBackups(Object):
         except ExecError as e:
             logger.error("Failed to get pbm status.")
             return BlockedStatus(process_pbm_error(e.stdout))
-
         except subprocess.CalledProcessError as e:
             # pbm pipes a return code of 1, but its output shows the true error code so it is
             # necessary to parse the output
