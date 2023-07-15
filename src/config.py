@@ -4,10 +4,6 @@
 
 from typing import Literal
 
-from literals import APP_SCOPE, UNIT_SCOPE
-
-Scopes = Literal[APP_SCOPE, UNIT_SCOPE]
-
 
 class Config:
     """Configuration for MongoDB Charm."""
@@ -24,6 +20,8 @@ class Config:
     CONTAINER_NAME = "mongod"
     SERVICE_NAME = "mongod"
     SOCKET_PATH = "/tmp/mongodb-27017.sock"
+    APP_SCOPE = "app"
+    UNIT_SCOPE = "unit"
 
     class Actions:
         """Actions related config for MongoDB Charm."""
@@ -50,13 +48,19 @@ class Config:
         URI_PARAM_NAME = "monitor-uri"
         SERVICE_NAME = "mongodb-exporter"
         JOBS = [{"static_configs": [{"targets": [f"*:{MONGODB_EXPORTER_PORT}"]}]}]
+        APP_SCOPE = "app"
+        UNIT_SCOPE = "unit"
 
     class Relations:
         """Relations related config for MongoDB Charm."""
 
+        APP_SCOPE = "app"
+        UNIT_SCOPE = "unit"
         NAME = "database"
         PEERS = "database-peers"
         LOGGING = "logging"
+
+        Scopes = Literal[APP_SCOPE, UNIT_SCOPE]
 
     class TLS:
         """TLS related config for MongoDB Charm."""
@@ -66,6 +70,23 @@ class Config:
         INT_PEM_FILE = "internal-cert.pem"
         INT_CA_FILE = "internal-ca.crt"
         KEY_FILE_NAME = "keyFile"
+        TLS_PEER_RELATION = "certificates"
+
+        SECRET_CA_LABEL = "ca-secret"
+        SECRET_KEY_LABEL = "key-secret"
+        SECRET_CERT_LABEL = "cert-secret"
+        SECRET_CSR_LABEL = "csr-secret"
+        SECRET_CHAIN_LABEL = "chain-secret"
+
+    class Secrets:
+        """Secrets related constants."""
+
+        SECRET_LABEL = "secret"
+        SECRET_CACHE_LABEL = "cache"
+        SECRET_KEYFILE_NAME = "keyfile"
+        SECRET_INTERNAL_LABEL = "internal-secret"
+        SECRET_DELETED_LABEL = "None"
+        SECRET_KEYFILE_NAME = "keyfile"
 
     @staticmethod
     def get_license_path(license_name: str) -> str:
