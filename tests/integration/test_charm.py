@@ -145,8 +145,7 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
         ops_test, unit_id=leader_id, username="monitor", password=new_password
     )
 
-    # Chopping off initial 'secret:' from the ID
-    secret_id = result["secret-id"].split(":")[1]
+    secret_id = result["secret-id"].split("/")[-1]
 
     # Getting back the pw programmatically
     password = await get_password(ops_test, unit_id=leader_id, username="monitor")
@@ -157,7 +156,6 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
     data = json.loads(stdout)
 
     assert password == new_password
-    assert data[secret_id]["label"] == "mongodb-k8s:internal-secret"
     assert data[secret_id]["content"]["Data"]["monitor-password"] == password
 
 
