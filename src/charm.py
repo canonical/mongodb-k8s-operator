@@ -763,7 +763,10 @@ class MongoDBCharm(CharmBase):
             else:
                 secret_cache[key] = value
                 try:
+                    start = time.time()
                     secret.set_content(secret_cache)
+                    end = time.time()
+                    logging.info(f"[SECRET] Changing secret took {end - start}")
                 except OSError as error:
                     logging.error(
                         f"Error in attempt to set {scope}:{key}. "
@@ -775,7 +778,10 @@ class MongoDBCharm(CharmBase):
         else:
             scope_obj = self._scope_opj(scope)
 
+            start = time.time()
             secret = scope_obj.add_secret({key: value})
+            end = time.time()
+            logging.info(f"[SECRET] Adding secret took {end - start}")
             if not secret:
                 raise SecretNotAddedError(f"Couldn't set secret {scope}:{key}")
 
@@ -817,7 +823,10 @@ class MongoDBCharm(CharmBase):
             return
 
         secret_cache[key] = Config.Secrets.SECRET_DELETED_LABEL
+        start = time.time()
         secret.set_content(secret_cache)
+        end = time.time()
+        logging.info(f"[SECRET] Setting secret content took {end - start}")
         logging.debug(f"Secret {scope}:{key}")
 
     def remove_secret(self, scope, key) -> None:
