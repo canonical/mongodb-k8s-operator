@@ -52,7 +52,7 @@ def continous_writes(connection_string: str, starting_number: int):
 
         write_value += 1
 
-    with open("/tmp/last_written_value", "w") as fd:
+    with open("last_written_value", "w") as fd:
         fd.write(str(write_value - 1))
 
 

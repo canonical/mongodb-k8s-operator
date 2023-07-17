@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 DATABASE_NAME = "continuous_writes_database"
 PEER = "application-peers"
-LAST_WRITTEN_FILE = "/tmp/last_written_value"
+LAST_WRITTEN_FILE = "last_written_value"
 PROC_PID_KEY = "proc-pid"
 
 
@@ -124,7 +124,10 @@ class ContinuousWritesApplication(CharmBase):
             return None
 
         # Send a SIGTERM to the process and wait for the process to exit
-        os.kill(int(self.app_peer_data[PROC_PID_KEY]), signal.SIGTERM)
+        try:
+            os.kill(int(self.app_peer_data[PROC_PID_KEY]), signal.SIGTERM)
+        except ProcessLookupError:
+            logger.info(f"Process {PROC_PID_KEY} was killed already (or never existed)")
 
         del self.app_peer_data[PROC_PID_KEY]
 
