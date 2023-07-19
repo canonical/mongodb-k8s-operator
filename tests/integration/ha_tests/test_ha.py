@@ -184,6 +184,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
     # verify that the no writes were skipped
+    assert False
     await verify_writes(ops_test)
 
 
