@@ -2,8 +2,10 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import logging
 import time
+from uuid import uuid4
 
 import pytest
 from lightkube import AsyncClient
@@ -25,6 +27,7 @@ from .helpers import (
     primary_host,
     run_mongo_op,
     secondary_mongo_uris_with_sync_delay,
+    set_password,
 )
 
 logger = logging.getLogger(__name__)
@@ -111,6 +114,90 @@ async def test_monitor_user(ops_test: OpsTest) -> None:
 
     return_code, _, stderr = await ops_test.juju(*complete_command.split())
     assert return_code == 0, f"command rs.conf() on monitor user does not work, error: {stderr}"
+
+
+async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: OpsTest) -> None:
+    """Test verifies that only the leader can set a password, while all units can read it."""
+    # Setting existing password
+    leader_id = await get_leader_id(ops_test)
+    non_leaders = list(UNIT_IDS)
+    non_leaders.remove(leader_id)
+
+    password = "blablabla"
+    await set_password(ops_test, unit_id=non_leaders[0], username="monitor", password=password)
+    password1 = await get_password(ops_test, unit_id=leader_id, username="monitor")
+    assert password1 != password
+
+    await set_password(ops_test, unit_id=leader_id, username="monitor", password=password)
+    for unit_id in UNIT_IDS:
+        password2 = await get_password(ops_test, unit_id=unit_id, username="monitor")
+        assert password2 == password
+
+
+@pytest.mark.usefixtures("only_with_juju_secrets")
+async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> None:
+    """Test verifies that we can set and retrieve the correct password using Juju 3.x secrets."""
+    new_password = str(uuid4())
+
+    # Re=setting existing password
+    leader_id = await get_leader_id(ops_test)
+    result = await set_password(
+        ops_test, unit_id=leader_id, username="monitor", password=new_password
+    )
+
+    secret_id = result["secret-id"].split("/")[-1]
+
+    # Getting back the pw programmatically
+    password = await get_password(ops_test, unit_id=leader_id, username="monitor")
+
+    # Getting back the pw from juju CLI
+    complete_command = f"show-secret {secret_id} --reveal --format=json"
+    _, stdout, _ = await ops_test.juju(*complete_command.split())
+    data = json.loads(stdout)
+
+    assert password == new_password
+    assert data[secret_id]["content"]["Data"]["monitor-password"] == password
+
+
+@pytest.mark.usefixtures("only_without_juju_secrets")
+async def test_reset_and_get_password_no_secret(ops_test: OpsTest, mocker) -> None:
+    """Test verifies that we can set and retrieve the correct password using Juju 2.x."""
+    new_password = str(uuid4())
+
+    # Re=setting existing password
+    leader_id = await get_leader_id(ops_test)
+    await set_password(ops_test, unit_id=leader_id, username="monitor", password=new_password)
+
+    # Getting back the pw programmatically
+    password = await get_password(ops_test, unit_id=leader_id, username="monitor")
+    assert password == new_password
+
+
+@pytest.mark.usefixtures("only_with_juju_secrets")
+async def test_empty_password(ops_test: OpsTest) -> None:
+    """Test that the password can't be set to an empty string."""
+    leader_id = await get_leader_id(ops_test)
+
+    password1 = await get_password(ops_test, unit_id=leader_id, username="monitor")
+    await set_password(ops_test, unit_id=leader_id, username="monitor", password="")
+    password2 = await get_password(ops_test, unit_id=leader_id, username="monitor")
+
+    # The password remained unchanged
+    assert password1 == password2
+
+
+@pytest.mark.usefixtures("only_with_juju_secrets")
+async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None:
+    """Test that in general, there is no change when password validation fails."""
+    leader_id = await get_leader_id(ops_test)
+    password1 = await get_password(ops_test, unit_id=leader_id, username="monitor")
+
+    # The password has to be minimum 3 characters
+    await set_password(ops_test, unit_id=leader_id, username="monitor", password="ca" * 1000000)
+    password2 = await get_password(ops_test, unit_id=leader_id, username="monitor")
+
+    # The password didn't change
+    assert password1 == password2
 
 
 async def test_scale_up(ops_test: OpsTest):
