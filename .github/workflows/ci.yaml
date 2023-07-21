@@ -70,9 +70,13 @@ jobs:
           provider: microk8s
           channel: "1.27-strict/stable"
           # This is needed until https://bugs.launchpad.net/juju/+bug/1977582 is fixed
-          bootstrap-options: "--agent-version 3.1.5"
+          # bootstrap-options: "--agent-version 3.1.5"
           bootstrap-constraints: "cores=2 mem=2G"
-          juju-channel: "3.1/stable"
+          juju-channel: "3.1/edge"
+      - name: Setup 3.1.6 OCI image for test model units
+        run: |
+          docker pull jujusolutions/jujud-operator:3.1.6
+          docker save jujusolutions/jujud-operator:3.1.6 | sg snap_microk8s -c "microk8s.ctr --namespace k8s.io image import -"
       - name: Download packed charm(s)
         uses: actions/download-artifact@v3
         with:
@@ -93,6 +97,8 @@ jobs:
         run: sg snap_microk8s -c "tox run -e ${{ matrix.tox-environments }} -- --model testing -m '${{ steps.select-tests.outputs.mark_expression }}'"
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
+      - name: Print debug logs
+        run: juju switch testing; juju debug-log --replay --no-tail --level=INFO | grep "SECRET"
       - name: Dump logs
         uses: canonical/charm-logdump-action@main
         if: failure()
