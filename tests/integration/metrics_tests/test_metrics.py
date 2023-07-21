@@ -76,7 +76,7 @@ async def test_endpoints_new_password(ops_test: OpsTest):
     action = await leader_unit.run_action("set-password", **{"username": "monitor"})
     action = await action.wait()
     # wait for non-leader units to receive relation changed event.
-    time.sleep(3)
+    time.sleep(10)
     await ops_test.model.wait_for_idle()
 
     await verify_endpoints(ops_test, mongodb_application_name)
