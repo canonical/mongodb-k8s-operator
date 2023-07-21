@@ -38,7 +38,6 @@ from ops.model import (
     Container,
     Relation,
     RelationDataContent,
-    Secret,
     SecretNotFoundError,
     Unit,
     WaitingStatus,
@@ -452,9 +451,9 @@ class MongoDBCharm(CharmBase):
     def _on_secret_changed(self, event):
         secret = event.secret
 
-        if secret.id in self.app_peer_data:
+        if secret.id == self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, None):
             scope = APP_SCOPE
-        elif secret.id in self.unit_peer_data:
+        elif secret.id == self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, None):
             scope = UNIT_SCOPE
         else:
             logging.debug(
@@ -694,7 +693,7 @@ class MongoDBCharm(CharmBase):
         ):
             self.unit.status = ActiveStatus()
 
-    def _juju_secrets_get(self, scope: Scopes) -> Optional[Secret]:
+    def _juju_secrets_get(self, scope: Scopes) -> Optional[bool]:
         """Helper function to get Juju secret."""
         peer_data = self._peer_data(scope)
 
@@ -719,7 +718,9 @@ class MongoDBCharm(CharmBase):
             # We retrieve and cache actual secret data for the lifetime of the event scope
             self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL] = secret.get_content()
 
-        return self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL]
+        if self.secrets[scope].get(Config.Secrets.SECRET_CACHE_LABEL):
+            return True
+        return False
 
     def _juju_secret_get_key(self, scope: Scopes, key: str) -> Optional[str]:
         if not key:
@@ -779,6 +780,7 @@ class MongoDBCharm(CharmBase):
                 raise SecretNotAddedError(f"Couldn't set secret {scope}:{key}")
 
             self.secrets[scope][Config.Secrets.SECRET_LABEL] = secret
+            self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL] = {key: value}
             logging.debug(f"Secret {scope}:{key} published (as first). ID: {secret.id}")
             peer_data.update({Config.Secrets.SECRET_INTERNAL_LABEL: secret.id})
 

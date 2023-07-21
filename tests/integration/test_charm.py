@@ -130,8 +130,8 @@ async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: 
 
     await set_password(ops_test, unit_id=leader_id, username="monitor", password=password)
     for unit_id in UNIT_IDS:
-        password = await get_password(ops_test, unit_id=unit_id, username="monitor")
-        assert password == password
+        password2 = await get_password(ops_test, unit_id=unit_id, username="monitor")
+        assert password2 == password
 
 
 @pytest.mark.usefixtures("only_with_juju_secrets")

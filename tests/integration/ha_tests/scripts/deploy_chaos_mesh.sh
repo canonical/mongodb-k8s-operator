@@ -22,6 +22,5 @@ deploy_chaos_mesh() {
 }
 
 echo "namespace=${chaos_mesh_ns}"
-alias kubectl='microk8s kubectl'
 chmod 0700 ~/.kube/config
 deploy_chaos_mesh

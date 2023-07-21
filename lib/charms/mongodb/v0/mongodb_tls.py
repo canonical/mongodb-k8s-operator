@@ -192,8 +192,6 @@ class MongoDBTLS(Object):
 
         logger.info("Restarting mongod with TLS enabled.")
 
-        # We may wanna add this?
-        # self.charm.delete_tls_certificate_from_workload()
         self.charm.push_tls_certificate_to_workload()
         self.charm.unit.status = MaintenanceStatus("enabling TLS")
         self.charm.restart_mongod_service()
