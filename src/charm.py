@@ -4,6 +4,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import re
 import time
 from typing import Dict, List, Optional, Set
 
@@ -533,23 +534,39 @@ class MongoDBCharm(CharmBase):
         )
 
     def _on_secret_remove(self, event):
-        logging.debug(f"Secret {event._id} seems to have no observers, could be removed")
+        logging.debug(f"Secret {event.secret.id} seems to have no observers, could be removed")
 
     def _on_secret_changed(self, event):
-        secret = event.secret
+        """Handles passwords changes event.
 
-        if secret.id == self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, None):
+        When user run set-password action, juju leader changes the password inside the database
+        and inside the secret object. This action runs the restart for monitoring tool and
+        for backup tool on non-leader units to keep them working with MongoDB.
+        """
+        # Cut the secret id from the following strings:
+        # secret://9663a790-7828-4186-8b21-2624c58b6cfe/citb87nubg2s766pab40
+        # secret:citb87nubg2s766pab40
+        regex = re.compile(".*[^/][/:]")
+        event_secret_id = regex.sub("", event.secret.id)
+        app_secret_id = regex.sub(
+            "", self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, "")
+        )
+        unit_secret_id = regex.sub(
+            "", self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, "")
+        )
+
+        if event_secret_id == app_secret_id:
             scope = APP_SCOPE
-        elif secret.id == self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, None):
+        elif event_secret_id == unit_secret_id:
             scope = UNIT_SCOPE
         else:
-            logging.debug(
-                "Secret {event._id}:{event.secret.id} changed, but it's irrelevant for us"
-            )
+            logging.debug("Secret %s changed, but it's unknown", event_secret_id)
             return
-        logging.debug(f"Secret {event._id} for scope {scope} changed, refreshing")
+        logging.debug("Secret %s for scope %s changed, refreshing", event_secret_id, scope)
+
         self._juju_secrets_get(scope)
         self._connect_mongodb_exporter()
+        self._connect_pbm_agent()
 
     # END: actions
 
