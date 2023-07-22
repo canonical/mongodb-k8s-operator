@@ -34,6 +34,8 @@ class Config:
 
         SERVICE_NAME = "pbm-agent"
         URI_PARAM_NAME = "pbm-uri"
+        PBM_PATH = "/usr/bin/pbm"
+        PBM_CONFIG_FILE_PATH = "/etc/pbm_config.yaml"
 
     class Monitoring:
         """Monitoring related config for MongoDB Charm."""
