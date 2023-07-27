@@ -283,6 +283,26 @@ class MongoDBCharm(CharmBase):
     def _peer_data(self, scope: Scopes):
         return self.relation.data[self._scope_opj(scope)]
 
+    @staticmethod
+    def _compare_secret_ids(secret_id1: str, secret_id2: str) -> bool:
+        """Reliable comparison on secret equality.
+
+        NOTE: Secret IDs may be of any of these forms:
+         - secret://9663a790-7828-4186-8b21-2624c58b6cfe/citb87nubg2s766pab40
+         - secret:citb87nubg2s766pab40
+        """
+        if not secret_id1 or not secret_id2:
+            return False
+
+        regex = re.compile(".*[^/][/:]")
+
+        pure_id1 = regex.sub("", secret_id1)
+        pure_id2 = regex.sub("", secret_id2)
+
+        if pure_id1 and pure_id2:
+            return pure_id1 == pure_id2
+        return False
+
     # END: generic helper methods
 
     # BEGIN: charm events
@@ -537,32 +557,25 @@ class MongoDBCharm(CharmBase):
         logging.debug(f"Secret {event.secret.id} seems to have no observers, could be removed")
 
     def _on_secret_changed(self, event):
-        """Handles passwords changes event.
+        """Handles secrets changes event.
 
         When user run set-password action, juju leader changes the password inside the database
         and inside the secret object. This action runs the restart for monitoring tool and
-        for backup tool on non-leader units to keep them working with MongoDB.
+        for backup tool on non-leader units to keep them working with MongoDB. The same workflow
+        occurs on TLS certs change.
         """
-        # Cut the secret id from the following strings:
-        # secret://9663a790-7828-4186-8b21-2624c58b6cfe/citb87nubg2s766pab40
-        # secret:citb87nubg2s766pab40
-        regex = re.compile(".*[^/][/:]")
-        event_secret_id = regex.sub("", event.secret.id)
-        app_secret_id = regex.sub(
-            "", self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, "")
-        )
-        unit_secret_id = regex.sub(
-            "", self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, "")
-        )
-
-        if event_secret_id == app_secret_id:
+        if self._compare_secret_ids(
+            event.secret.id, self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
+        ):
             scope = APP_SCOPE
-        elif event_secret_id == unit_secret_id:
+        elif self._compare_secret_ids(
+            event.secret.id, self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
+        ):
             scope = UNIT_SCOPE
         else:
-            logging.debug("Secret %s changed, but it's unknown", event_secret_id)
+            logging.debug("Secret %s changed, but it's unknown", event.secret.id)
             return
-        logging.debug("Secret %s for scope %s changed, refreshing", event_secret_id, scope)
+        logging.debug("Secret %s for scope %s changed, refreshing", event.secret.id, scope)
 
         self._juju_secrets_get(scope)
         self._connect_mongodb_exporter()
