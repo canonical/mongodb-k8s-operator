@@ -1001,7 +1001,10 @@ class MongoDBCharm(CharmBase):
             Config.TLS.INT_CA_FILE,
             Config.TLS.INT_PEM_FILE,
         ]:
-            container.remove_path(f"{Config.CONF_DIR}/{file}")
+            try:
+                container.remove_path(f"{Config.CONF_DIR}/{file}")
+            except PathError as err:
+                logger.debug("Path unavailable: %s (%s)", file, str(err))
 
     def get_hostname_for_unit(self, unit: Unit) -> str:
         """Create a DNS name for a MongoDB unit.
