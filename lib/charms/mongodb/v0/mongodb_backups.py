@@ -8,7 +8,9 @@ A user for PBM is created when MongoDB is first started during the start phase.
 This user is named "backup".
 """
 
+import json
 import logging
+import re
 import subprocess
 import time
 from typing import Dict
@@ -143,7 +145,13 @@ class MongoDBBackups(Object):
             event.fail(f"Cannot create backup {pbm_status.message}.")
             return
 
-        # TODO create backup
+        try:
+            self.charm.run_pbm_command(["backup"])
+            event.set_results({"backup-status": "backup started"})
+            self.charm.unit.status = MaintenanceStatus("backup started/running")
+        except (subprocess.CalledProcessError, ExecError, Exception) as e:
+            event.fail(f"Failed to backup MongoDB with error: {str(e)}")
+            return
 
     def _on_list_backups_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
@@ -164,7 +172,12 @@ class MongoDBBackups(Object):
             event.fail(f"Cannot list backups: {pbm_status.message}.")
             return
 
-        # TODO list backups
+        try:
+            formatted_list = self._generate_backup_list_output()
+            event.set_results({"backups": formatted_list})
+        except (subprocess.CalledProcessError, ExecError) as e:
+            event.fail(f"Failed to list MongoDB backups with error: {str(e)}")
+            return
 
     def _on_restore_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
@@ -185,7 +198,6 @@ class MongoDBBackups(Object):
         # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, creating a backup, or already performing a restore.
         pbm_status = self._get_pbm_status()
-        # TOD check status
         self.charm.unit.status = pbm_status
         if isinstance(pbm_status, MaintenanceStatus):
             event.fail("Please wait for current backup/restore to finish.")
@@ -198,7 +210,7 @@ class MongoDBBackups(Object):
             event.fail(f"Cannot restore backup {pbm_status.message}.")
             return
 
-        # TODO restore backup
+        self._try_to_restore()
 
     # BEGIN: helper functions
 
@@ -357,3 +369,113 @@ class MongoDBBackups(Object):
             # necessary to parse the output
             logger.error(f"Failed to get pbm status: {e}")
             return BlockedStatus("PBM error")
+
+    def _generate_backup_list_output(self) -> str:
+        """Generates a list of backups in a formatted table.
+
+        List contains successful, failed, and in progress backups in order of ascending time.
+
+        Raises CalledProcessError
+        """
+        backup_list = []
+        pbm_status = self.charm.run_pbm_command(["status", "--out=json"])
+        # processes finished and failed backups
+        pbm_status = json.loads(pbm_status)
+        backups = pbm_status["backups"]["snapshot"] or []
+        for backup in backups:
+            backup_status = "finished"
+            if backup["status"] == "error":
+                # backups from a different cluster have an error status, but they should show as
+                # finished
+                if self._backup_from_different_cluster(backup.get("error", "")):
+                    backup_status = "finished"
+                else:
+                    # display reason for failure if available
+                    backup_status = "failed: " + backup.get("error", "N/A")
+            if backup["status"] not in ["error", "done"]:
+                backup_status = "in progress"
+            backup_list.append((backup["name"], backup["type"], backup_status))
+
+        # process in progress backups
+        running_backup = pbm_status["running"]
+        if running_backup.get("type", None) == "backup":
+            # backups are sorted in reverse order
+            last_reported_backup = backup_list[0]
+            # pbm will occasionally report backups that are currently running as failed, so it is
+            # necessary to correct the backup list in this case.
+            if last_reported_backup[0] == running_backup["name"]:
+                backup_list[0] = (last_reported_backup[0], last_reported_backup[1], "in progress")
+            else:
+                backup_list.append((running_backup["name"], "logical", "in progress"))
+
+        # sort by time and return formatted output
+        return self._format_backup_list(sorted(backup_list, key=lambda pair: pair[0]))
+
+    def _format_backup_list(self, backup_list) -> str:
+        """Formats provided list of backups as a table."""
+        backups = ["{:<21s} | {:<12s} | {:s}".format("backup-id", "backup-type", "backup-status")]
+
+        backups.append("-" * len(backups[0]))
+        for backup_id, backup_type, backup_status in backup_list:
+            backups.append(
+                "{:<21s} | {:<12s} | {:s}".format(backup_id, backup_type, backup_status)
+            )
+
+        return "\n".join(backups)
+
+    def _backup_from_different_cluster(self, backup_status: str) -> bool:
+        """Returns if a given backup was made on a different cluster."""
+        return re.search(REMAPPING_PATTERN, backup_status) is not None
+
+    def _try_to_restore(self, backup_id: str, event) -> None:
+        try:
+            remapping_args = self._remap_replicaset(backup_id)
+            self.charm.run_pbm_command(["restore", backup_id, remapping_args])
+            event.set_results({"restore-status": "restore started"})
+            self.charm.unit.status = MaintenanceStatus("restore started/running")
+        except (subprocess.CalledProcessError, ExecError) as e:
+            if type(e) == subprocess.CalledProcessError:
+                error_message = e.output.decode("utf-8")
+            else:
+                error_message = str(e.stdout)
+            fail_message = f"Failed to restore MongoDB with error: {str(e)}"
+
+            if f"backup '{backup_id}' not found" in error_message:
+                fail_message = f"Backup id: {backup_id} does not exist in list of backups, please check list-backups for the available backup_ids."
+
+            event.fail(fail_message)
+
+    def _remap_replicaset(self, backup_id: str) -> str:
+        """Returns options for remapping a replica set during a cluster migration restore.
+
+        Args:
+            backup_id: str of the backup to check for remapping
+
+        Raises: CalledProcessError
+        """
+        pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
+        pbm_status = json.loads(pbm_status)
+
+        # grab the error status from the backup if present
+        backups = pbm_status["backups"]["snapshot"] or []
+        backup_status = ""
+        for backup in backups:
+            if not backup_id == backup["name"]:
+                continue
+
+            backup_status = backup.get("error", "")
+            break
+
+        if not self._backup_from_different_cluster(backup_status):
+            return ""
+
+        # TODO in the future when we support conf servers and shards this will need to be more
+        # comprehensive.
+        old_cluster_name = re.search(REMAPPING_PATTERN, backup_status).group(1)
+        current_cluster_name = self.charm.app.name
+        logger.debug(
+            "Replica set remapping is necessary for restore, old cluster name: %s ; new cluster name: %s",
+            old_cluster_name,
+            current_cluster_name,
+        )
+        return f"--replset-remapping {current_cluster_name}={old_cluster_name}"

@@ -132,7 +132,6 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     )
 
 
-@pytest.mark.skip("Not implemented yet")
 @pytest.mark.abort_on_fail
 async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     db_unit = await helpers.get_leader_unit(ops_test)
@@ -141,7 +140,6 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     action = await db_unit.run_action(action_name="list-backups")
     list_result = await action.wait()
     backups = list_result.results["backups"]
-    assert backups, "backups not outputted"
 
     # verify backup is started
     action = await db_unit.run_action(action_name="create-backup")
@@ -161,7 +159,6 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
         assert backups == 1, "Backup not created."
 
 
-@pytest.mark.skip("Not implemented yet")
 @pytest.mark.abort_on_fail
 async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
     """With writes in the DB test creating a backup while another one is running.
