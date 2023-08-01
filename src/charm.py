@@ -4,7 +4,6 @@
 # See LICENSE file for licensing details.
 
 import logging
-import re
 import time
 from typing import Dict, List, Optional, Set
 
@@ -283,26 +282,6 @@ class MongoDBCharm(CharmBase):
     def _peer_data(self, scope: Scopes):
         return self.relation.data[self._scope_opj(scope)]
 
-    @staticmethod
-    def _compare_secret_ids(secret_id1: str, secret_id2: str) -> bool:
-        """Reliable comparison on secret equality.
-
-        NOTE: Secret IDs may be of any of these forms:
-         - secret://9663a790-7828-4186-8b21-2624c58b6cfe/citb87nubg2s766pab40
-         - secret:citb87nubg2s766pab40
-        """
-        if not secret_id1 or not secret_id2:
-            return False
-
-        regex = re.compile(".*[^/][/:]")
-
-        pure_id1 = regex.sub("", secret_id1)
-        pure_id2 = regex.sub("", secret_id2)
-
-        if pure_id1 and pure_id2:
-            return pure_id1 == pure_id2
-        return False
-
     # END: generic helper methods
 
     # BEGIN: charm events
@@ -564,12 +543,12 @@ class MongoDBCharm(CharmBase):
         for backup tool on non-leader units to keep them working with MongoDB. The same workflow
         occurs on TLS certs change.
         """
-        if self._compare_secret_ids(
-            event.secret.id, self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
+        if event.secret.get_info().id == self.app_peer_data.get(
+            Config.Secrets.SECRET_INTERNAL_LABEL
         ):
             scope = APP_SCOPE
-        elif self._compare_secret_ids(
-            event.secret.id, self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
+        elif event.secret.get_info().id == self.unit_peer_data.get(
+            Config.Secrets.SECRET_INTERNAL_LABEL
         ):
             scope = UNIT_SCOPE
         else:
@@ -900,7 +879,7 @@ class MongoDBCharm(CharmBase):
             self.secrets[scope][Config.Secrets.SECRET_LABEL] = secret
             self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL] = {key: value}
             logging.debug(f"Secret {scope}:{key} published (as first). ID: {secret.id}")
-            peer_data.update({Config.Secrets.SECRET_INTERNAL_LABEL: secret.id})
+            peer_data.update({Config.Secrets.SECRET_INTERNAL_LABEL: secret.get_info().id})
 
         return self.secrets[scope][Config.Secrets.SECRET_LABEL].id
 
