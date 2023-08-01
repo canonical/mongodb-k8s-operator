@@ -4,6 +4,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import re
 import time
 from typing import Dict, List, Optional, Set
 
@@ -282,6 +283,26 @@ class MongoDBCharm(CharmBase):
     def _peer_data(self, scope: Scopes):
         return self.relation.data[self._scope_opj(scope)]
 
+    @staticmethod
+    def _compare_secret_ids(secret_id1: str, secret_id2: str) -> bool:
+        """Reliable comparison on secret equality.
+
+        NOTE: Secret IDs may be of any of these forms:
+         - secret://9663a790-7828-4186-8b21-2624c58b6cfe/citb87nubg2s766pab40
+         - secret:citb87nubg2s766pab40
+        """
+        if not secret_id1 or not secret_id2:
+            return False
+
+        regex = re.compile(".*[^/][/:]")
+
+        pure_id1 = regex.sub("", secret_id1)
+        pure_id2 = regex.sub("", secret_id2)
+
+        if pure_id1 and pure_id2:
+            return pure_id1 == pure_id2
+        return False
+
     # END: generic helper methods
 
     # BEGIN: charm events
@@ -533,23 +554,32 @@ class MongoDBCharm(CharmBase):
         )
 
     def _on_secret_remove(self, event):
-        logging.debug(f"Secret {event._id} seems to have no observers, could be removed")
+        logging.debug(f"Secret {event.secret.id} seems to have no observers, could be removed")
 
     def _on_secret_changed(self, event):
-        secret = event.secret
+        """Handles secrets changes event.
 
-        if secret.id == self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, None):
+        When user run set-password action, juju leader changes the password inside the database
+        and inside the secret object. This action runs the restart for monitoring tool and
+        for backup tool on non-leader units to keep them working with MongoDB. The same workflow
+        occurs on TLS certs change.
+        """
+        if self._compare_secret_ids(
+            event.secret.id, self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
+        ):
             scope = APP_SCOPE
-        elif secret.id == self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL, None):
+        elif self._compare_secret_ids(
+            event.secret.id, self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
+        ):
             scope = UNIT_SCOPE
         else:
-            logging.debug(
-                "Secret {event._id}:{event.secret.id} changed, but it's irrelevant for us"
-            )
+            logging.debug("Secret %s changed, but it's unknown", event.secret.id)
             return
-        logging.debug(f"Secret {event._id} for scope {scope} changed, refreshing")
+        logging.debug("Secret %s for scope %s changed, refreshing", event.secret.id, scope)
+
         self._juju_secrets_get(scope)
         self._connect_mongodb_exporter()
+        self._connect_pbm_agent()
 
     # END: actions
 

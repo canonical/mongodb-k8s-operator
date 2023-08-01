@@ -700,6 +700,37 @@ class TestCharm(unittest.TestCase):
             self.harness.charm.remove_secret("unit", "non-existing-secret")
             assert "No secret unit:non-existing-secret" in self._caplog.text
 
+    @parameterized.expand([("app"), ("unit")])
+    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
+    def test_on_secret_changed(self, scope, connect_exporter):
+        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        secret_id = self.harness.charm.set_secret(scope, "new-secret", "bla")
+
+        secret = self.harness.charm.model.get_secret(id=secret_id)
+
+        event = mock.Mock()
+        event.secret = secret
+        secret_id = self.harness.charm._on_secret_changed(event)
+        connect_exporter.assert_called()
+
+    @parameterized.expand([("app"), ("unit")])
+    @pytest.mark.usefixtures("use_caplog")
+    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
+    def test_on_other_secret_changed(self, scope, connect_exporter):
+        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        # "Hack": creating a secret outside of the normal MongoDBCharm.set_secret workflow
+        scope_obj = self.harness.charm._scope_opj(scope)
+        secret = scope_obj.add_secret({"key": "value"})
+
+        event = mock.Mock()
+        event.secret = secret
+
+        with self._caplog.at_level(logging.DEBUG):
+            self.harness.charm._on_secret_changed(event)
+            assert f"Secret {secret.id} changed, but it's unknown" in self._caplog.text
+
+        connect_exporter.assert_not_called()
+
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
     def test_connect_to_mongo_exporter_on_set_password(self, connect_exporter, connection):
