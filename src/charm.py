@@ -655,7 +655,7 @@ class MongoDBCharm(CharmBase):
         password = self.get_secret(APP_SCOPE, user.get_password_key_name())
         if not password:
             raise MissingSecretError(
-                "Password for {APP_SCOPE}, {user.get_username()} couldn't be retrieved"
+                f"Password for '{APP_SCOPE}', '{user.get_username()}' couldn't be retrieved"
             )
         else:
             return MongoDBConfiguration(
@@ -1093,6 +1093,13 @@ class MongoDBCharm(CharmBase):
         process = container.exec([Config.Backup.PBM_PATH] + cmd, environment=environment)
         stdout, _ = process.wait_output()
         return stdout
+
+    def run_pbm_restore_command(self, backup_id: str, remapping_args: str) -> str:
+        """Executes a restore command in the workload container."""
+        restore_cmd = ["restore", backup_id]
+        if remapping_args:
+            restore_cmd = restore_cmd + remapping_args.split(" ")
+        return self.run_pbm_command(restore_cmd)
 
     def set_pbm_config_file(self) -> None:
         """Sets the pbm config file."""

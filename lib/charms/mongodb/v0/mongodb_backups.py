@@ -65,6 +65,8 @@ S3_RELATION = "s3-credentials"
 REMAPPING_PATTERN = r"\ABackup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: ([^,\s]+)([.] Backup has no data for the config server or sole replicaset)?\Z"
 PBM_STATUS_CMD = ["status", "-o", "json"]
 MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
+RESTORE_MAX_ATTEMPTS = 3
+RESTORE_ATTEMPT_COOLDOWN = 5
 
 
 class ResyncError(Exception):
@@ -210,7 +212,17 @@ class MongoDBBackups(Object):
             event.fail(f"Cannot restore backup {pbm_status.message}.")
             return
 
-        self._try_to_restore()
+        # sometimes when we are trying to restore pmb can be resyncing, so we need to retry
+        for attempt in Retrying(
+            stop=stop_after_attempt(RESTORE_MAX_ATTEMPTS),
+            wait=wait_fixed(RESTORE_ATTEMPT_COOLDOWN),
+            reraise=True,
+            before_sleep=lambda retry_state: logger.error(
+                f"Attempt {retry_state.attempt_number} failed. {RESTORE_MAX_ATTEMPTS - retry_state.attempt_number} attempts left. Retrying after {RESTORE_ATTEMPT_COOLDOWN} seconds."
+            ),
+        ):
+            with attempt:
+                self._try_to_restore(backup_id, event)
 
     # BEGIN: helper functions
 
@@ -430,15 +442,19 @@ class MongoDBBackups(Object):
     def _try_to_restore(self, backup_id: str, event) -> None:
         try:
             remapping_args = self._remap_replicaset(backup_id)
-            self.charm.run_pbm_command(["restore", backup_id, remapping_args])
+            self.charm.run_pbm_restore_command(backup_id, remapping_args)
             event.set_results({"restore-status": "restore started"})
             self.charm.unit.status = MaintenanceStatus("restore started/running")
         except (subprocess.CalledProcessError, ExecError) as e:
             if type(e) == subprocess.CalledProcessError:
                 error_message = e.output.decode("utf-8")
             else:
-                error_message = str(e.stdout)
+                error_message = str(e.stderr)
             fail_message = f"Failed to restore MongoDB with error: {str(e)}"
+
+            if "Resync" in error_message:
+                logger.error("PBM is resyncing %s.", fail_message)
+                raise PBMBusyError
 
             if f"backup '{backup_id}' not found" in error_message:
                 fail_message = f"Backup id: {backup_id} does not exist in list of backups, please check list-backups for the available backup_ids."
