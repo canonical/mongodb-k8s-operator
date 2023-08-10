@@ -347,6 +347,7 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
 async def test_restore_new_cluster(ops_test: OpsTest, continuous_writes_to_db, cloud_provider):
     # configure test for the cloud provider
     db_app_name = await helpers.app_name(ops_test)
+    leader_unit = await helpers.get_leader_unit(ops_test, db_app_name)
     await helpers.set_credentials(ops_test, cloud=cloud_provider)
     if cloud_provider == "AWS":
         configuration_parameters = {
@@ -367,12 +368,18 @@ async def test_restore_new_cluster(ops_test: OpsTest, continuous_writes_to_db, c
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
     )
 
-    # create a backup
+    # sleep to allow for writes to be made
+    time.sleep(30)
     writes_in_old_cluster = await ha_helpers.get_total_writes(ops_test)
     assert writes_in_old_cluster > 0, "old cluster has no writes."
 
+    # create a backup
+    action = await leader_unit.run_action(action_name="create-backup")
+    latest_backup = await action.wait()
+    assert latest_backup.status == "completed", "Backup not started."
+
     # save old password, since after restoring we will need this password to authenticate.
-    leader_unit = await helpers.get_leader_unit(ops_test, db_app_name)
+
     action = await leader_unit.run_action("get-password", **{"username": "operator"})
     action = await action.wait()
     old_password = action.results["password"]
@@ -474,4 +481,4 @@ async def test_update_backup_password(ops_test: OpsTest) -> None:
 # TODO remove this workaround once issue with juju secrets is fixed
 def get_new_cluster_name(cloud_provider: str) -> str:
     """Generates a new cluster name."""
-    return f"{NEW_CLUSTER}-{cloud_provider}"
+    return f"{NEW_CLUSTER}-{cloud_provider.lower()}"

@@ -46,6 +46,7 @@ from ops.model import (
     ActiveStatus,
     BlockedStatus,
     Container,
+    MaintenanceStatus,
     Relation,
     RelationDataContent,
     SecretNotFoundError,
@@ -486,6 +487,12 @@ class MongoDBCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the specified user."""
+        # changing the backup password while a backup/restore is in progress can be disastrous
+        pbm_status = self.backups._get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.fail("Cannot change password while a backup/restore is in progress.")
+            return
+
         # only leader can write the new password into peer relation.
         if not self.unit.is_leader():
             event.fail("The action can be run only on leader unit.")
