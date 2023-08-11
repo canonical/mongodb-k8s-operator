@@ -80,6 +80,13 @@ class SetPBMConfigError(Exception):
 class PBMBusyError(Exception):
     """Raised when PBM is busy and cannot run another operation."""
 
+class RestoreError(Exception):
+    """Raised when backup operation is failed."""
+
+def _restore_retry_before_sleep(retry_state) -> None:
+    logger.error(
+            f"Attempt {retry_state.attempt_number} failed. {RESTORE_MAX_ATTEMPTS - retry_state.attempt_number} attempts left. Retrying after {RESTORE_ATTEMPT_COOLDOWN} seconds."
+    ),
 
 class MongoDBBackups(Object):
     """Manages MongoDB backups."""
@@ -217,17 +224,17 @@ class MongoDBBackups(Object):
             stop=stop_after_attempt(RESTORE_MAX_ATTEMPTS),
             wait=wait_fixed(RESTORE_ATTEMPT_COOLDOWN),
             reraise=True,
-            before_sleep=lambda retry_state: logger.error(
-                f"Attempt {retry_state.attempt_number} failed. {RESTORE_MAX_ATTEMPTS - retry_state.attempt_number} attempts left. Retrying after {RESTORE_ATTEMPT_COOLDOWN} seconds."
-            ),
+            before_sleep=_restore_retry_before_sleep,
         ):
             with attempt:
-                restore_started, message = self._try_to_restore(backup_id, event)
-                if restore_started:
-                    event.set_results(message)
-                    self.charm.unit.status = MaintenanceStatus({"restore-status": message})
-                else:
-                    event.fail(message)
+                try:
+                    self._try_to_restore(backup_id)
+                    event.set_results({"restore-status": "restore started"})
+                    self.charm.unit.status = MaintenanceStatus()
+                except ResyncError as e:
+                    raise
+                except RestoreError as restore_error:
+                    event.fail(str(restore_error))
 
     # BEGIN: helper functions
 
@@ -444,11 +451,10 @@ class MongoDBBackups(Object):
         """Returns if a given backup was made on a different cluster."""
         return re.search(REMAPPING_PATTERN, backup_status) is not None
 
-    def _try_to_restore(self, backup_id: str) -> Tuple(bool, str):
+    def _try_to_restore(self, backup_id: str) -> None:
         try:
             remapping_args = self._remap_replicaset(backup_id)
             self.charm.run_pbm_restore_command(backup_id, remapping_args)
-            return True, "restore started"
         except (subprocess.CalledProcessError, ExecError) as e:
             if type(e) == subprocess.CalledProcessError:
                 error_message = e.output.decode("utf-8")
@@ -457,13 +463,12 @@ class MongoDBBackups(Object):
             fail_message = f"Failed to restore MongoDB with error: {str(e)}"
 
             if "Resync" in error_message:
-                logger.error("PBM is resyncing %s.", fail_message)
-                raise PBMBusyError
+                raise ResyncError
 
             if f"backup '{backup_id}' not found" in error_message:
                 fail_message = f"Backup id: {backup_id} does not exist in list of backups, please check list-backups for the available backup_ids."
-
-            return False, fail_message
+        
+            raise RestoreError(fail_message)
 
     def _remap_replicaset(self, backup_id: str) -> str:
         """Returns options for remapping a replica set during a cluster migration restore.
@@ -499,3 +504,4 @@ class MongoDBBackups(Object):
             current_cluster_name,
         )
         return f"--replset-remapping {current_cluster_name}={old_cluster_name}"
+
