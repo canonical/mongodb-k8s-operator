@@ -13,7 +13,7 @@ import logging
 import re
 import subprocess
 import time
-from typing import Dict
+from typing import Dict, List, Tuple
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import (
@@ -222,7 +222,12 @@ class MongoDBBackups(Object):
             ),
         ):
             with attempt:
-                self._try_to_restore(backup_id, event)
+                restore_started, message = self._try_to_restore(backup_id, event)
+                if restore_started:
+                    event.set_results(message)
+                    self.charm.unit.status = MaintenanceStatus({"restore-status": message})
+                else:
+                    event.fail(message)
 
     # BEGIN: helper functions
 
@@ -423,7 +428,7 @@ class MongoDBBackups(Object):
         # sort by time and return formatted output
         return self._format_backup_list(sorted(backup_list, key=lambda pair: pair[0]))
 
-    def _format_backup_list(self, backup_list) -> str:
+    def _format_backup_list(self, backup_list: List[str]) -> str:
         """Formats provided list of backups as a table."""
         backups = ["{:<21s} | {:<12s} | {:s}".format("backup-id", "backup-type", "backup-status")]
 
@@ -439,12 +444,11 @@ class MongoDBBackups(Object):
         """Returns if a given backup was made on a different cluster."""
         return re.search(REMAPPING_PATTERN, backup_status) is not None
 
-    def _try_to_restore(self, backup_id: str, event) -> None:
+    def _try_to_restore(self, backup_id: str) -> Tuple(bool, str):
         try:
             remapping_args = self._remap_replicaset(backup_id)
             self.charm.run_pbm_restore_command(backup_id, remapping_args)
-            event.set_results({"restore-status": "restore started"})
-            self.charm.unit.status = MaintenanceStatus("restore started/running")
+            return True, "restore started"
         except (subprocess.CalledProcessError, ExecError) as e:
             if type(e) == subprocess.CalledProcessError:
                 error_message = e.output.decode("utf-8")
@@ -459,7 +463,7 @@ class MongoDBBackups(Object):
             if f"backup '{backup_id}' not found" in error_message:
                 fail_message = f"Backup id: {backup_id} does not exist in list of backups, please check list-backups for the available backup_ids."
 
-            event.fail(fail_message)
+            return False, fail_message
 
     def _remap_replicaset(self, backup_id: str) -> str:
         """Returns options for remapping a replica set during a cluster migration restore.
