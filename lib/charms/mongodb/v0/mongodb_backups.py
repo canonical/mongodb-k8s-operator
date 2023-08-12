@@ -34,11 +34,9 @@ from ops.pebble import ExecError
 from tenacity import (
     Retrying,
     before_log,
-    or_,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
-    stop_if_exception_type,
     wait_fixed,
 )
 
@@ -91,6 +89,12 @@ def _restore_retry_before_sleep(retry_state) -> None:
     logger.error(
         f"Attempt {retry_state.attempt_number} failed. {RESTORE_MAX_ATTEMPTS - retry_state.attempt_number} attempts left. Retrying after {RESTORE_ATTEMPT_COOLDOWN} seconds."
     ),
+
+
+def _restore_stop_condition(retry_state) -> bool:
+    if isinstance(retry_state.outcome.exception(), RestoreError):
+        return True
+    return retry_state.attempt_number >= RESTORE_MAX_ATTEMPTS
 
 
 class MongoDBBackups(Object):
@@ -451,9 +455,7 @@ class MongoDBBackups(Object):
 
     def _try_to_restore(self, backup_id: str) -> None:
         for attempt in Retrying(
-            stop=or_(
-                stop_after_attempt(RESTORE_MAX_ATTEMPTS), stop_if_exception_type(RestoreError)
-            ),
+            stop=_restore_stop_condition,
             wait=wait_fixed(RESTORE_ATTEMPT_COOLDOWN),
             reraise=True,
             before_sleep=_restore_retry_before_sleep,
