@@ -232,7 +232,7 @@ class MongoDBBackups(Object):
         try:
             self._try_to_restore(backup_id)
             event.set_results({"restore-status": "restore started"})
-            self.charm.unit.status = MaintenanceStatus()
+            self.charm.unit.status = MaintenanceStatus("restore started/running")
         except ResyncError:
             raise
         except RestoreError as restore_error:
