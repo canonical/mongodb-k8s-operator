@@ -15,6 +15,7 @@ METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 DATABASE_APP_NAME = "mongodb-k8s"
 MONGODB_EXPORTER_PORT = 9216
 MEDIAN_REELECTION_TIME = 12
+RESTART_TIMEOUT = 10
 
 
 @pytest.fixture(scope="module")
@@ -75,8 +76,8 @@ async def test_endpoints_new_password(ops_test: OpsTest):
     leader_unit = await ha_helpers.find_unit(ops_test, leader=True)
     action = await leader_unit.run_action("set-password", **{"username": "monitor"})
     action = await action.wait()
-    # wait for non-leader units to receive relation changed event.
-    time.sleep(3)
+    # wait for non-leader units to receive relation changed event and restart services.
+    time.sleep(RESTART_TIMEOUT)
     await ops_test.model.wait_for_idle()
 
     await verify_endpoints(ops_test, mongodb_application_name)
