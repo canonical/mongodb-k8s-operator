@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from charms.mongodb.v0.helpers import CONF_DIR, DATA_DIR, KEY_FILE
-from ops.model import ModelError
+from ops.model import ActiveStatus, MaintenanceStatus, ModelError
 from ops.pebble import APIError, ExecError, PathError, ProtocolError
 from ops.testing import Harness
 from parameterized import parameterized
@@ -745,15 +745,20 @@ class TestCharm(unittest.TestCase):
         self.harness.charm._on_set_password(action_event)
         connect_exporter.assert_called()
 
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBCharm.get_backup_service")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    def test_event_set_password_secrets(self, connect_exporter, connection):
+    def test_event_set_password_secrets(
+        self, connect_exporter, connection, get_backup_service, get_pbm_status
+    ):
         """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
 
         Furthermore: in Juju 3.x we want to use secrets
         """
         pw = "bla"
-
+        get_backup_service.return_value = "pbm"
+        get_pbm_status.return_value = ActiveStatus()
         self.harness.set_leader(True)
 
         action_event = mock.Mock()
@@ -772,15 +777,19 @@ class TestCharm(unittest.TestCase):
         assert "password" in args_pw
         assert args_pw["password"] == pw
 
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBCharm.get_backup_service")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
     def test_event_auto_reset_password_secrets_when_no_pw_value_shipped(
-        self, connect_exporter, connection
+        self, connect_exporter, connection, get_backup_service, get_pbm_status
     ):
         """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
 
         Furthermore: in Juju 3.x we want to use secrets
         """
+        get_backup_service.return_value = "pbm"
+        get_pbm_status.return_value = ActiveStatus()
         self._setup_secrets()
         self.harness.set_leader(True)
 
@@ -916,3 +925,22 @@ class TestCharm(unittest.TestCase):
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
+
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_set_backup_password_pbm_busy(self, pbm_status, get_backup_service):
+        """Tests changes to passwords fail when pbm is restoring/backing up."""
+        self.harness.set_leader(True)
+        original_password = "pass123"
+        action_event = mock.Mock()
+        get_backup_service.return_value = "pbm"
+
+        for username in ["backup", "monitor", "operator"]:
+            self.harness.charm.app_peer_data[f"{username}-password"] = original_password
+            action_event.params = {"username": username}
+            pbm_status.return_value = MaintenanceStatus("pbm")
+            self.harness.charm._on_set_password(action_event)
+            current_password = self.harness.charm.app_peer_data[f"{username}-password"]
+            action_event.fail.assert_called()
+            self.assertEqual(current_password, original_password)

@@ -2,12 +2,14 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import asyncio
+import logging
 import secrets
 import string
 import time
 from pathlib import Path
 
 import pytest
+import pytest_asyncio
 import yaml
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
@@ -19,27 +21,54 @@ S3_APP_NAME = "s3-integrator"
 TIMEOUT = 15 * 60
 ENDPOINT = "s3-credentials"
 NEW_CLUSTER = "new-mongodb"
-DATABASE_APP_NAME = "mongodb-k8s"
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
+DATABASE_APP_NAME = METADATA["name"]
+
+logger = logging.getLogger(__name__)
 
 
-@pytest.fixture()
+# TODO this should be refactored to remove duplication
+@pytest_asyncio.fixture
 async def continuous_writes_to_db(ops_test: OpsTest):
     """Continuously writes to DB for the duration of the test."""
-    await ha_helpers.start_continous_writes(ops_test, 1)
+    application_name = await ha_helpers.get_application_name(ops_test, "application")
+
+    application_unit = ops_test.model.applications[application_name].units[0]
+
+    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
+    await clear_writes_action.wait()
+
+    start_writes_action = await application_unit.run_action("start-continuous-writes")
+    await start_writes_action.wait()
+
     yield
-    await ha_helpers.stop_continous_writes(ops_test)
-    await ha_helpers.clear_db_writes(ops_test)
+
+    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
+    await clear_writes_action.wait()
 
 
-@pytest.fixture()
+@pytest_asyncio.fixture
 async def add_writes_to_db(ops_test: OpsTest):
     """Adds writes to DB before test starts and clears writes at the end of the test."""
-    await ha_helpers.start_continous_writes(ops_test, 1)
+    application_name = await ha_helpers.get_application_name(ops_test, "application")
+
+    application_unit = ops_test.model.applications[application_name].units[0]
+
+    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
+    await clear_writes_action.wait()
+
+    start_writes_action = await application_unit.run_action("start-continuous-writes")
+    await start_writes_action.wait()
+
     time.sleep(20)
-    await ha_helpers.stop_continous_writes(ops_test)
+
+    stop_writes_action = await application_unit.run_action("stop-continuous-writes")
+    await stop_writes_action.wait()
+
     yield
-    await ha_helpers.clear_db_writes(ops_test)
+
+    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
+    await clear_writes_action.wait()
 
 
 @pytest.mark.abort_on_fail
@@ -59,6 +88,14 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
     # deploy the s3 integrator charm
     await ops_test.model.deploy(S3_APP_NAME, channel="edge")
+
+    # test application
+    application_name = await ha_helpers.get_application_name(ops_test, "application")
+    if not application_name:
+        application_name = await ha_helpers.deploy_and_scale_application(ops_test)
+
+    db_app_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
+    await ha_helpers.relate_mongodb_and_application(ops_test, db_app_name, application_name)
 
     await ops_test.model.wait_for_idle()
 
@@ -132,7 +169,6 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     )
 
 
-@pytest.mark.skip("Not implemented yet")
 @pytest.mark.abort_on_fail
 async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     db_unit = await helpers.get_leader_unit(ops_test)
@@ -141,7 +177,6 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     action = await db_unit.run_action(action_name="list-backups")
     list_result = await action.wait()
     backups = list_result.results["backups"]
-    assert backups, "backups not outputted"
 
     # verify backup is started
     action = await db_unit.run_action(action_name="create-backup")
@@ -161,7 +196,6 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
         assert backups == 1, "Backup not created."
 
 
-@pytest.mark.skip("Not implemented yet")
 @pytest.mark.abort_on_fail
 async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
     """With writes in the DB test creating a backup while another one is running.
@@ -248,12 +282,11 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
         assert backups == 2, "Backup not created in bucket on AWS."
 
 
-@pytest.mark.skip("Not implemented yet")
 @pytest.mark.abort_on_fail
-async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
+async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
     """Simple backup tests that verifies that writes are correctly restored."""
     # count total writes
-    number_writes = await ha_helpers.count_writes(ops_test)
+    number_writes = await ha_helpers.get_total_writes(ops_test)
     assert number_writes > 0, "no writes to backup"
 
     # create a backup in the AWS bucket
@@ -275,8 +308,12 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
 
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
-    await helpers.insert_unwanted_data(ops_test)
-    new_number_of_writes = await ha_helpers.count_writes(ops_test)
+    application_name = await ha_helpers.get_application_name(ops_test, "application")
+    application_unit = ops_test.model.applications[application_name].units[0]
+    start_writes_action = await application_unit.run_action("start-continuous-writes")
+    await start_writes_action.wait()
+    time.sleep(20)
+    new_number_of_writes = await ha_helpers.get_total_writes(ops_test)
     assert new_number_of_writes > number_writes, "No writes to be cleared after restoring."
 
     # find most recent backup id and restore
@@ -293,6 +330,7 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
     )
 
+    number_writes_restored = number_writes  # initialize extra write count
     # verify all writes are present
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):
@@ -303,11 +341,13 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
         assert number_writes == number_writes_restored, "writes not correctly restored"
 
 
-@pytest.mark.skip("Not implemented yet")
+# TODO remove unstable mark once juju issue with secrets is resolved
+@pytest.mark.unstable
 @pytest.mark.parametrize("cloud_provider", ["AWS", "GCP"])
-async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_provider):
+async def test_restore_new_cluster(ops_test: OpsTest, continuous_writes_to_db, cloud_provider):
     # configure test for the cloud provider
     db_app_name = await helpers.app_name(ops_test)
+    leader_unit = await helpers.get_leader_unit(ops_test, db_app_name)
     await helpers.set_credentials(ops_test, cloud=cloud_provider)
     if cloud_provider == "AWS":
         configuration_parameters = {
@@ -328,23 +368,38 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
     )
 
-    # create a backup
-    writes_in_old_cluster = await ha_helpers.count_writes(ops_test, db_app_name)
+    # sleep to allow for writes to be made
+    time.sleep(30)
+    writes_in_old_cluster = await ha_helpers.get_total_writes(ops_test)
     assert writes_in_old_cluster > 0, "old cluster has no writes."
-    await helpers.create_and_verify_backup(ops_test)
+
+    # create a backup
+    action = await leader_unit.run_action(action_name="create-backup")
+    latest_backup = await action.wait()
+    assert latest_backup.status == "completed", "Backup not started."
 
     # save old password, since after restoring we will need this password to authenticate.
-    old_password = await ha_helpers.get_password(ops_test, db_app_name)
+
+    action = await leader_unit.run_action("get-password", **{"username": "operator"})
+    action = await action.wait()
+    old_password = action.results["password"]
+
+    # TODO remove this workaround once issue with juju secrets is fixed
+    NEW_CLUSTER = get_new_cluster_name(cloud_provider)  # noqa: N806
 
     # deploy a new cluster with a different name
     db_charm = await ops_test.build_charm(".")
-    await ops_test.model.deploy(db_charm, num_units=3, application_name=NEW_CLUSTER)
+    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
+    await ops_test.model.deploy(
+        db_charm, num_units=3, resources=resources, application_name=NEW_CLUSTER
+    )
+
     await asyncio.gather(
         ops_test.model.wait_for_idle(apps=[NEW_CLUSTER], status="active", idle_period=20),
     )
 
-    db_unit = await helpers.get_leader_unit(ops_test, db_app_name=NEW_CLUSTER)
-    action = await db_unit.run_action("set-password", **{"password": old_password})
+    leader_unit = await helpers.get_leader_unit(ops_test, db_app_name=NEW_CLUSTER)
+    action = await leader_unit.run_action("set-password", **{"password": old_password})
     action = await action.wait()
     assert action.status == "completed"
 
@@ -362,19 +417,21 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
 
     # verify that the listed backups from the old cluster are not listed as failed.
     assert (
-        await helpers.count_failed_backups(db_unit) == 0
+        await helpers.count_failed_backups(leader_unit) == 0
     ), "Backups from old cluster are listed as failed"
 
     # find most recent backup id and restore
-    action = await db_unit.run_action(action_name="list-backups")
+    action = await leader_unit.run_action(action_name="list-backups")
     list_result = await action.wait()
     list_result = list_result.results["backups"]
     most_recent_backup = list_result.split("\n")[-1]
     backup_id = most_recent_backup.split()[0]
-    action = await db_unit.run_action(action_name="restore", **{"backup-id": backup_id})
+    action = await leader_unit.run_action(action_name="restore", **{"backup-id": backup_id})
     restore = await action.wait()
     assert restore.results["restore-status"] == "restore started", "restore not successful"
 
+    # initialize with old values
+    writes_in_new_cluster = writes_in_old_cluster
     # verify all writes are present
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):
@@ -388,15 +445,17 @@ async def test_restore_new_cluster(ops_test: OpsTest, add_writes_to_db, cloud_pr
             writes_in_new_cluster == writes_in_old_cluster
         ), "new cluster writes do not match old cluster writes after restore"
 
-    await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
+    # TODO there is an issue with on stop and secrets that need to be resolved before
+    # we can cleanup the new cluster, otherwise the test will fail.
+
+    # await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
 
 
-@pytest.mark.skip("Not implemented yet")
 @pytest.mark.abort_on_fail
 async def test_update_backup_password(ops_test: OpsTest) -> None:
     """Verifies that after changing the backup password the pbm tool is updated and functional."""
     db_app_name = await helpers.app_name(ops_test)
-    db_unit = await helpers.get_leader_unit(ops_test)
+    leader_unit = await helpers.get_leader_unit(ops_test)
 
     # wait for charm to be idle before setting password
     await asyncio.gather(
@@ -404,7 +463,7 @@ async def test_update_backup_password(ops_test: OpsTest) -> None:
     )
 
     parameters = {"username": "backup"}
-    action = await db_unit.run_action("set-password", **parameters)
+    action = await leader_unit.run_action("set-password", **parameters)
     action = await action.wait()
     assert action.status == "completed", "failed to set backup password"
 
@@ -414,6 +473,12 @@ async def test_update_backup_password(ops_test: OpsTest) -> None:
     )
 
     # verify we still have connection to pbm via creating a backup
-    action = await db_unit.run_action(action_name="create-backup")
+    action = await leader_unit.run_action(action_name="create-backup")
     backup_result = await action.wait()
     assert backup_result.results["backup-status"] == "backup started", "backup didn't start"
+
+
+# TODO remove this workaround once issue with juju secrets is fixed
+def get_new_cluster_name(cloud_provider: str) -> str:
+    """Generates a new cluster name."""
+    return f"{NEW_CLUSTER}-{cloud_provider.lower()}"

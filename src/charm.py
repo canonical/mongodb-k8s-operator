@@ -47,6 +47,7 @@ from ops.model import (
     ActiveStatus,
     BlockedStatus,
     Container,
+    MaintenanceStatus,
     Relation,
     RelationDataContent,
     SecretNotFoundError,
@@ -507,6 +508,12 @@ class MongoDBCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the specified user."""
+        # changing the backup password while a backup/restore is in progress can be disastrous
+        pbm_status = self.backups._get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.fail("Cannot change password while a backup/restore is in progress.")
+            return
+
         # only leader can write the new password into peer relation.
         if not self.unit.is_leader():
             event.fail("The action can be run only on leader unit.")
@@ -685,7 +692,7 @@ class MongoDBCharm(CharmBase):
         password = self.get_secret(APP_SCOPE, user.get_password_key_name())
         if not password:
             raise MissingSecretError(
-                "Password for {APP_SCOPE}, {user.get_username()} couldn't be retrieved"
+                f"Password for '{APP_SCOPE}', '{user.get_username()}' couldn't be retrieved"
             )
         else:
             return MongoDBConfiguration(
@@ -1126,6 +1133,13 @@ class MongoDBCharm(CharmBase):
         process = container.exec([Config.Backup.PBM_PATH] + cmd, environment=environment)
         stdout, _ = process.wait_output()
         return stdout
+
+    def run_pbm_restore_command(self, backup_id: str, remapping_args: str) -> str:
+        """Executes a restore command in the workload container."""
+        restore_cmd = ["restore", backup_id]
+        if remapping_args:
+            restore_cmd = restore_cmd + remapping_args.split(" ")
+        return self.run_pbm_command(restore_cmd)
 
     def set_pbm_config_file(self) -> None:
         """Sets the pbm config file."""

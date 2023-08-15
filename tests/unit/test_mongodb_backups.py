@@ -1,11 +1,11 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import unittest
-from subprocess import CalledProcessError
 from unittest import mock
 from unittest.mock import patch
 
 import tenacity
+from charms.mongodb.v0.helpers import current_pbm_op
 from charms.mongodb.v0.mongodb_backups import (
     PBMBusyError,
     ResyncError,
@@ -396,27 +396,28 @@ class TestMongoBackups(unittest.TestCase):
         defer.assert_not_called()
         self.assertTrue(isinstance(self.harness.charm.unit.status, BlockedStatus))
 
-    @unittest.skip("Not implemented yet")
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
     @patch("charm.MongoDBBackups._get_pbm_status")
-    @patch("charm.snap.SnapCache")
-    def test_backup_failed(self, snap, pbm_status, output):
+    def test_backup_failed(self, pbm_status, pbm_command, service):
         """Verifies backup is fails if the pbm command failed."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
+        service.return_value = "pbm"
+
+        pbm_command.side_effect = ExecError(
+            command=["/usr/bin/pbm", "status"], exit_code=1, stdout="status code: 42", stderr=""
+        )
 
         action_event = mock.Mock()
         action_event.params = {}
         pbm_status.return_value = ActiveStatus("")
-
-        output.side_effect = CalledProcessError(cmd="charmed-mongodb.pbm backup", returncode=42)
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_create_backup_action(action_event)
 
         action_event.fail.assert_called()
 
-    @unittest.skip("Not implemented yet")
     def test_backup_list_without_rel(self):
         """Verifies no backup lists are attempted without s3 relation."""
         action_event = mock.Mock()
@@ -425,63 +426,65 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.charm.backups._on_list_backups_action(action_event)
         action_event.fail.assert_called()
 
-    @unittest.skip("Not implemented yet")
-    @patch("charm.snap.SnapCache")
-    def test_backup_list_syncing(self, snap, output):
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_backup_list_syncing(self, pbm_command, service):
         """Verifies backup list is deferred if more time is needed to resync."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
+        service.return_value = "pbm"
 
         action_event = mock.Mock()
         action_event.params = {}
-        output.return_value = b"Currently running:\n====\nResync op"
+
+        pbm_command.return_value = "Currently running:\n====\nResync op"
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_list_backups_action(action_event)
 
         action_event.defer.assert_called()
 
-    @unittest.skip("Not implemented yet")
-    @patch("charm.snap.SnapCache")
-    def test_backup_list_wrong_cred(self, snap, output):
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_backup_list_wrong_cred(self, pbm_command, service):
         """Verifies backup list fails with wrong credentials."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
-
         action_event = mock.Mock()
         action_event.params = {}
-        output.side_effect = CalledProcessError(
-            cmd="charmed-mongodb.pbm status", returncode=403, output=b"status code: 403"
+
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
+        service.return_value = "pbm"
+        pbm_command.side_effect = ExecError(
+            command=["/usr/bin/pbm", "status"], exit_code=1, stdout="status code: 403", stderr=""
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_list_backups_action(action_event)
         action_event.fail.assert_called()
 
-    @unittest.skip("Not implemented yet")
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
     @patch("charm.MongoDBBackups._get_pbm_status")
-    @patch("charm.snap.SnapCache")
-    def test_backup_list_failed(self, snap, pbm_status, output):
+    def test_backup_list_failed(self, pbm_status, pbm_command, service):
         """Verifies backup list fails if the pbm command fails."""
         mock_pbm_snap = mock.Mock()
         mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
 
         action_event = mock.Mock()
         action_event.params = {}
         pbm_status.return_value = ActiveStatus("")
 
-        output.side_effect = CalledProcessError(cmd="charmed-mongodb.pbm list", returncode=42)
+        pbm_command.side_effect = ExecError(
+            command=["/usr/bin/pbm", "list"], exit_code=1, stdout="status code: 403", stderr=""
+        )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_list_backups_action(action_event)
 
         action_event.fail.assert_called()
 
-    @unittest.skip("Not implemented yet")
-    def test_generate_backup_list_output(self, check_output):
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_generate_backup_list_output(self, run_pbm_command):
         """Tests correct formation of backup list output.
 
         Specifically the spacing of the backups, the header, the backup order, and the backup
@@ -492,7 +495,7 @@ class TestMongoBackups(unittest.TestCase):
             output_contents = f.readlines()
             output_contents = "".join(output_contents)
 
-        check_output.return_value = output_contents.encode("utf-8")
+        run_pbm_command.return_value = output_contents.encode("utf-8")
         formatted_output = self.harness.charm.backups._generate_backup_list_output()
         formatted_output = formatted_output.split("\n")
         header = formatted_output[0]
@@ -514,7 +517,7 @@ class TestMongoBackups(unittest.TestCase):
             output_contents = f.readlines()
             output_contents = "".join(output_contents)
 
-        check_output.return_value = output_contents.encode("utf-8")
+        run_pbm_command.return_value = output_contents.encode("utf-8")
         formatted_output = self.harness.charm.backups._generate_backup_list_output()
         formatted_output = formatted_output.split("\n")
         header = formatted_output[0]
@@ -533,7 +536,6 @@ class TestMongoBackups(unittest.TestCase):
         inprogress_backup = formatted_output[4]
         self.assertEqual(inprogress_backup, "2023-02-14T17:06:38Z  | logical      | in progress")
 
-    @unittest.skip("Not implemented yet")
     def test_restore_without_rel(self):
         """Verifies no restores are attempted without s3 relation."""
         action_event = mock.Mock()
@@ -542,73 +544,63 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.charm.backups._on_restore_action(action_event)
         action_event.fail.assert_called()
 
-    @unittest.skip("Not implemented yet")
-    @patch("charm.snap.SnapCache")
-    def test_restore_syncing(self, snap, output):
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_restore_syncing(self, pbm_command, service):
         """Verifies restore is deferred if more time is needed to resync."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
-
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
-        output.return_value = b"Currently running:\n====\nResync op"
+        service.return_value = "pbm"
+        pbm_command.return_value = "Currently running:\n====\nResync op"
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_restore_action(action_event)
 
         action_event.defer.assert_called()
 
-    @unittest.skip("Not implemented yet")
-    @patch("charm.snap.SnapCache")
-    def test_restore_running_backup(self, snap, output):
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_restore_running_backup(self, pbm_command, service):
         """Verifies restore is fails if another backup is already running."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
-
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
-        output.return_value = b"Currently running:\n====\nSnapshot backup"
-
+        service.return_value = "pbm"
+        pbm_command.return_value = "Currently running:\n====\nSnapshot backup"
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_restore_action(action_event)
 
         action_event.fail.assert_called()
 
-    @unittest.skip("Not implemented yet")
-    @patch("charm.snap.SnapCache")
-    def test_restore_wrong_cred(self, snap, output):
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    @patch("charm.MongoDBBackups._get_pbm_status")
+    def test_restore_wrong_cred(self, pbm_status, pbm_command, service):
         """Verifies restore is fails if the credentials are incorrect."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
-
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
-        output.side_effect = CalledProcessError(
-            cmd="charmed-mongodb.pbm status", returncode=403, output=b"status code: 403"
+        action_event = mock.Mock()
+        action_event.params = {}
+        pbm_status.return_value = ActiveStatus("")
+
+        pbm_command.side_effect = ExecError(
+            command=["/usr/bin/pbm", "list"], exit_code=1, stdout="status code: 403", stderr=""
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_restore_action(action_event)
         action_event.fail.assert_called()
 
-    @unittest.skip("Not implemented yet")
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
     @patch("charm.MongoDBBackups._get_pbm_status")
-    @patch("charm.snap.SnapCache")
-    def test_restore_failed(self, snap, pbm_status, output):
+    def test_restore_failed(self, pbm_status, pbm_command, service):
         """Verifies restore is fails if the pbm command failed."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
-
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
         pbm_status.return_value = ActiveStatus("")
 
-        output.side_effect = CalledProcessError(
-            cmd="charmed-mongodb.pbm backup", returncode=42, output=b"failed"
+        pbm_command.side_effect = ExecError(
+            command=["/usr/bin/pbm", "list"], exit_code=1, stdout="failed", stderr=""
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
@@ -616,25 +608,25 @@ class TestMongoBackups(unittest.TestCase):
 
         action_event.fail.assert_called()
 
-    @unittest.skip("Not implemented yet")
-    def test_remap_replicaset_no_backup(self, check_output):
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_remap_replicaset_no_backup(self, run_pbm_command):
         """Test verifies that no remapping is given if the backup_id doesn't exist."""
         with open("tests/unit/data/pbm_status.txt") as f:
             output_contents = f.readlines()
             output_contents = "".join(output_contents)
 
-        check_output.return_value = output_contents.encode("utf-8")
+        run_pbm_command.return_value = output_contents.encode("utf-8")
         remap = self.harness.charm.backups._remap_replicaset("this-id-doesnt-exist")
         self.assertEqual(remap, "")
 
-    @unittest.skip("Not implemented yet")
-    def test_remap_replicaset_no_remap_necessary(self, check_output):
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_remap_replicaset_no_remap_necessary(self, run_pbm_command):
         """Test verifies that no remapping is given if no remapping is necessary."""
         with open("tests/unit/data/pbm_status_error_remap.txt") as f:
             output_contents = f.readlines()
             output_contents = "".join(output_contents)
 
-        check_output.return_value = output_contents.encode("utf-8")
+        run_pbm_command.return_value = output_contents.encode("utf-8")
 
         # first case is that the backup is not in the error state
         remap = self.harness.charm.backups._remap_replicaset("2000-02-14T14:09:43Z")
@@ -649,86 +641,76 @@ class TestMongoBackups(unittest.TestCase):
         remap = self.harness.charm.backups._remap_replicaset("2001-02-14T13:59:14Z")
         self.assertEqual(remap, "")
 
-    @unittest.skip("Not implemented yet")
-    def test_remap_replicaset_remap_necessary(self, check_output):
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_remap_replicaset_remap_necessary(self, run_pbm_command):
         """Test verifies that remapping is provided and correct when necessary."""
         with open("tests/unit/data/pbm_status_error_remap.txt") as f:
             output_contents = f.readlines()
             output_contents = "".join(output_contents)
 
-        check_output.return_value = output_contents.encode("utf-8")
+        run_pbm_command.return_value = output_contents.encode("utf-8")
         self.harness.charm.app.name = "current-app-name"
 
         # first case is that the backup is not in the error state
         remap = self.harness.charm.backups._remap_replicaset("2002-02-14T13:59:14Z")
         self.assertEqual(remap, "--replset-remapping current-app-name=old-cluster-name")
 
-    @unittest.skip("Not implemented yet")
-    @patch("charm.snap.SnapCache")
-    def test_get_pbm_status_backup(self, snap, output):
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_get_pbm_status_backup(self, run_pbm_command, service):
         """Tests that when pbm running a backup that pbm is in maintenance state."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
-        output.return_value = b"Currently running:\n====\nSnapshot backup"
+        service.return_value = "pbm"
+        run_pbm_command.return_value = "Currently running:\n====\nSnapshot backup"
         self.assertTrue(
             isinstance(self.harness.charm.backups._get_pbm_status(), MaintenanceStatus)
         )
 
-    @unittest.skip("Not implemented yet")
     def test_current_pbm_op(self):
         """Test if _current_pbm_op can identify the operation pbm is running."""
-        action = self.harness.charm.backups._current_pbm_op(
-            "nothing\nCurrently running:\n====\nexpected action"
-        )
+        action = current_pbm_op("nothing\nCurrently running:\n====\nexpected action")
         self.assertEqual(action, "expected action")
 
-        no_action = self.harness.charm.backups._current_pbm_op("pbm not started")
+        no_action = current_pbm_op("pbm not started")
         self.assertEqual(no_action, "")
 
-    @unittest.skip("Not implemented yet.")
-    @patch("charm.snap.SnapCache")
-    def test_backup_syncing(self, snap, output):
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_backup_syncing(self, run_pbm_command, service):
         """Verifies backup is deferred if more time is needed to resync."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
-
         action_event = mock.Mock()
         action_event.params = {}
-        output.return_value = b"Currently running:\n====\nResync op"
+        service.return_value = "pbm"
+        run_pbm_command.return_value = "Currently running:\n====\nResync op"
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_create_backup_action(action_event)
 
         action_event.defer.assert_called()
 
-    @unittest.skip("Not implemented yet.")
-    @patch("charm.snap.SnapCache")
-    def test_backup_running_backup(self, snap, output):
+    @patch("charm.MongoDBCharm.get_backup_service")
+    @patch("charm.MongoDBCharm.run_pbm_command")
+    def test_backup_running_backup(self, run_pbm_command, service):
         """Verifies backup is fails if another backup is already running."""
-        mock_pbm_snap = mock.Mock()
-        mock_pbm_snap.present = True
-        snap.return_value = {"charmed-mongodb": mock_pbm_snap}
-
         action_event = mock.Mock()
         action_event.params = {}
-        output.return_value = b"Currently running:\n====\nSnapshot backup"
+        service.return_value = "pbm"
+        run_pbm_command.return_value = "Currently running:\n====\nSnapshot backup"
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_create_backup_action(action_event)
 
         action_event.fail.assert_called()
 
-    @unittest.skip("Not implemented yet")
+    @patch("charm.MongoDBCharm.get_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
-    def test_backup_wrong_cred(self, output):
+    def test_backup_wrong_cred(self, run_pbm_command, service):
         """Verifies backup is fails if the credentials are incorrect."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         action_event = mock.Mock()
         action_event.params = {}
-        output.side_effect = ExecError(
+        service.return_value = "pbm"
+        run_pbm_command.side_effect = ExecError(
             command=["/usr/bin/pbm config --set this_key=doesnt_exist"],
             exit_code=403,
             stdout="status code: 403",
