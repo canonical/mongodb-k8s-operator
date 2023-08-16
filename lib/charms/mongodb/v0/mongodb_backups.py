@@ -136,8 +136,9 @@ class MongoDBBackups(Object):
 
     def _on_create_backup_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
-            return self._fail_event_with_log(event,
-                "Backup failed: relation with s3-integrator charm missing, cannot create backup."
+            return self._fail_event_with_log(
+                event,
+                "Backup failed: relation with s3-integrator charm missing, cannot create backup.",
             )
 
         # only leader can create backups. This prevents multiple backups from being attempted at
