@@ -136,10 +136,11 @@ class MongoDBBackups(Object):
 
     def _on_create_backup_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
-            return self._fail_event_with_log(
+            self._fail_event_with_log(
                 event,
                 "Backup failed: relation with s3-integrator charm missing, cannot create backup.",
             )
+            return
 
         # only leader can create backups. This prevents multiple backups from being attempted at
         # once.
@@ -183,10 +184,11 @@ class MongoDBBackups(Object):
 
     def _on_list_backups_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
-            return self._fail_event_with_log(
+            self._fail_event_with_log(
                 event,
                 "List backups failed: relation with s3-integrator charm missing, cannot list backups.",
             )
+            return
 
         # cannot list backups if pbm is resyncing, or has incompatible options or incorrect
         # credentials
@@ -199,39 +201,45 @@ class MongoDBBackups(Object):
             )
             return
         if isinstance(pbm_status, BlockedStatus):
-            return self._fail_event_with_log(event, f"List backups failed: {pbm_status.message}.")
+            self._fail_event_with_log(event, f"List backups failed: {pbm_status.message}.")
+            return
 
         try:
             formatted_list = self._generate_backup_list_output()
             event.set_results({"backups": formatted_list})
         except (subprocess.CalledProcessError, ExecError) as e:
-            return self._fail_event_with_log(event, f"List backups failed: {str(e)}")
+            self._fail_event_with_log(event, f"List backups failed: {str(e)}")
+            return
 
     def _on_restore_action(self, event) -> None:
         if self.model.get_relation(S3_RELATION) is None:
-            return self._fail_event_with_log(
+            self._fail_event_with_log(
                 event, "Relation with s3-integrator charm missing, cannot restore from a backup."
             )
+            return
 
         backup_id = event.params.get("backup-id")
         if not backup_id:
-            return self._fail_event_with_log(event, "Restore failed: Missing backup-id to restore")
+            self._fail_event_with_log(event, "Restore failed: Missing backup-id to restore")
+            return
 
         # only leader can restore backups. This prevents multiple restores from being attempted at
         # once.
         if not self.charm.unit.is_leader():
-            return self._fail_event_with_log(
+            self._fail_event_with_log(
                 event, "Restore failed: The action can be run only on leader unit."
             )
+            return
 
         # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, creating a backup, or already performing a restore.
         pbm_status = self._get_pbm_status()
         self.charm.unit.status = pbm_status
         if isinstance(pbm_status, MaintenanceStatus):
-            return self._fail_event_with_log(
+            self._fail_event_with_log(
                 event, "Restore failed: Please wait for current backup/restore to finish."
             )
+            return
 
         if isinstance(pbm_status, WaitingStatus):
             event.defer()
@@ -241,9 +249,10 @@ class MongoDBBackups(Object):
             return
 
         if isinstance(pbm_status, BlockedStatus):
-            return self._fail_event_with_log(
+            self._fail_event_with_log(
                 event, f"Restore failed: Cannot restore backup {pbm_status.message}."
             )
+            return
 
         # sometimes when we are trying to restore pmb can be resyncing, so we need to retry
         try:
