@@ -119,98 +119,131 @@ class MongoDBBackups(Object):
         """Sets pbm credentials, resyncs if necessary and reports config errors."""
         # handling PBM configurations requires that MongoDB is running and the pbm snap is
         # installed.
+        action = "configure-pbm"
         if not self.charm.db_initialised:
-            logger.info("Deferring: set PBM configurations, MongoDB has not yet started.")
-            event.defer()
+            self._defer_action_with_info_log(
+                event, action, "Set PBM credentials, MongoDB not ready."
+            )
             return
 
         try:
-            # TODO VM charm should implement this  methodx§
+            # TODO VM charm should implement this  method
             self.charm.get_backup_service()
         except ModelError:
-            logger.info("Deferring: set PBM configurations, pbm-agent service not found.")
-            event.defer()
+            self._defer_action_with_info_log(
+                event, action, "Set PBM configurations, pbm-agent service not found."
+            )
+            return
 
         self._configure_pbm_options(event)
 
     def _on_create_backup_action(self, event) -> None:
+        action = "backup"
         if self.model.get_relation(S3_RELATION) is None:
-            event.fail("Relation with s3-integrator charm missing, cannot create backup.")
+            self._fail_action_with_error_log(
+                event,
+                action,
+                "Relation with s3-integrator charm missing, cannot create backup.",
+            )
             return
 
         # only leader can create backups. This prevents multiple backups from being attempted at
         # once.
         if not self.charm.unit.is_leader():
-            event.fail("The action can be run only on leader unit.")
+            self._fail_action_with_error_log(
+                event, action, "The action can be run only on leader unit."
+            )
             return
 
         # cannot create backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, or already creating a backup
         pbm_status = self._get_pbm_status()
         self.charm.unit.status = pbm_status
+
         if isinstance(pbm_status, MaintenanceStatus):
-            event.fail(
-                "Can only create one backup at a time, please wait for current backup to finish."
+            self._fail_action_with_error_log(
+                event,
+                action,
+                "Can only create one backup at a time, please wait for current backup to finish.",
             )
             return
+
         if isinstance(pbm_status, WaitingStatus):
-            event.defer()
-            logger.debug(
-                "Sync-ing configurations needs more time, must wait before creating a backup."
+            self._defer_action_with_info_log(
+                event,
+                action,
+                "Sync-ing configurations needs more time, must wait before creating a backup.",
             )
             return
+
         if isinstance(pbm_status, BlockedStatus):
-            event.fail(f"Cannot create backup {pbm_status.message}.")
+            self._fail_action_with_error_log(event, action, pbm_status.message)
             return
 
         try:
-            self.charm.run_pbm_command(["backup"])
             event.set_results({"backup-status": "backup started"})
             self.charm.unit.status = MaintenanceStatus("backup started/running")
+            self.charm.run_pbm_command(["backup"])
+            logger.info("Backup succeeded.")
         except (subprocess.CalledProcessError, ExecError, Exception) as e:
-            event.fail(f"Failed to backup MongoDB with error: {str(e)}")
+            self._fail_action_with_error_log(event, action, str(e))
             return
 
     def _on_list_backups_action(self, event) -> None:
+        action = "list-backups"
         if self.model.get_relation(S3_RELATION) is None:
-            event.fail("Relation with s3-integrator charm missing, cannot list backups.")
+            self._fail_action_with_error_log(
+                event,
+                action,
+                "Relation with s3-integrator charm missing, cannot list backups.",
+            )
             return
 
         # cannot list backups if pbm is resyncing, or has incompatible options or incorrect
         # credentials
         pbm_status = self._get_pbm_status()
         self.charm.unit.status = pbm_status
+
         if isinstance(pbm_status, WaitingStatus):
-            event.defer()
-            logger.debug(
-                "Sync-ing configurations needs more time, must wait before listing backups."
+            self._defer_action_with_info_log(
+                event,
+                action,
+                "Sync-ing configurations needs more time, must wait before listing backups.",
             )
             return
+
         if isinstance(pbm_status, BlockedStatus):
-            event.fail(f"Cannot list backups: {pbm_status.message}.")
+            self._fail_action_with_error_log(event, action, pbm_status.message)
             return
 
         try:
             formatted_list = self._generate_backup_list_output()
             event.set_results({"backups": formatted_list})
         except (subprocess.CalledProcessError, ExecError) as e:
-            event.fail(f"Failed to list MongoDB backups with error: {str(e)}")
+            self._fail_action_with_error_log(event, action, str(e))
             return
 
     def _on_restore_action(self, event) -> None:
+        action = "restore"
         if self.model.get_relation(S3_RELATION) is None:
-            event.fail("Relation with s3-integrator charm missing, cannot restore from a backup.")
+            self._fail_action_with_error_log(
+                event,
+                action,
+                "Relation with s3-integrator charm missing, cannot restore from a backup.",
+            )
             return
 
         backup_id = event.params.get("backup-id")
         if not backup_id:
-            event.fail("Missing backup-id to restore")
+            self._fail_action_with_error_log(event, action, "Missing backup-id to restore")
             return
 
         # only leader can restore backups. This prevents multiple restores from being attempted at
         # once.
         if not self.charm.unit.is_leader():
-            event.fail("The action can be run only on leader unit.")
+            self._fail_action_with_error_log(
+                event, action, "The action can be run only on leader unit."
+            )
             return
 
         # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
@@ -218,29 +251,40 @@ class MongoDBBackups(Object):
         pbm_status = self._get_pbm_status()
         self.charm.unit.status = pbm_status
         if isinstance(pbm_status, MaintenanceStatus):
-            event.fail("Please wait for current backup/restore to finish.")
+            self._fail_action_with_error_log(
+                event, action, "Please wait for current backup/restore to finish."
+            )
             return
+
         if isinstance(pbm_status, WaitingStatus):
-            event.defer()
-            logger.debug("Sync-ing configurations needs more time, must wait before restoring.")
+            self._defer_action_with_info_log(
+                event,
+                action,
+                "Sync-ing configurations needs more time, must wait before restoring.",
+            )
             return
+
         if isinstance(pbm_status, BlockedStatus):
-            event.fail(f"Cannot restore backup {pbm_status.message}.")
+            self._fail_action_with_error_log(
+                event, action, f"Cannot restore backup {pbm_status.message}."
+            )
             return
 
         # sometimes when we are trying to restore pmb can be resyncing, so we need to retry
         try:
-            self._try_to_restore(backup_id)
             event.set_results({"restore-status": "restore started"})
             self.charm.unit.status = MaintenanceStatus("restore started/running")
+            self._try_to_restore(backup_id)
+            logger.info("Restore succeeded.")
         except ResyncError:
             raise
         except RestoreError as restore_error:
-            event.fail(str(restore_error))
+            self._fail_action_with_error_log(event, action, str(restore_error))
 
     # BEGIN: helper functions
 
     def _configure_pbm_options(self, event) -> None:
+        action = "configure-pbm"
         try:
             self._set_config_options()
             self._resync_config_options()
@@ -253,15 +297,17 @@ class MongoDBBackups(Object):
             return
         except ResyncError:
             self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
-            event.defer()
-            logger.info("Deferring: Sync-ing configurations needs more time.")
+            self._defer_action_with_info_log(
+                event, action, "Sync-ing configurations needs more time."
+            )
             return
         except PBMBusyError:
             self.charm.unit.status = WaitingStatus("waiting to sync s3 configurations.")
-            logger.info(
-                "Deferring: Cannot update configs while PBM is running, must wait for PBM action to finish."
-            )
-            event.defer()
+            self._defer_action_with_info_log(
+                event,
+                action,
+                "Cannot update configs while PBM is running, must wait for PBM action to finish.",
+            ),
             return
         except ExecError as e:
             self.charm.unit.status = BlockedStatus(process_pbm_error(e.stdout))
@@ -469,13 +515,13 @@ class MongoDBBackups(Object):
                         error_message = e.output.decode("utf-8")
                     else:
                         error_message = str(e.stderr)
-                    fail_message = f"Failed to restore MongoDB with error: {str(e)}"
+                    fail_message = f"Restore failed: {str(e)}"
 
                     if "Resync" in error_message:
                         raise ResyncError
 
                     if f"backup '{backup_id}' not found" in error_message:
-                        fail_message = f"Backup id: {backup_id} does not exist in list of backups, please check list-backups for the available backup_ids."
+                        fail_message = f"Restore failed: Backup id '{backup_id}' does not exist in list of backups, please check list-backups for the available backup_ids."
 
                     raise RestoreError(fail_message)
 
@@ -513,3 +559,11 @@ class MongoDBBackups(Object):
             current_cluster_name,
         )
         return f"--replset-remapping {current_cluster_name}={old_cluster_name}"
+
+    def _fail_action_with_error_log(self, event, action: str, message: str) -> None:
+        logger.error("%s failed: %s", action.capitalize(), message)
+        event.fail(message)
+
+    def _defer_action_with_info_log(self, event, action: str, message: str) -> None:
+        logger.info("Deferring %s: %s", action, message)
+        event.defer()
