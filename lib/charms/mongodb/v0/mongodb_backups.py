@@ -181,10 +181,9 @@ class MongoDBBackups(Object):
             return
 
         try:
-            event.set_results({"backup-status": "backup started"})
             self.charm.unit.status = MaintenanceStatus("backup started/running")
             self.charm.run_pbm_command(["backup"])
-            logger.info("Backup succeeded.")
+            self._success_action_with_info_log(event, action, {"backup-status": "backup started"})
         except (subprocess.CalledProcessError, ExecError, Exception) as e:
             self._fail_action_with_error_log(event, action, str(e))
             return
@@ -218,7 +217,7 @@ class MongoDBBackups(Object):
 
         try:
             formatted_list = self._generate_backup_list_output()
-            event.set_results({"backups": formatted_list})
+            self._success_action_with_info_log(event, action, {"backups": formatted_list})
         except (subprocess.CalledProcessError, ExecError) as e:
             self._fail_action_with_error_log(event, action, str(e))
             return
@@ -272,9 +271,11 @@ class MongoDBBackups(Object):
 
         # sometimes when we are trying to restore pmb can be resyncing, so we need to retry
         try:
-            event.set_results({"restore-status": "restore started"})
             self.charm.unit.status = MaintenanceStatus("restore started/running")
             self._try_to_restore(backup_id)
+            self._success_action_with_info_log(
+                event, action, {"restore-status": "restore started"}
+            )
             logger.info("Restore succeeded.")
         except ResyncError:
             raise
@@ -567,3 +568,7 @@ class MongoDBBackups(Object):
     def _defer_action_with_info_log(self, event, action: str, message: str) -> None:
         logger.info("Deferring %s: %s", action, message)
         event.defer()
+
+    def _success_action_with_info_log(self, event, action: str, results: Dict[str, str]) -> None:
+        logger.info("%s completed successfully", action.capitalize())
+        event.set_results(results)
