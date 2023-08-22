@@ -517,6 +517,14 @@ class MongoDBBackups(Object):
         return re.search(REMAPPING_PATTERN, backup_status) is not None
 
     def _try_to_restore(self, backup_id: str) -> None:
+        """Try to restore cluster a backup specified by backup id.
+
+        If PBM is resyncing, the function will retry to create backup
+        (up to  BACKUP_RESTORE_MAX_ATTEMPTS times) with BACKUP_RESTORE_ATTEMPT_COOLDOWN
+        time between attepts.
+
+        If PMB returen any other error, the function will raise RestoreError.
+        """
         for attempt in Retrying(
             stop=_restore_retry_stop_condition,
             wait=wait_fixed(BACKUP_RESTORE_ATTEMPT_COOLDOWN),
@@ -542,6 +550,14 @@ class MongoDBBackups(Object):
                     raise RestoreError(fail_message)
 
     def _try_to_backup(self):
+        """Try to create a backup and return the backup id.
+
+        If PBM is resyncing, the function will retry to create backup
+        (up to BACKUP_RESTORE_MAX_ATTEMPTS times)
+        with BACKUP_RESTORE_ATTEMPT_COOLDOWN time between attepts.
+
+        If PMB returen any other error, the function will raise BackupError.
+        """
         for attempt in Retrying(
             stop=_backup_retry_stop_condition,
             wait=wait_fixed(BACKUP_RESTORE_ATTEMPT_COOLDOWN),
@@ -616,12 +632,22 @@ class MongoDBBackups(Object):
         event.set_results(results)
 
     def _log_backup_restore_result(self, current_pbm_status, previous_pbm_status) -> None:
+        """Logs the result of the backup/restore operation.
+
+        Expected to be called for not failed operations.
+        """
         operation_result = self._get_backup_restore_operation_result(
             current_pbm_status, previous_pbm_status
         )
         logger.info(operation_result)
 
     def _get_backup_restore_operation_result(self, current_pbm_status, previous_pbm_status) -> str:
+        """Returns a string with the result of the backup/restore operation.
+
+        The function call is expected to be only for not failed operations.
+        The operation is taken from previous status of the unit and expected
+        to contain the operation type (backup/restore) and the backup id.
+        """
         if (
             type(current_pbm_status) == type(previous_pbm_status)
             and current_pbm_status.message == previous_pbm_status.message
