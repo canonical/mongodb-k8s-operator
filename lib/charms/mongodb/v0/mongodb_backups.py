@@ -65,8 +65,8 @@ S3_RELATION = "s3-credentials"
 REMAPPING_PATTERN = r"\ABackup doesn't match current cluster topology - it has different replica set names. Extra shards in the backup will cause this, for a simple example. The extra/unknown replica set names found in the backup are: ([^,\s]+)([.] Backup has no data for the config server or sole replicaset)?\Z"
 PBM_STATUS_CMD = ["status", "-o", "json"]
 MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
-RESTORE_MAX_ATTEMPTS = 5
-RESTORE_ATTEMPT_COOLDOWN = 15
+BACKUP_RESTORE_MAX_ATTEMPTS = 5
+BACKUP_RESTORE_ATTEMPT_COOLDOWN = 15
 
 
 class ResyncError(Exception):
@@ -85,16 +85,26 @@ class RestoreError(Exception):
     """Raised when backup operation is failed."""
 
 
-def _restore_retry_before_sleep(retry_state) -> None:
+class BackupError(Exception):
+    """Raised when backup operation is failed."""
+
+
+def _backup_restore_retry_before_sleep(retry_state) -> None:
     logger.error(
-        f"Attempt {retry_state.attempt_number} failed. {RESTORE_MAX_ATTEMPTS - retry_state.attempt_number} attempts left. Retrying after {RESTORE_ATTEMPT_COOLDOWN} seconds."
+        f"Attempt {retry_state.attempt_number} failed. {BACKUP_RESTORE_MAX_ATTEMPTS - retry_state.attempt_number} attempts left. Retrying after {BACKUP_RESTORE_ATTEMPT_COOLDOWN} seconds."
     ),
 
 
-def _restore_stop_condition(retry_state) -> bool:
+def _backup_retry_stop_condition(retry_state) -> bool:
+    if isinstance(retry_state.outcome.exception(), BackupError):
+        return True
+    return retry_state.attempt_number >= BACKUP_RESTORE_MAX_ATTEMPTS
+
+
+def _restore_retry_stop_condition(retry_state) -> bool:
     if isinstance(retry_state.outcome.exception(), RestoreError):
         return True
-    return retry_state.attempt_number >= RESTORE_MAX_ATTEMPTS
+    return retry_state.attempt_number >= BACKUP_RESTORE_MAX_ATTEMPTS
 
 
 class MongoDBBackups(Object):
@@ -181,9 +191,13 @@ class MongoDBBackups(Object):
             return
 
         try:
-            self.charm.unit.status = MaintenanceStatus("backup started/running")
-            self.charm.run_pbm_command(["backup"])
-            self._success_action_with_info_log(event, action, {"backup-status": "backup started"})
+            backup_id = self._try_to_backup()
+            self.charm.unit.status = MaintenanceStatus(
+                f"backup started/running, backup id:'{backup_id}'"
+            )
+            self._success_action_with_info_log(
+                event, action, {"backup-status": f"backup started. backup id: {backup_id}"}
+            )
         except (subprocess.CalledProcessError, ExecError, Exception) as e:
             self._fail_action_with_error_log(event, action, str(e))
             return
@@ -271,12 +285,13 @@ class MongoDBBackups(Object):
 
         # sometimes when we are trying to restore pmb can be resyncing, so we need to retry
         try:
-            self.charm.unit.status = MaintenanceStatus("restore started/running")
             self._try_to_restore(backup_id)
+            self.charm.unit.status = MaintenanceStatus(
+                f"restore started/running, backup id:'{backup_id}'"
+            )
             self._success_action_with_info_log(
                 event, action, {"restore-status": "restore started"}
             )
-            logger.info("Restore succeeded.")
         except ResyncError:
             raise
         except RestoreError as restore_error:
@@ -427,11 +442,12 @@ class MongoDBBackups(Object):
             return WaitingStatus("waiting for pbm to start")
 
         try:
-            # TODO VM charm should implement this method
+            previous_pbm_status = self.charm.unit.status
             pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
+            self._log_backup_restore_result(pbm_status, previous_pbm_status)
             return process_pbm_status(pbm_status)
         except ExecError as e:
-            logger.error("Failed to get pbm status.")
+            logger.error(f"Failed to get pbm status. {e}")
             return BlockedStatus(process_pbm_error(e.stdout))
         except subprocess.CalledProcessError as e:
             # pbm pipes a return code of 1, but its output shows the true error code so it is
@@ -502,10 +518,10 @@ class MongoDBBackups(Object):
 
     def _try_to_restore(self, backup_id: str) -> None:
         for attempt in Retrying(
-            stop=_restore_stop_condition,
-            wait=wait_fixed(RESTORE_ATTEMPT_COOLDOWN),
+            stop=_restore_retry_stop_condition,
+            wait=wait_fixed(BACKUP_RESTORE_ATTEMPT_COOLDOWN),
             reraise=True,
-            before_sleep=_restore_retry_before_sleep,
+            before_sleep=_backup_restore_retry_before_sleep,
         ):
             with attempt:
                 try:
@@ -516,15 +532,41 @@ class MongoDBBackups(Object):
                         error_message = e.output.decode("utf-8")
                     else:
                         error_message = str(e.stderr)
-                    fail_message = f"Restore failed: {str(e)}"
-
                     if "Resync" in error_message:
                         raise ResyncError
 
+                    fail_message = f"Restore failed: {str(e)}"
                     if f"backup '{backup_id}' not found" in error_message:
                         fail_message = f"Restore failed: Backup id '{backup_id}' does not exist in list of backups, please check list-backups for the available backup_ids."
 
                     raise RestoreError(fail_message)
+
+    def _try_to_backup(self):
+        for attempt in Retrying(
+            stop=_backup_retry_stop_condition,
+            wait=wait_fixed(BACKUP_RESTORE_ATTEMPT_COOLDOWN),
+            reraise=True,
+            before_sleep=_backup_restore_retry_before_sleep,
+        ):
+            with attempt:
+                try:
+                    output = self.charm.run_pbm_command(["backup"])
+                    backup_id_match = re.search(
+                        r"Starting backup '(?P<backup_id>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)'",
+                        output,
+                    )
+                    return backup_id_match.group("backup_id") if backup_id_match else "N/A"
+                except (subprocess.CalledProcessError, ExecError) as e:
+                    if type(e) == subprocess.CalledProcessError:
+                        error_message = e.output.decode("utf-8")
+                    else:
+                        error_message = str(e.stderr)
+                    if "Resync" in error_message:
+                        raise ResyncError
+
+                    fail_message = f"Backup failed: {str(e)}"
+
+                    raise BackupError(fail_message)
 
     def _remap_replicaset(self, backup_id: str) -> str:
         """Returns options for remapping a replica set during a cluster migration restore.
@@ -572,3 +614,28 @@ class MongoDBBackups(Object):
     def _success_action_with_info_log(self, event, action: str, results: Dict[str, str]) -> None:
         logger.info("%s completed successfully", action.capitalize())
         event.set_results(results)
+
+    def _log_backup_restore_result(self, current_pbm_status, previous_pbm_status) -> None:
+        operation_result = self._get_backup_restore_operation_result(
+            current_pbm_status, previous_pbm_status
+        )
+        logger.info(operation_result)
+
+    def _get_backup_restore_operation_result(self, current_pbm_status, previous_pbm_status) -> str:
+        if (
+            type(current_pbm_status) == type(previous_pbm_status)
+            and current_pbm_status.message == previous_pbm_status.message
+        ):
+            return f"Operation is still in progress: '{current_pbm_status.message}'"
+
+        if (
+            type(previous_pbm_status) == MaintenanceStatus
+            and "backup id:" in previous_pbm_status.message
+        ):
+            backup_id = previous_pbm_status.message.split("backup id:")[-1].strip()
+            if "restore" in previous_pbm_status.message:
+                return f"Restore from backup {backup_id} completed successfully"
+            if "backup" in previous_pbm_status.message:
+                return f"Backup {backup_id} completed successfully"
+
+        return "Unknown operation result"
