@@ -735,13 +735,11 @@ async def update_pebble_plans(ops_test: OpsTest, override: Dict[str, str]) -> No
 
 
 async def are_all_db_processes_down(ops_test: OpsTest, process: str) -> bool:
-    """Verifies that all units of the charm do not have the DB process running.
-
-    This checks that the `mongod` process is not running on each juju unit. Effectively, verifying
-    that the entire application hosting the cluster is down.
-    """
+    """Verifies that all units of the charm do not have the DB process running."""
     app = await get_application_name(ops_test, APP_NAME)
 
+    # '/' can effect the results of `pgrep`, to search for processes with '/' it is
+    # necessary to match the full name, i.e. '-f'
     if "/" in process:
         pgrep_cmd = ("pgrep", "-f", process)
     else:
