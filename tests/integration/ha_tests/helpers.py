@@ -782,16 +782,6 @@ def modify_pebble_restart_delay(
     service_name = "mongod"
     now = datetime.now().isoformat()
 
-    print("\n\n\n\n\n\n")
-    print(
-        client,
-        ops_test.model.info.name,
-        pod_name,
-        container_name,
-        f"/tmp/pebble_plan_{now}.yml",
-        pebble_plan_path,
-    )
-    print("\n\n\n\n\n\n")
     copy_file_into_pod(
         client,
         ops_test.model.info.name,
@@ -863,16 +853,6 @@ def copy_file_into_pod(
     """
     try:
         exec_command = ["tar", "xvf", "-", "-C", "/"]
-
-        print("\n\n\n\n\n\n\n\n\n\n\n")
-        print(
-            client.connect_get_namespaced_pod_exec,
-            pod_name,
-            namespace,
-            container_name,
-            exec_command,
-        )
-        print("\n\n\n\n\n\n\n\n\n\n\n")
 
         api_response = kubernetes.stream.stream(
             client.connect_get_namespaced_pod_exec,

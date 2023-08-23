@@ -442,7 +442,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
 
     # verify all units are up and running
     for unit in ops_test.model.applications[mongodb_application_name].units:
-        assert await mongod_ready(ops_test, unit)
+        assert await mongod_ready(ops_test, int(unit.name.split("/")[1]))
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
