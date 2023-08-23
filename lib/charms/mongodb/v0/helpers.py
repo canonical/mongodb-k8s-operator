@@ -1,9 +1,9 @@
 """Simple functions, which can be used in both K8s and VM charms."""
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-
 import logging
 import os
+import re
 import secrets
 import string
 import subprocess
@@ -236,6 +236,9 @@ def current_pbm_op(pbm_status: str) -> str:
 
 def process_pbm_status(pbm_status: str) -> StatusBase:
     """Parses current pbm operation and returns unit status."""
+    if type(pbm_status) == bytes:
+        pbm_status = pbm_status.decode("utf-8")
+
     # pbm is running resync operation
     if "Resync" in current_pbm_op(pbm_status):
         return WaitingStatus("waiting to sync s3 configurations.")
@@ -244,10 +247,19 @@ def process_pbm_status(pbm_status: str) -> StatusBase:
     if "(none)" in current_pbm_op(pbm_status):
         return ActiveStatus("")
 
-    if "Snapshot backup" in current_pbm_op(pbm_status):
-        return MaintenanceStatus("backup started/running")
+    # Example of backup id: 2023-08-21T13:08:22Z
+    backup_match = re.search(
+        r'Snapshot backup "(?P<backup_id>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)"', pbm_status
+    )
+    if backup_match:
+        backup_id = backup_match.group("backup_id")
+        return MaintenanceStatus(f"backup started/running, backup id:'{backup_id}'")
 
-    if "Snapshot restore" in current_pbm_op(pbm_status):
-        return MaintenanceStatus("restore started/running")
+    restore_match = re.search(
+        r'Snapshot restore "(?P<backup_id>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)"', pbm_status
+    )
+    if restore_match:
+        backup_id = restore_match.group("backup_id")
+        return MaintenanceStatus(f"restore started/running, backup id:'{backup_id}'")
 
     return ActiveStatus()

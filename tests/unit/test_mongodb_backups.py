@@ -565,7 +565,9 @@ class TestMongoBackups(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
         service.return_value = "pbm"
-        pbm_command.return_value = "Currently running:\n====\nSnapshot backup"
+        pbm_command.return_value = (
+            'Currently running:\n====\nSnapshot backup "2023-08-21T13:08:22Z"'
+        )
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_restore_action(action_event)
 
@@ -660,7 +662,9 @@ class TestMongoBackups(unittest.TestCase):
     def test_get_pbm_status_backup(self, run_pbm_command, service):
         """Tests that when pbm running a backup that pbm is in maintenance state."""
         service.return_value = "pbm"
-        run_pbm_command.return_value = "Currently running:\n====\nSnapshot backup"
+        run_pbm_command.return_value = (
+            'Currently running:\n====\nSnapshot backup "2023-08-21T13:08:22Z"'
+        )
         self.assertTrue(
             isinstance(self.harness.charm.backups._get_pbm_status(), MaintenanceStatus)
         )
@@ -694,11 +698,12 @@ class TestMongoBackups(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {}
         service.return_value = "pbm"
-        run_pbm_command.return_value = "Currently running:\n====\nSnapshot backup"
+        run_pbm_command.return_value = (
+            'Currently running:\n====\nSnapshot backup "2023-08-21T13:08:22Z"'
+        )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_create_backup_action(action_event)
-
         action_event.fail.assert_called()
 
     @patch("charm.MongoDBCharm.get_backup_service")
@@ -720,3 +725,19 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_create_backup_action(action_event)
         action_event.fail.assert_called()
+
+    def test_get_backup_restore_operation_result(self):
+        backup_id = "2023-08-21T13:08:22Z"
+        current_pbm_status = ActiveStatus("")
+        previous_pbm_status = MaintenanceStatus(f"backup started/running, backup id:'{backup_id}'")
+        operation_result = self.harness.charm.backups._get_backup_restore_operation_result(
+            current_pbm_status, previous_pbm_status
+        )
+        assert operation_result == f"Backup '{backup_id}' completed successfully"
+        previous_pbm_status = MaintenanceStatus(
+            f"restore started/running, backup id:'{backup_id}'"
+        )
+        operation_result = self.harness.charm.backups._get_backup_restore_operation_result(
+            current_pbm_status, previous_pbm_status
+        )
+        assert operation_result == f"Restore from backup '{backup_id}' completed successfully"
