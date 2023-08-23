@@ -427,8 +427,6 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
             ops_test, MONGOD_PROCESS_NAME
         ), "Not all units down at the same time."
     finally:
-        # TODO this sets them to a spec restart delay, it would be better to determine the
-        # original delay and revert pebble to that
         for unit in ops_test.model.applications[mongodb_application_name].units:
             modify_pebble_restart_delay(
                 ops_test,
