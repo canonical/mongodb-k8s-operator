@@ -6,14 +6,14 @@ import logging
 import os
 import string
 import subprocess
-import tempfile
 import tarfile
-import kubernetes as kubernetes
+import tempfile
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import kubernetes as kubernetes
 import ops
 import yaml
 from juju.unit import Unit

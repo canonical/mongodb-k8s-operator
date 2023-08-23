@@ -6,7 +6,12 @@ import signal
 import sys
 
 from pymongo import MongoClient
-from pymongo.errors import AutoReconnect, NotPrimaryError, PyMongoError, OperationFailure
+from pymongo.errors import (
+    AutoReconnect,
+    NotPrimaryError,
+    OperationFailure,
+    PyMongoError,
+)
 from pymongo.write_concern import WriteConcern
 
 run = True
@@ -51,7 +56,7 @@ def continous_writes(connection_string: str, starting_number: int):
                 continue
             else:
                 pass
-        except PyMongoError as e:
+        except PyMongoError:
             # we should not raise this exception but instead increment the write value and move
             # on, indicating that there was a failure writing to the database.
             pass
