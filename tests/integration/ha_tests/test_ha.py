@@ -468,6 +468,76 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
     await verify_writes(ops_test)
 
 
+async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes):
+    mongodb_application_name = await get_application_name(ops_test, APP_NAME)
+
+    # update all units to have a new RESTART_DELAY,  Modifying the Restart delay to 3 minutes
+    # should ensure enough time for all replicas to be down at the same time.
+    for unit in ops_test.model.applications[mongodb_application_name].units:
+        modify_pebble_restart_delay(
+            ops_test,
+            unit.name,
+            "tests/integration/ha_tests/manifests/extend_pebble_restart_delay.yml",
+            ensure_replan=True,
+        )
+
+    # gracefully restart all units "simultaneously"
+    await asyncio.gather(
+        *[
+            send_signal_to_pod_container_process(
+                ops_test, unit.name, MONGODB_CONTAINER_NAME, MONGOD_PROCESS_NAME, "SIGTERM"
+            )
+            for unit in ops_test.model.applications[mongodb_application_name].units
+        ]
+    )
+
+    # This test serves to verify behavior when all replicas are down at the same time that when
+    # they come back online they operate as expected. This check verifies that we meet the criterea
+    # of all replicas being down at the same time.
+    try:
+        assert await are_all_db_processes_down(
+            ops_test, MONGOD_PROCESS_NAME
+        ), "Not all units down at the same time."
+    finally:
+        for unit in ops_test.model.applications[mongodb_application_name].units:
+            modify_pebble_restart_delay(
+                ops_test,
+                unit.name,
+                "tests/integration/ha_tests/manifests/restore_pebble_restart_delay.yml",
+                ensure_replan=True,
+            )
+
+    # sleep for twice the median election time and the restart delay
+    time.sleep(MEDIAN_REELECTION_TIME * 2 + RESTART_DELAY)
+
+    # verify all units are up and running
+    for unit in ops_test.model.applications[mongodb_application_name].units:
+        assert await mongod_ready(ops_test, int(unit.name.split("/")[1]))
+
+    # verify new writes are continuing by counting the number of writes before and after a 5 second
+    # wait
+    logger.info("Validating writes are continuing to DB")
+    primary = await get_replica_set_primary(ops_test)
+    with await get_mongo_client(ops_test, excluded=[primary.name]) as client:
+        writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        time.sleep(5)
+        more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+    assert more_writes > writes, "writes not continuing to DB"
+
+    # verify all units are running under the same replset
+    hostnames = await get_units_hostnames(ops_test)
+    member_hosts = await fetch_replica_set_members(ops_test)
+    assert set(member_hosts) == set(hostnames), "all members not running under the same replset"
+
+    # verify there is only one primary after un-freezing old primary
+    assert (
+        await count_primaries(ops_test) == 1
+    ), "there are more than one primary in the replica set."
+
+    # verify that no writes were missed.
+    await verify_writes(ops_test)
+
+
 async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     app = await get_application_name(ops_test, APP_NAME)
 
