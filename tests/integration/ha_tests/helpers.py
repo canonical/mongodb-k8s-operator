@@ -742,6 +742,8 @@ async def are_all_db_processes_down(ops_test: OpsTest, process: str) -> bool:
     """
     app = await get_application_name(ops_test, APP_NAME)
 
+    # '/' can effect the results of `pgrep`, to search for processes with '/' it is
+    # necessary to match the full name, i.e. '-f'
     if "/" in process:
         pgrep_cmd = ("pgrep", "-f", process)
     else:
@@ -842,8 +844,8 @@ def copy_file_into_pod(
     namespace: str,
     pod_name: str,
     container_name: str,
-    destination_path: str,
     source_path: str,
+    destination_path: str,
 ) -> None:
     """Copy file contents into pod.
 
@@ -852,8 +854,8 @@ def copy_file_into_pod(
         namespace: The namespace of the pod to copy files to
         pod_name: The name of the pod to copy files to
         container_name: The name of the pod container to copy files to
-        destination_path: The path to which the file should be copied over
-        source_path: The path of the file which needs to be copied over
+        source_path: The path to which the file should be copied over
+        destination_path: The path of the file which needs to be copied over
     """
     try:
         exec_command = ["tar", "xvf", "-", "-C", "/"]
@@ -873,7 +875,7 @@ def copy_file_into_pod(
 
         with tempfile.TemporaryFile() as tar_buffer:
             with tarfile.open(fileobj=tar_buffer, mode="w") as tar:
-                tar.add(source_path, destination_path)
+                tar.add(destination_path, source_path)
 
             tar_buffer.seek(0)
             commands = []

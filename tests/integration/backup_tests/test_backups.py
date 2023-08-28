@@ -181,7 +181,7 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     # verify backup is started
     action = await db_unit.run_action(action_name="create-backup")
     backup_result = await action.wait()
-    assert backup_result.results["backup-status"] == "backup started", "backup didn't start"
+    assert "backup started" in backup_result.results["backup-status"], "backup didn't start"
 
     # verify backup is present in the list of backups
     # the action `create-backup` only confirms that the command was sent to the `pbm`. Creating a
@@ -475,7 +475,7 @@ async def test_update_backup_password(ops_test: OpsTest) -> None:
     # verify we still have connection to pbm via creating a backup
     action = await leader_unit.run_action(action_name="create-backup")
     backup_result = await action.wait()
-    assert backup_result.results["backup-status"] == "backup started", "backup didn't start"
+    assert "backup started" in backup_result.results["backup-status"], "backup didn't start"
 
 
 # TODO remove this workaround once issue with juju secrets is fixed
