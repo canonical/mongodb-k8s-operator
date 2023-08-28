@@ -730,3 +730,70 @@ async def update_pebble_plans(ops_test: OpsTest, override: Dict[str, str]) -> No
         )
         ret_code, _, _ = await ops_test.juju(*replan_cmd)
         assert ret_code == 0, f"Failed to replan for unit {unit.name}"
+
+
+async def reused_storage(ops_test: OpsTest, reused_unit: Unit, reuse_time: datetime) -> None:
+    """Pipes the k8s logs, looking for messages related to startup state reusing the storage.
+
+    MongoDB startup message indicates storage reuse:
+        If member transitions to STARTUP2 from STARTUP then it is syncing/getting data from
+        primary.
+        If member transitions to STARTUP2 from REMOVED then it is re-using the storage we
+        provided.
+    """
+    kubectl_cmd = [
+        "microk8s",
+        "kubectl",
+        "logs",
+        f"-n{ops_test.model_name}",
+        f"--since-time={reuse_time.isoformat()}",
+        "",
+        "-c",
+        MONGODB_CONTAINER_NAME,
+        "-f",
+    ]
+
+    grep_cmd = (
+        "grep",
+        "-m1",
+        '"newState": "STARTUP2", "oldState": "REMOVED"',
+    )
+
+    # Gets a stream of mongod container logs from kubectl and pipes them through grep looking for
+    # messages indicating storage reuse, i.e. going from REMOVED state to STARTUP2. The check is
+    # successful if one of the greps finds a match,
+    #  the
+    # rest should be terminated after a reasonable wait.
+    reused_unit
+    kubectl_cmd[5] = reused_unit.name.replace("/", "-")
+    kubectl_proc = subprocess.Popen(kubectl_cmd, stdout=subprocess.PIPE)
+    grep_proc = subprocess.Popen(grep_cmd, stdin=kubectl_proc.stdout, stdout=subprocess.DEVNULL)
+
+    # Wait on the grep pipe to potentially finish successfully. If it does not, don't wait for the
+    # rest.
+    timeout = 30
+    success = False
+    try:
+        grep_proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        pass
+    if grep_proc.poll() == 0:
+        success = True
+    grep_proc.terminate()
+    kubectl_proc.terminate()
+    timeout = 0
+
+    assert success, "storage not reused by mongod."
+
+
+def get_newest_unit(ops_test: OpsTest, app_name: str) -> Unit:
+    num_units = len(ops_test.model.applications[app_name].units)
+    newest_unit_name = f"mongodb-k8s/{num_units-1}"
+    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+    for unit in ops_test.model.applications[app_name].units:
+        print(unit.name)
+        print(newest_unit_name)
+        if unit.name == newest_unit_name:
+            return unit
+
+    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
