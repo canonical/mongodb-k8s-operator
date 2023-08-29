@@ -756,44 +756,38 @@ async def reused_storage(ops_test: OpsTest, reused_unit: Unit, reuse_time: datet
     grep_cmd = (
         "grep",
         "-m1",
-        '"newState": "STARTUP2", "oldState": "REMOVED"',
+        '"newState":"STARTUP2","oldState":"REMOVED"',
     )
 
-    # Gets a stream of mongod container logs from kubectl and pipes them through grep looking for
-    # messages indicating storage reuse, i.e. going from REMOVED state to STARTUP2. The check is
-    # successful if one of the greps finds a match,
-    #  the
-    # rest should be terminated after a reasonable wait.
-    reused_unit
+    # Gets a stream of mongod container logs from kubectl and pipes them through grep looking for a
+    # step down election messages. The check is successful if one of the greps finds a match, the
+    # rest should be terminated after a reasonable wait. All the logs should be checked since any
+    # node can emit the log.
     kubectl_cmd[5] = reused_unit.name.replace("/", "-")
     kubectl_proc = subprocess.Popen(kubectl_cmd, stdout=subprocess.PIPE)
     grep_proc = subprocess.Popen(grep_cmd, stdin=kubectl_proc.stdout, stdout=subprocess.DEVNULL)
-
-    # Wait on the grep pipe to potentially finish successfully. If it does not, don't wait for the
-    # rest.
-    timeout = 30
+    print(subprocess.check_output(kubectl_cmd))
+    # Wait on the first grep pipe to potentially finish successfully. If it does not, don't wait
+    # for the rest. The check is successful if any of the greps manage to find the step down
+    # message.
+    timeout = 120
     success = False
     try:
         grep_proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as e:
         pass
     if grep_proc.poll() == 0:
         success = True
     grep_proc.terminate()
     kubectl_proc.terminate()
     timeout = 0
-
     assert success, "storage not reused by mongod."
 
 
 def get_newest_unit(ops_test: OpsTest, app_name: str) -> Unit:
+    """Retrieves the most recently added unit to the MongoDB application."""
     num_units = len(ops_test.model.applications[app_name].units)
     newest_unit_name = f"mongodb-k8s/{num_units-1}"
-    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
     for unit in ops_test.model.applications[app_name].units:
-        print(unit.name)
-        print(newest_unit_name)
         if unit.name == newest_unit_name:
             return unit
-
-    print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")

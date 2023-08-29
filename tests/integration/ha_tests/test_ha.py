@@ -453,6 +453,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
     properly uses the storage that was provided. (ie. doesn't just re-sync everything from
     primary, but instead computes a diff between current storage and primary storage.)
     """
+
     app = await get_application_name(ops_test, APP_NAME)
 
     # removing the only replica can be disastrous
@@ -462,13 +463,13 @@ async def test_storage_re_use(ops_test, continuous_writes):
 
     # remove a unit and attach it's storage to a new unit
     current_number_units = len(ops_test.model.applications[app].units)
-    removal_time = datetime.now(timezone.utc)
     await scale_application(ops_test, app, current_number_units - 1)
     await ops_test.model.wait_for_idle(
         apps=[app], status="active", timeout=1000, wait_for_exact_units=(current_number_units - 1)
     )
 
     # k8s will automatically use the old storage from the storage pool
+    removal_time = datetime.now(timezone.utc)
     await scale_application(ops_test, app, current_number_units)
     await ops_test.model.wait_for_idle(
         apps=[app], status="active", timeout=1000, wait_for_exact_units=(current_number_units)
