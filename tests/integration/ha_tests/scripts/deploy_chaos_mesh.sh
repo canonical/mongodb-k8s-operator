@@ -22,4 +22,5 @@ deploy_chaos_mesh() {
 }
 
 echo "namespace=${chaos_mesh_ns}"
+chmod 0700 ~/.kube/config
 deploy_chaos_mesh

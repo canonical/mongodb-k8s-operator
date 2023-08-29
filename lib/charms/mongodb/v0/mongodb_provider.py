@@ -76,8 +76,7 @@ class MongoDBProvider(Object):
             return
 
         # legacy relations have auth disabled, which new relations require
-        legacy_relation_users = self._get_users_from_relations(None, rel=LEGACY_REL_NAME)
-        if len(legacy_relation_users) > 0:
+        if self.model.get_relation(LEGACY_REL_NAME):
             self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
             logger.error("Auth disabled due to existing connections to legacy relations")
             return
@@ -117,6 +116,13 @@ class MongoDBProvider(Object):
         relation is still on the list of all relations. Therefore, for proper
         work of the function, we need to exclude departed relation from the list.
         """
+        # This hook gets called from other contexts within the charm so it is necessary to check
+        # for legacy relations which have auth disabled, which new relations require
+        if self.model.get_relation(LEGACY_REL_NAME):
+            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            logger.error("Auth disabled due to existing connections to legacy relations")
+            return
+
         with MongoDBConnection(self.charm.mongodb_config) as mongo:
             database_users = mongo.get_users()
             relation_users = self._get_users_from_relations(departed_relation_id)
