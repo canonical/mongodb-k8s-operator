@@ -6,7 +6,12 @@ import signal
 import sys
 
 from pymongo import MongoClient
-from pymongo.errors import AutoReconnect, NotPrimaryError, PyMongoError
+from pymongo.errors import (
+    AutoReconnect,
+    NotPrimaryError,
+    OperationFailure,
+    PyMongoError,
+)
 from pymongo.write_concern import WriteConcern
 
 run = True
@@ -43,6 +48,14 @@ def continous_writes(connection_string: str, starting_number: int):
             # reconnect and re-write the previous value. Hence, we `continue` here, without
             # incrementing `write_value` as to try to insert this value again.
             continue
+        except OperationFailure as e:
+            if e.code == 211:  # HMAC error
+                # after cluster comes back up, it needs to resync the HMAC code. Hence, we
+                # `continue` here, without incrementing `write_value` as to try to insert
+                # this value again.
+                continue
+            else:
+                pass
         except PyMongoError:
             # we should not raise this exception but instead increment the write value and move
             # on, indicating that there was a failure writing to the database.

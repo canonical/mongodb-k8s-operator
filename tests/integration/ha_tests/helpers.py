@@ -6,6 +6,7 @@ import logging
 import os
 import string
 import subprocess
+import tarfile
 import tempfile
 import time
 from asyncio import gather
@@ -13,6 +14,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import kubernetes as kubernetes
 import ops
 import yaml
 from juju.unit import Unit
@@ -783,3 +785,160 @@ def get_newest_unit(ops_test: OpsTest, app_name: str) -> Unit:
     for unit in ops_test.model.applications[app_name].units:
         if unit.name == newest_unit_name:
             return unit
+
+
+async def are_all_db_processes_down(ops_test: OpsTest, process: str) -> bool:
+    """Verifies that all units of the charm do not have the DB process running."""
+    app = await get_application_name(ops_test, APP_NAME)
+
+    # '/' can effect the results of `pgrep`, to search for processes with '/' it is
+    # necessary to match the full name, i.e. '-f'
+    if "/" in process:
+        pgrep_cmd = ("pgrep", "-f", process)
+    else:
+        pgrep_cmd = ("pgrep", "-x", process)
+
+    try:
+        for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+            with attempt:
+                for unit in ops_test.model.applications[app].units:
+                    _, raw_pid, _ = await ops_test.juju(
+                        "ssh", "--container", MONGODB_CONTAINER_NAME, unit.name, *pgrep_cmd
+                    )
+
+                    # If something was returned, there is a running process.
+                    if len(raw_pid) > 0:
+                        raise ProcessRunningError
+    except RetryError:
+        return False
+
+    return True
+
+
+def modify_pebble_restart_delay(
+    ops_test: OpsTest,
+    unit_name: str,
+    pebble_plan_path: str,
+    ensure_replan: bool = False,
+) -> None:
+    """Modify the pebble restart delay of the underlying process.
+
+    Args:
+        ops_test: The ops test framework
+        unit_name: The name of unit to extend the pebble restart delay for
+        pebble_plan_path: Path to the file with the modified pebble plan
+        ensure_replan: Whether to check that the replan command succeeded
+    """
+    kubernetes.config.load_kube_config()
+    client = kubernetes.client.api.core_v1_api.CoreV1Api()
+
+    pod_name = unit_name.replace("/", "-")
+    container_name = "mongod"
+    service_name = "mongod"
+    now = datetime.now().isoformat()
+
+    copy_file_into_pod(
+        client,
+        ops_test.model.info.name,
+        pod_name,
+        container_name,
+        f"/tmp/pebble_plan_{now}.yml",
+        pebble_plan_path,
+    )
+
+    add_to_pebble_layer_commands = (
+        f"/charm/bin/pebble add --combine {service_name} /tmp/pebble_plan_{now}.yml"
+    )
+    response = kubernetes.stream.stream(
+        client.connect_get_namespaced_pod_exec,
+        pod_name,
+        ops_test.model.info.name,
+        container=container_name,
+        command=add_to_pebble_layer_commands.split(),
+        stdin=False,
+        stdout=True,
+        stderr=True,
+        tty=False,
+        _preload_content=False,
+    )
+    response.run_forever(timeout=5)
+    assert (
+        response.returncode == 0
+    ), f"Failed to add to pebble layer, unit={unit_name}, container={container_name}, service={service_name}"
+
+    for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
+        with attempt:
+            replan_pebble_layer_commands = "/charm/bin/pebble replan"
+            response = kubernetes.stream.stream(
+                client.connect_get_namespaced_pod_exec,
+                pod_name,
+                ops_test.model.info.name,
+                container=container_name,
+                command=replan_pebble_layer_commands.split(),
+                stdin=False,
+                stdout=True,
+                stderr=True,
+                tty=False,
+                _preload_content=False,
+            )
+            response.run_forever(timeout=60)
+            if ensure_replan:
+                assert (
+                    response.returncode == 0
+                ), f"Failed to replan pebble layer, unit={unit_name}, container={container_name}, service={service_name}"
+
+
+def copy_file_into_pod(
+    client: kubernetes.client.api.core_v1_api.CoreV1Api,
+    namespace: str,
+    pod_name: str,
+    container_name: str,
+    source_path: str,
+    destination_path: str,
+) -> None:
+    """Copy file contents into pod.
+
+    Args:
+        client: The kubernetes CoreV1Api client
+        namespace: The namespace of the pod to copy files to
+        pod_name: The name of the pod to copy files to
+        container_name: The name of the pod container to copy files to
+        source_path: The path to which the file should be copied over
+        destination_path: The path of the file which needs to be copied over
+    """
+    try:
+        exec_command = ["tar", "xvf", "-", "-C", "/"]
+
+        api_response = kubernetes.stream.stream(
+            client.connect_get_namespaced_pod_exec,
+            pod_name,
+            namespace,
+            container=container_name,
+            command=exec_command,
+            stdin=True,
+            stdout=True,
+            stderr=True,
+            tty=False,
+            _preload_content=False,
+        )
+
+        with tempfile.TemporaryFile() as tar_buffer:
+            with tarfile.open(fileobj=tar_buffer, mode="w") as tar:
+                tar.add(destination_path, source_path)
+
+            tar_buffer.seek(0)
+            commands = []
+            commands.append(tar_buffer.read())
+
+            while api_response.is_open():
+                api_response.update(timeout=1)
+
+                if commands:
+                    command = commands.pop(0)
+                    api_response.write_stdin(command.decode())
+                else:
+                    break
+
+            api_response.close()
+    except kubernetes.client.rest.ApiException:
+        assert False
