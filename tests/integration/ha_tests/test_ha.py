@@ -446,7 +446,7 @@ async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
 #     await verify_writes(ops_test)
 
 
-async def test_storage_re_use(ops_test, continuous_writes):
+async def test_storage_re_use(ops_test, continuous_writes, change_logging):
     """Verifies that database units with attached storage correctly repurpose storage.
 
     It is not enough to verify that Juju attaches the storage. Hence test checks that the mongod
@@ -469,8 +469,17 @@ async def test_storage_re_use(ops_test, continuous_writes):
     )
 
     # k8s will automatically use the old storage from the storage pool
-    removal_time = datetime.now(timezone.utc)
+    removal_time = datetime.now(timezone.utc).timestamp()
     await scale_application(ops_test, app, current_number_units)
+    time.sleep(2)
+    # new unit should log all mongod operations
+    current_mongod_command = "mongod --bind_ip_all --replSet=mongodb-k8s --dbpath=/var/lib/mongodb --logpath=/var/lib/mongodb/mongodb.log --auth --clusterAuthMode=keyFile --keyFile=/etc/mongod/keyFile"
+    updated_mongod_command = current_mongod_command.replace(
+        "--logpath=/var/lib/mongodb/mongodb.log", ""
+    )
+    await update_pebble_plans(ops_test, {"command": updated_mongod_command})
+    await set_log_level(ops_test, 5, "replication.election")
+
     await ops_test.model.wait_for_idle(
         apps=[app], status="active", timeout=1000, wait_for_exact_units=(current_number_units)
     )

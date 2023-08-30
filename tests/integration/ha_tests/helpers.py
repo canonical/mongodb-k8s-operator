@@ -7,6 +7,7 @@ import os
 import string
 import subprocess
 import tempfile
+import time
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
@@ -732,7 +733,7 @@ async def update_pebble_plans(ops_test: OpsTest, override: Dict[str, str]) -> No
         assert ret_code == 0, f"Failed to replan for unit {unit.name}"
 
 
-async def reused_storage(ops_test: OpsTest, reused_unit: Unit, reuse_time: datetime) -> None:
+async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: datetime) -> None:
     """Pipes the k8s logs, looking for messages related to startup state reusing the storage.
 
     MongoDB startup message indicates storage reuse:
@@ -741,47 +742,85 @@ async def reused_storage(ops_test: OpsTest, reused_unit: Unit, reuse_time: datet
         If member transitions to STARTUP2 from REMOVED then it is re-using the storage we
         provided.
     """
-    kubectl_cmd = [
-        "microk8s",
-        "kubectl",
-        "logs",
-        f"-n{ops_test.model_name}",
-        f"--since-time={reuse_time.isoformat()}",
-        "",
-        "-c",
+
+    get_cmd_command = [
+        "ssh",
+        "--container",
         MONGODB_CONTAINER_NAME,
-        "-f",
+        reused_unit.name,
+        "cat /var/lib/mongodb/mongodb.log",
     ]
 
-    grep_cmd = (
-        "grep",
-        "-m1",
-        '"newState":"STARTUP2","oldState":"REMOVED"',
-    )
+    return_code, start_states, _ = await ops_test.juju(*get_cmd_command)
 
-    # Gets a stream of mongod container logs from kubectl and pipes them through grep looking for a
-    # step down election messages. The check is successful if one of the greps finds a match, the
-    # rest should be terminated after a reasonable wait. All the logs should be checked since any
-    # node can emit the log.
-    kubectl_cmd[5] = reused_unit.name.replace("/", "-")
-    kubectl_proc = subprocess.Popen(kubectl_cmd, stdout=subprocess.PIPE)
-    grep_proc = subprocess.Popen(grep_cmd, stdin=kubectl_proc.stdout, stdout=subprocess.DEVNULL)
-    print(subprocess.check_output(kubectl_cmd))
-    # Wait on the first grep pipe to potentially finish successfully. If it does not, don't wait
-    # for the rest. The check is successful if any of the greps manage to find the step down
-    # message.
-    timeout = 120
-    success = False
-    try:
-        grep_proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired as e:
-        pass
-    if grep_proc.poll() == 0:
-        success = True
-    grep_proc.terminate()
-    kubectl_proc.terminate()
-    timeout = 0
-    assert success, "storage not reused by mongod."
+    assert (
+        return_code == 0
+    ), f"Failed greping mongodb logs, unit={reused_unit.name}, container={MONGODB_CONTAINER_NAME}"
+
+    for line in start_states.split("\n"):
+        if not len(line):
+            continue
+
+        item = json.loads(line)
+
+        re_use_time = convert_time(item["t"]["$date"])
+        if '"newState":"STARTUP2","oldState":"REMOVED"' in line:
+            print(line)
+            print(removal_time)
+            print(re_use_time)
+
+        if '"newState":"STARTUP2","oldState":"REMOVED"' in line and re_use_time > removal_time:
+            return True
+
+    return False
+
+    # kubectl_cmd = [
+    #     "microk8s",
+    #     "kubectl",
+    #     "logs",
+    #     f"-n{ops_test.model_name}",
+    #     f"--since-time={reuse_time.isoformat()}",
+    #     "",
+    #     "-c",
+    #     MONGODB_CONTAINER_NAME,
+    #     "-f",
+    # ]
+
+    # grep_cmd = (
+    #     "grep",
+    #     "-m1",
+    #     '"newState":"STARTUP2","oldState":"REMOVED"',
+    # )
+
+    # # Gets a stream of mongod container logs from kubectl and pipes them through grep looking for a
+    # # step down election messages. The check is successful if one of the greps finds a match, the
+    # # rest should be terminated after a reasonable wait. All the logs should be checked since any
+    # # node can emit the log.
+    # kubectl_cmd[5] = reused_unit.name.replace("/", "-")
+    # kubectl_proc = subprocess.Popen(kubectl_cmd, stdout=subprocess.PIPE)
+    # grep_proc = subprocess.Popen(grep_cmd, stdin=kubectl_proc.stdout, stdout=subprocess.DEVNULL)
+    # # Wait on the first grep pipe to potentially finish successfully. If it does not, don't wait
+    # # for the rest. The check is successful if any of the greps manage to find the step down
+    # # message.
+    # timeout = 120
+    # success = False
+    # try:
+    #     grep_proc.communicate(timeout=timeout)
+    # except subprocess.TimeoutExpired as e:
+    #     pass
+    # if grep_proc.poll() == 0:
+    #     success = True
+    # grep_proc.terminate()
+    # kubectl_proc.terminate()
+    # timeout = 0
+    # assert success, "storage not reused by mongod."
+
+
+def convert_time(time_as_str: str) -> int:
+    """Converts a string time representation to an integer time representation."""
+    # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM+00:00'
+    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f%z")
+    return time.mktime(d.timetuple())
 
 
 def get_newest_unit(ops_test: OpsTest, app_name: str) -> Unit:
