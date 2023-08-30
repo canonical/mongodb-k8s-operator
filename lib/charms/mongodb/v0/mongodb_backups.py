@@ -23,13 +23,7 @@ from charms.mongodb.v0.helpers import (
 )
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
-from ops.model import (
-    BlockedStatus,
-    MaintenanceStatus,
-    ModelError,
-    StatusBase,
-    WaitingStatus,
-)
+from ops.model import BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus
 from ops.pebble import ExecError
 from tenacity import (
     Retrying,
@@ -48,7 +42,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 logger = logging.getLogger(__name__)
 
@@ -110,11 +104,10 @@ def _restore_retry_stop_condition(retry_state) -> bool:
 class MongoDBBackups(Object):
     """Manages MongoDB backups."""
 
-    def __init__(self, charm, substrate):
+    def __init__(self, charm):
         """Manager of MongoDB client relations."""
         super().__init__(charm, "client-relations")
         self.charm = charm
-        self.substrate = substrate
 
         # s3 relation handles the config options for s3 backups
         self.s3_client = S3Requirer(self.charm, S3_RELATION)
@@ -136,10 +129,7 @@ class MongoDBBackups(Object):
             )
             return
 
-        try:
-            # TODO VM charm should implement this  method
-            self.charm.get_backup_service()
-        except ModelError:
+        if not self.charm.has_backup_service():
             self._defer_action_with_info_log(
                 event, action, "Set PBM configurations, pbm-agent service not found."
             )
@@ -335,14 +325,14 @@ class MongoDBBackups(Object):
 
     def _set_config_options(self):
         """Applying given configurations with pbm."""
-        # TODO VM charm should implement this method
-        self.charm.set_pbm_config_file()
+        # clearing out configurations options before resetting them leads to a quicker reysnc
+        # process
+        self.charm.clear_pbm_config_file()
 
         # the pbm tool can only set one configuration at a time.
         for pbm_key, pbm_value in self._get_pbm_configs().items():
             try:
                 config_cmd = ["config", "--set", f"{pbm_key}={pbm_value}"]
-                # TODO VM charm should implement this method
                 self.charm.run_pbm_command(config_cmd)
             except (subprocess.CalledProcessError, ExecError):
                 logger.error(
@@ -364,7 +354,6 @@ class MongoDBBackups(Object):
 
     def _resync_config_options(self):
         """Attempts to sync pbm config options and sets status in case of failure."""
-        # TODO VM charm should implement this method
         self.charm.start_backup_service()
 
         # pbm has a flakely resync and it is necessary to wait for no actions to be running before
@@ -382,7 +371,6 @@ class MongoDBBackups(Object):
 
                 # if a resync is running restart the service
                 if isinstance(pbm_status, (WaitingStatus)):
-                    # TODO VM charm should implement this method
                     self.charm.restart_backup_service()
                     raise PBMBusyError
 
@@ -420,7 +408,6 @@ class MongoDBBackups(Object):
         ):
             with attempt:
                 try:
-                    # TODO VM charm should implement this method
                     pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
 
                     if "Resync" in current_pbm_op(pbm_status):
@@ -435,10 +422,7 @@ class MongoDBBackups(Object):
 
     def _get_pbm_status(self) -> StatusBase:
         """Retrieve pbm status."""
-        try:
-            # TODO VM charm should implement this method
-            self.charm.get_backup_service()
-        except ModelError:
+        if not self.charm.has_backup_service():
             return WaitingStatus("waiting for pbm to start")
 
         try:
@@ -534,7 +518,10 @@ class MongoDBBackups(Object):
             with attempt:
                 try:
                     remapping_args = self._remap_replicaset(backup_id)
-                    self.charm.run_pbm_restore_command(backup_id, remapping_args)
+                    restore_cmd = ["restore", backup_id]
+                    if remapping_args:
+                        restore_cmd = restore_cmd + remapping_args.split(" ")
+                    self.charm.run_pbm_command(restore_cmd)
                 except (subprocess.CalledProcessError, ExecError) as e:
                     if type(e) == subprocess.CalledProcessError:
                         error_message = e.output.decode("utf-8")
