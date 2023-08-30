@@ -736,7 +736,7 @@ async def update_pebble_plans(ops_test: OpsTest, override: Dict[str, str]) -> No
 
 
 async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: datetime) -> None:
-    """Cats the k8s logs, looking for messages related to startup state reusing the storage.
+    """Verifies storage is reused by the mongo daemon.
 
     MongoDB startup message indicates storage reuse:
         If member transitions to STARTUP2 from STARTUP then it is syncing/getting data from
@@ -752,23 +752,25 @@ async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: dat
         "cat /var/lib/mongodb/mongodb.log",
     ]
 
-    return_code, start_states, _ = await ops_test.juju(*cat_cmd)
+    return_code, logs, _ = await ops_test.juju(*cat_cmd)
 
     assert (
         return_code == 0
     ), f"Failed catting mongodb logs, unit={reused_unit.name}, container={MONGODB_CONTAINER_NAME}"
 
-    for line in start_states.split("\n"):
-        if not len(line):
-            continue
+    filtered_logs = filter(filter_logs.split("\n"), logs)
 
-        item = json.loads(line)
-
-        re_use_time = convert_time(item["t"]["$date"])
-        if '"newState":"STARTUP2","oldState":"REMOVED"' in line and re_use_time > removal_time:
+    for log in filtered_logs:
+        item = json.loads(log)
+        reuse_time = convert_time(item["t"]["$date"])
+        if reuse_time > removal_time:
             return True
 
     return False
+
+
+def filter_logs(log):
+    return True if '"newState":"STARTUP2","oldState":"REMOVED"' in log else False
 
 
 def convert_time(time_as_str: str) -> int:
