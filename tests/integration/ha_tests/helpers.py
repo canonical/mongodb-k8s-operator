@@ -744,7 +744,7 @@ async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: dat
         If member transitions to STARTUP2 from REMOVED then it is re-using the storage we
         provided.
     """
-    get_cmd_command = [
+    cat_cmd = [
         "ssh",
         "--container",
         MONGODB_CONTAINER_NAME,
@@ -752,11 +752,11 @@ async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: dat
         "cat /var/lib/mongodb/mongodb.log",
     ]
 
-    return_code, start_states, _ = await ops_test.juju(*get_cmd_command)
+    return_code, start_states, _ = await ops_test.juju(*cat_cmd)
 
     assert (
         return_code == 0
-    ), f"Failed greping mongodb logs, unit={reused_unit.name}, container={MONGODB_CONTAINER_NAME}"
+    ), f"Failed catting mongodb logs, unit={reused_unit.name}, container={MONGODB_CONTAINER_NAME}"
 
     for line in start_states.split("\n"):
         if not len(line):
