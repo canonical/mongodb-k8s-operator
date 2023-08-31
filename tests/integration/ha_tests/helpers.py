@@ -758,7 +758,7 @@ async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: dat
         return_code == 0
     ), f"Failed catting mongodb logs, unit={reused_unit.name}, container={MONGODB_CONTAINER_NAME}"
 
-    filtered_logs = filter(filter_logs.split("\n"), logs)
+    filtered_logs = filter(filter_logs, logs.split("\n"))
 
     for log in filtered_logs:
         item = json.loads(log)
@@ -780,12 +780,12 @@ def convert_time(time_as_str: str) -> int:
     return time.mktime(d.timetuple())
 
 
-def get_newest_unit(ops_test: OpsTest, app_name: str) -> Unit:
+def get_highest_unit(ops_test: OpsTest, app_name: str) -> Unit:
     """Retrieves the most recently added unit to the MongoDB application."""
     num_units = len(ops_test.model.applications[app_name].units)
-    newest_unit_name = f"mongodb-k8s/{num_units-1}"
+    highest_unit_name = f"mongodb-k8s/{num_units-1}"
     for unit in ops_test.model.applications[app_name].units:
-        if unit.name == newest_unit_name:
+        if unit.name == highest_unit_name:
             return unit
 
 

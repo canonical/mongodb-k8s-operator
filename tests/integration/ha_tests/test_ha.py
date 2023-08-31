@@ -28,8 +28,8 @@ from .helpers import (
     find_record_in_collection,
     find_unit,
     get_application_name,
+    get_highest_unit,
     get_mongo_client,
-    get_newest_unit,
     get_other_mongodb_direct_client,
     get_process_pid,
     get_replica_set_primary,
@@ -618,7 +618,9 @@ async def test_storage_re_use(ops_test, continuous_writes):
         apps=[app], status="active", timeout=1000, wait_for_exact_units=(current_number_units)
     )
 
-    new_unit = get_newest_unit(ops_test, app)
+    # for this test, we only scaled up the application by one unit. So it the highest unit will be
+    # the newest unit.
+    new_unit = get_highest_unit(ops_test, app)
     assert await reused_storage(
         ops_test, new_unit, removal_time
     ), "attached storage not properly re-used by MongoDB."
