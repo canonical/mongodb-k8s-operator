@@ -56,7 +56,9 @@ class TestMongoBackups(unittest.TestCase):
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         service.return_value = "pbm"
-        pbm_command.return_value = "Currently running:\n====\nResync op"
+        pbm_command.return_value = (
+            '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
+        )
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), WaitingStatus))
 
     @patch("charm.MongoDBCharm.has_backup_service")
@@ -66,7 +68,7 @@ class TestMongoBackups(unittest.TestCase):
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         service.return_value = "pbm"
-        pbm_command.return_value = b"Currently running:\n====\n(none)"
+        pbm_command.return_value = '{"running":{}}'
         self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), ActiveStatus))
 
     @patch("charm.MongoDBCharm.has_backup_service")
@@ -144,15 +146,17 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.set_can_connect(container, True)
         service.return_value = "pbm"
 
-        pbm_status.return_value = "Currently running:\n====\nResync op"
-        run_pbm_command.return_value = "Currently running:\n====\nResync op"
+        pbm_status.return_value = MaintenanceStatus()
+        run_pbm_command.return_value = (
+            '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
+        )
 
         # disable retry
         self.harness.charm.backups._wait_pbm_status.retry.retry = tenacity.retry_if_not_result(
             lambda x: True
         )
 
-        with self.assertRaises(ResyncError):
+        with self.assertRaises(PBMBusyError):
             self.harness.charm.backups._resync_config_options()
 
     @patch("ops.model.Container.start")
@@ -437,7 +441,9 @@ class TestMongoBackups(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {}
 
-        pbm_command.return_value = "Currently running:\n====\nResync op"
+        pbm_command.return_value = (
+            '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
+        )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_list_backups_action(action_event)
@@ -551,7 +557,9 @@ class TestMongoBackups(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
         service.return_value = "pbm"
-        pbm_command.return_value = "Currently running:\n====\nResync op"
+        pbm_command.return_value = (
+            '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
+        )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_restore_action(action_event)
@@ -662,20 +670,18 @@ class TestMongoBackups(unittest.TestCase):
     def test_get_pbm_status_backup(self, run_pbm_command, service):
         """Tests that when pbm running a backup that pbm is in maintenance state."""
         service.return_value = "pbm"
-        run_pbm_command.return_value = (
-            'Currently running:\n====\nSnapshot backup "2023-08-21T13:08:22Z"'
-        )
+        run_pbm_command.return_value = '{"running":{"type":"backup","name":"2023-09-04T12:15:58Z","startTS":1693829759,"status":"oplog backup","opID":"64f5ca7e777e294530289465"}}'
         self.assertTrue(
             isinstance(self.harness.charm.backups._get_pbm_status(), MaintenanceStatus)
         )
 
     def test_current_pbm_op(self):
         """Test if _current_pbm_op can identify the operation pbm is running."""
-        action = current_pbm_op("nothing\nCurrently running:\n====\nexpected action")
-        self.assertEqual(action, "expected action")
+        action = current_pbm_op('{"running":{"type":"my-action"}}')
+        self.assertEqual(action, {"type": "my-action"})
 
-        no_action = current_pbm_op("pbm not started")
-        self.assertEqual(no_action, "")
+        no_action = current_pbm_op('{"running":{}}')
+        self.assertEqual(no_action, {})
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -684,7 +690,9 @@ class TestMongoBackups(unittest.TestCase):
         action_event = mock.Mock()
         action_event.params = {}
         service.return_value = "pbm"
-        run_pbm_command.return_value = "Currently running:\n====\nResync op"
+        run_pbm_command.return_value = (
+            '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
+        )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_create_backup_action(action_event)
