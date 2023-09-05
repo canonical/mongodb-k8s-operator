@@ -8,6 +8,7 @@ import string
 import subprocess
 import tarfile
 import tempfile
+import time
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
@@ -732,6 +733,60 @@ async def update_pebble_plans(ops_test: OpsTest, override: Dict[str, str]) -> No
         )
         ret_code, _, _ = await ops_test.juju(*replan_cmd)
         assert ret_code == 0, f"Failed to replan for unit {unit.name}"
+
+
+async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: datetime) -> None:
+    """Verifies storage is reused by the mongo daemon.
+
+    MongoDB startup message indicates storage reuse:
+        If member transitions to STARTUP2 from STARTUP then it is syncing/getting data from
+        primary.
+        If member transitions to STARTUP2 from REMOVED then it is re-using the storage we
+        provided.
+    """
+    cat_cmd = [
+        "ssh",
+        "--container",
+        MONGODB_CONTAINER_NAME,
+        reused_unit.name,
+        "cat /var/lib/mongodb/mongodb.log",
+    ]
+
+    return_code, logs, _ = await ops_test.juju(*cat_cmd)
+
+    assert (
+        return_code == 0
+    ), f"Failed catting mongodb logs, unit={reused_unit.name}, container={MONGODB_CONTAINER_NAME}"
+
+    filtered_logs = filter(filter_logs, logs.split("\n"))
+
+    for log in filtered_logs:
+        item = json.loads(log)
+        reuse_time = convert_time(item["t"]["$date"])
+        if reuse_time > removal_time:
+            return True
+
+    return False
+
+
+def filter_logs(log):
+    return True if '"newState":"STARTUP2","oldState":"REMOVED"' in log else False
+
+
+def convert_time(time_as_str: str) -> int:
+    """Converts a string time representation to an integer time representation."""
+    # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM+00:00'
+    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f%z")
+    return time.mktime(d.timetuple())
+
+
+def get_highest_unit(ops_test: OpsTest, app_name: str) -> Unit:
+    """Retrieves the most recently added unit to the MongoDB application."""
+    num_units = len(ops_test.model.applications[app_name].units)
+    highest_unit_name = f"mongodb-k8s/{num_units-1}"
+    for unit in ops_test.model.applications[app_name].units:
+        if unit.name == highest_unit_name:
+            return unit
 
 
 async def are_all_db_processes_down(ops_test: OpsTest, process: str) -> bool:

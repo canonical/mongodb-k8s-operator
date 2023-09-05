@@ -28,6 +28,7 @@ from .helpers import (
     find_record_in_collection,
     find_unit,
     get_application_name,
+    get_highest_unit,
     get_mongo_client,
     get_other_mongodb_direct_client,
     get_process_pid,
@@ -42,6 +43,7 @@ from .helpers import (
     remove_instance_isolation,
     retrieve_current_mongod_command,
     retrieve_entries,
+    reused_storage,
     scale_application,
     send_signal_to_pod_container_process,
     set_log_level,
@@ -585,4 +587,51 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     ), "there is more than one primary in the replica set."
 
     # verify that old primary is up to date.
+    await verify_writes(ops_test)
+
+
+async def test_storage_re_use(ops_test, continuous_writes):
+    """Verifies that database units with attached storage correctly repurpose storage.
+
+    It is not enough to verify that Juju attaches the storage. Hence test checks that the mongod
+    properly uses the storage that was provided. (ie. doesn't just re-sync everything from
+    primary, but instead computes a diff between current storage and primary storage.)
+    """
+    app = await get_application_name(ops_test, APP_NAME)
+
+    # removing the only replica can be disastrous
+    if len(ops_test.model.applications[app].units) < 2:
+        await ops_test.model.applications[app].add_unit(count=1)
+        await ops_test.model.wait_for_idle(apps=[app], status="active", timeout=1000)
+
+    # remove a unit and attach it's storage to a new unit
+    current_number_units = len(ops_test.model.applications[app].units)
+    await scale_application(ops_test, app, current_number_units - 1)
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=(current_number_units - 1)
+    )
+
+    # k8s will automatically use the old storage from the storage pool
+    removal_time = datetime.now(timezone.utc).timestamp()
+    await scale_application(ops_test, app, current_number_units)
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", timeout=1000, wait_for_exact_units=(current_number_units)
+    )
+
+    # for this test, we only scaled up the application by one unit. So it the highest unit will be
+    # the newest unit.
+    new_unit = get_highest_unit(ops_test, app)
+    assert await reused_storage(
+        ops_test, new_unit, removal_time
+    ), "attached storage not properly re-used by MongoDB."
+
+    # verify presence of primary, replica set member configuration, and number of primaries
+    hostnames = await get_units_hostnames(ops_test)
+    member_hosts = await fetch_replica_set_members(ops_test)
+    assert set(member_hosts) == set(hostnames)
+    assert (
+        await count_primaries(ops_test) == 1
+    ), "there is more than one primary in the replica set."
+
+    # verify all units are up to date.
     await verify_writes(ops_test)
