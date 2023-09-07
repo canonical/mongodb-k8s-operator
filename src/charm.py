@@ -48,6 +48,7 @@ from ops.model import (
     BlockedStatus,
     Container,
     MaintenanceStatus,
+    ModelError,
     Relation,
     RelationDataContent,
     SecretNotFoundError,
@@ -110,7 +111,7 @@ class MongoDBCharm(CharmBase):
 
         self.client_relations = MongoDBProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
-        self.backups = MongoDBBackups(self, substrate=Config.SUBSTRATE)
+        self.backups = MongoDBBackups(self)
 
         self.metrics_endpoint = MetricsEndpointProvider(
             self, refresh_event=self.on.start, jobs=Config.Monitoring.JOBS
@@ -1109,10 +1110,15 @@ class MongoDBCharm(CharmBase):
         container.add_layer(Config.Backup.SERVICE_NAME, self._backup_layer, combine=True)
         container.replan()
 
-    def get_backup_service(self) -> ServiceInfo:
+    def has_backup_service(self) -> ServiceInfo:
         """Returns the backup service."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
-        return container.get_service(Config.Backup.SERVICE_NAME)
+        try:
+            container.get_service(Config.Backup.SERVICE_NAME)
+        except ModelError:
+            return False
+
+        return True
 
     def is_unit_in_replica_set(self) -> bool:
         """Check if the unit is in the replica set."""
@@ -1134,15 +1140,8 @@ class MongoDBCharm(CharmBase):
         stdout, _ = process.wait_output()
         return stdout
 
-    def run_pbm_restore_command(self, backup_id: str, remapping_args: str) -> str:
-        """Executes a restore command in the workload container."""
-        restore_cmd = ["restore", backup_id]
-        if remapping_args:
-            restore_cmd = restore_cmd + remapping_args.split(" ")
-        return self.run_pbm_command(restore_cmd)
-
-    def set_pbm_config_file(self) -> None:
-        """Sets the pbm config file."""
+    def clear_pbm_config_file(self) -> None:
+        """Overwrites existing config file with an empty file."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
         container.push(
             Config.Backup.PBM_CONFIG_FILE_PATH,

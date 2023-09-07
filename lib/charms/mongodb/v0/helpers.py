@@ -1,9 +1,9 @@
 """Simple functions, which can be used in both K8s and VM charms."""
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import logging
 import os
-import re
 import secrets
 import string
 import subprocess
@@ -27,7 +27,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 8
 
 
 # path to store mongodb ketFile
@@ -223,43 +223,26 @@ def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
 
 def current_pbm_op(pbm_status: str) -> str:
     """Parses pbm status for the operation that pbm is running."""
-    pbm_status_lines = pbm_status.splitlines()
-    for i in range(0, len(pbm_status_lines)):
-        line = pbm_status_lines[i]
-
-        # operation is two lines after the line "Currently running:"
-        if line == "Currently running:":
-            return pbm_status_lines[i + 2]
-
-    return ""
+    pbm_status = json.loads(pbm_status)
+    return pbm_status["running"] if "running" in pbm_status else ""
 
 
 def process_pbm_status(pbm_status: str) -> StatusBase:
     """Parses current pbm operation and returns unit status."""
-    if type(pbm_status) == bytes:
-        pbm_status = pbm_status.decode("utf-8")
-
-    # pbm is running resync operation
-    if "Resync" in current_pbm_op(pbm_status):
-        return WaitingStatus("waiting to sync s3 configurations.")
-
+    current_op = current_pbm_op(pbm_status)
     # no operations are currently running with pbm
-    if "(none)" in current_pbm_op(pbm_status):
+    if current_op == {}:
         return ActiveStatus("")
 
-    # Example of backup id: 2023-08-21T13:08:22Z
-    backup_match = re.search(
-        r'Snapshot backup "(?P<backup_id>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)"', pbm_status
-    )
-    if backup_match:
-        backup_id = backup_match.group("backup_id")
+    if current_op["type"] == "backup":
+        backup_id = current_op["name"]
         return MaintenanceStatus(f"backup started/running, backup id:'{backup_id}'")
 
-    restore_match = re.search(
-        r'Snapshot restore "(?P<backup_id>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)"', pbm_status
-    )
-    if restore_match:
-        backup_id = restore_match.group("backup_id")
+    if current_op["type"] == "restore":
+        backup_id = current_op["name"]
         return MaintenanceStatus(f"restore started/running, backup id:'{backup_id}'")
+
+    if current_op["type"] == "resync":
+        return WaitingStatus("waiting to sync s3 configurations.")
 
     return ActiveStatus()
