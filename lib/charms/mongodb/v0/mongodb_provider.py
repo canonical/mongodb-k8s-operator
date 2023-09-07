@@ -13,9 +13,10 @@ import re
 from collections import namedtuple
 from typing import Optional, Set
 
+from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
 from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
-from ops.charm import RelationBrokenEvent, RelationChangedEvent
+from ops.charm import CharmBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
 from pymongo.errors import PyMongoError
@@ -51,14 +52,32 @@ deleted — key that were deleted."""
 class MongoDBProvider(Object):
     """In this class, we manage client database relations."""
 
-    def __init__(self, charm, substrate="k8s"):
-        """Manager of MongoDB client relations."""
-        super().__init__(charm, "client-relations")
-        self.charm = charm
+    def __init__(self, charm: CharmBase, substrate="k8s", relation_name: str = "database") -> None:
+        """Constructor for MongoDBProvider object.
+
+        Args:
+            charm: the charm for which this relation is provided
+            substrate: host type, either "k8s" or "vm"
+            relation_name: the name of the relation
+        """
+        self.relation_name = relation_name
         self.substrate = substrate
-        self.framework.observe(self.charm.on[REL_NAME].relation_joined, self._on_relation_event)
-        self.framework.observe(self.charm.on[REL_NAME].relation_changed, self._on_relation_event)
-        self.framework.observe(self.charm.on[REL_NAME].relation_broken, self._on_relation_event)
+
+        super().__init__(charm, self.relation_name)
+        self.framework.observe(
+            charm.on[self.relation_name].relation_broken, self._on_relation_event
+        )
+        self.framework.observe(
+            charm.on[self.relation_name].relation_changed, self._on_relation_event
+        )
+
+        self.charm = charm
+
+        # Charm events defined in the database provides charm library.
+        self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
+        self.framework.observe(
+            self.database_provides.on.database_requested, self._on_relation_event
+        )
 
     def _on_relation_event(self, event):
         """Handle relation joined events.
@@ -193,6 +212,30 @@ class MongoDBProvider(Object):
         # Return the diff with all possible changes.
         return Diff(added, changed, deleted)
 
+    def update_app_relation_data(self) -> None:
+        """Helper function to update application relation data."""
+        if not self.charm.db_initialised:
+            return
+
+        database_users = set()
+
+        with MongoDBConnection(self.charm.mongodb_config) as mongo:
+            database_users = mongo.get_users()
+
+        for relation in self.charm.model.relations[REL_NAME]:
+            username = self._get_username_from_relation_id(relation.id)
+            password = relation.data[self.charm.app]["password"]
+            config = self._get_config(username, password)
+            if username in database_users:
+                self.database_provides.set_endpoints(
+                    relation.id,
+                    ",".join(config.hosts),
+                )
+                self.database_provides.set_uris(
+                    relation.id,
+                    config.uri,
+                )
+
     def _get_config(self, username: str, password: Optional[str]) -> MongoDBConfiguration:
         """Construct the config object for future user creation."""
         relation = self._get_relation_from_username(username)
@@ -216,14 +259,20 @@ class MongoDBProvider(Object):
         if relation is None:
             return None
 
-        data = relation.data[self.charm.app]
-        data["username"] = config.username
-        data["password"] = config.password
-        data["database"] = config.database
-        data["endpoints"] = ",".join(config.hosts)
-        data["replset"] = config.replset
-        data["uris"] = config.uri
-        relation.data[self.charm.app].update(data)
+        self.database_provides.set_credentials(relation.id, config.username, config.password)
+        self.database_provides.set_database(relation.id, config.database)
+        self.database_provides.set_endpoints(
+            relation.id,
+            ",".join(config.hosts),
+        )
+        self.database_provides.set_replset(
+            relation.id,
+            config.replset,
+        )
+        self.database_provides.set_uris(
+            relation.id,
+            config.uri,
+        )
 
     @staticmethod
     def _get_username_from_relation_id(relation_id: int) -> str:
