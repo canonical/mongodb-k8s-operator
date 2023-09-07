@@ -434,7 +434,7 @@ class MongoDBCharm(CharmBase):
                 self._add_units_from_replica_set(event, mongo, mongodb_hosts - replset_members)
 
                 # app relations should be made aware of the new set of hosts
-                self._update_app_relation_data(mongo.get_users())
+                self.client_relations.update_app_relation_data()
 
             except NotReadyError:
                 logger.info("Deferring reconfigure: another member doing sync right now")
@@ -740,20 +740,6 @@ class MongoDBCharm(CharmBase):
         self._check_or_set_user_password(MonitorUser)
 
         self._check_or_set_keyfile()
-
-    def _update_app_relation_data(self, database_users: Set[str]) -> None:
-        """Helper function to update application relation data."""
-        for relation in self.model.relations[Config.Relations.NAME]:
-            username = self.client_relations._get_username_from_relation_id(relation.id)
-            password = relation.data[self.app][Config.Actions.PASSWORD_PARAM_NAME]
-            if username in database_users:
-                config = self.client_relations._get_config(username, password)
-                relation.data[self.app].update(
-                    {
-                        "endpoints": ",".join(config.hosts),
-                        "uris": config.uri,
-                    }
-                )
 
     def _initialise_replica_set(self, event: StartEvent) -> None:
         """Initialise replica set and create users."""
