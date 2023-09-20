@@ -99,3 +99,10 @@ jobs:
         with:
           app: mongodb-k8s
           model: testing
+  
+  sync-docs:
+    uses: ./.github/workflows/sync_docs.yaml
+    secrets: inherit
+    permissions:
+      contents: write  # Needed to update tags
+      pull-requests: write # Need to create PR
