@@ -38,3 +38,9 @@ class MissingSecretError(MongoSecretError):
     """Could be raised when a Juju 3 mandatory secret couldn't be found."""
 
     pass
+
+
+class SecretAlreadyExistsError(MongoSecretError):
+    """A secret that we want to create already exists."""
+
+    pass
