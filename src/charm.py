@@ -25,6 +25,7 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
+from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.users import (
     CHARM_USERS,
@@ -50,7 +51,6 @@ from ops.model import (
     ModelError,
     Relation,
     RelationDataContent,
-    SecretNotFoundError,
     Unit,
     WaitingStatus,
 )
@@ -66,11 +66,7 @@ from pymongo.errors import PyMongoError
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
-from exceptions import (
-    AdminUserCreationError,
-    MissingSecretError,
-    SecretAlreadyExistsError,
-)
+from exceptions import AdminUserCreationError, MissingSecretError
 
 logger = logging.getLogger(__name__)
 
@@ -576,11 +572,11 @@ class MongoDBCharm(CharmBase):
         occurs on TLS certs change.
         """
         label = None
-        if self._generate_secret_label(Config.APP_SCOPE) == event.secret.label:
-            label = self._generate_secret_label(Config.APP_SCOPE)
+        if generate_secret_label(self, Config.APP_SCOPE) == event.secret.label:
+            label = generate_secret_label(self, Config.APP_SCOPE)
             scope = APP_SCOPE
-        elif self._generate_secret_label(Config.UNIT_SCOPE) == event.secret.label:
-            label = self._generate_secret_label(Config.UNIT_SCOPE)
+        elif generate_secret_label(self, Config.UNIT_SCOPE) == event.secret.label:
+            label = generate_secret_label(self, Config.UNIT_SCOPE)
             scope = UNIT_SCOPE
         else:
             logging.debug("Secret %s changed, but it's unknown", event.secret.id)
@@ -690,8 +686,8 @@ class MongoDBCharm(CharmBase):
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: List[str]
     ) -> MongoDBConfiguration:
-        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
-        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+        external_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+        internal_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
         password = self.get_secret(APP_SCOPE, user.get_password_key_name())
         if not password:
             raise MissingSecretError(
@@ -806,11 +802,6 @@ class MongoDBCharm(CharmBase):
             and self.unit.status.message == "waiting to reconfigure replica set"
         ):
             self.unit.status = ActiveStatus()
-
-    def _generate_secret_label(self, scope: Scopes) -> str:
-        """Generate unique group_mappings for secrets within a relation context."""
-        members = [self.app.name, scope]
-        return f"{'.'.join(members)}"
 
     def get_secret(self, scope: Scopes, key: str) -> Optional[str]:
         """Getting a secret."""
@@ -1110,97 +1101,6 @@ class MongoDBCharm(CharmBase):
             )
 
     # END: static methods
-
-
-# Secret cache
-
-
-class CachedSecret:
-    """Locally cache a secret.
-
-    The data structure is precisely re-using/simulating as in the actual Secret Storage
-    """
-
-    def __init__(self, charm: CharmBase, label: str, secret_uri: Optional[str] = None):
-        self._secret_meta = None
-        self._secret_content = {}
-        self._secret_uri = secret_uri
-        self.label = label
-        self.charm = charm
-
-    def add_secret(self, content: Dict[str, str], scope: Scopes) -> Secret:
-        """Create a new secret."""
-        if self._secret_uri:
-            raise SecretAlreadyExistsError(
-                "Secret is already defined with uri %s", self._secret_uri
-            )
-
-        if scope == Config.APP_SCOPE:
-            secret = self.charm.app.add_secret(content, label=self.label)
-        else:
-            secret = self.charm.unit.add_secret(content, label=self.label)
-        self._secret_uri = secret.id
-        self._secret_meta = secret
-        return self._secret_meta
-
-    @property
-    def meta(self) -> Optional[Secret]:
-        """Getting cached secret meta-information."""
-        if not self._secret_meta:
-            if not (self._secret_uri or self.label):
-                return
-            try:
-                self._secret_meta = self.charm.model.get_secret(label=self.label)
-            except SecretNotFoundError:
-                if self._secret_uri:
-                    self._secret_meta = self.charm.model.get_secret(
-                        id=self._secret_uri, label=self.label
-                    )
-        return self._secret_meta
-
-    def get_content(self) -> Dict[str, str]:
-        """Getting cached secret content."""
-        if not self._secret_content:
-            if self.meta:
-                self._secret_content = self.meta.get_content()
-        return self._secret_content
-
-    def set_content(self, content: Dict[str, str]) -> None:
-        """Setting cached secret content."""
-        if self.meta:
-            self.meta.set_content(content)
-            self._secret_content = content
-
-    def get_info(self) -> Optional[SecretInfo]:
-        """Wrapper function for get the corresponding call on the Secret object if any."""
-        if self.meta:
-            return self.meta.get_info()
-
-
-class SecretCache:
-    """A data structure storing CachedSecret objects."""
-
-    def __init__(self, charm):
-        self.charm = charm
-        self._secrets: Dict[str, CachedSecret] = {}
-
-    def get(self, label: str, uri: Optional[str] = None) -> Optional[CachedSecret]:
-        """Getting a secret from Juju Secret store or cache."""
-        if not self._secrets.get(label):
-            secret = CachedSecret(self.charm, label, uri)
-            if secret.meta:
-                self._secrets[label] = secret
-        return self._secrets.get(label)
-
-    def add(self, label: str, content: Dict[str, str], scope: Scopes) -> CachedSecret:
-        """Adding a secret to Juju Secret."""
-        if self._secrets.get(label):
-            raise SecretAlreadyExistsError(f"Secret {label} already exists")
-
-        secret = CachedSecret(self.charm, label)
-        secret.add_secret(content, scope)
-        self._secrets[label] = secret
-        return self._secrets[label]
 
 
 # END: Secret cache
