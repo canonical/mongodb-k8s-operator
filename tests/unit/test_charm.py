@@ -651,7 +651,6 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.set_secret("app", "monitor-password", "blablabla")
         assert self.harness.charm.get_secret("app", "monitor-password") == "blablabla"
 
-    @pytest.mark.usefixtures("only_with_juju_secrets")
     @parameterized.expand([("app"), ("unit")])
     def test_set_secret_returning_secret_id(self, scope):
         secret_id = self.harness.charm.set_secret("app", "somekey", "bla")

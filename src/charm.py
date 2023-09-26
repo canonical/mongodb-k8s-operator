@@ -34,7 +34,6 @@ from charms.mongodb.v0.users import (
     OperatorUser,
 )
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
-from ops import JujuVersion
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -849,14 +848,7 @@ class MongoDBCharm(CharmBase):
 
     def get_secret(self, scope: Scopes, key: str) -> Optional[str]:
         """Getting a secret."""
-        peer_data = self._peer_data(scope)
-
-        juju_version = JujuVersion.from_environ()
-
-        if juju_version.has_secrets:
-            return self._juju_secret_get_key(scope, key)
-        else:
-            return peer_data.get(key)
+        return self._juju_secret_get_key(scope, key)
 
     def _juju_secret_set(self, scope: Scopes, key: str, value: str) -> str:
         """Helper function setting Juju secret."""
@@ -903,16 +895,7 @@ class MongoDBCharm(CharmBase):
         if not value:
             return self.remove_secret(scope, key)
 
-        juju_version = JujuVersion.from_environ()
-
-        result = None
-        if juju_version.has_secrets:
-            result = self._juju_secret_set(scope, key, value)
-        else:
-            peer_data = self._peer_data(scope)
-            peer_data.update({key: value})
-
-        return result
+        return self._juju_secret_set(scope, key, value)
 
     def _juju_secret_remove(self, scope: Scopes, key: str) -> None:
         """Remove a Juju 3.x secret."""
@@ -934,12 +917,7 @@ class MongoDBCharm(CharmBase):
 
     def remove_secret(self, scope, key) -> None:
         """Removing a secret."""
-        juju_version = JujuVersion.from_environ()
-        if juju_version.has_secrets:
-            return self._juju_secret_remove(scope, key)
-
-        peer_data = self._peer_data(scope)
-        del peer_data[key]
+        return self._juju_secret_remove(scope, key)
 
     def restart_mongod_service(self):
         """Restart mongod service."""

@@ -523,7 +523,7 @@ class MongoDBBackups(Object):
                         restore_cmd = restore_cmd + remapping_args.split(" ")
                     self.charm.run_pbm_command(restore_cmd)
                 except (subprocess.CalledProcessError, ExecError) as e:
-                    if type(e) == subprocess.CalledProcessError:
+                    if type(e) is subprocess.CalledProcessError:
                         error_message = e.output.decode("utf-8")
                     else:
                         error_message = str(e.stderr)
@@ -560,7 +560,7 @@ class MongoDBBackups(Object):
                     )
                     return backup_id_match.group("backup_id") if backup_id_match else "N/A"
                 except (subprocess.CalledProcessError, ExecError) as e:
-                    if type(e) == subprocess.CalledProcessError:
+                    if type(e) is subprocess.CalledProcessError:
                         error_message = e.output.decode("utf-8")
                     else:
                         error_message = str(e.stderr)
@@ -636,13 +636,13 @@ class MongoDBBackups(Object):
         to contain the operation type (backup/restore) and the backup id.
         """
         if (
-            type(current_pbm_status) == type(previous_pbm_status)
+            type(current_pbm_status) is type(previous_pbm_status)
             and current_pbm_status.message == previous_pbm_status.message
         ):
             return f"Operation is still in progress: '{current_pbm_status.message}'"
 
         if (
-            type(previous_pbm_status) == MaintenanceStatus
+            type(previous_pbm_status) is MaintenanceStatus
             and "backup id:" in previous_pbm_status.message
         ):
             backup_id = previous_pbm_status.message.split("backup id:")[-1].strip()
