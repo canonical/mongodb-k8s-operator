@@ -105,7 +105,6 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.set_password_action, self._on_set_password)
         self.framework.observe(self.on.stop, self._on_stop)
 
-        self.framework.observe(self.on.secret_remove, self._on_secret_remove)
         self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
         self.client_relations = MongoDBProvider(self)
@@ -559,9 +558,6 @@ class MongoDBCharm(CharmBase):
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
         )
-
-    def _on_secret_remove(self, event):
-        logging.debug(f"Secret {event.secret.id} seems to have no observers, could be removed")
 
     def _on_secret_changed(self, event):
         """Handles secrets changes event.
