@@ -686,8 +686,8 @@ class MongoDBCharm(CharmBase):
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: List[str]
     ) -> MongoDBConfiguration:
-        external_ca, _ = self.tls.get_tls_files(APP_SCOPE)
-        internal_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
+        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
+        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
         password = self.get_secret(APP_SCOPE, user.get_password_key_name())
         if not password:
             raise MissingSecretError(
@@ -1101,9 +1101,6 @@ class MongoDBCharm(CharmBase):
             )
 
     # END: static methods
-
-
-# END: Secret cache
 
 
 if __name__ == "__main__":

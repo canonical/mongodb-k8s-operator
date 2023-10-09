@@ -29,7 +29,12 @@ Scopes = Config.Relations.Scopes
 
 
 def generate_secret_label(charm: CharmBase, scope: Scopes) -> str:
-    """Generate unique group_mappings for secrets within a relation context."""
+    """Generate unique group_mappings for secrets within a relation context.
+
+    Defined as a standalone function, as the choice on secret labels definition belongs to the
+    Application Logic. To be kept separate from classes below, which are simply to provide a
+    (smart) abstraction layer above Juju Secrets.
+    """
     members = [charm.app.name, scope]
     return f"{'.'.join(members)}"
 
@@ -38,9 +43,10 @@ def generate_secret_label(charm: CharmBase, scope: Scopes) -> str:
 
 
 class CachedSecret:
-    """Locally cache a secret.
+    """Abstraction layer above direct Juju access with caching.
 
-    The data structure is precisely re-using/simulating as in the actual Secret Storage
+    The data structure is precisely re-using/simulating Juju Secrets behavior, while
+    also making sure not to fetch a secret multiple times within the same event scope.
     """
 
     def __init__(self, charm: CharmBase, label: str, secret_uri: Optional[str] = None):
@@ -68,16 +74,19 @@ class CachedSecret:
     @property
     def meta(self) -> Optional[Secret]:
         """Getting cached secret meta-information."""
-        if not self._secret_meta:
-            if not (self._secret_uri or self.label):
-                return
-            try:
-                self._secret_meta = self.charm.model.get_secret(label=self.label)
-            except SecretNotFoundError:
-                if self._secret_uri:
-                    self._secret_meta = self.charm.model.get_secret(
-                        id=self._secret_uri, label=self.label
-                    )
+        if self._secret_meta:
+            return self._secret_meta
+
+        if not (self._secret_uri or self.label):
+            return
+
+        try:
+            self._secret_meta = self.charm.model.get_secret(label=self.label)
+        except SecretNotFoundError:
+            if self._secret_uri:
+                self._secret_meta = self.charm.model.get_secret(
+                    id=self._secret_uri, label=self.label
+                )
         return self._secret_meta
 
     def get_content(self) -> Dict[str, str]:
@@ -123,3 +132,6 @@ class SecretCache:
         secret.add_secret(content, scope)
         self._secrets[label] = secret
         return self._secrets[label]
+
+
+# END: Secret cache
