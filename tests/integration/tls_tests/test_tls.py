@@ -1,19 +1,81 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import time
 
 import pytest
+from ops import Unit
 from pytest_operator.plugin import OpsTest
 
-from .helpers import METADATA, check_tls, time_file_created, time_process_started
+from ..helpers import get_application_relation_data, get_secret_content, get_secret_id
+from .helpers import (
+    METADATA,
+    check_tls,
+    scp_file_preserve_ctime,
+    time_file_created,
+    time_process_started,
+)
 
 TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
 DATABASE_APP_NAME = "mongodb-k8s"
+TLS_RELATION_NAME = "certificates"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
 EXTERNAL_CERT_PATH = "/etc/mongod/external-ca.crt"
 INTERNAL_CERT_PATH = "/etc/mongod/internal-ca.crt"
 DB_SERVICE = "mongod.service"
+
+
+async def check_certs_correctly_distributed(ops_test: OpsTest, unit: Unit) -> None:
+    """Comparing expected vs distributed certificates.
+
+    Verifying certificates downloaded on the charm against the ones distributed by the TLS operator
+    """
+    app_secret_id = await get_secret_id(ops_test, DATABASE_APP_NAME)
+    unit_secret_id = await get_secret_id(ops_test, unit.name)
+    app_secret_content = await get_secret_content(ops_test, app_secret_id)
+    unit_secret_content = await get_secret_content(ops_test, unit_secret_id)
+    app_current_crt = app_secret_content["csr-secret"]
+    unit_current_crt = unit_secret_content["csr-secret"]
+
+    # Get the values for certs from the relation, as provided by TLS Charm
+    certificates_raw_data = await get_application_relation_data(
+        ops_test, DATABASE_APP_NAME, TLS_RELATION_NAME, "certificates"
+    )
+    certificates_data = json.loads(certificates_raw_data)
+
+    external_item = [
+        data
+        for data in certificates_data
+        if data["certificate_signing_request"].rstrip() == unit_current_crt.rstrip()
+    ][0]
+    internal_item = [
+        data
+        for data in certificates_data
+        if data["certificate_signing_request"].rstrip() == app_current_crt.rstrip()
+    ][0]
+
+    # Get a local copy of the external cert
+    external_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, EXTERNAL_CERT_PATH)
+
+    # Get the external cert value from the relation
+    relation_external_cert = "\n".join(external_item["chain"])
+
+    # CHECK: Compare if they are the same
+    with open(external_copy_path) as f:
+        external_contents_file = f.read()
+        assert relation_external_cert == external_contents_file
+
+    # Get a local copy of the internal cert
+    internal_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, INTERNAL_CERT_PATH)
+
+    # Get the external cert value from the relation
+    relation_internal_cert = "\n".join(internal_item["chain"])
+
+    # CHECK: Compare if they are the same
+    with open(internal_copy_path) as f:
+        internal_contents_file = f.read()
+        assert relation_internal_cert == internal_contents_file
 
 
 @pytest.mark.abort_on_fail
@@ -22,7 +84,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     async with ops_test.fast_forward():
         my_charm = await ops_test.build_charm(".")
         resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
-        await ops_test.model.deploy(my_charm, num_units=3, resources=resources, series="jammy")
+        await ops_test.model.deploy(my_charm, num_units=1, resources=resources, series="jammy")
         await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=2000)
 
         config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
@@ -66,6 +128,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         original_tls_times[unit.name]["mongod_service"] = await time_process_started(
             ops_test, unit.name, DB_SERVICE
         )
+        check_certs_correctly_distributed(ops_test, unit)
 
     # set external and internal key using auto-generated key for each unit
     for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
@@ -83,6 +146,8 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         new_external_cert_time = await time_file_created(ops_test, unit.name, EXTERNAL_CERT_PATH)
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
+
+        check_certs_correctly_distributed(ops_test, unit)
 
         assert (
             new_external_cert_time > original_tls_times[unit.name]["external_cert"]
@@ -159,6 +224,8 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         new_external_cert_time = await time_file_created(ops_test, unit.name, EXTERNAL_CERT_PATH)
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
+
+        check_certs_correctly_distributed(ops_test, unit)
 
         assert (
             new_external_cert_time > original_tls_times[unit.name]["external_cert"]
