@@ -653,8 +653,8 @@ class TestCharm(unittest.TestCase):
 
     @parameterized.expand([("app"), ("unit")])
     def test_set_secret_returning_secret_id(self, scope):
-        secret_id = self.harness.charm.set_secret("app", "somekey", "bla")
-        assert re.match("secret:([a-z0-9-]){36}", secret_id)
+        secret_id = self.harness.charm.set_secret(scope, "somekey", "bla")
+        assert re.match(f"mongodb-k8s.{scope}", secret_id)
 
     @parameterized.expand([("app"), ("unit")])
     def test_set_reset_new_secret(self, scope):
@@ -693,23 +693,40 @@ class TestCharm(unittest.TestCase):
         assert self.harness.charm.get_secret("unit", "somekey") is None
 
         with self._caplog.at_level(logging.ERROR):
+            self.harness.charm.remove_secret("app", "monitor-password")
+            assert (
+                "Non-existing secret app:monitor-password was attempted to be removed."
+                in self._caplog.text
+            )
+
+            self.harness.charm.remove_secret("unit", "somekey")
+            assert (
+                "Non-existing secret unit:somekey was attempted to be removed."
+                in self._caplog.text
+            )
+
             self.harness.charm.remove_secret("app", "non-existing-secret")
-            assert "No secret app:non-existing-secret" in self._caplog.text
+            assert (
+                "Non-existing secret app:non-existing-secret was attempted to be removed."
+                in self._caplog.text
+            )
 
             self.harness.charm.remove_secret("unit", "non-existing-secret")
-            assert "No secret unit:non-existing-secret" in self._caplog.text
+            assert (
+                "Non-existing secret unit:non-existing-secret was attempted to be removed."
+                in self._caplog.text
+            )
 
     @parameterized.expand([("app"), ("unit")])
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
     def test_on_secret_changed(self, scope, connect_exporter):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
-        secret_id = self.harness.charm.set_secret(scope, "new-secret", "bla")
-
-        secret = self.harness.charm.model.get_secret(id=secret_id)
+        secret_label = self.harness.charm.set_secret(scope, "new-secret", "bla")
+        secret = self.harness.charm.model.get_secret(label=secret_label)
 
         event = mock.Mock()
         event.secret = secret
-        secret_id = self.harness.charm._on_secret_changed(event)
+        secret_label = self.harness.charm._on_secret_changed(event)
         connect_exporter.assert_called()
 
     @parameterized.expand([("app"), ("unit")])

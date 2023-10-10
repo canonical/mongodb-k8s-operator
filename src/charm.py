@@ -25,6 +25,7 @@ from charms.mongodb.v0.mongodb import (
 )
 from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
+from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.users import (
     CHARM_USERS,
@@ -50,7 +51,6 @@ from ops.model import (
     ModelError,
     Relation,
     RelationDataContent,
-    SecretNotFoundError,
     Unit,
     WaitingStatus,
 )
@@ -66,7 +66,7 @@ from pymongo.errors import PyMongoError
 from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
-from exceptions import AdminUserCreationError, MissingSecretError, SecretNotAddedError
+from exceptions import AdminUserCreationError, MissingSecretError
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,7 @@ class MongoDBCharm(CharmBase):
             relation_name=Config.Relations.LOGGING,
             container_name=Config.CONTAINER_NAME,
         )
-        self.secrets = {APP_SCOPE: {}, UNIT_SCOPE: {}}
+        self.secrets = SecretCache(self)
 
     # BEGIN: properties
 
@@ -571,20 +571,19 @@ class MongoDBCharm(CharmBase):
         for backup tool on non-leader units to keep them working with MongoDB. The same workflow
         occurs on TLS certs change.
         """
-        if self._compare_secret_ids(
-            event.secret.id, self.app_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
-        ):
+        label = None
+        if generate_secret_label(self, Config.APP_SCOPE) == event.secret.label:
+            label = generate_secret_label(self, Config.APP_SCOPE)
             scope = APP_SCOPE
-        elif self._compare_secret_ids(
-            event.secret.id, self.unit_peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL)
-        ):
+        elif generate_secret_label(self, Config.UNIT_SCOPE) == event.secret.label:
+            label = generate_secret_label(self, Config.UNIT_SCOPE)
             scope = UNIT_SCOPE
         else:
             logging.debug("Secret %s changed, but it's unknown", event.secret.id)
             return
         logging.debug("Secret %s for scope %s changed, refreshing", event.secret.id, scope)
 
-        self._juju_secrets_get(scope)
+        self.secrets.get(label)
         self._connect_mongodb_exporter()
         self._connect_pbm_agent()
 
@@ -804,120 +803,47 @@ class MongoDBCharm(CharmBase):
         ):
             self.unit.status = ActiveStatus()
 
-    def _juju_secrets_get(self, scope: Scopes) -> Optional[bool]:
-        """Helper function to get Juju secret."""
-        peer_data = self._peer_data(scope)
-
-        if not peer_data.get(Config.Secrets.SECRET_INTERNAL_LABEL):
-            return
-
-        if Config.Secrets.SECRET_CACHE_LABEL not in self.secrets[scope]:
-            try:
-                # NOTE: Secret contents are not yet available!
-                secret = self.model.get_secret(id=peer_data[Config.Secrets.SECRET_INTERNAL_LABEL])
-            except SecretNotFoundError as e:
-                logging.debug(
-                    f"No secret found for ID {peer_data[Config.Secrets.SECRET_INTERNAL_LABEL]}, {e}"
-                )
-                return
-
-            logging.debug(f"Secret {peer_data[Config.Secrets.SECRET_INTERNAL_LABEL]} downloaded")
-
-            # We keep the secret object around -- needed when applying modifications
-            self.secrets[scope][Config.Secrets.SECRET_LABEL] = secret
-
-            # We retrieve and cache actual secret data for the lifetime of the event scope
-            self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL] = secret.get_content()
-
-        if self.secrets[scope].get(Config.Secrets.SECRET_CACHE_LABEL):
-            return True
-        return False
-
-    def _juju_secret_get_key(self, scope: Scopes, key: str) -> Optional[str]:
-        if not key:
-            return
-
-        if self._juju_secrets_get(scope):
-            secret_cache = self.secrets[scope].get(Config.Secrets.SECRET_CACHE_LABEL)
-            if secret_cache:
-                secret_data = secret_cache.get(key)
-                if secret_data and secret_data != Config.Secrets.SECRET_DELETED_LABEL:
-                    logging.debug(f"Getting secret {scope}:{key}")
-                    return secret_data
-        logging.debug(f"No value found for secret {scope}:{key}")
-
     def get_secret(self, scope: Scopes, key: str) -> Optional[str]:
         """Getting a secret."""
-        return self._juju_secret_get_key(scope, key)
+        label = generate_secret_label(self, scope)
+        secret = self.secrets.get(label)
+        if not secret:
+            return
 
-    def _juju_secret_set(self, scope: Scopes, key: str, value: str) -> str:
-        """Helper function setting Juju secret."""
-        peer_data = self._peer_data(scope)
-        self._juju_secrets_get(scope)
-
-        secret = self.secrets[scope].get(Config.Secrets.SECRET_LABEL)
-
-        # It's not the first secret for the scope, we can re-use the existing one
-        # that was fetched in the previous call
-        if secret:
-            secret_cache = self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL]
-
-            if secret_cache.get(key) == value:
-                logging.debug(f"Key {scope}:{key} has this value defined already")
-            else:
-                secret_cache[key] = value
-                try:
-                    secret.set_content(secret_cache)
-                except OSError as error:
-                    logging.error(
-                        f"Error in attempt to set {scope}:{key}. "
-                        f"Existing keys were: {list(secret_cache.keys())}. {error}"
-                    )
-                logging.debug(f"Secret {scope}:{key} was {key} set")
-
-        # We need to create a brand-new secret for this scope
-        else:
-            scope_obj = self._scope_opj(scope)
-
-            secret = scope_obj.add_secret({key: value})
-            if not secret:
-                raise SecretNotAddedError(f"Couldn't set secret {scope}:{key}")
-
-            self.secrets[scope][Config.Secrets.SECRET_LABEL] = secret
-            self.secrets[scope][Config.Secrets.SECRET_CACHE_LABEL] = {key: value}
-            logging.debug(f"Secret {scope}:{key} published (as first). ID: {secret.id}")
-            peer_data.update({Config.Secrets.SECRET_INTERNAL_LABEL: secret.id})
-
-        return self.secrets[scope][Config.Secrets.SECRET_LABEL].id
+        value = secret.get_content().get(key)
+        if value != Config.Secrets.SECRET_DELETED_LABEL:
+            return value
 
     def set_secret(self, scope: Scopes, key: str, value: Optional[str]) -> Optional[str]:
         """(Re)defining a secret."""
         if not value:
             return self.remove_secret(scope, key)
 
-        return self._juju_secret_set(scope, key, value)
-
-    def _juju_secret_remove(self, scope: Scopes, key: str) -> None:
-        """Remove a Juju 3.x secret."""
-        self._juju_secrets_get(scope)
-
-        secret = self.secrets[scope].get(Config.Secrets.SECRET_LABEL)
+        label = generate_secret_label(self, scope)
+        secret = self.secrets.get(label)
         if not secret:
-            logging.error(f"Secret {scope}:{key} wasn't deleted: no secrets are available")
-            return
-
-        secret_cache = self.secrets[scope].get(Config.Secrets.SECRET_CACHE_LABEL)
-        if not secret_cache or key not in secret_cache:
-            logging.error(f"No secret {scope}:{key}")
-            return
-
-        secret_cache[key] = Config.Secrets.SECRET_DELETED_LABEL
-        secret.set_content(secret_cache)
-        logging.debug(f"Secret {scope}:{key}")
+            self.secrets.add(label, {key: value}, scope)
+        else:
+            content = secret.get_content()
+            content.update({key: value})
+            secret.set_content(content)
+        return label
 
     def remove_secret(self, scope, key) -> None:
         """Removing a secret."""
-        return self._juju_secret_remove(scope, key)
+        label = generate_secret_label(self, scope)
+        secret = self.secrets.get(label)
+        if not secret:
+            return
+
+        content = secret.get_content()
+
+        if not content.get(key) or content[key] == Config.Secrets.SECRET_DELETED_LABEL:
+            logger.error(f"Non-existing secret {scope}:{key} was attempted to be removed.")
+            return
+
+        content[key] = Config.Secrets.SECRET_DELETED_LABEL
+        secret.set_content(content)
 
     def restart_mongod_service(self):
         """Restart mongod service."""

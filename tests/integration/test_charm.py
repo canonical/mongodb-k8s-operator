@@ -149,6 +149,16 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
     # Getting back the pw programmatically
     password = await get_password(ops_test, unit_id=leader_id, username="monitor")
 
+    #
+    # No way to retrieve a secet by label for now (https://bugs.launchpad.net/juju/+bug/2037104)
+    # Therefore we take advantage of the fact, that we only have ONE single secret a this point
+    # So we take the single member of the list
+    # NOTE: This would BREAK if for instance units had secrets at the start...
+    #
+    complete_command = "list-secrets"
+    _, stdout, _ = await ops_test.juju(*complete_command.split())
+    secret_id = stdout.split("\n")[1].split(" ")[0]
+
     # Getting back the pw from juju CLI
     complete_command = f"show-secret {secret_id} --reveal --format=json"
     _, stdout, _ = await ops_test.juju(*complete_command.split())
