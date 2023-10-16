@@ -9,7 +9,7 @@ from pathlib import Path
 from random import choices
 from string import ascii_lowercase, digits
 from types import SimpleNamespace
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import yaml
 from pytest_operator.plugin import OpsTest
@@ -257,3 +257,90 @@ async def secondary_mongo_uris_with_sync_delay(ops_test: OpsTest, rs_status_data
 def generate_collection_id() -> str:
     new_id = "".join(choices(ascii_lowercase + digits, k=4)).replace("_", "")
     return f"collection_{new_id}"
+
+
+async def get_application_relation_data(
+    ops_test: OpsTest,
+    application_name: str,
+    relation_name: str,
+    key: str,
+    relation_id: str = None,
+    relation_alias: str = None,
+) -> Optional[str]:
+    """Get relation data for an application.
+
+    Args:
+        ops_test: The ops test framework instance
+        application_name: The name of the application
+        relation_name: name of the relation to get connection data from
+        key: key of data to be retrieved
+        relation_id: id of the relation to get connection data from
+        relation_alias: alias of the relation (like a connection name)
+            to get connection data from
+    Returns:
+        the that that was requested or None
+            if no data in the relation
+    Raises:
+        ValueError if it's not possible to get application unit data
+            or if there is no data for the particular relation endpoint
+            and/or alias.
+    """
+    unit_name = f"{application_name}/0"
+    raw_data = (await ops_test.juju("show-unit", unit_name))[1]
+
+    if not raw_data:
+        raise ValueError(f"no unit info could be grabbed for {unit_name}")
+    data = yaml.safe_load(raw_data)
+
+    # Filter the data based on the relation name.
+    relation_data = [v for v in data[unit_name]["relation-info"] if v["endpoint"] == relation_name]
+
+    if relation_id:
+        # Filter the data based on the relation id.
+        relation_data = [v for v in relation_data if v["relation-id"] == relation_id]
+
+    if relation_alias:
+        # Filter the data based on the cluster/relation alias.
+        relation_data = [
+            v
+            for v in relation_data
+            if json.loads(v["application-data"]["data"])["alias"] == relation_alias
+        ]
+
+    if len(relation_data) == 0:
+        raise ValueError(
+            f"no relation data could be grabbed on relation with endpoint {relation_name} and alias {relation_alias}"
+        )
+
+    return relation_data[0]["application-data"].get(key)
+
+
+async def get_secret_id(ops_test, app_or_unit: Optional[str] = None) -> str:
+    """Retrieve secert ID for an app or unit."""
+    complete_command = "list-secrets"
+
+    prefix = ""
+    if app_or_unit:
+        if app_or_unit[-1].isdigit():
+            # it's a unit
+            app_or_unit = "-".join(app_or_unit.split("/"))
+            prefix = "unit-"
+        else:
+            prefix = "application-"
+        complete_command += f" --owner {prefix}{app_or_unit}"
+
+    _, stdout, _ = await ops_test.juju(*complete_command.split())
+    output_lines_split = [line.split() for line in stdout.split("\n")]
+    if app_or_unit:
+        return [line[0] for line in output_lines_split if app_or_unit in line][0]
+    else:
+        return output_lines_split[1][0]
+
+
+async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
+    """Retrieve contents of a Juju Secret."""
+    secret_id = secret_id.split("/")[-1]
+    complete_command = f"show-secret {secret_id} --reveal --format=json"
+    _, stdout, _ = await ops_test.juju(*complete_command.split())
+    data = json.loads(stdout)
+    return data[secret_id]["content"]["Data"]

@@ -94,6 +94,25 @@ async def time_file_created(ops_test: OpsTest, unit_name: str, path: str) -> int
     return process_ls_time(ls_output)
 
 
+async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) -> int:
+    """Returns the unix timestamp of when a file was created on a specified unit."""
+    # Retrieving the file
+    filename = path.split("/")[-1]
+    complete_command = f"scp --container mongod {unit_name}:{path} {filename}"
+    return_code, scp_output, stderr = await ops_test.juju(*complete_command.split())
+
+    if return_code != 0:
+        logger.error(stderr)
+        raise ProcessError(
+            "Expected command %s to succeed instead it failed: %s; %s",
+            complete_command,
+            return_code,
+            stderr,
+        )
+
+    return f"{filename}"
+
+
 async def time_process_started(ops_test: OpsTest, unit_name: str, process_name: str) -> int:
     """Retrieves the time that a given process started according to systemd."""
     logs = await run_command_on_unit(ops_test, unit_name, "/charm/bin/pebble changes")

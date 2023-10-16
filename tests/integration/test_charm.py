@@ -2,7 +2,6 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import json
 import logging
 import time
 from uuid import uuid4
@@ -24,6 +23,8 @@ from .helpers import (
     get_leader_id,
     get_mongo_cmd,
     get_password,
+    get_secret_content,
+    get_secret_id,
     primary_host,
     run_mongo_op,
     secondary_mongo_uris_with_sync_delay,
@@ -155,17 +156,13 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
     # So we take the single member of the list
     # NOTE: This would BREAK if for instance units had secrets at the start...
     #
-    complete_command = "list-secrets"
-    _, stdout, _ = await ops_test.juju(*complete_command.split())
-    secret_id = stdout.split("\n")[1].split(" ")[0]
+    secret_id = await get_secret_id(ops_test)
 
     # Getting back the pw from juju CLI
-    complete_command = f"show-secret {secret_id} --reveal --format=json"
-    _, stdout, _ = await ops_test.juju(*complete_command.split())
-    data = json.loads(stdout)
+    content = await get_secret_content(ops_test, secret_id)
 
     assert password == new_password
-    assert data[secret_id]["content"]["Data"]["monitor-password"] == password
+    assert content["monitor-password"] == password
 
 
 async def test_empty_password(ops_test: OpsTest) -> None:
