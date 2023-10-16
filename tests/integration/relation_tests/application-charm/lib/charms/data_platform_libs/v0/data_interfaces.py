@@ -447,7 +447,7 @@ def leader_only(f):
     def wrapper(self, *args, **kwargs):
         if not self.local_unit.is_leader():
             logger.error(
-                "This operation (%s()) can only be performed by the leader unit", f.__name__
+                "This operation (%s()) can only be performed by the leader unit. Ignoring ", f.__name__
             )
             return
         return f(self, *args, **kwargs)
@@ -1673,6 +1673,10 @@ class DatabaseRequires(DataRequires):
         relation = self.charm.model.get_relation(self.relation_name, relation_id)
         if relation:
             relation.data[self.local_unit].update({"alias": available_aliases[0]})
+
+        # We need to set relation alias also on the application level so,
+        # it will be accessible in show-unit juju command, executed for a consumer application unit
+        self.update_relation_data(relation_id, {"alias": available_aliases[0]})
 
     def _emit_aliased_event(self, event: RelationChangedEvent, event_name: str) -> None:
         """Emit an aliased event to a particular relation if it has an alias.
