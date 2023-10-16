@@ -235,7 +235,7 @@ class MongoDBProvider(Object):
                     relation.id,
                     config.uri,
                 )
-    
+
     def _get_or_set_password(self, relation: Relation) -> str:
         """Retrieve password from cache or generate a new one.
 
@@ -251,7 +251,7 @@ class MongoDBProvider(Object):
         password = generate_password()
         self.database_provides.update_relation_data(relation.id, {"password": password})
         return password
-    
+
     def _get_config(self, username: str, password: Optional[str]) -> MongoDBConfiguration:
         """Construct the config object for future user creation."""
         relation = self._get_relation_from_username(username)

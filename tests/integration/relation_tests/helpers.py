@@ -40,6 +40,7 @@ async def verify_application_data(
 
     return True
 
+
 async def get_secret_data(ops_test, secret_uri):
     secret_unique_id = secret_uri.split("/")[-1]
     complete_command = f"show-secret {secret_uri} --reveal --format=json"
