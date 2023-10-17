@@ -320,7 +320,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 19
+LIBPATCH = 20
 
 PYDEPS = ["ops>=2.0.0"]
 
@@ -447,8 +447,7 @@ def leader_only(f):
     def wrapper(self, *args, **kwargs):
         if not self.local_unit.is_leader():
             logger.error(
-                "This operation (%s()) can only be performed by the leader unit. Ignoring ",
-                f.__name__,
+                "This operation (%s()) can only be performed by the leader unit", f.__name__
             )
             return
         return f(self, *args, **kwargs)
