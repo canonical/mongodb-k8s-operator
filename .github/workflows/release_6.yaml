@@ -1,0 +1,50 @@
+name: Release to 6/edge
+
+on:
+  push:
+    branches:
+      - 6/edge
+
+jobs:
+  lib-check:
+    name: Check libraries
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: 6/edge # TODO remove this once 6/edge is a default branch
+      - name: Check libs
+        uses: canonical/charming-actions/check-libraries@2.3.0
+        with:
+          # FIXME: CHARMHUB_TOKEN will expire in 2024-01-20
+          # NOTE: CHARMHUB_TOKEN is only allowed in latest/edge, latest/candidate
+          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+  ci-tests:
+    needs:
+      - lib-check
+    uses: ./.github/workflows/ci.yaml
+
+  build:
+    name: Build charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v4.2.3
+    with:
+      charmcraft-snap-revision: 1349  # version 2.3.0
+
+  release:
+      name: Release charm
+      needs:
+        - ci-tests
+        - build
+      uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v4.2.3
+      with:
+        channel: 6/edge
+        artifact-name: ${{ needs.build.outputs.artifact-name }}
+      secrets:
+        charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+      permissions:
+        contents: write  # Needed to create GitHub release
