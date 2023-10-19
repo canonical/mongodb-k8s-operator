@@ -15,7 +15,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          ref: 6/edge
       - name: Check libs
         uses: canonical/charming-actions/check-libraries@2.3.0
         with:
@@ -31,16 +30,16 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v4.2.3
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5
     with:
-      charmcraft-snap-revision: 1349  # version 2.3.0
+      charmcraft-snap-channel: "latest/edge"
 
   release:
       name: Release charm
       needs:
         - ci-tests
         - build
-      uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v4.2.3
+      uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v5
       with:
         channel: 6/edge
         artifact-name: ${{ needs.build.outputs.artifact-name }}
