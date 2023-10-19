@@ -10,7 +10,7 @@ on:
   pull_request:
   schedule:
     - cron: "53 0 * * *" # Daily at 00:53 UTC
-  # Triggered on push to branch "main" by .github/workflows/release_5.yaml or .github/workflows/release_6.yaml
+  # Triggered on push to branch "main" by .github/workflows/release.yaml
   workflow_call:
 
 jobs:
@@ -44,7 +44,7 @@ jobs:
     name: Build charms
     uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5
     with:
-      charmcraft-snap-revision: 1349 # version 2.3.0
+      charmcraft-snap-revision: latest/edge
 
   integration-test:
     strategy:
