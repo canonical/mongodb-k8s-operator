@@ -38,7 +38,7 @@ TEST_DOCUMENTS = """[
 
 SERIES = "jammy"
 
-HELPER_MONGO_VERSION="6.0.11"
+HELPER_MONGO_VERSION = "6.0.11"
 
 logger = logging.getLogger(__name__)
 
