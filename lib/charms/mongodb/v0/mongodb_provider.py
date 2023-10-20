@@ -29,7 +29,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -224,7 +224,7 @@ class MongoDBProvider(Object):
 
         for relation in self.charm.model.relations[REL_NAME]:
             username = self._get_username_from_relation_id(relation.id)
-            password = relation.data[self.charm.app]["password"]
+            password = self._get_or_set_password(relation)
             config = self._get_config(username, password)
             if username in database_users:
                 self.database_provides.set_endpoints(
@@ -236,11 +236,27 @@ class MongoDBProvider(Object):
                     config.uri,
                 )
 
+    def _get_or_set_password(self, relation: Relation) -> str:
+        """Retrieve password from cache or generate a new one.
+
+        Args:
+            relation (Relation): The relation for each the password is cached.
+
+        Returns:
+            str: The password.
+        """
+        password = self.database_provides.fetch_my_relation_field(relation.id, "password")
+        if password:
+            return password
+        password = generate_password()
+        self.database_provides.update_relation_data(relation.id, {"password": password})
+        return password
+
     def _get_config(self, username: str, password: Optional[str]) -> MongoDBConfiguration:
         """Construct the config object for future user creation."""
         relation = self._get_relation_from_username(username)
         if not password:
-            password = generate_password()
+            password = self._get_or_set_password(relation)
 
         return MongoDBConfiguration(
             replset=self.charm.app.name,
