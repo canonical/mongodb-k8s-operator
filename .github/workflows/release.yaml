@@ -1,9 +1,9 @@
-name: Release to 5/edge
+name: Release to 6/edge
 
 on:
   push:
     branches:
-      - main
+      - 6/edge
 
 jobs:
   lib-check:
@@ -28,21 +28,23 @@ jobs:
       - lib-check
     uses: ./.github/workflows/ci.yaml
 
-  release-to-charmhub:
-    name: Release to CharmHub
-    needs:
-      - lib-check
-      - ci-tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-      - name: Upload charm to charmhub
-        uses: canonical/charming-actions/upload-charm@2.3.0
-        with:
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          channel: "6/edge"
+  build:
+    name: Build charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5
+    with:
+      charmcraft-snap-channel: "latest/edge"
+
+  release:
+      name: Release charm
+      needs:
+        - ci-tests
+        - build
+      uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v5
+      with:
+        channel: 6/edge
+        artifact-name: ${{ needs.build.outputs.artifact-name }}
+      secrets:
+        charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+      permissions:
+        contents: write  # Needed to
+
