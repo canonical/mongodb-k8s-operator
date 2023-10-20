@@ -38,6 +38,8 @@ TEST_DOCUMENTS = """[
 
 SERIES = "jammy"
 
+HELPER_MONGO_VERSION = "6.0.11"
+
 logger = logging.getLogger(__name__)
 
 
@@ -137,7 +139,7 @@ async def run_mongo_op(
         "--command",
         f"--namespace={ops_test.model_name}",
         "mongo-test",
-        "--image=mongo:4.4",
+        f"--image=mongo:{HELPER_MONGO_VERSION}",
         "--",
         "sh",
         "-c",
