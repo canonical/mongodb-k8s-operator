@@ -89,6 +89,7 @@ class Config:
         SECRET_INTERNAL_LABEL = "internal-secret"
         SECRET_DELETED_LABEL = "None"
         SECRET_KEYFILE_NAME = "keyfile"
+        MAX_PASSWORD_LENGTH = 4096
 
     @staticmethod
     def get_license_path(license_name: str) -> str:

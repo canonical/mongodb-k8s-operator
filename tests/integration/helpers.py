@@ -90,9 +90,16 @@ async def set_password(
 
 
 async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
-    ls_code, _, _ = await ops_test.juju(f"ssh --container {unit_name} ls /usr/bin/mongosh")
-
-    mongo_cmd = "/usr/bin/mongo" if ls_code != 0 else "/usr/bin/mongosh"
+    ls_code, _, stderr = await ops_test.juju(
+        f"ssh --container mongod {unit_name} ls /usr/bin/mongosh"
+    )
+    if ls_code != 0:
+        logger.error(f"mongosh not found. Reason: '{stderr}'")
+    # mongo_cmd = "/usr/bin/mongo" if ls_code != 0 else "/usr/bin/mongosh"
+    # TODO debug
+    # "ERROR unrecognized command: juju ssh --container mongod mongodb-k8s/0 ls /usr/bin/mongosh"
+    # For now,  for MongoDB 6 return /usr/bin/mongosh
+    mongo_cmd = "/usr/bin/mongosh"
     return mongo_cmd
 
 
@@ -175,6 +182,7 @@ async def run_mongo_op(
                 raise
             else:
                 output.data = stdout
+    logger.info("Done: '%s'", output)
     return output
 
 
