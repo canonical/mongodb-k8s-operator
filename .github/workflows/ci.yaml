@@ -42,9 +42,14 @@ jobs:
 
   build:
     name: Build charms
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5
-    with:
-      charmcraft-snap-channel: "latest/edge"
+    strategy:
+      fail-fast: true
+      matrix:
+        charms: [".", "tests/integration/ha_tests/application_charm", "tests/integration/relation_tests/application-charm"]
+      uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5
+      with:
+        charmcraft-snap-channel: "latest/edge"
+        path-to-charm-directory: ${{matrix.charms}}
 
   integration-test:
     strategy:
