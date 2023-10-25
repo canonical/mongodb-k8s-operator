@@ -63,7 +63,7 @@ from ops.pebble import (
     ServiceInfo,
 )
 from pymongo.errors import PyMongoError
-from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError, MissingSecretError
@@ -479,7 +479,7 @@ class MongoDBCharm(CharmBase):
         mongodb_status = build_unit_status(
             self.mongodb_config, self.get_hostname_for_unit(self.unit)
         )
-        pbm_status = self.backups._get_pbm_status()
+        pbm_status = self.backups.get_pbm_status()
         if (
             not isinstance(mongodb_status, ActiveStatus)
             or not self.model.get_relation(
@@ -508,47 +508,28 @@ class MongoDBCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the specified user."""
-        # changing the backup password while a backup/restore is in progress can be disastrous
-        pbm_status = self.backups._get_pbm_status()
-        if isinstance(pbm_status, MaintenanceStatus):
-            event.fail("Cannot change password while a backup/restore is in progress.")
-            return
-
-        # only leader can write the new password into peer relation.
-        if not self.unit.is_leader():
-            event.fail("The action can be run only on leader unit.")
+        if not self.pass_pre_set_password_checks(event):
             return
 
         username = self._get_user_or_fail_event(
             event, default_username=OperatorUser.get_username()
         )
         if not username:
-            return
+            return False
 
         new_password = event.params.get(Config.Actions.PASSWORD_PARAM_NAME, generate_password())
 
-        if new_password == self.get_secret(
-            APP_SCOPE, MonitorUser.get_password_key_name_for_user(username)
-        ):
-            event.log("The old and new passwords are equal.")
-            event.set_results({Config.Actions.PASSWORD_PARAM_NAME: new_password})
+        if len(new_password) > Config.Secrets.MAX_PASSWORD_LENGTH:
+            event.fail(
+                f"Password cannot be longer than {Config.Secrets.MAX_PASSWORD_LENGTH} characters."
+            )
+            return False
+
+        try:
+            secret_id = self.set_password(username, new_password)
+        except SetPasswordError as e:
+            event.fail(f"{e}")
             return
-
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            try:
-                mongo.set_user_password(username, new_password)
-            except NotReadyError:
-                event.fail(
-                    "Failed to change the password: Not all members healthy or finished initial sync."
-                )
-                return
-            except PyMongoError as e:
-                event.fail(f"Failed changing the password: {e}")
-                return
-
-        secret_id = self.set_secret(
-            APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), new_password
-        )
 
         if username == BackupUser.get_username():
             self._connect_pbm_agent()
@@ -558,6 +539,26 @@ class MongoDBCharm(CharmBase):
 
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
+        )
+
+    def set_password(self, username, password) -> int:
+        """Sets the password for a given username and return the secret id.
+
+        Raises:
+            SetPasswordError
+        """
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                mongo.set_user_password(username, password)
+            except NotReadyError:
+                raise SetPasswordError(
+                    "Failed changing the password: Not all members healthy or finished initial sync."
+                )
+            except PyMongoError as e:
+                raise SetPasswordError(f"Failed changing the password: {e}")
+
+        return self.set_secret(
+            APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), password
         )
 
     def _on_secret_remove(self, event):
@@ -715,6 +716,21 @@ class MongoDBCharm(CharmBase):
             )
             return
         return username
+
+    def pass_pre_set_password_checks(self, event: ActionEvent) -> bool:
+        """Checks conditions for setting the password and fail if necessary."""
+        # changing the backup password while a backup/restore is in progress can be disastrous
+        pbm_status = self.backups.get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.fail("Cannot change password while a backup/restore is in progress.")
+            return False
+
+        # only leader can write the new password into peer relation.
+        if not self.unit.is_leader():
+            event.fail("The action can be run only on leader unit.")
+            return False
+
+        return True
 
     def _check_or_set_user_password(self, user: MongoDBUser) -> None:
         key = user.get_password_key_name()
@@ -980,13 +996,17 @@ class MongoDBCharm(CharmBase):
         container = self.unit.get_container(Config.CONTAINER_NAME)
 
         if not container.can_connect():
+            logger.debug(
+                "_connect_pbm_agent: can't connect to container %s. Returning.", container
+            )
             return
 
         if not self.db_initialised:
             return
 
         # must wait for leader to set URI before any attempts to update are made
-        if not self.get_secret("app", BackupUser.get_password_key_name()):
+        if not self.get_secret(APP_SCOPE, BackupUser.get_password_key_name()):
+            logger.debug("_connect_pbm_agent: can't get backup user password!. Returning.")
             return
 
         current_service_config = (
@@ -998,7 +1018,13 @@ class MongoDBCharm(CharmBase):
             return
 
         container.add_layer(Config.Backup.SERVICE_NAME, self._backup_layer, combine=True)
-        container.replan()
+        for attempt in Retrying(
+            stop=stop_after_attempt(10),
+            wait=wait_fixed(5),
+            reraise=True,
+        ):
+            with attempt:
+                container.replan()
 
     def has_backup_service(self) -> ServiceInfo:
         """Returns the backup service."""
@@ -1101,6 +1127,10 @@ class MongoDBCharm(CharmBase):
             )
 
     # END: static methods
+
+
+class SetPasswordError(Exception):
+    """Raised on failure to set password for MongoDB user."""
 
 
 if __name__ == "__main__":

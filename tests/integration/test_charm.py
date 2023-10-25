@@ -112,7 +112,6 @@ async def test_monitor_user(ops_test: OpsTest) -> None:
     admin_mongod_cmd = await get_mongo_cmd(ops_test, unit.name)
     admin_mongod_cmd += f" {mongo_uri} --eval 'rs.conf()'"
     complete_command = f"ssh --container mongod {unit.name} {admin_mongod_cmd}"
-
     return_code, _, stderr = await ops_test.juju(*complete_command.split())
     assert return_code == 0, f"command rs.conf() on monitor user does not work, error: {stderr}"
 
@@ -285,7 +284,6 @@ async def test_replication_primary_reelection(ops_test: OpsTest):
     # Deleting the primary pod using kubectl
     k8s_client = AsyncClient(namespace=ops_test.model_name)
     await k8s_client.delete(Pod, name=replica_name)
-
     # the median time in which a reelection event happens is after around 12 seconds
     # setting the double to be on the safe side
     time.sleep(24)
@@ -314,7 +312,6 @@ async def test_replication_data_consistency(ops_test: OpsTest):
         ops_test, f'db.createCollection("{collection_id}")', suffix=f"?replicaSet={APP_NAME}"
     )
     assert create_collection.succeeded and create_collection.data["ok"] == 1
-
     # Store a few test documents
     insert_many_docs = await run_mongo_op(
         ops_test,
@@ -322,7 +319,6 @@ async def test_replication_data_consistency(ops_test: OpsTest):
         suffix=f"?replicaSet={APP_NAME}",
     )
     assert insert_many_docs.succeeded and len(insert_many_docs.data["insertedIds"]) == 2
-
     # attempt ensuring that the replication happened on all secondaries
     # 24sec is an arbitrary number that worked well locally in a couple of tests
     # 12 sec being the median time for primary reelection, so I randomly chose a factor

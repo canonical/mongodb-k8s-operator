@@ -38,6 +38,8 @@ TEST_DOCUMENTS = """[
 
 SERIES = "jammy"
 
+HELPER_MONGO_VERSION = "6.0.11"
+
 logger = logging.getLogger(__name__)
 
 
@@ -88,9 +90,16 @@ async def set_password(
 
 
 async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
-    ls_code, _, _ = await ops_test.juju(f"ssh --container {unit_name} ls /usr/bin/mongosh")
-
-    mongo_cmd = "/usr/bin/mongo" if ls_code != 0 else "/usr/bin/mongosh"
+    ls_code, _, stderr = await ops_test.juju(
+        f"ssh --container mongod {unit_name} ls /usr/bin/mongosh"
+    )
+    if ls_code != 0:
+        logger.error(f"mongosh not found. Reason: '{stderr}'")
+    # mongo_cmd = "/usr/bin/mongo" if ls_code != 0 else "/usr/bin/mongosh"
+    # TODO debug
+    # "ERROR unrecognized command: juju ssh --container mongod mongodb-k8s/0 ls /usr/bin/mongosh"
+    # For now,  for MongoDB 6 return /usr/bin/mongosh
+    mongo_cmd = "/usr/bin/mongosh"
     return mongo_cmd
 
 
@@ -121,9 +130,9 @@ async def run_mongo_op(
         mongo_uri = await mongodb_uri(ops_test)
 
     if stringify:
-        mongo_cmd = f"mongo --quiet --eval 'JSON.stringify({mongo_op})' {mongo_uri}{suffix}"
+        mongo_cmd = f"mongosh --quiet --eval 'JSON.stringify({mongo_op})' {mongo_uri}{suffix}"
     else:
-        mongo_cmd = f"mongo --quiet --eval '{mongo_op}' {mongo_uri}{suffix}"
+        mongo_cmd = f"mongosh --quiet --eval '{mongo_op}' {mongo_uri}{suffix}"
 
     logger.info("Running mongo command: %r", mongo_cmd)
     kubectl_cmd = (
@@ -137,7 +146,7 @@ async def run_mongo_op(
         "--command",
         f"--namespace={ops_test.model_name}",
         "mongo-test",
-        "--image=mongo:4.4",
+        f"--image=mongo:{HELPER_MONGO_VERSION}",
         "--",
         "sh",
         "-c",
@@ -173,6 +182,7 @@ async def run_mongo_op(
                 raise
             else:
                 output.data = stdout
+    logger.info("Done: '%s'", output)
     return output
 
 

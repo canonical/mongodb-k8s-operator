@@ -157,7 +157,7 @@ class MongoDBBackups(Object):
 
         # cannot create backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, or already creating a backup
-        pbm_status = self._get_pbm_status()
+        pbm_status = self.get_pbm_status()
         self.charm.unit.status = pbm_status
 
         if isinstance(pbm_status, MaintenanceStatus):
@@ -204,7 +204,7 @@ class MongoDBBackups(Object):
 
         # cannot list backups if pbm is resyncing, or has incompatible options or incorrect
         # credentials
-        pbm_status = self._get_pbm_status()
+        pbm_status = self.get_pbm_status()
         self.charm.unit.status = pbm_status
 
         if isinstance(pbm_status, WaitingStatus):
@@ -251,7 +251,7 @@ class MongoDBBackups(Object):
 
         # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, creating a backup, or already performing a restore.
-        pbm_status = self._get_pbm_status()
+        pbm_status = self.get_pbm_status()
         self.charm.unit.status = pbm_status
         if isinstance(pbm_status, MaintenanceStatus):
             self._fail_action_with_error_log(
@@ -321,7 +321,7 @@ class MongoDBBackups(Object):
         except subprocess.CalledProcessError as e:
             logger.error("Syncing configurations failed: %s", str(e))
 
-        self.charm.unit.status = self._get_pbm_status()
+        self.charm.unit.status = self.get_pbm_status()
 
     def _set_config_options(self):
         """Applying given configurations with pbm."""
@@ -364,7 +364,7 @@ class MongoDBBackups(Object):
             reraise=True,
         ):
             with attempt:
-                pbm_status = self._get_pbm_status()
+                pbm_status = self.get_pbm_status()
                 # wait for backup/restore to finish
                 if isinstance(pbm_status, (MaintenanceStatus)):
                     raise PBMBusyError
@@ -420,7 +420,7 @@ class MongoDBBackups(Object):
                 except ExecError as e:
                     self.charm.unit.status = BlockedStatus(process_pbm_error(e.stdout))
 
-    def _get_pbm_status(self) -> StatusBase:
+    def get_pbm_status(self) -> StatusBase:
         """Retrieve pbm status."""
         if not self.charm.has_backup_service():
             return WaitingStatus("waiting for pbm to start")
