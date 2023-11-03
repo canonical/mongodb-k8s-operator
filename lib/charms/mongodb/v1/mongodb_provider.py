@@ -14,8 +14,8 @@ from collections import namedtuple
 from typing import Optional, Set
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
-from charms.mongodb.v0.helpers import generate_password
 from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v1.helpers import generate_password
 from ops.charm import CharmBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, MaintenanceStatus, Relation
@@ -25,11 +25,11 @@ from pymongo.errors import PyMongoError
 LIBID = "4067879ef7dd4261bf6c164bc29d94b1"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 2
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -62,8 +62,13 @@ class MongoDBProvider(Object):
         """
         self.relation_name = relation_name
         self.substrate = substrate
+        self.charm = charm
 
         super().__init__(charm, self.relation_name)
+        self.framework.observe(
+            charm.on[self.relation_name].relation_departed,
+            self.charm.check_relation_broken_or_scale_down,
+        )
         self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_event
         )
@@ -71,13 +76,33 @@ class MongoDBProvider(Object):
             charm.on[self.relation_name].relation_changed, self._on_relation_event
         )
 
-        self.charm = charm
-
         # Charm events defined in the database provides charm library.
         self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
         self.framework.observe(
             self.database_provides.on.database_requested, self._on_relation_event
         )
+
+    def pass_hook_checks(self) -> bool:
+        """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
+        if not self.charm.is_relation_feasible(self.relation_name):
+            logger.info("Skipping code for relations.")
+            return False
+
+        # legacy relations have auth disabled, which new relations require
+        if self.model.get_relation(LEGACY_REL_NAME):
+            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
+            logger.error("Auth disabled due to existing connections to legacy relations")
+            return False
+
+        if not self.charm.unit.is_leader():
+            return False
+
+        # We shouldn't try to create or update users if the database is not
+        # initialised. We will create users as part of initialisation.
+        if not self.charm.db_initialised:
+            return False
+
+        return True
 
     def _on_relation_event(self, event):
         """Handle relation joined events.
@@ -87,17 +112,8 @@ class MongoDBProvider(Object):
         data. As a result, related charm gets credentials for accessing the
         MongoDB database.
         """
-        if not self.charm.unit.is_leader():
-            return
-        # We shouldn't try to create or update users if the database is not
-        # initialised. We will create users as part of initialisation.
-        if "db_initialised" not in self.charm.app_peer_data:
-            return
-
-        # legacy relations have auth disabled, which new relations require
-        if self.model.get_relation(LEGACY_REL_NAME):
-            self.charm.unit.status = BlockedStatus("cannot have both legacy and new relations")
-            logger.error("Auth disabled due to existing connections to legacy relations")
+        if not self.pass_hook_checks():
+            logger.info("Skipping %s: hook checks did not pass", type(event))
             return
 
         # If auth is disabled but there are no legacy relation users, this means that legacy
@@ -110,7 +126,25 @@ class MongoDBProvider(Object):
 
         departed_relation_id = None
         if type(event) is RelationBrokenEvent:
+            # Only relation_deparated events can check if scaling down
             departed_relation_id = event.relation.id
+            if not self.charm.has_departed_run(departed_relation_id):
+                logger.info(
+                    "Deferring, must wait for relation departed hook to decide if relation should be removed."
+                )
+                event.defer()
+                return
+
+            # check if were scaling down and add a log message
+            if self.charm.is_scaling_down(departed_relation_id):
+                logger.info(
+                    "Relation broken event occurring due to scale down, do not proceed to remove users."
+                )
+                return
+
+            logger.info(
+                "Relation broken event occurring due to relation removal, proceed to remove user."
+            )
 
         try:
             self.oversee_users(departed_relation_id, event)
@@ -186,6 +220,9 @@ class MongoDBProvider(Object):
             a Diff instance containing the added, deleted and changed
                 keys from the event relation databag.
         """
+        if not isinstance(event, RelationChangedEvent):
+            logger.info("Cannot compute diff of event type: %s", type(event))
+            return
         # TODO import marvelous unit tests in a future PR
         # Retrieve the old data from the data key in the application relation databag.
         old_data = json.loads(event.relation.data[self.charm.model.app].get("data", "{}"))

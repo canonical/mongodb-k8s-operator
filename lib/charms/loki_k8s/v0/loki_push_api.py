@@ -32,7 +32,7 @@ logs on the fly.
 This object may be used by any Charmed Operator which implements the `loki_push_api` interface.
 For instance, Loki or Grafana Agent.
 
-For this purposes a charm needs to instantiate the `LokiPushApiProvider` object with one mandatory
+For this purpose a charm needs to instantiate the `LokiPushApiProvider` object with one mandatory
 and three optional arguments.
 
 - `charm`: A reference to the parent (Loki) charm.
@@ -43,12 +43,10 @@ and three optional arguments.
   If provided, this relation name must match a provided relation in metadata.yaml with the
   `loki_push_api` interface.
 
-  Typically `LokiPushApiConsumer` use "logging" as a relation_name and `LogProxyConsumer` use
-  "log_proxy".
+  The default relation name is "logging" for `LokiPushApiConsumer` and "log-proxy" for
+  `LogProxyConsumer`.
 
-  The default value of this arguments is "logging".
-
-  An example of this in a `metadata.yaml` file should have the following section:
+  For example, a provider's `metadata.yaml` file may look as follows:
 
   ```yaml
   provides:
@@ -56,7 +54,7 @@ and three optional arguments.
       interface: loki_push_api
   ```
 
-  For example, a Loki charm may instantiate the `LokiPushApiProvider` in its constructor as
+  Subsequently, a Loki charm may instantiate the `LokiPushApiProvider` in its constructor as
   follows:
 
       from charms.loki_k8s.v0.loki_push_api import LokiPushApiProvider
@@ -69,21 +67,20 @@ and three optional arguments.
           def __init__(self, *args):
               super().__init__(*args)
               ...
-              self._loki_ready()
+              external_url = urlparse(self._external_url)
+              self.loki_provider = LokiPushApiProvider(
+                  self,
+                  address=external_url.hostname or self.hostname,
+                  port=external_url.port or 80,
+                  scheme=external_url.scheme,
+                  path=f"{external_url.path}/loki/api/v1/push",
+              )
               ...
 
-          def _loki_ready(self):
-              try:
-                  version = self._loki_server.version
-                  self.loki_provider = LokiPushApiProvider(self)
-                  logger.debug("Loki Provider is available. Loki version: %s", version)
-              except LokiServerNotReadyError as e:
-                  self.unit.status = MaintenanceStatus(str(e))
-              except LokiServerError as e:
-                  self.unit.status = BlockedStatus(str(e))
-
-  - `port`: Loki Push Api endpoint port. Default value: 3100.
-  - `rules_dir`: Directory to store alert rules. Default value: "/loki/rules".
+  - `port`: Loki Push Api endpoint port. Default value: `3100`.
+  - `scheme`: Loki Push Api endpoint scheme (`HTTP` or `HTTPS`). Default value: `HTTP`
+  - `address`: Loki Push Api endpoint address. Default value: `localhost`
+  - `path`: Loki Push Api endpoint path. Default value: `loki/api/v1/push`
 
 
 The `LokiPushApiProvider` object has several responsibilities:
@@ -92,7 +89,7 @@ The `LokiPushApiProvider` object has several responsibilities:
    must be unique to all instances (e.g. using a load balancer).
 
 2. Set the Promtail binary URL (`promtail_binary_zip_url`) so clients that use
-   `LogProxyConsumer` object can downloaded and configure it.
+   `LogProxyConsumer` object could download and configure it.
 
 3. Process the metadata of the consumer application, provided via the
    "metadata" field of the consumer data bag, which are used to annotate the
@@ -222,14 +219,14 @@ to do this with promtail.
 
 ## LogProxyConsumer Library Usage
 
-Let's say that we have a workload charm that produces logs and we need to send those logs to a
+Let's say that we have a workload charm that produces logs, and we need to send those logs to a
 workload implementing the `loki_push_api` interface, such as `Loki` or `Grafana Agent`.
 
 Adopting this object in a Charmed Operator consist of two steps:
 
-1. Use the `LogProxyConsumer` class by instanting it in the `__init__` method of the charmed
-   operator. There are two ways to get logs in to promtail. You can give it a list of files to read
-   or you can write to it using the syslog protocol.
+1. Use the `LogProxyConsumer` class by instantiating it in the `__init__` method of the charmed
+   operator. There are two ways to get logs in to promtail. You can give it a list of files to
+   read, or you can write to it using the syslog protocol.
 
    For example:
 
@@ -396,7 +393,7 @@ provider charm generates alerts only for that same charm.
 
 The Loki charm may be related to multiple Loki client charms. Without this, filter
 rules submitted by one provider charm will also result in corresponding alerts for other
-provider charms. Hence every alert rule expression must include such a topology filter stub.
+provider charms. Hence, every alert rule expression must include such a topology filter stub.
 
 Gathering alert rules and generating rule files within the Loki charm is easily done using
 the `alerts()` method of `LokiPushApiProvider`. Alerts generated by Loki will automatically
@@ -483,7 +480,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 18
+LIBPATCH = 22
 
 logger = logging.getLogger(__name__)
 
@@ -1077,6 +1074,10 @@ class LokiPushApiProvider(Object):
                 It is strongly advised not to change the default, so that people
                 deploying your charm will have a consistent experience with all
                 other charms that consume metrics endpoints.
+            port: an optional port of the Loki service (default is "3100").
+            scheme: an optional scheme of the Loki API URL (default is "http").
+            address: an optional address of the Loki service (default is "localhost").
+            path: an optional path of the Loki API URL (default is "loki/api/v1/push")
 
         Raises:
             RelationNotFoundError: If there is no relation in the charm's metadata.yaml
@@ -1186,7 +1187,7 @@ class LokiPushApiProvider(Object):
         """Determine whether alert rules should be regenerated.
 
         If there are alert rules in the relation data bag, tell the charm
-        whether or not to regenerate them based on the boolean returned here.
+        whether to regenerate them based on the boolean returned here.
         """
         if relation.data.get(relation.app).get("alert_rules", None) is not None:
             return True
@@ -1207,7 +1208,7 @@ class LokiPushApiProvider(Object):
             relation: the `Relation` instance to update.
 
         Returns:
-            A boolean indicating whether an event should be emitted so we
+            A boolean indicating whether an event should be emitted, so we
             only emit one on lifecycle events
         """
         relation.data[self._charm.unit]["public_address"] = socket.getfqdn() or ""
@@ -1232,7 +1233,7 @@ class LokiPushApiProvider(Object):
 
         This method should be used when the charm relying on this library needs
         to update the relation data in response to something occurring outside
-        of the `logging` relation lifecycle, e.g., in case of a
+        the `logging` relation lifecycle, e.g., in case of a
         host address change because the charmed operator becomes connected to an
         Ingress after the `logging` relation is established.
 
@@ -1286,7 +1287,7 @@ class LokiPushApiProvider(Object):
         separate alert rules file for each relation since the returned list
         of alert groups are indexed by relation ID. Also for each relation ID
         associated scrape metadata such as Juju model, UUID and application
-        name are provided so the a unique name may be generated for the rules
+        name are provided so a unique name may be generated for the rules
         file. For each relation the structure of data returned is a dictionary
         with four keys
 
@@ -1528,24 +1529,27 @@ class LokiPushApiConsumer(ConsumerBase):
     ):
         """Construct a Loki charm client.
 
-        The `LokiPushApiConsumer` object provides configurations to a Loki client charm.
-        A charm instantiating this object needs Loki information, for instance the
-        Loki API endpoint to push logs.
-        The `LokiPushApiConsumer` can be instantiated as follows:
+        The `LokiPushApiConsumer` object provides configurations to a Loki client charm, such as
+        the Loki API endpoint to push logs. It is intended for workloads that can speak
+        loki_push_api (https://grafana.com/docs/loki/latest/api/#push-log-entries-to-loki), such
+        as grafana-agent.
+        (If you only need to forward a few workload log files, then use LogProxyConsumer.)
+
+        `LokiPushApiConsumer` can be instantiated as follows:
 
             self._loki_consumer = LokiPushApiConsumer(self)
 
         Args:
             charm: a `CharmBase` object that manages this `LokiPushApiConsumer` object.
-                Typically this is `self` in the instantiating class.
+                Typically, this is `self` in the instantiating class.
             relation_name: the string name of the relation interface to look up.
                 If `charm` has exactly one relation with this interface, the relation's
                 name is returned. If none or multiple relations with the provided interface
-                are found, this method will raise either an exception of type
-                NoRelationWithInterfaceFoundError or MultipleRelationsWithInterfaceFoundError,
-                respectively.
+                are found, this method will raise either a NoRelationWithInterfaceFoundError or
+                MultipleRelationsWithInterfaceFoundError exception, respectively.
             alert_rules_path: a string indicating a path where alert rules can be found
-            recursive: Whether or not to scan for rule files recursively.
+            recursive: Whether to scan for rule files recursively.
+            skip_alert_topology_labeling: whether to skip the alert topology labeling.
 
         Raises:
             RelationNotFoundError: If there is no relation in the charm's metadata.yaml
@@ -1732,9 +1736,8 @@ class LogProxyConsumer(ConsumerBase):
         relation_name: the string name of the relation interface to look up.
             If `charm` has exactly one relation with this interface, the relation's
             name is returned. If none or multiple relations with the provided interface
-            are found, this method will raise either an exception of type
-            NoRelationWithInterfaceFoundError or MultipleRelationsWithInterfaceFoundError,
-            respectively.
+            are found, this method will raise either a NoRelationWithInterfaceFoundError or
+            MultipleRelationsWithInterfaceFoundError exception, respectively.
         enable_syslog: Whether to enable syslog integration.
         syslog_port: The port syslog is attached to.
         alert_rules_path: an optional path for the location of alert rules
@@ -1762,7 +1765,7 @@ class LogProxyConsumer(ConsumerBase):
     def __init__(
         self,
         charm,
-        log_files: Optional[list] = None,
+        log_files: Optional[Union[List[str], str]] = None,
         relation_name: str = DEFAULT_LOG_PROXY_RELATION_NAME,
         enable_syslog: bool = False,
         syslog_port: int = 1514,
@@ -1770,19 +1773,30 @@ class LogProxyConsumer(ConsumerBase):
         recursive: bool = False,
         container_name: str = "",
         promtail_resource_name: Optional[str] = None,
+        *,  # TODO: In v1, move the star up so everything after 'charm' is a kwarg
+        insecure_skip_verify: bool = False,
     ):
         super().__init__(charm, relation_name, alert_rules_path, recursive)
         self._charm = charm
         self._relation_name = relation_name
         self._container = self._get_container(container_name)
         self._container_name = self._get_container_name(container_name)
-        self._log_files = log_files or []
+
+        if not log_files:
+            log_files = []
+        elif isinstance(log_files, str):
+            log_files = [log_files]
+        elif not isinstance(log_files, list) or not all((isinstance(x, str) for x in log_files)):
+            raise TypeError("The 'log_files' argument must be a list of strings.")
+        self._log_files = log_files
+
         self._syslog_port = syslog_port
         self._is_syslog = enable_syslog
         self.topology = JujuTopology.from_charm(charm)
         self._promtail_resource_name = promtail_resource_name or "promtail-bin"
+        self.insecure_skip_verify = insecure_skip_verify
 
-        # architechure used for promtail binary
+        # architecture used for promtail binary
         arch = platform.processor()
         self._arch = "amd64" if arch == "x86_64" else arch
 
@@ -1981,7 +1995,9 @@ class LogProxyConsumer(ConsumerBase):
             workload_binary_path: path in workload container to which promtail binary is pushed.
         """
         with open(binary_path, "rb") as f:
-            self._container.push(workload_binary_path, f, permissions=0o755, make_dirs=True)
+            self._container.push(
+                workload_binary_path, f, permissions=0o755, encoding=None, make_dirs=True
+            )
             logger.debug("The promtail binary file has been pushed to the workload container.")
 
     @property
@@ -1999,8 +2015,7 @@ class LogProxyConsumer(ConsumerBase):
         except NameError as e:
             if "invalid resource name" in str(e):
                 return False
-            else:
-                raise
+            raise
 
     def _push_promtail_if_attached(self, workload_binary_path: str) -> bool:
         """Checks whether Promtail binary is attached to the charm or not.
@@ -2041,7 +2056,7 @@ class LogProxyConsumer(ConsumerBase):
         return False
 
     def _sha256sums_matches(self, file_path: str, sha256sum: str) -> bool:
-        """Checks whether a file's sha256sum matches or not with an specific sha256sum.
+        """Checks whether a file's sha256sum matches or not with a specific sha256sum.
 
         Args:
             file_path: A string representing the files' patch.
@@ -2049,7 +2064,7 @@ class LogProxyConsumer(ConsumerBase):
 
         Returns:
             a boolean representing whether a file's sha256sum matches or not with
-            an specific sha256sum.
+            a specific sha256sum.
         """
         try:
             with open(file_path, "rb") as f:
@@ -2141,8 +2156,15 @@ class LogProxyConsumer(ConsumerBase):
 
     @property
     def _promtail_config(self) -> dict:
-        """Generates the config file for Promtail."""
+        """Generates the config file for Promtail.
+
+        Reference: https://grafana.com/docs/loki/latest/send-data/promtail/configuration
+        """
         config = {"clients": self._clients_list()}
+        if self.insecure_skip_verify:
+            for client in config["clients"]:
+                client["tls_config"] = {"insecure_skip_verify": True}
+
         config.update(self._server_config())
         config.update(self._positions())
         config.update(self._scrape_configs())

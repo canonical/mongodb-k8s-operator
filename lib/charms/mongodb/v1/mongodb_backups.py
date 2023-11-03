@@ -13,14 +13,10 @@ import logging
 import re
 import subprocess
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional, Union
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
-from charms.mongodb.v0.helpers import (
-    current_pbm_op,
-    process_pbm_error,
-    process_pbm_status,
-)
+from charms.mongodb.v0.helpers import current_pbm_op, process_pbm_status
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus
@@ -34,15 +30,17 @@ from tenacity import (
     wait_fixed,
 )
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
-LIBID = "9f2b91c6128d48d6ba22724bf365da3b"
+LIBID = "18c461132b824ace91af0d7abe85f40e"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 0
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +59,9 @@ PBM_STATUS_CMD = ["status", "-o", "json"]
 MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 BACKUP_RESTORE_MAX_ATTEMPTS = 5
 BACKUP_RESTORE_ATTEMPT_COOLDOWN = 15
+
+
+_StrOrBytes = Union[str, bytes]
 
 
 class ResyncError(Exception):
@@ -157,7 +158,7 @@ class MongoDBBackups(Object):
 
         # cannot create backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, or already creating a backup
-        pbm_status = self.get_pbm_status()
+        pbm_status = self._get_pbm_status()
         self.charm.unit.status = pbm_status
 
         if isinstance(pbm_status, MaintenanceStatus):
@@ -204,7 +205,7 @@ class MongoDBBackups(Object):
 
         # cannot list backups if pbm is resyncing, or has incompatible options or incorrect
         # credentials
-        pbm_status = self.get_pbm_status()
+        pbm_status = self._get_pbm_status()
         self.charm.unit.status = pbm_status
 
         if isinstance(pbm_status, WaitingStatus):
@@ -251,7 +252,7 @@ class MongoDBBackups(Object):
 
         # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, creating a backup, or already performing a restore.
-        pbm_status = self.get_pbm_status()
+        pbm_status = self._get_pbm_status()
         self.charm.unit.status = pbm_status
         if isinstance(pbm_status, MaintenanceStatus):
             self._fail_action_with_error_log(
@@ -316,12 +317,12 @@ class MongoDBBackups(Object):
             ),
             return
         except ExecError as e:
-            self.charm.unit.status = BlockedStatus(process_pbm_error(e.stdout))
+            self.charm.unit.status = BlockedStatus(self.process_pbm_error(e.stdout))
             return
         except subprocess.CalledProcessError as e:
             logger.error("Syncing configurations failed: %s", str(e))
 
-        self.charm.unit.status = self.get_pbm_status()
+        self.charm.unit.status = self._get_pbm_status()
 
     def _set_config_options(self):
         """Applying given configurations with pbm."""
@@ -364,7 +365,7 @@ class MongoDBBackups(Object):
             reraise=True,
         ):
             with attempt:
-                pbm_status = self.get_pbm_status()
+                pbm_status = self._get_pbm_status()
                 # wait for backup/restore to finish
                 if isinstance(pbm_status, (MaintenanceStatus)):
                     raise PBMBusyError
@@ -418,9 +419,9 @@ class MongoDBBackups(Object):
                         )
                         raise ResyncError
                 except ExecError as e:
-                    self.charm.unit.status = BlockedStatus(process_pbm_error(e.stdout))
+                    self.charm.unit.status = BlockedStatus(self.process_pbm_error(e.stdout))
 
-    def get_pbm_status(self) -> StatusBase:
+    def _get_pbm_status(self) -> StatusBase:
         """Retrieve pbm status."""
         if not self.charm.has_backup_service():
             return WaitingStatus("waiting for pbm to start")
@@ -428,15 +429,14 @@ class MongoDBBackups(Object):
         try:
             previous_pbm_status = self.charm.unit.status
             pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
+
+            # pbm errors are outputted in json and do not raise CLI errors
+            pbm_error = self.process_pbm_error(pbm_status)
+            if pbm_error:
+                return BlockedStatus(pbm_error)
+
             self._log_backup_restore_result(pbm_status, previous_pbm_status)
             return process_pbm_status(pbm_status)
-        except ExecError as e:
-            logger.error(f"Failed to get pbm status. {e}")
-            return BlockedStatus(process_pbm_error(e.stdout))
-        except subprocess.CalledProcessError as e:
-            # pbm pipes a return code of 1, but its output shows the true error code so it is
-            # necessary to parse the output
-            return BlockedStatus(process_pbm_error(e.output))
         except Exception as e:
             # pbm pipes a return code of 1, but its output shows the true error code so it is
             # necessary to parse the output
@@ -505,7 +505,7 @@ class MongoDBBackups(Object):
 
         If PBM is resyncing, the function will retry to create backup
         (up to  BACKUP_RESTORE_MAX_ATTEMPTS times) with BACKUP_RESTORE_ATTEMPT_COOLDOWN
-        time between attepts.
+        time between attempts.
 
         If PMB returen any other error, the function will raise RestoreError.
         """
@@ -541,7 +541,7 @@ class MongoDBBackups(Object):
 
         If PBM is resyncing, the function will retry to create backup
         (up to BACKUP_RESTORE_MAX_ATTEMPTS times)
-        with BACKUP_RESTORE_ATTEMPT_COOLDOWN time between attepts.
+        with BACKUP_RESTORE_ATTEMPT_COOLDOWN time between attempts.
 
         If PMB returen any other error, the function will raise BackupError.
         """
@@ -652,3 +652,48 @@ class MongoDBBackups(Object):
                 return f"Backup {backup_id} completed successfully"
 
         return "Unknown operation result"
+
+    def retrieve_error_message(self, pbm_status: Dict) -> str:
+        """Parses pbm status for an error message from the current unit.
+
+        If pbm_agent is in the error state, the command `pbm status` does not raise an error.
+        Instead, it is in the log messages. pbm_agent also shows all the error messages for other
+        replicas in the set.
+        """
+        try:
+            clusters = pbm_status["cluster"]
+            for cluster in clusters:
+                if cluster["rs"] == self.charm.app.name:
+                    break
+
+            for host_info in cluster["nodes"]:
+                replica_info = (
+                    f"mongodb/{self.charm._unit_ip(self.charm.unit)}:{Config.MONGOS_PORT}"
+                )
+                if host_info["host"] == replica_info:
+                    break
+
+            return str(host_info["errors"])
+        except KeyError:
+            return ""
+
+    def process_pbm_error(self, pbm_status: Optional[_StrOrBytes]) -> str:
+        """Returns errors found in PBM status."""
+        if type(pbm_status) is bytes:
+            pbm_status = pbm_status.decode("utf-8")
+
+        try:
+            error_message = self.retrieve_error_message(json.loads(pbm_status))
+        except json.decoder.JSONDecodeError:
+            # if pbm status doesn't return a parsable dictionary it is an error message
+            # represented as a string
+            error_message = pbm_status
+
+        message = None
+        if "status code: 403" in error_message:
+            message = "s3 credentials are incorrect."
+        elif "status code: 404" in error_message:
+            message = "s3 configurations are incompatible."
+        elif "status code: 301" in error_message:
+            message = "s3 configurations are incompatible."
+        return message
