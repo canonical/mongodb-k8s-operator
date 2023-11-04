@@ -7,11 +7,11 @@ from typing import Set
 LIBID = "b74007eda21c453a89e4dcc6382aa2b3"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 0
 
 
 class MongoDBUser:
@@ -70,7 +70,7 @@ class _OperatorUser(MongoDBUser):
     """Operator user for MongoDB."""
 
     _username = "operator"
-    _password_key_name = f"{_username}_password"
+    _password_key_name = f"{_username}-password"
     _database_name = "admin"
     _roles = ["default"]
     _hosts = []
@@ -80,7 +80,7 @@ class _MonitorUser(MongoDBUser):
     """Monitor user for MongoDB."""
 
     _username = "monitor"
-    _password_key_name = f"{_username}_password"
+    _password_key_name = f"{_username}-password"
     _database_name = "admin"
     _roles = ["monitor"]
     _privileges = {
@@ -97,7 +97,7 @@ class _BackupUser(MongoDBUser):
     """Backup user for MongoDB."""
 
     _username = "backup"
-    _password_key_name = f"{_username}_password"
+    _password_key_name = f"{_username}-password"
     _database_name = ""
     _roles = ["backup"]
     _mongodb_role = "pbmAnyAction"
@@ -110,4 +110,8 @@ MonitorUser = _MonitorUser()
 BackupUser = _BackupUser()
 
 # List of system usernames needed for correct work on the charm.
-CHARM_USERS = [OperatorUser.get_username(), BackupUser.get_username(), MonitorUser.get_username()]
+CHARM_USERS = [
+    OperatorUser.get_username(),
+    BackupUser.get_username(),
+    MonitorUser.get_username(),
+]
