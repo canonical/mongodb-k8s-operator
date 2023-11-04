@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Set
 
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
-from charms.mongodb.v0.helpers import (
+from charms.mongodb.v1.helpers import (
     build_unit_status,
     generate_keyfile,
     generate_password,
@@ -23,11 +23,11 @@ from charms.mongodb.v0.mongodb import (
     MongoDBConnection,
     NotReadyError,
 )
-from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
-from charms.mongodb.v0.mongodb_provider import MongoDBProvider
+from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
+from charms.mongodb.v1.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
-from charms.mongodb.v0.users import (
+from charms.mongodb.v1.users import (
     CHARM_USERS,
     BackupUser,
     MongoDBUser,
