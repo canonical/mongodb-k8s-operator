@@ -1,7 +1,7 @@
 """Users configuration for MongoDB."""
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import List
+from typing import Set
 
 # The unique Charmhub library identifier, never change it
 LIBID = "b74007eda21c453a89e4dcc6382aa2b3"
@@ -37,7 +37,7 @@ class MongoDBUser:
         """Returns the database of the user."""
         return self._database_name
 
-    def get_roles(self) -> List[str]:
+    def get_roles(self) -> Set[str]:
         """Returns the role of the user."""
         return self._roles
 
@@ -70,7 +70,7 @@ class _OperatorUser(MongoDBUser):
     """Operator user for MongoDB."""
 
     _username = "operator"
-    _password_key_name = f"{_username}-password"
+    _password_key_name = f"{_username}_password"
     _database_name = "admin"
     _roles = ["default"]
     _hosts = []
@@ -80,22 +80,24 @@ class _MonitorUser(MongoDBUser):
     """Monitor user for MongoDB."""
 
     _username = "monitor"
-    _password_key_name = f"{_username}-password"
-    _database_name = ""
+    _password_key_name = f"{_username}_password"
+    _database_name = "admin"
     _roles = ["monitor"]
     _privileges = {
         "resource": {"db": "", "collection": ""},
         "actions": ["listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find"],
     }
     _mongodb_role = "explainRole"
-    _hosts = []
+    _hosts = [
+        "127.0.0.1"
+    ]  # MongoDB Exporter can only connect to one replica - not the entire set.
 
 
 class _BackupUser(MongoDBUser):
     """Backup user for MongoDB."""
 
     _username = "backup"
-    _password_key_name = f"{_username}-password"
+    _password_key_name = f"{_username}_password"
     _database_name = ""
     _roles = ["backup"]
     _mongodb_role = "pbmAnyAction"
