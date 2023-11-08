@@ -222,7 +222,7 @@ class TestMongoProvider(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
     def test_oversee_users_update_get_config_failure(self, connection, relation_users):
         """Verifies that when updating a user with an invalid name that an exception is raised."""
         # presets, such that the need to update user relations is triggered and user naming such
