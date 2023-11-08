@@ -1095,7 +1095,6 @@ class MongoDBCharm(CharmBase):
     def is_relation_feasible(self, rel_interface) -> bool:
         """Returns true if the proposed relation is feasible.
 
-
         Note: Added for lib compatibility. Used in sharding
         """
         return True
