@@ -7,7 +7,7 @@ from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
-from charms.mongodb.v0.helpers import CONF_DIR, DATA_DIR, KEY_FILE
+from charms.mongodb.v1.helpers import CONF_DIR, DATA_DIR, KEY_FILE
 from ops.model import ActiveStatus, MaintenanceStatus, ModelError
 from ops.pebble import APIError, ExecError, PathError, ProtocolError
 from ops.testing import Harness

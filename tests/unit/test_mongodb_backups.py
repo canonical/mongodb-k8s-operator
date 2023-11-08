@@ -5,7 +5,7 @@ from unittest import mock
 from unittest.mock import patch
 
 import tenacity
-from charms.mongodb.v0.helpers import current_pbm_op
+from charms.mongodb.v1.helpers import current_pbm_op
 from charms.mongodb.v0.mongodb_backups import (
     PBMBusyError,
     ResyncError,
