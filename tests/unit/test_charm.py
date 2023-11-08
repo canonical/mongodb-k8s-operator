@@ -867,7 +867,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.mongod_pebble_ready.emit(container)
         password = self.harness.charm.get_secret("app", "monitor-password")
 
-        uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints/?replicaSet=mongodb-k8s&authSource=admin"
+        uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints/admin?replicaSet=mongodb-k8s"
 
         expected_config = {
             "override": "replace",
