@@ -23,6 +23,13 @@ class Config:
     APP_SCOPE = "app"
     UNIT_SCOPE = "unit"
 
+    class Role:
+        """Role config names for MongoDB Charm."""
+
+        CONFIG_SERVER = "config-server"
+        REPLICATION = "replication"
+        SHARD = "shard"
+
     class Actions:
         """Actions related config for MongoDB Charm."""
 
