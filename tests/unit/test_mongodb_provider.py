@@ -182,7 +182,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch("charm.MongoDBProvider._set_relation")
     @patch("charm.MongoDBProvider._get_config")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.10.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
     def test_oversee_users_create_user_failure(
         self, connection, relation_users, get_config, set_relation
     ):
