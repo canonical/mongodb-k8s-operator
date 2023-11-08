@@ -1092,6 +1092,14 @@ class MongoDBCharm(CharmBase):
         """Added for a compatibility with VM charm."""
         pass
 
+    def is_relation_feasible(self, rel_interface) -> bool:
+        """Returns true if the proposed relation is feasible.
+
+
+        Note: Added for lib compatibility. Used in sharding
+        """
+        return True
+
     # END: helper functions
 
     # BEGIN: static methods

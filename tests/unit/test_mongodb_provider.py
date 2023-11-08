@@ -276,7 +276,7 @@ class TestMongoProvider(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
     def test_oversee_users_mongo_databases_failure(self, connection, relation_users):
         """Verifies failures in checking for databases with mongod result in raised exceptions."""
         self.harness.update_config({"auto-delete": True})
