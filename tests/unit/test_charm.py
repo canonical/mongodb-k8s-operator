@@ -74,6 +74,7 @@ class TestCharm(unittest.TestCase):
                         "mongod --bind_ip_all "
                         "--replSet=mongodb-k8s "
                         f"--dbpath={DATA_DIR} "
+                        "--port=27017 "
                         "--logpath=/var/lib/mongodb/mongodb.log --auth "
                         "--clusterAuthMode=keyFile "
                         f"--keyFile={CONF_DIR}/{KEY_FILE} \n"
@@ -90,6 +91,8 @@ class TestCharm(unittest.TestCase):
         # Get the plan now we've run PebbleReady
         updated_plan = self.harness.get_container_pebble_plan("mongod").to_dict()
         # Check we've got the plan we expected
+        logger.error(f"Expected plan {expected_plan}")
+        logger.error(f"Updated plan {updated_plan}")
         assert expected_plan == updated_plan
         # Check the service was started
         service = self.harness.model.unit.get_container("mongod").get_service("mongod")
