@@ -16,7 +16,7 @@ import time
 from typing import Dict, List, Optional, Union
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
-from charms.mongodb.v0.helpers import current_pbm_op, process_pbm_status
+from charms.mongodb.v1.helpers import current_pbm_op, process_pbm_status
 from charms.operator_libs_linux.v1 import snap
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus
@@ -40,7 +40,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 0
+LIBPATCH = 1
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +158,7 @@ class MongoDBBackups(Object):
 
         # cannot create backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, or already creating a backup
-        pbm_status = self._get_pbm_status()
+        pbm_status = self.get_pbm_status()
         self.charm.unit.status = pbm_status
 
         if isinstance(pbm_status, MaintenanceStatus):
@@ -205,7 +205,7 @@ class MongoDBBackups(Object):
 
         # cannot list backups if pbm is resyncing, or has incompatible options or incorrect
         # credentials
-        pbm_status = self._get_pbm_status()
+        pbm_status = self.get_pbm_status()
         self.charm.unit.status = pbm_status
 
         if isinstance(pbm_status, WaitingStatus):
@@ -252,7 +252,7 @@ class MongoDBBackups(Object):
 
         # cannot restore backup if pbm is not ready. This could be due to: resyncing, incompatible,
         # options, incorrect credentials, creating a backup, or already performing a restore.
-        pbm_status = self._get_pbm_status()
+        pbm_status = self.get_pbm_status()
         self.charm.unit.status = pbm_status
         if isinstance(pbm_status, MaintenanceStatus):
             self._fail_action_with_error_log(
@@ -322,7 +322,7 @@ class MongoDBBackups(Object):
         except subprocess.CalledProcessError as e:
             logger.error("Syncing configurations failed: %s", str(e))
 
-        self.charm.unit.status = self._get_pbm_status()
+        self.charm.unit.status = self.get_pbm_status()
 
     def _set_config_options(self):
         """Applying given configurations with pbm."""
@@ -365,7 +365,7 @@ class MongoDBBackups(Object):
             reraise=True,
         ):
             with attempt:
-                pbm_status = self._get_pbm_status()
+                pbm_status = self.get_pbm_status()
                 # wait for backup/restore to finish
                 if isinstance(pbm_status, (MaintenanceStatus)):
                     raise PBMBusyError
@@ -421,7 +421,7 @@ class MongoDBBackups(Object):
                 except ExecError as e:
                     self.charm.unit.status = BlockedStatus(self.process_pbm_error(e.stdout))
 
-    def _get_pbm_status(self) -> StatusBase:
+    def get_pbm_status(self) -> StatusBase:
         """Retrieve pbm status."""
         if not self.charm.has_backup_service():
             return WaitingStatus("waiting for pbm to start")
@@ -523,7 +523,7 @@ class MongoDBBackups(Object):
                         restore_cmd = restore_cmd + remapping_args.split(" ")
                     self.charm.run_pbm_command(restore_cmd)
                 except (subprocess.CalledProcessError, ExecError) as e:
-                    if type(e) is subprocess.CalledProcessError:
+                    if isinstance(e, subprocess.CalledProcessError):
                         error_message = e.output.decode("utf-8")
                     else:
                         error_message = str(e.stderr)
@@ -560,7 +560,7 @@ class MongoDBBackups(Object):
                     )
                     return backup_id_match.group("backup_id") if backup_id_match else "N/A"
                 except (subprocess.CalledProcessError, ExecError) as e:
-                    if type(e) is subprocess.CalledProcessError:
+                    if isinstance(e, subprocess.CalledProcessError):
                         error_message = e.output.decode("utf-8")
                     else:
                         error_message = str(e.stderr)
@@ -642,7 +642,7 @@ class MongoDBBackups(Object):
             return f"Operation is still in progress: '{current_pbm_status.message}'"
 
         if (
-            type(previous_pbm_status) is MaintenanceStatus
+            isinstance(previous_pbm_status, MaintenanceStatus)
             and "backup id:" in previous_pbm_status.message
         ):
             backup_id = previous_pbm_status.message.split("backup id:")[-1].strip()
