@@ -1089,7 +1089,7 @@ class MongoDBCharm(CharmBase):
         container.restart(Config.Backup.SERVICE_NAME)
 
     def check_relation_broken_or_scale_down(self, event: RelationDepartedEvent) -> None:
-        """ Added for a compatibility with VM charm """
+        """Added for a compatibility with VM charm."""
         pass
 
     # END: helper functions
