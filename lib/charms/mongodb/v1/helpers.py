@@ -19,16 +19,17 @@ from ops.model import (
 )
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "b9a7fe0c38d8486a9d1ce94c27d4758e"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 8
-
+LIBPATCH = 1
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -40,6 +41,7 @@ TLS_INT_CA_FILE = "internal-ca.crt"
 MONGODB_COMMON_DIR = "/var/snap/charmed-mongodb/common"
 MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
+MONGO_SHELL = "charmed-mongodb.mongosh"
 
 DATA_DIR = "/var/lib/mongodb"
 CONF_DIR = "/etc/mongod"
@@ -48,9 +50,7 @@ logger = logging.getLogger(__name__)
 
 
 # noinspection GrazieInspection
-def get_create_user_cmd(
-    config: MongoDBConfiguration, mongo_path="charmed-mongodb.mongosh"
-) -> List[str]:
+def get_create_user_cmd(config: MongoDBConfiguration, mongo_path=MONGO_SHELL) -> List[str]:
     """Creates initial admin user for MongoDB.
 
     Initial admin user can be created only through localhost connection.
@@ -80,10 +80,41 @@ def get_create_user_cmd(
     ]
 
 
+def get_mongos_args(
+    config: MongoDBConfiguration,
+    snap_install: bool = False,
+) -> str:
+    """Returns the arguments used for starting mongos on a config-server side application.
+
+    Returns:
+        A string representing the arguments to be passed to mongos.
+    """
+    # mongos running on the config server communicates through localhost
+    # use constant for port
+    config_server_uri = f"{config.replset}/localhost:27017"
+
+    full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
+    cmd = [
+        # mongos on config server side should run on 0.0.0.0 so it can be accessed by other units
+        # in the sharded cluster
+        "--bind_ip_all",
+        f"--configdb {config_server_uri}",
+        # config server is already using 27017
+        f"--port {Config.MONGOS_PORT}",
+        f"--keyFile={full_conf_dir}/{KEY_FILE}",
+        "\n",
+    ]
+
+    # TODO Future PR: support TLS on mongos
+
+    return " ".join(cmd)
+
+
 def get_mongod_args(
     config: MongoDBConfiguration,
     auth: bool = True,
     snap_install: bool = False,
+    role: str = "replication",
 ) -> str:
     """Construct the MongoDB startup command line.
 
@@ -102,6 +133,9 @@ def get_mongod_args(
         f"--replSet={config.replset}",
         # db must be located within the snap common directory since the snap is strictly confined
         f"--dbpath={full_data_dir}",
+        # for simplicity we run the mongod daemon on shards, configsvrs, and replicas on the same
+        # port
+        f"--port={Config.MONGODB_PORT}",
         logging_options,
     ]
     if auth:
@@ -136,6 +170,12 @@ def get_mongod_args(
                 f"--tlsClusterFile={full_conf_dir}/{TLS_INT_PEM_FILE}",
             ]
         )
+
+    if role == Config.Role.CONFIG_SERVER:
+        cmd.append("--configsvr")
+
+    if role == Config.Role.SHARD:
+        cmd.append("--shardsvr")
 
     cmd.append("\n")
     return " ".join(cmd)
@@ -202,25 +242,6 @@ def copy_licenses_to_unit():
     )
 
 
-_StrOrBytes = Union[str, bytes]
-
-
-def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
-    """Parses pbm error string and returns a user friendly message."""
-    message = "couldn't configure s3 backup option"
-    if not error_string:
-        return message
-    if type(error_string) == bytes:
-        error_string = error_string.decode("utf-8")
-    if "status code: 403" in error_string:  # type: ignore
-        message = "s3 credentials are incorrect."
-    elif "status code: 404" in error_string:  # type: ignore
-        message = "s3 configurations are incompatible."
-    elif "status code: 301" in error_string:  # type: ignore
-        message = "s3 configurations are incompatible."
-    return message
-
-
 def current_pbm_op(pbm_status: str) -> str:
     """Parses pbm status for the operation that pbm is running."""
     pbm_status = json.loads(pbm_status)
@@ -246,3 +267,22 @@ def process_pbm_status(pbm_status: str) -> StatusBase:
         return WaitingStatus("waiting to sync s3 configurations.")
 
     return ActiveStatus()
+
+
+_StrOrBytes = Union[str, bytes]
+
+
+def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
+    """Parses pbm error string and returns a user friendly message."""
+    message = "couldn't configure s3 backup option"
+    if not error_string:
+        return message
+    if type(error_string) == bytes:
+        error_string = error_string.decode("utf-8")
+    if "status code: 403" in error_string:  # type: ignore
+        message = "s3 credentials are incorrect."
+    elif "status code: 404" in error_string:  # type: ignore
+        message = "s3 configurations are incompatible."
+    elif "status code: 301" in error_string:  # type: ignore
+        message = "s3 configurations are incompatible."
+    return message

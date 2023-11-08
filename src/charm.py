@@ -10,7 +10,14 @@ from typing import Dict, List, Optional, Set
 
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
-from charms.mongodb.v0.helpers import (
+from charms.mongodb.v0.mongodb import (
+    MongoDBConfiguration,
+    MongoDBConnection,
+    NotReadyError,
+)
+from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
+from charms.mongodb.v0.mongodb_tls import MongoDBTLS
+from charms.mongodb.v1.helpers import (
     build_unit_status,
     generate_keyfile,
     generate_password,
@@ -18,16 +25,9 @@ from charms.mongodb.v0.helpers import (
     get_mongod_args,
     process_pbm_error,
 )
-from charms.mongodb.v0.mongodb import (
-    MongoDBConfiguration,
-    MongoDBConnection,
-    NotReadyError,
-)
-from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
-from charms.mongodb.v0.mongodb_provider import MongoDBProvider
-from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
-from charms.mongodb.v0.mongodb_tls import MongoDBTLS
-from charms.mongodb.v0.users import (
+from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
+from charms.mongodb.v1.mongodb_provider import MongoDBProvider
+from charms.mongodb.v1.users import (
     CHARM_USERS,
     BackupUser,
     MongoDBUser,
@@ -1087,6 +1087,17 @@ class MongoDBCharm(CharmBase):
         """Restarts the backup service."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
         container.restart(Config.Backup.SERVICE_NAME)
+
+    def check_relation_broken_or_scale_down(self, event: RelationDepartedEvent) -> None:
+        """Added for a compatibility with VM charm."""
+        pass
+
+    def is_relation_feasible(self, rel_interface) -> bool:
+        """Returns true if the proposed relation is feasible.
+
+        Note: Added for lib compatibility. Used in sharding
+        """
+        return True
 
     # END: helper functions
 

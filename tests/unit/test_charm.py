@@ -7,7 +7,7 @@ from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
-from charms.mongodb.v0.helpers import CONF_DIR, DATA_DIR, KEY_FILE
+from charms.mongodb.v1.helpers import CONF_DIR, DATA_DIR, KEY_FILE
 from ops.model import ActiveStatus, MaintenanceStatus, ModelError
 from ops.pebble import APIError, ExecError, PathError, ProtocolError
 from ops.testing import Harness
@@ -74,6 +74,7 @@ class TestCharm(unittest.TestCase):
                         "mongod --bind_ip_all "
                         "--replSet=mongodb-k8s "
                         f"--dbpath={DATA_DIR} "
+                        "--port=27017 "
                         "--logpath=/var/lib/mongodb/mongodb.log --auth "
                         "--clusterAuthMode=keyFile "
                         f"--keyFile={CONF_DIR}/{KEY_FILE} \n"
@@ -90,6 +91,8 @@ class TestCharm(unittest.TestCase):
         # Get the plan now we've run PebbleReady
         updated_plan = self.harness.get_container_pebble_plan("mongod").to_dict()
         # Check we've got the plan we expected
+        logger.error(f"Expected plan {expected_plan}")
+        logger.error(f"Updated plan {updated_plan}")
         assert expected_plan == updated_plan
         # Check the service was started
         service = self.harness.model.unit.get_container("mongod").get_service("mongod")
@@ -867,7 +870,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.on.mongod_pebble_ready.emit(container)
         password = self.harness.charm.get_secret("app", "monitor-password")
 
-        uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints/?replicaSet=mongodb-k8s&authSource=admin"
+        uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints/admin?replicaSet=mongodb-k8s"
 
         expected_config = {
             "override": "replace",

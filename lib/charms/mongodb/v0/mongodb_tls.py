@@ -39,8 +39,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
-
+LIBPATCH = 6
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +69,7 @@ class MongoDBTLS(Object):
         self.framework.observe(self.certs.on.certificate_expiring, self._on_certificate_expiring)
 
     def is_tls_enabled(self, scope: Scopes):
-        """Getting internal TLS flag (meaning)."""
+        """Returns a boolean indicating if TLS for a given `scope` is enabled."""
         return self.charm.get_secret(scope, Config.TLS.SECRET_CERT_LABEL) is not None
 
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:

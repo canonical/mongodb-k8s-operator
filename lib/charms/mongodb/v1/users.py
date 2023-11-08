@@ -1,17 +1,17 @@
 """Users configuration for MongoDB."""
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import List
+from typing import Set
 
 # The unique Charmhub library identifier, never change it
 LIBID = "b74007eda21c453a89e4dcc6382aa2b3"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 0
 
 
 class MongoDBUser:
@@ -37,7 +37,7 @@ class MongoDBUser:
         """Returns the database of the user."""
         return self._database_name
 
-    def get_roles(self) -> List[str]:
+    def get_roles(self) -> Set[str]:
         """Returns the role of the user."""
         return self._roles
 
@@ -81,14 +81,16 @@ class _MonitorUser(MongoDBUser):
 
     _username = "monitor"
     _password_key_name = f"{_username}-password"
-    _database_name = ""
+    _database_name = "admin"
     _roles = ["monitor"]
     _privileges = {
         "resource": {"db": "", "collection": ""},
         "actions": ["listIndexes", "listCollections", "dbStats", "dbHash", "collStats", "find"],
     }
     _mongodb_role = "explainRole"
-    _hosts = []
+    _hosts = [
+        "127.0.0.1"
+    ]  # MongoDB Exporter can only connect to one replica - not the entire set.
 
 
 class _BackupUser(MongoDBUser):
@@ -108,4 +110,8 @@ MonitorUser = _MonitorUser()
 BackupUser = _BackupUser()
 
 # List of system usernames needed for correct work on the charm.
-CHARM_USERS = [OperatorUser.get_username(), BackupUser.get_username(), MonitorUser.get_username()]
+CHARM_USERS = [
+    OperatorUser.get_username(),
+    BackupUser.get_username(),
+    MonitorUser.get_username(),
+]

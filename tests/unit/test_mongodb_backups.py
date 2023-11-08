@@ -5,8 +5,8 @@ from unittest import mock
 from unittest.mock import patch
 
 import tenacity
-from charms.mongodb.v0.helpers import current_pbm_op
-from charms.mongodb.v0.mongodb_backups import (
+from charms.mongodb.v1.helpers import current_pbm_op
+from charms.mongodb.v1.mongodb_backups import (
     PBMBusyError,
     ResyncError,
     SetPBMConfigError,
@@ -95,8 +95,8 @@ class TestMongoBackups(unittest.TestCase):
         )
         self.assertTrue(isinstance(self.harness.charm.backups.get_pbm_status(), BlockedStatus))
 
-    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
-    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
+    @patch("charms.mongodb.v1.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v1.mongodb_backups.stop_after_attempt")
     @patch("ops.model.Container.start")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -115,8 +115,8 @@ class TestMongoBackups(unittest.TestCase):
         with self.assertRaises(ExecError):
             self.harness.charm.backups._resync_config_options()
 
-    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
-    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
+    @patch("charms.mongodb.v1.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v1.mongodb_backups.stop_after_attempt")
     @patch("ops.model.Container.start")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -160,8 +160,8 @@ class TestMongoBackups(unittest.TestCase):
             self.harness.charm.backups._resync_config_options()
 
     @patch("ops.model.Container.start")
-    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
-    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
+    @patch("charms.mongodb.v1.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v1.mongodb_backups.stop_after_attempt")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBBackups.get_pbm_status")
     def test_resync_config_options_failure(
@@ -177,8 +177,8 @@ class TestMongoBackups(unittest.TestCase):
         with self.assertRaises(PBMBusyError):
             self.harness.charm.backups._resync_config_options()
 
-    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
-    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
+    @patch("charms.mongodb.v1.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v1.mongodb_backups.stop_after_attempt")
     @patch("ops.model.Container.restart")
     @patch("ops.model.Container.start")
     @patch("charm.MongoDBCharm.has_backup_service")
