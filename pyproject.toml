@@ -1,0 +1,91 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+[tool.poetry]
+name = "mongodb-k8s"
+version = "0.0.1-dev.0"
+description = ""
+authors = [
+    "Mykola Marzhan <mykola.marzhan@canonical.com>"
+]
+license = "Apache-2.0"
+readme = "README.md"
+homepage = "TODO"
+repository = "TODO"
+
+[tool.poetry.dependencies]
+python = "^3.8.10"
+ops = "^2.4.1"
+pymongo = "^4.3.3"
+tenacity = "^8.2.2"
+cryptography = "^40.0.2"
+jsonschema = "^4.17.3"
+pyyaml = "^6.0.1"
+
+[tool.poetry.group.fmt.dependencies]
+black = "^23.3.0"
+isort = "^5.12.0"
+
+[tool.poetry.group.lint.dependencies]
+flake8 = "^6.0.0"
+flake8-docstrings = "^1.7.0"
+flake8-copyright = "^0.2.4"
+flake8-builtins = "^2.1.0"
+pyproject-flake8 = "^6.0.0-post1"
+pep8-naming = "^0.13.3"
+codespell = "^2.2.4"
+
+[tool.poetry.group.unit.dependencies]
+coverage = {extras = ["toml"], version = "^7.2.7"}
+pytest = "^7.3.1"
+parameterized = "^0.9.0"
+
+[tool.poetry.group.integration.dependencies]
+lightkube = "^0.13.0"
+pytest = "^7.3.1"
+pytest-mock = "^3.11.1"
+pytest-operator = "^0.27.0"
+juju = "3.2.2"
+pytest-operator-cache = {git = "https://github.com/canonical/data-platform-workflows", tag = "v5", subdirectory = "python/pytest_plugins/pytest_operator_cache"}
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+# Testing tools configuration
+[tool.coverage.run]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+log_cli_level = "INFO"
+markers = ["unstable"]
+
+# Formatting tools configuration
+[tool.black]
+line-length = 99
+target-version = ["py38"]
+
+[tool.isort]
+profile = "black"
+
+# Linting tools configuration
+[tool.flake8]
+max-line-length = 99
+max-doc-length = 99
+max-complexity = 10
+exclude = [".git", "__pycache__", ".tox", "build", "dist", "*.egg_info", "venv", "tests/integration/relation_tests/application-charm/lib/"]
+select = ["E", "W", "F", "C", "N", "R", "D", "H"]
+# Ignore W503, E501 because using black creates errors with this
+# Ignore D107 Missing docstring in __init__
+ignore = ["W503", "E501", "D107"]
+# D100, D101, D102, D103: Ignore missing docstrings in tests
+per-file-ignores = ["tests/*:D100,D101,D102,D103,D104"]
+docstring-convention = "google"
+# Check for properly formatted copyright header in each file
+copyright-check = "True"
+copyright-author = "Canonical Ltd."
+copyright-regexp = "Copyright\\s\\d{4}([-,]\\d{4})*\\s+%(author)s"
