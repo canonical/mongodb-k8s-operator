@@ -84,6 +84,17 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ${{ needs.build.outputs.artifact-name }}
+      - name: Free disk space
+        run: |
+          echo "Free disk space before cleanup"
+          df -T
+          # free space in the runner
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          echo "Free disk space after cleanup"
+          df -T
       - name: Select tests
         id: select-tests
         run: |
