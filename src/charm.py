@@ -360,6 +360,7 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
+
         container = self.unit.get_container(Config.CONTAINER_NAME)
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
@@ -387,6 +388,7 @@ class MongoDBCharm(CharmBase):
             return
 
         self._initialise_replica_set(event)
+        self._initialise_users(event)
 
         # mongod is now active
         self.unit.status = ActiveStatus()
@@ -596,6 +598,38 @@ class MongoDBCharm(CharmBase):
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
+    def _initialise_users(self, event: StartEvent) -> None:
+        """Create users."""
+        if not self.db_initialised:
+            return
+
+        # only leader should create users
+        if not self.unit.is_leader():
+            return
+
+        logger.info("User initialization")
+
+        try:
+            self._init_operator_user()
+            self._init_backup_user()
+            self._init_monitor_user()
+            logger.info("Reconcile relations")
+            self.client_relations.oversee_users(None, event)
+        except ExecError as e:
+            logger.error("Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr)
+            event.defer()
+            return
+        except PyMongoError as e:
+            logger.error("Deferring on_start since: error=%r", e)
+            event.defer()
+            return
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
     def _init_operator_user(self) -> None:
         """Creates initial operator user for MongoDB.
 
@@ -752,7 +786,6 @@ class MongoDBCharm(CharmBase):
         # only leader should initialise the replica set
         if not self.unit.is_leader():
             return
-
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             try:
                 logger.info("Replica Set initialization")
