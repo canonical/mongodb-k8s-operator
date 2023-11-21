@@ -344,7 +344,6 @@ class MongoDBCharm(CharmBase):
 
     def _on_start(self, event) -> None:
         """Initialise MongoDB.
-
         Initialisation of replSet should be made once after start.
         MongoDB needs some time to become fully started.
         This event handler is deferred if initialisation of MongoDB
