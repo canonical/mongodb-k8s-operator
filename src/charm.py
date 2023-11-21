@@ -344,6 +344,7 @@ class MongoDBCharm(CharmBase):
 
     def _on_start(self, event) -> None:
         """Initialise MongoDB.
+
         Initialisation of replSet should be made once after start.
         MongoDB needs some time to become fully started.
         This event handler is deferred if initialisation of MongoDB
@@ -359,7 +360,6 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
-
         container = self.unit.get_container(Config.CONTAINER_NAME)
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
