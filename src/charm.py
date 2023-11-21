@@ -271,6 +271,21 @@ class MongoDBCharm(CharmBase):
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
 
+    @property
+    def users_initialized(self) -> bool:
+        """Check if MongoDB users are created."""
+        return "users_initialized" in self.app_peer_data
+
+    @users_initialized.setter
+    def users_initialized(self, value):
+        """Set the users_initialized flag."""
+        if isinstance(value, bool):
+            self.app_peer_data["users_initialized"] = str(value)
+        else:
+            raise ValueError(
+                f"'users_initialized' must be a boolean value. Proivded: {value} is of type {type(value)}"
+            )
+
     # END: properties
 
     # BEGIN: generic helper methods
@@ -602,6 +617,9 @@ class MongoDBCharm(CharmBase):
         if not self.db_initialised:
             return
 
+        if self.users_initialized:
+            return
+
         # only leader should create users
         if not self.unit.is_leader():
             return
@@ -614,6 +632,7 @@ class MongoDBCharm(CharmBase):
             self._init_monitor_user()
             logger.info("Reconcile relations")
             self.client_relations.oversee_users(None, event)
+            self.users_initialized = True
         except ExecError as e:
             logger.error("Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr)
             event.defer()
@@ -785,16 +804,11 @@ class MongoDBCharm(CharmBase):
         # only leader should initialise the replica set
         if not self.unit.is_leader():
             return
+
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
-                logger.info("User initialization")
-                self._init_operator_user()
-                self._init_backup_user()
-                self._init_monitor_user()
-                logger.info("Reconcile relations")
-                self.client_relations.oversee_users(None, event)
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
