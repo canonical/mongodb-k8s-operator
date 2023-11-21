@@ -614,8 +614,11 @@ class MongoDBCharm(CharmBase):
     )
     def _initialise_users(self, event: StartEvent) -> None:
         """Create users.
-        
-        User creation can only be completed after the replica set has been initialised which requires some time. In race conditions this can lead to failure to initialise users. To prevent these race conditions from breaking the code, retry on failure.
+
+        User creation can only be completed after the replica set has
+        been initialised which requires some time.
+        In race conditions this can lead to failure to initialise users.
+        To prevent these race conditions from breaking the code, retry on failure.
         """
         if not self.db_initialised:
             return
