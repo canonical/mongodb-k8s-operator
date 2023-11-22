@@ -13,7 +13,7 @@ import logging
 import re
 import subprocess
 import time
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import (
@@ -35,14 +35,14 @@ from tenacity import (
 )
 
 # The unique Charmhub library identifier, never change it
-LIBID = "9f2b91c6128d48d6ba22724bf365da3b"
+LIBID = "18c461132b824ace91af0d7abe85f40e"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 7
 
 logger = logging.getLogger(__name__)
 
@@ -420,10 +420,14 @@ class MongoDBBackups(Object):
                 except ExecError as e:
                     self.charm.unit.status = BlockedStatus(process_pbm_error(e.stdout))
 
-    def _get_pbm_status(self) -> StatusBase:
+    def _get_pbm_status(self) -> Optional[StatusBase]:
         """Retrieve pbm status."""
         if not self.charm.has_backup_service():
             return WaitingStatus("waiting for pbm to start")
+
+        if not self.model.get_relation(S3_RELATION):
+            logger.info("No configurations for backups, not relation to s3-charm.")
+            return None
 
         try:
             previous_pbm_status = self.charm.unit.status
@@ -505,7 +509,7 @@ class MongoDBBackups(Object):
 
         If PBM is resyncing, the function will retry to create backup
         (up to  BACKUP_RESTORE_MAX_ATTEMPTS times) with BACKUP_RESTORE_ATTEMPT_COOLDOWN
-        time between attepts.
+        time between attempts.
 
         If PMB returen any other error, the function will raise RestoreError.
         """
@@ -523,7 +527,7 @@ class MongoDBBackups(Object):
                         restore_cmd = restore_cmd + remapping_args.split(" ")
                     self.charm.run_pbm_command(restore_cmd)
                 except (subprocess.CalledProcessError, ExecError) as e:
-                    if type(e) is subprocess.CalledProcessError:
+                    if isinstance(e, subprocess.CalledProcessError):
                         error_message = e.output.decode("utf-8")
                     else:
                         error_message = str(e.stderr)
@@ -541,7 +545,7 @@ class MongoDBBackups(Object):
 
         If PBM is resyncing, the function will retry to create backup
         (up to BACKUP_RESTORE_MAX_ATTEMPTS times)
-        with BACKUP_RESTORE_ATTEMPT_COOLDOWN time between attepts.
+        with BACKUP_RESTORE_ATTEMPT_COOLDOWN time between attempts.
 
         If PMB returen any other error, the function will raise BackupError.
         """
@@ -560,7 +564,7 @@ class MongoDBBackups(Object):
                     )
                     return backup_id_match.group("backup_id") if backup_id_match else "N/A"
                 except (subprocess.CalledProcessError, ExecError) as e:
-                    if type(e) is subprocess.CalledProcessError:
+                    if isinstance(e, subprocess.CalledProcessError):
                         error_message = e.output.decode("utf-8")
                     else:
                         error_message = str(e.stderr)
@@ -636,13 +640,13 @@ class MongoDBBackups(Object):
         to contain the operation type (backup/restore) and the backup id.
         """
         if (
-            type(current_pbm_status) is type(previous_pbm_status)
+            isinstance(current_pbm_status, type(previous_pbm_status))
             and current_pbm_status.message == previous_pbm_status.message
         ):
             return f"Operation is still in progress: '{current_pbm_status.message}'"
 
         if (
-            type(previous_pbm_status) is MaintenanceStatus
+            isinstance(previous_pbm_status, MaintenanceStatus)
             and "backup id:" in previous_pbm_status.message
         ):
             backup_id = previous_pbm_status.message.split("backup id:")[-1].strip()
