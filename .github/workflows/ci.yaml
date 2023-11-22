@@ -41,10 +41,16 @@ jobs:
         run: tox run -e unit
 
   build:
-    name: Build charms
-    uses: canonical/data-platform-workflows/.github/workflows/build_charms_with_cache.yaml@v5
+    strategy:
+      fail-fast: true
+      matrix:
+        charms: [".", "tests/integration/ha_tests/application_charm", "tests/integration/relation_tests/application-charm"]
+    name: Build ${{matrix.charms}} charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5
     with:
       charmcraft-snap-channel: "latest/edge"
+      path-to-charm-directory: ${{matrix.charms}}
+
 
   integration-test:
     strategy:
@@ -78,6 +84,17 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: ${{ needs.build.outputs.artifact-name }}
+      - name: Free disk space
+        run: |
+          echo "Free disk space before cleanup"
+          df -T
+          # free space in the runner
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          echo "Free disk space after cleanup"
+          df -T
       - name: Select tests
         id: select-tests
         run: |

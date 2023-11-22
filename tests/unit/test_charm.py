@@ -295,6 +295,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.unit.get_container = mock_container
 
         self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["users_initialized"] = "True"
 
         self.harness.charm.on.start.emit()
 
@@ -394,7 +395,7 @@ class TestCharm(unittest.TestCase):
         defer.assert_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+        self.assertEqual("users_initialized" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -423,7 +424,7 @@ class TestCharm(unittest.TestCase):
             defer.assert_called()
 
             # verify app data
-            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+            self.assertEqual("users_initialized" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
