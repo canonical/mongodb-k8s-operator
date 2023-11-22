@@ -271,6 +271,21 @@ class MongoDBCharm(CharmBase):
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
 
+    @property
+    def users_initialized(self) -> bool:
+        """Check if MongoDB users are created."""
+        return "users_initialized" in self.app_peer_data
+
+    @users_initialized.setter
+    def users_initialized(self, value):
+        """Set the users_initialized flag."""
+        if isinstance(value, bool):
+            self.app_peer_data["users_initialized"] = str(value)
+        else:
+            raise ValueError(
+                f"'users_initialized' must be a boolean value. Proivded: {value} is of type {type(value)}"
+            )
+
     # END: properties
 
     # BEGIN: generic helper methods
@@ -387,6 +402,7 @@ class MongoDBCharm(CharmBase):
             return
 
         self._initialise_replica_set(event)
+        self._initialise_users(event)
 
         # mongod is now active
         self.unit.status = ActiveStatus()
@@ -597,6 +613,48 @@ class MongoDBCharm(CharmBase):
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
+    def _initialise_users(self, event: StartEvent) -> None:
+        """Create users.
+
+        User creation can only be completed after the replica set has
+        been initialised which requires some time.
+        In race conditions this can lead to failure to initialise users.
+        To prevent these race conditions from breaking the code, retry on failure.
+        """
+        if not self.db_initialised:
+            return
+
+        if self.users_initialized:
+            return
+
+        # only leader should create users
+        if not self.unit.is_leader():
+            return
+
+        logger.info("User initialization")
+
+        try:
+            self._init_operator_user()
+            self._init_backup_user()
+            self._init_monitor_user()
+            logger.info("Reconcile relations")
+            self.client_relations.oversee_users(None, event)
+            self.users_initialized = True
+        except ExecError as e:
+            logger.error("Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr)
+            event.defer()
+            return
+        except PyMongoError as e:
+            logger.error("Deferring on_start since: error=%r", e)
+            event.defer()
+            return
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(5),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
     def _init_operator_user(self) -> None:
         """Creates initial operator user for MongoDB.
 
@@ -773,12 +831,6 @@ class MongoDBCharm(CharmBase):
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
-                logger.info("User initialization")
-                self._init_operator_user()
-                self._init_backup_user()
-                self._init_monitor_user()
-                logger.info("Reconcile relations")
-                self.client_relations.oversee_users(None, event)
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
