@@ -479,7 +479,7 @@ class MongoDBCharm(CharmBase):
         mongodb_status = build_unit_status(
             self.mongodb_config, self.get_hostname_for_unit(self.unit)
         )
-        pbm_status = self.backups.get_pbm_status()
+        pbm_status = self.backups._get_pbm_status()
         if (
             not isinstance(mongodb_status, ActiveStatus)
             or not self.model.get_relation(
@@ -720,7 +720,7 @@ class MongoDBCharm(CharmBase):
     def pass_pre_set_password_checks(self, event: ActionEvent) -> bool:
         """Checks conditions for setting the password and fail if necessary."""
         # changing the backup password while a backup/restore is in progress can be disastrous
-        pbm_status = self.backups.get_pbm_status()
+        pbm_status = self.backups._get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
             event.fail("Cannot change password while a backup/restore is in progress.")
             return False
