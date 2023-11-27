@@ -63,7 +63,7 @@ from ops.pebble import (
     ServiceInfo,
 )
 from pymongo.errors import PyMongoError
-from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError, MissingSecretError
@@ -75,6 +75,19 @@ UNIT_REMOVAL_TIMEOUT = 1000
 APP_SCOPE = Config.Relations.APP_SCOPE
 UNIT_SCOPE = Config.Relations.UNIT_SCOPE
 Scopes = Config.Relations.Scopes
+
+USER_CREATING_MAX_ATTEMPTS = 5
+USER_CREATION_COOLDOWN = 30
+
+
+def _before_sleep_user_creation(retry_state) -> None:
+    logger.error(
+        f"Attempt {retry_state.attempt_number} failed. {USER_CREATING_MAX_ATTEMPTS - retry_state.attempt_number} attempts left. Retrying after {USER_CREATION_COOLDOWN} seconds."
+    )
+
+
+def _user_creation_stop_condition(retry_state) -> bool:
+    return retry_state.attempt_number >= USER_CREATION_COOLDOWN
 
 
 class MongoDBCharm(CharmBase):
@@ -271,21 +284,6 @@ class MongoDBCharm(CharmBase):
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
 
-    @property
-    def users_initialized(self) -> bool:
-        """Check if MongoDB users are created."""
-        return "users_initialized" in self.app_peer_data
-
-    @users_initialized.setter
-    def users_initialized(self, value):
-        """Set the users_initialized flag."""
-        if isinstance(value, bool):
-            self.app_peer_data["users_initialized"] = str(value)
-        else:
-            raise ValueError(
-                f"'users_initialized' must be a boolean value. Proivded: {value} is of type {type(value)}"
-            )
-
     # END: properties
 
     # BEGIN: generic helper methods
@@ -402,7 +400,6 @@ class MongoDBCharm(CharmBase):
             return
 
         self._initialise_replica_set(event)
-        self._initialise_users(event)
 
         # mongod is now active
         self.unit.status = ActiveStatus()
@@ -612,48 +609,6 @@ class MongoDBCharm(CharmBase):
         reraise=True,
         before=before_log(logger, logging.DEBUG),
     )
-    def _initialise_users(self, event: StartEvent) -> None:
-        """Create users.
-
-        User creation can only be completed after the replica set has
-        been initialised which requires some time.
-        In race conditions this can lead to failure to initialise users.
-        To prevent these race conditions from breaking the code, retry on failure.
-        """
-        if not self.db_initialised:
-            return
-
-        if self.users_initialized:
-            return
-
-        # only leader should create users
-        if not self.unit.is_leader():
-            return
-
-        logger.info("User initialization")
-
-        try:
-            self._init_operator_user()
-            self._init_backup_user()
-            self._init_monitor_user()
-            logger.info("Reconcile relations")
-            self.client_relations.oversee_users(None, event)
-            self.users_initialized = True
-        except ExecError as e:
-            logger.error("Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr)
-            event.defer()
-            return
-        except PyMongoError as e:
-            logger.error("Deferring on_start since: error=%r", e)
-            event.defer()
-            return
-
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(5),
-        reraise=True,
-        before=before_log(logger, logging.DEBUG),
-    )
     def _init_operator_user(self) -> None:
         """Creates initial operator user for MongoDB.
 
@@ -815,6 +770,26 @@ class MongoDBCharm(CharmBase):
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
+
+                # Check replica set status before creating users
+                while not direct_mongo.client.admin.command("hello")["isWritablePrimary"]:
+                    time.sleep(10)
+                logger.info("User initialization")
+
+                for attempt in Retrying(
+                    stop=_user_creation_stop_condition,
+                    wait=wait_fixed(USER_CREATION_COOLDOWN),
+                    reraise=True,
+                    before_sleep=_before_sleep_user_creation,
+                ):
+                    with attempt:
+                        logger.error(
+                            "Initializing users. Attempt #%s", attempt.retry_state.attempt_number
+                        )
+                        self._init_operator_user()
+                        self._init_monitor_user()
+                        self._init_backup_user()
+                        self.client_relations.oversee_users(None, event)
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
