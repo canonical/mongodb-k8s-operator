@@ -633,7 +633,6 @@ class MongoDBCharm(CharmBase):
         logger.info("User initialization")
 
         try:
-            self._init_operator_user()
             self._init_backup_user()
             self._init_monitor_user()
             logger.info("Reconcile relations")
@@ -815,6 +814,8 @@ class MongoDBCharm(CharmBase):
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
+                time.sleep(10)
+                self._init_operator_user()
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
