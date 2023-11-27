@@ -80,6 +80,7 @@ USER_CREATING_MAX_ATTEMPTS = 5
 USER_CREATION_COOLDOWN = 30
 REPLICA_SET_INIT_CHECK_TIMEOUT = 10
 
+
 def _before_sleep_user_creation(retry_state) -> None:
     logger.error(
         f"Attempt {retry_state.attempt_number} failed. {USER_CREATING_MAX_ATTEMPTS - retry_state.attempt_number} attempts left. Retrying after {USER_CREATION_COOLDOWN} seconds."
