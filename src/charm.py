@@ -78,7 +78,7 @@ Scopes = Config.Relations.Scopes
 
 USER_CREATING_MAX_ATTEMPTS = 5
 USER_CREATION_COOLDOWN = 30
-
+REPLICA_SET_INIT_CHECK_TIMEOUT = 10
 
 def _before_sleep_user_creation(retry_state) -> None:
     logger.error(
@@ -773,7 +773,7 @@ class MongoDBCharm(CharmBase):
 
                 # Check replica set status before creating users
                 while not direct_mongo.client.admin.command("hello")["isWritablePrimary"]:
-                    time.sleep(10)
+                    time.sleep(REPLICA_SET_INIT_CHECK_TIMEOUT)
                 logger.info("User initialization")
 
                 for attempt in Retrying(
