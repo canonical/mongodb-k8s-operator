@@ -814,7 +814,10 @@ class MongoDBCharm(CharmBase):
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
-                time.sleep(10)
+                for _ in range(10):
+                    if direct_mongo.is_ready and direct_mongo.primary():
+                        break
+                    time.sleep(1)
                 self._init_operator_user()
             except ExecError as e:
                 logger.error(

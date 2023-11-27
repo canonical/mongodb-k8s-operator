@@ -63,7 +63,7 @@ def get_create_user_cmd(
     """
     return [
         mongo_path,
-        f"mongodb://localhost/admin?replicaSet={config.replset}&readPreference=primary",
+        "mongodb://localhost/admin",
         "--quiet",
         "--eval",
         "db.createUser({"
@@ -76,7 +76,6 @@ def get_create_user_cmd(
         "  ],"
         "  mechanisms: ['SCRAM-SHA-256'],"
         "  passwordDigestor: 'server',"
-        "  writeConcern: { w: 'majority' , wtimeout: 5000 },"
         "})",
     ]
 
