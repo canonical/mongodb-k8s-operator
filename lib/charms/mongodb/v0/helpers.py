@@ -61,9 +61,10 @@ def get_create_user_cmd(
     It is needed to install mongodb-clients inside charm container to make
     this function work correctly
     """
+    hosts = ",".join(config.hosts)
     return [
         mongo_path,
-        "mongodb://localhost/admin",
+        f"mongodb://{hosts}/admin?replicaSet={config.replset}",
         "--quiet",
         "--eval",
         "db.createUser({"
