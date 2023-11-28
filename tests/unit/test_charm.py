@@ -18,9 +18,8 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
 )
-from tenacity import RetryError
 
-from charm import USER_CREATING_MAX_ATTEMPTS, MongoDBCharm, NotReadyError
+from charm import MongoDBCharm, NotReadyError
 
 from .helpers import patch_network_get
 
@@ -597,12 +596,14 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.add_replset_member.assert_called()
             defer.assert_called()
 
-    @patch("charm.MongoDBCharm._initialise_users")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongoDBConnection")
     def test_start_init_operator_user_after_second_call(
-        self, connection, oversee_users, defer, _initialise_users
+        self,
+        connection,
+        oversee_users,
+        defer,
     ):
         """Tests that the creation of the admin user is only performed once.
 
@@ -620,7 +621,6 @@ class TestCharm(unittest.TestCase):
         connection.return_value.__enter__.return_value.is_ready = True
 
         oversee_users.side_effect = PyMongoError()
-        _initialise_users.side_effect = RetryError(last_attempt=USER_CREATING_MAX_ATTEMPTS)
 
         self.harness.charm.on.start.emit()
 
