@@ -18,8 +18,9 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
 )
+from tenacity import RetryError
 
-from charm import MongoDBCharm, NotReadyError
+from charm import USER_CREATING_MAX_ATTEMPTS, MongoDBCharm, NotReadyError
 
 from .helpers import patch_network_get
 
@@ -295,6 +296,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.unit.get_container = mock_container
 
         self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["users_initialized"] = "True"
 
         self.harness.charm.on.start.emit()
 
@@ -395,7 +397,7 @@ class TestCharm(unittest.TestCase):
         defer.assert_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+        self.assertEqual("users_initialized" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -428,7 +430,7 @@ class TestCharm(unittest.TestCase):
             defer.assert_called()
 
             # verify app data
-            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+            self.assertEqual("users_initialized" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
@@ -595,14 +597,13 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.add_replset_member.assert_called()
             defer.assert_called()
 
+    @patch("charm.MongoDBCharm._initialise_users")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongoDBConnection")
-    @patch("tenacity.nap.time.sleep", MagicMock())
-    @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
-    @patch("charm.USER_CREATION_COOLDOWN", 1)
-    @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
-    def test_start_init_operator_user_after_second_call(self, connection, oversee_users, defer):
+    def test_start_init_operator_user_after_second_call(
+        self, connection, oversee_users, defer, _initialise_users
+    ):
         """Tests that the creation of the admin user is only performed once.
 
         Verifies that if the user is already set up, that no attempts to set it up again are
@@ -619,6 +620,7 @@ class TestCharm(unittest.TestCase):
         connection.return_value.__enter__.return_value.is_ready = True
 
         oversee_users.side_effect = PyMongoError()
+        _initialise_users.side_effect = RetryError(last_attempt=USER_CREATING_MAX_ATTEMPTS)
 
         self.harness.charm.on.start.emit()
 
@@ -910,6 +912,10 @@ class TestCharm(unittest.TestCase):
         expected_uri = uri_template.format(password="mongo123")
         self.assertEqual(expected_uri, new_uri)
 
+    @patch("tenacity.nap.time.sleep", MagicMock())
+    @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
+    @patch("charm.USER_CREATION_COOLDOWN", 1)
+    @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBCharm._init_monitor_user")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
@@ -918,10 +924,6 @@ class TestCharm(unittest.TestCase):
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._set_data_dir_permissions")
     @patch("charm.MongoDBConnection")
-    @patch("tenacity.nap.time.sleep", MagicMock())
-    @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
-    @patch("charm.USER_CREATION_COOLDOWN", 1)
-    @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
     def test__backup_user_created(
         self,
         connection,
@@ -936,6 +938,7 @@ class TestCharm(unittest.TestCase):
         """Tests what backup user was created."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         self.harness.charm.on.start.emit()
         password = self.harness.charm.get_secret("app", "backup-password")
         self.assertIsNotNone(password)  # verify the password is set

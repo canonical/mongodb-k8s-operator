@@ -183,7 +183,7 @@ async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None
     password1 = await get_password(ops_test, unit_id=leader_id, username="monitor")
 
     # The password has to be minimum 3 characters
-    await set_password(ops_test, unit_id=leader_id, username="monitor", password="ca" * 2048)
+    await set_password(ops_test, unit_id=leader_id, username="monitor", password="ca" * 1000000)
     password2 = await get_password(ops_test, unit_id=leader_id, username="monitor")
 
     # The password didn't change
