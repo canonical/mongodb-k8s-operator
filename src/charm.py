@@ -63,7 +63,7 @@ from ops.pebble import (
     ServiceInfo,
 )
 from pymongo.errors import PyMongoError
-from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError, MissingSecretError
@@ -604,20 +604,6 @@ class MongoDBCharm(CharmBase):
     # END: actions
 
     # BEGIN: user management
-
-    @retry(
-        stop=_user_creation_stop_condition,
-        wait=wait_fixed(USER_CREATION_COOLDOWN),
-        reraise=True,
-        before_sleep=_before_sleep_user_creation,
-    )
-    def _initialize_users(self, event: StartEvent) -> None:
-        logger.info("User initialization")
-        self._init_operator_user()
-        self._init_monitor_user()
-        self._init_backup_user()
-        self.client_relations.oversee_users(None, event)
-
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(5),
@@ -788,8 +774,23 @@ class MongoDBCharm(CharmBase):
 
                 # Check replica set status before creating users
                 while not direct_mongo.client.admin.command("hello")["isWritablePrimary"]:
+                    logger.info("Mongo replica set is not ready yet. Sleeping for %d", REPLICA_SET_INIT_CHECK_TIMEOUT)
                     time.sleep(REPLICA_SET_INIT_CHECK_TIMEOUT)
-                self._initialize_users(event)
+
+                for attempt in Retrying(
+                    stop=_user_creation_stop_condition,
+                    wait=wait_fixed(USER_CREATION_COOLDOWN),
+                    reraise=True,
+                    before_sleep=_before_sleep_user_creation,
+                ):
+                    with attempt:
+                        logger.info("User initialization. Attempt #%d", attempt.retry_state.attempt_number)
+                        self._init_operator_user()
+                        self._init_backup_user()
+                        self._init_monitor_user()
+                        logger.info("Reconcile relations")
+                        self.client_relations.oversee_users(None, event)
+                        self.users_initialized = True
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
@@ -853,7 +854,12 @@ class MongoDBCharm(CharmBase):
         else:
             content = secret.get_content()
             content.update({key: value})
-            secret.set_content(content)
+            try:
+                secret.set_content(content)
+            except Exception as e:
+                logger.exception(e)
+                logger.exception("CONTENT: %s", content)
+                raise e
         return label
 
     def remove_secret(self, scope, key) -> None:
