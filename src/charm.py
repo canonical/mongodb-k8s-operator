@@ -63,7 +63,7 @@ from ops.pebble import (
     ServiceInfo,
 )
 from pymongo.errors import PyMongoError
-from tenacity import Retrying, before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError, MissingSecretError
@@ -79,16 +79,6 @@ Scopes = Config.Relations.Scopes
 USER_CREATING_MAX_ATTEMPTS = 5
 USER_CREATION_COOLDOWN = 30
 REPLICA_SET_INIT_CHECK_TIMEOUT = 10
-
-
-def _before_sleep_user_creation(retry_state) -> None:
-    logger.error(
-        f"Attempt {retry_state.attempt_number} failed. {USER_CREATING_MAX_ATTEMPTS - retry_state.attempt_number} attempts left. Retrying after {USER_CREATION_COOLDOWN} seconds."
-    )
-
-
-def _user_creation_stop_condition(retry_state) -> bool:
-    return retry_state.attempt_number >= USER_CREATION_COOLDOWN
 
 
 class MongoDBCharm(CharmBase):
@@ -285,6 +275,21 @@ class MongoDBCharm(CharmBase):
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
 
+    @property
+    def users_initialized(self) -> bool:
+        """Check if MongoDB users are created."""
+        return "users_initialized" in self.app_peer_data
+
+    @users_initialized.setter
+    def users_initialized(self, value):
+        """Set the users_initialized flag."""
+        if isinstance(value, bool):
+            self.app_peer_data["users_initialized"] = str(value)
+        else:
+            raise ValueError(
+                f"'users_initialized' must be a boolean value. Proivded: {value} is of type {type(value)}"
+            )
+
     # END: properties
 
     # BEGIN: generic helper methods
@@ -401,6 +406,7 @@ class MongoDBCharm(CharmBase):
             return
 
         self._initialise_replica_set(event)
+        self._initialise_users(event)
 
         # mongod is now active
         self.unit.status = ActiveStatus()
@@ -605,6 +611,51 @@ class MongoDBCharm(CharmBase):
 
     # BEGIN: user management
     @retry(
+        stop=stop_after_attempt(USER_CREATING_MAX_ATTEMPTS),
+        wait=wait_fixed(USER_CREATION_COOLDOWN),
+        reraise=True,
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _initialise_users(self, event: StartEvent) -> None:
+        """Create users.
+
+        User creation can only be completed after the replica set has
+        been initialised which requires some time.
+        In race conditions this can lead to failure to initialise users.
+        To prevent these race conditions from breaking the code, retry on failure.
+        """
+        if not self.db_initialised:
+            return
+
+        if self.users_initialized:
+            return
+
+        # only leader should create users
+        if not self.unit.is_leader():
+            return
+
+        logger.info("User initialization")
+        try:
+            self._init_operator_user()
+            self._init_backup_user()
+            self._init_monitor_user()
+            logger.info("Reconcile relations")
+            self.client_relations.oversee_users(None, event)
+            self.users_initialized = True
+        except ExecError as e:
+            logger.error("Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr)
+            event.defer()
+            raise e  # we need to raise to make retry work
+        except PyMongoError as e:
+            logger.error("Deferring on_start since: error=%r", e)
+            event.defer()
+            raise e  # we need to raise to make retry work
+        except AdminUserCreationError as e:
+            logger.error("Deferring on_start: Failed to create operator user.")
+            event.defer()
+            raise e  # we need to raise to make retry work
+
+    @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(5),
         reraise=True,
@@ -771,26 +822,6 @@ class MongoDBCharm(CharmBase):
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
-
-                # Check replica set status before creating users
-                while not direct_mongo.client.admin.command("hello")["isWritablePrimary"]:
-                    logger.info("Mongo replica set is not ready yet. Sleeping for %d", REPLICA_SET_INIT_CHECK_TIMEOUT)
-                    time.sleep(REPLICA_SET_INIT_CHECK_TIMEOUT)
-
-                for attempt in Retrying(
-                    stop=_user_creation_stop_condition,
-                    wait=wait_fixed(USER_CREATION_COOLDOWN),
-                    reraise=True,
-                    before_sleep=_before_sleep_user_creation,
-                ):
-                    with attempt:
-                        logger.info("User initialization. Attempt #%d", attempt.retry_state.attempt_number)
-                        self._init_operator_user()
-                        self._init_backup_user()
-                        self._init_monitor_user()
-                        logger.info("Reconcile relations")
-                        self.client_relations.oversee_users(None, event)
-                        self.users_initialized = True
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
@@ -802,7 +833,7 @@ class MongoDBCharm(CharmBase):
                 event.defer()
                 return
 
-            self.alised = True
+            self.db_initialised = True
 
     def _add_units_from_replica_set(
         self, event, mongo: MongoDBConnection, units_to_add: Set[str]
@@ -854,12 +885,7 @@ class MongoDBCharm(CharmBase):
         else:
             content = secret.get_content()
             content.update({key: value})
-            try:
-                secret.set_content(content)
-            except Exception as e:
-                logger.exception(e)
-                logger.exception("CONTENT: %s", content)
-                raise e
+            secret.set_content(content)
         return label
 
     def remove_secret(self, scope, key) -> None:
