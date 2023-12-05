@@ -4,6 +4,8 @@
 import json
 import logging
 import math
+import subprocess
+import time
 from datetime import datetime
 from pathlib import Path
 from random import choices
@@ -39,6 +41,7 @@ TEST_DOCUMENTS = """[
 SERIES = "jammy"
 
 HELPER_MONGO_VERSION = "6.0.11"
+HELPER_MONGO_POD_NAME = "mongodb-helper"
 
 logger = logging.getLogger(__name__)
 
@@ -135,18 +138,23 @@ async def run_mongo_op(
         mongo_cmd = f"mongosh --quiet --eval '{mongo_op}' {mongo_uri}{suffix}"
 
     logger.info("Running mongo command: %r", mongo_cmd)
+
+    create_pod_if_not_exists(
+        ops_test.model_name, HELPER_MONGO_POD_NAME, "mongo", f"mongo:{HELPER_MONGO_VERSION}"
+    )
+
+    while not is_pod_ready(ops_test.model_name, HELPER_MONGO_POD_NAME):
+        logger.info("Waiting for pod to be ready...")
+        time.sleep(5)
+
     kubectl_cmd = (
         "microk8s",
         "kubectl",
-        "run",
-        "--rm",
+        "exec",
         "-i",
-        "-q",
-        "--restart=Never",
-        "--command",
-        f"--namespace={ops_test.model_name}",
-        "mongo-test",
-        f"--image=mongo:{HELPER_MONGO_VERSION}",
+        "-n",
+        ops_test.model_name,
+        "test",
         "--",
         "sh",
         "-c",
@@ -354,3 +362,60 @@ async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
     _, stdout, _ = await ops_test.juju(*complete_command.split())
     data = json.loads(stdout)
     return data[secret_id]["content"]["Data"]
+
+
+def create_pod_if_not_exists(namespace, pod_name, container_name, image_name):
+    """Create a pod if not already exists."""
+    logger.info("Checking or creating helper mongo pod ...")
+    get_pod_cmd = f"kubectl get pod {pod_name} -n {namespace} -o json"
+    result = subprocess.run(get_pod_cmd, shell=True, capture_output=True, text=True)
+
+    if result.returncode == 0:
+        logger.info(f"pod '{pod_name}' in namespace '{namespace}' already exists.")
+        return
+
+    if "NotFound" in result.stderr:
+        pod_manifest = {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {"name": pod_name, "namespace": namespace},
+            "spec": {
+                "restartPolicy": "Never",
+                "containers": [
+                    {
+                        "name": container_name,
+                        "image": image_name,
+                        "command": ["/bin/bash"],
+                        "stdin": True,
+                        "tty": True,
+                    }
+                ],
+            },
+        }
+
+        pod_manifest_json = json.dumps(pod_manifest)
+
+        create_pod_cmd = f"echo '{pod_manifest_json}' | kubectl apply -f -"
+        create_result = subprocess.run(create_pod_cmd, shell=True, capture_output=True, text=True)
+
+        if create_result.returncode == 0:
+            logger.info(f"pod '{pod_name}' created in namespace '{namespace}'.")
+        else:
+            logger.error(f"Failed to create pod: {create_result.stderr}")
+    else:
+        logger.error(f"Failed to check pod existence: {result.stderr}")
+
+
+def is_pod_ready(namespace, pod_name):
+    """Checks that the pod is ready."""
+    get_pod_cmd = f"kubectl get pod {pod_name} -n {namespace} -o json"
+    result = subprocess.run(get_pod_cmd, shell=True, capture_output=True, text=True)
+    logger.info(f"Checking pod {pod_name} is ready...")
+    if result.returncode != 0:
+        return False
+
+    pod_info = json.loads(result.stdout)
+    for condition in pod_info["status"].get("conditions", []):
+        if condition["type"] == "Ready" and condition["status"] == "True":
+            return True
+    return False
