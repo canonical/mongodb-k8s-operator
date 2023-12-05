@@ -761,7 +761,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm._on_set_password(action_event)
         connect_exporter.assert_called()
 
-    @patch("charm.MongoDBBackups.get_pbm_status")
+    @patch("charm.MongoDBBackups._get_pbm_status")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
@@ -793,7 +793,7 @@ class TestCharm(unittest.TestCase):
         assert "password" in args_pw
         assert args_pw["password"] == pw
 
-    @patch("charm.MongoDBBackups.get_pbm_status")
+    @patch("charm.MongoDBBackups._get_pbm_status")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
@@ -944,7 +944,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBBackups.get_pbm_status")
+    @patch("charm.MongoDBBackups._get_pbm_status")
     def test_set_backup_password_pbm_busy(self, pbm_status, has_backup_service):
         """Tests changes to passwords fail when pbm is restoring/backing up."""
         self.harness.set_leader(True)
