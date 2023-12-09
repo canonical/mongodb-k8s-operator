@@ -64,12 +64,14 @@ async def get_address_of_unit(ops_test: OpsTest, unit_id: int) -> str:
     return status["applications"][APP_NAME]["units"][f"{APP_NAME}/{unit_id}"]["address"]
 
 
-async def get_password(ops_test: OpsTest, unit_id: int, username="operator") -> str:
+async def get_password(ops_test: OpsTest, unit_id: int = None, username="operator") -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
         String with the password stored on the peer relation databag.
     """
+    if not unit_id:
+        unit_id = 0
     action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
         "get-password", **{"username": username}
     )
@@ -106,14 +108,22 @@ async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
     return mongo_cmd
 
 
-async def mongodb_uri(ops_test: OpsTest, unit_ids: List[int] = None) -> str:
+async def mongodb_uri(ops_test: OpsTest, unit_ids: List[int] = None, leader_unit_id=0) -> str:
     if unit_ids is None:
         unit_ids = UNIT_IDS
-
-    addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in unit_ids]
+    addresses = []
+    for unit_id in unit_ids:
+        logger.info("Getting unit %s address...", unit_id)
+        start = time.time()
+        address = await get_address_of_unit(ops_test, unit_id)
+        logger.info("Done in %s", time.time() - start) 
+        addresses.append(address)
+    #addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in unit_ids]
     hosts = ",".join(addresses)
-    password = await get_password(ops_test, unit_id=0)
-
+    logger.info("Getting cluster password...")
+    start = time.time()
+    password = await get_password(ops_test, unit_id=leader_unit_id)
+    logger.info("Done in %s", time.time() - start)
     return f"mongodb://operator:{password}@{hosts}/admin"
 
 

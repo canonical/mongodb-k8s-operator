@@ -363,9 +363,17 @@ async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
 
 async def get_direct_mongo_client(ops_test: OpsTest, unit: str) -> MongoClient:
     """Returns a direct mongodb client to specific unit."""
-    return MongoClient(
-        await mongodb_uri(ops_test, [int(unit.split("/")[1])]), directConnection=True
-    )
+    logger.info("get_direct_mongo_client: getting a leader unit...")
+    start = time.time()
+    leader_unit = await find_unit(ops_test, leader=True)
+    logger.info("Done in %s", time.time() - start, leader_unit.unit_id)
+    
+    logger.info("get_direct_mongo_client getting url for connection ...")
+    start = time.time()
+    url = await mongodb_uri(ops_test, [int(unit.split("/")[1])], leader_unit_id=leader_unit.unit_id)
+    logger.info("Done in %s. The url is %s", (time.time() - start), url)
+    
+    return MongoClient(url, directConnection=True)
 
 
 async def get_mongo_client(ops_test: OpsTest, excluded: List[str] = []) -> MongoClient:
@@ -657,8 +665,11 @@ async def wait_until_unit_in_status(
     ops_test: OpsTest, unit_to_check: Unit, online_unit: Unit, status: str
 ) -> None:
     """Waits until a replica is in the provided status as reported by MongoDB or timeout occurs."""
+    logger.info("Requesting replica set status ...")
+    start = time.time()
     with await get_direct_mongo_client(ops_test, online_unit.name) as client:
         data = client.admin.command("replSetGetStatus")
+    logger.info("Done in  %s. Status %s", time.time() - start, data)
 
     for member in data["members"]:
         if unit_to_check.name == host_to_unit(member["name"].split(":")[0]):
