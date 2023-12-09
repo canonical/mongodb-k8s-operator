@@ -366,11 +366,12 @@ async def get_direct_mongo_client(ops_test: OpsTest, unit: str) -> MongoClient:
     logger.info("get_direct_mongo_client: getting a leader unit...")
     start = time.time()
     leader_unit = await find_unit(ops_test, leader=True)
-    logger.info("Done in %s", time.time() - start, leader_unit.unit_id)
+    leader_unit_id = leader_unit.entity_id.split("/")[-1].strip()
+    logger.info("Done in %s, %s", time.time() - start, leader_unit_id)
     
     logger.info("get_direct_mongo_client getting url for connection ...")
     start = time.time()
-    url = await mongodb_uri(ops_test, [int(unit.split("/")[1])], leader_unit_id=leader_unit.unit_id)
+    url = await mongodb_uri(ops_test, [int(unit.split("/")[1])], leader_unit_id=leader_unit_id)
     logger.info("Done in %s. The url is %s", (time.time() - start), url)
     
     return MongoClient(url, directConnection=True)

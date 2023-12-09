@@ -72,10 +72,17 @@ async def get_password(ops_test: OpsTest, unit_id: int = None, username="operato
     """
     if not unit_id:
         unit_id = 0
+    result = subprocess.run(
+        ["juju", "run", f"{APP_NAME}/{unit_id}", "get-password", f"username={username}"], 
+        capture_output=True, check=True)
+    if result.returncode != 0 :
+        raise Exception
+    logger.error("Getting password with subprocess result %s", result.stdout)
     action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
         "get-password", **{"username": username}
     )
     action = await action.wait()
+   
     return action.results["password"]
 
 
