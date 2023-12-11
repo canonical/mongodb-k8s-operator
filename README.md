@@ -1,62 +1,66 @@
-# Charmed MongoDB K8s Operator
+# Charmed MongoDB K8s Documentation
 
 ## Overview
-
 [MongoDB](https://github.com/mongodb/mongo) is a popular NoSQL database application. It stores its data with JSON-like documents creating a flexible user experience with easy-to-use data aggregation for data analytics. In addition, it is a distributed database, so vertical and horizontal scaling come naturally.
 
-Applications like MongoDB must be managed and operated in the production environment. This means that MongoDB application administrators and analysts who run workloads in various infrastructures should be able to automate tasks for repeatable operational work. Technologies such as software operators encapsulate the knowledge, wisdom and expertise of a real-world operations team and codify it into a computer program that helps to operate complex server applications like MongoDB and other databases.
+Applications like MongoDB must be managed and operated in production environments. This means that MongoDB application administrators and analysts who run workloads in various infrastructures should be able to automate tasks for repeatable operational work. Technologies such as software operators encapsulate the knowledge, wisdom and expertise of a real-world operations team and codify it into a computer program that helps to operate complex server applications like MongoDB and other databases. Canonical has developed an open-source operator called Charmed MongoDB for this purpose.
 
-Canonical has developed an open-source operator called  Charmed MongoDB, making it easier to operate MongoDB. The Charmed MongoDB Virtual Machine (VM) operator deploys and operates MongoDB on physical,  Virtual Machines (VM) and other wide range of cloud and cloud-like environments, including AWS, Azure, OpenStack and VMWare.
+[The Charmed MongoDB Kubernetes (K8s)](https://charmhub.io/mongodb-k8s?channel=6/edge) operator deploys and operates MongoDB in multi-cloud environments using Kubernetes. Software operators are principally associated with Kubernetes, an open-source container orchestration system that facilitates the deployment and operation of complex server applications. As a concept, however, they can be applied equally to application and infrastructure operations on platforms beyond Kubernetes. They are especially popular on Kubernetes because they can help to reduce the complexity of operations on this powerful but complex platform.
 
-Charmed MongoDB (VM Operator) is an enhanced, open source and fully-compatible drop-in replacement for the MongoDB Community Edition with advanced MongoDB enterprise features. It simplifies the deployment, scaling, design and management of MongoDB in production in a reliable way. In addition, you can use the operator to manage your MongoDB clusters with automation capabilities. It also offers replication, TLS, password rotation, easy-to-use application integration, backup, restore, and monitoring.  
+Charmed MongoDB (K8s Operator) is an enhanced, open source and fully-compatible drop-in replacement for the MongoDB Community Edition with advanced MongoDB enterprise features. It simplifies the deployment, scaling, design and management of MongoDB in production in a reliable way. In addition, you can use the operator to manage your MongoDB clusters with automation capabilities. It also offers replication, TLS, password rotation, easy-to-use application integration, backup, restore, and monitoring.
 
-Aside from a VM operator, Canonical also developed another operator called [Charmed MongoDB (K8s operator)](https://charmhub.io/mongodb-k8s?channel=5/edge) that operates in the Kubernetes environment, and you can see the documentation [here](https://charmhub.io/mongodb-k8s?channel=5/edge).
-
+Aside from a Kubernetes operator, Canonical developed another operator called [Charmed MongoDB (VM operator)](https://charmhub.io/mongodb?channel=6/edge) that operates on physical, Virtual Machines (VM) and a wide range of cloud and cloud-like environments, including AWS, Azure, OpenStack and VMWare.
 
 ## Software and releases
 
-Charmed MongoDB (VM Operator) is an enhanced, open source and fully-compatible drop-in replacement for the MongoDB Community Edition with advanced MongoDB enterprise features. This operator uses the [Charmed MongoDB snap package](https://snapcraft.io/charmed-mongodb), which offers more features than the MongoDB Community version, such as backup and restores, monitoring and security features.
+Charmed MongoDB (K8s Operator) uses the [Charmed MongoDB Rock](https://github.com/canonical/charmed-mongodb-rock) which is reliant on the [Charmed MongoDB snap package](https://snapcraft.io/charmed-mongodb), which offers more features than the MongoDB Community version, such as backup and restores, monitoring and security features.
 
-As of now we offer two operators [Charmed MongoDB K8s 5](https://charmhub.io/mongodb-k8s?channel=5/edge) and [Charmed MongoDB K8s 6](https://charmhub.io/mongodb-k8s?channel=6/edge).
+To see the Charmed MongoDB features and releases, visit our [Github Releases](https://github.com/canonical/mongodb-k8s-operator/releases) and [ Release Notes](https://discourse.charmhub.io/t/release-notes-charmed-mongodb-6-k8s-operator/12511) page.
 
-To see the Charmed MongoDB features and releases, visit our [Release Notes page](https://github.com/canonical/mongodb-k8s-operator/releases). Currently both charms support:
-- Replication
-- Password Rotation
-- User management
-- TLS
-- Backup & Restore
+## Charm version, environment and OS
 
-## Charm channel, environment and OS
+A charm version is a combination of both the application version and / (slash) the channel, e.g. `6/edge` and `5/edge`. 
 
-A charm version is a combination of both the application version and / (slash) the channel, e.g. x/stable, x/candidate, x/edge. The channels are ordered from the most stable to the least stable, candidate, and edge. More risky channels like edge are always implicitly available. So, if the candidate is listed, you can pull the candidate and edge. When stable is listed, all three are available. 
+[5/edge Charmhub](https://charmhub.io/mongodb-k8s?channel=5/edge) - [5/edge GitHub](https://github.com/canonical/mongodb-k8s-operator/tree/5/edge)
+[6/edge Charmhub](https://charmhub.io/mongodb-k8s?channel=6/edge) - [6/edge GitHub](https://github.com/canonical/mongodb-k8s-operator/tree/6/edge)
 
 You can deploy the charm a stand-alone machine or cloud and cloud-like environments, including AWS, Azure, OpenStack and VMWare.
 
-The upper portion of this page describes the Operating System (OS) where the charm can run e.g. 5/stable is compatible and should run in a machine with Ubuntu 22.04 OS.
+The upper portion of this page describes the Operating System (OS) where the charm can run. For example, 6/stable is compatible and should run on a machine with Ubuntu 22.04 OS.
 
+#### Supported architectures
 
-## Security, Bugs and feature request
+*The charm should be running on architectures that support AVX* 
 
-If you find a bug in this snap or want to request a specific feature, here are the useful links:
+To check your architecture please execute 
+```bash
+grep avx /proc/cpuinfo
+```
 
-* Raise issues or feature requests in [Github](https://github.com/canonical/mongodb-operator/issues)
+or  
+```bash 
+grep avx2 /proc/cpuinfo
+```
 
-* Security issues in the Charmed MongoDB Operator can be reported through [LaunchPad](https://wiki.ubuntu.com/DebuggingSecurity#How%20to%20File). Please do not file GitHub issues about security issues.
+#### Supported Juju versions
 
-* Meet the community and chat with us if there are issues and feature requests in our [Mattermost Channel](https://chat.charmhub.io/charmhub/channels/data-platform)
+At the current moment the MongoDB K8S charm supports and Juju 3.x
 
-## Contributing
+#### Security, Bugs and feature request
 
-Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this charm following best practice guidelines, and [CONTRIBUTING.md](https://github.com/canonical/mongodb-operator/blob/main/CONTRIBUTING.md) for developer guidance.
+If you find a bug in this operator or want to request a specific feature, here are the useful links:
 
-## License
+* Raise the issue or feature request in the [Canonical Github](https://github.com/canonical/mongodb-k8s-operator/issues)
+* Meet the community and chat with us if there are issues and feature requests in our [Mattermost Channel](https://chat.charmhub.io/charmhub/channels/data-platform).
 
-The Charmed MongoDB Operator is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](https://github.com/canonical/mongodb-operator/blob/main/LICENSE) for more information.
+#### Contributing
 
-The Charmed MongoDB Operator is free software, distributed under the Apache Software License, version 2.0. It [installs/operates/depends on] [MongoDB Community Version](https://github.com/mongodb/mongo), which is licensed under the Server Side Public License (SSPL)
+Please see the[ Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this charm following best practice guidelines, and[ CONTRIBUTING.md](https://github.com/canonical/mongodb-k8s-operator/blob/main/CONTRIBUTING.md) for developer guidance.
 
-See [LICENSE](https://github.com/canonical/mongodb-operator/blob/main/LICENSE) for more information.
+#### Licence statement
 
-## Trademark notice
-MongoDB' is a trademark or registered trademark of MongoDB Inc. Other trademarks are property of their respective owners.
+The Charmed MongoDB Operator is free software, distributed under the [Apache Software License, version 2.0](https://github.com/canonical/mongodb-operator/blob/main/LICENSE). It installs and operates Percona Server for MongoDB, which is licensed under the Server Side Public License (SSPL) version 1.
 
+#### Trademark Notice
+
+“MongoDB” is a trademark or registered trademark of MongoDB, Inc. Other trademarks are property of their respective owners. Charmed MongoDB is not sponsored, endorsed, or affiliated with MongoDB, Inc.
