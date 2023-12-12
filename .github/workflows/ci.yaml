@@ -114,16 +114,8 @@ jobs:
         with:
           limit-access-to-actor: true
 
-      # - name: Run integration tests
-      #   # set a predictable model name so it can be consumed by charm-logdump-action
-      #   run: sg snap_microk8s -c "tox run -e ${{ matrix.tox-environments }} -- --model testing -m '${{ steps.select-tests.outputs.mark_expression }}'"
-      #   env:
-      #     CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
-
-
-      # - name: Dump logs
-      #   uses: canonical/charm-logdump-action@main
-      #   if: failure()
-      #   with:
-      #     app: mongodb-k8s
-      #     model: testing
+      - name: Run integration tests
+        # set a predictable model name so it can be consumed by charm-logdump-action
+        run: sg snap_microk8s -c "tox run -e ${{ matrix.tox-environments }} -- --model testing -m '${{ steps.select-tests.outputs.mark_expression }}'"
+        env:
+          CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}

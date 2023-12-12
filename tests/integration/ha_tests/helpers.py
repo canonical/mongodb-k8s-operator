@@ -319,10 +319,15 @@ async def mongod_ready(ops_test: OpsTest, unit: int) -> bool:
 
 
 async def get_replica_set_primary(
-    ops_test: OpsTest, excluded: List[str] = [], application_name=APP_NAME
+    ops_test: OpsTest,
+    excluded: List[str] = [],
+    application_name=APP_NAME,
+    use_subprocess_to_get_password=False,
 ) -> Optional[Unit]:
     """Returns the primary unit name based no the replica set host."""
-    with await get_mongo_client(ops_test, excluded) as client:
+    with await get_mongo_client(
+        ops_test, excluded, use_subprocess_to_get_password=use_subprocess_to_get_password
+    ) as client:
         data = client.admin.command("replSetGetStatus")
     unit_name = host_to_unit(primary_host(data))
 
@@ -347,44 +352,50 @@ async def count_primaries(ops_test: OpsTest) -> int:
     return len([member for member in data["members"] if member["stateStr"] == "PRIMARY"])
 
 
-async def fetch_replica_set_members(ops_test: OpsTest) -> List[str]:
+async def fetch_replica_set_members(
+    ops_test: OpsTest, use_subprocess_to_get_password=False
+) -> List[str]:
     """Fetches the hosts listed as replica set members in the MongoDB replica set configuration.
 
     Args:
         ops_test: reference to deployment.
+        use_subprocess_to_get_password: whether to use subprocess to get password.
     """
     # connect to replica set uri
     # get ips from MongoDB replica set configuration
-    with await get_mongo_client(ops_test) as client:
+    with await get_mongo_client(
+        ops_test, use_subprocess_to_get_password=use_subprocess_to_get_password
+    ) as client:
         data = client.admin.command("replSetGetConfig")
 
     return [member["host"].split(":")[0] for member in data["config"]["members"]]
 
 
-async def get_direct_mongo_client(ops_test: OpsTest, unit: str) -> MongoClient:
+async def get_direct_mongo_client(
+    ops_test: OpsTest, unit: str, use_subprocess_to_get_password=False
+) -> MongoClient:
     """Returns a direct mongodb client to specific unit."""
-    logger.info("get_direct_mongo_client: getting a leader unit...")
-    start = time.time()
-    leader_unit = await find_unit(ops_test, leader=True)
-    leader_unit_id = leader_unit.entity_id.split("/")[-1].strip()
-    logger.info("Done in %s, %s", time.time() - start, leader_unit_id)
-    
-    logger.info("get_direct_mongo_client getting url for connection ...")
-    start = time.time()
-    url = await mongodb_uri(ops_test, [int(unit.split("/")[1])], leader_unit_id=leader_unit_id)
-    logger.info("Done in %s. The url is %s", (time.time() - start), url)
-    
+    url = await mongodb_uri(
+        ops_test,
+        [int(unit.split("/")[1])],
+        use_subprocess_to_get_password=use_subprocess_to_get_password,
+    )
     return MongoClient(url, directConnection=True)
 
 
-async def get_mongo_client(ops_test: OpsTest, excluded: List[str] = []) -> MongoClient:
+async def get_mongo_client(
+    ops_test: OpsTest, excluded: List[str] = [], use_subprocess_to_get_password=False
+) -> MongoClient:
     """Returns a direct mongodb client potentially passing over some of the units."""
     mongodb_name = await get_application_name(ops_test, APP_NAME)
     for unit in ops_test.model.applications[mongodb_name].units:
         if unit.name not in excluded and unit.workload_status == "active":
-            return MongoClient(
-                await mongodb_uri(ops_test, [int(unit.name.split("/")[1])]), directConnection=True
+            url = await mongodb_uri(
+                ops_test,
+                [int(unit.name.split("/")[1])],
+                use_subprocess_to_get_password=use_subprocess_to_get_password,
             )
+            return MongoClient(url, directConnection=True)
     assert False, "No fitting unit could be found"
 
 
@@ -666,11 +677,10 @@ async def wait_until_unit_in_status(
     ops_test: OpsTest, unit_to_check: Unit, online_unit: Unit, status: str
 ) -> None:
     """Waits until a replica is in the provided status as reported by MongoDB or timeout occurs."""
-    logger.info("Requesting replica set status ...")
-    start = time.time()
-    with await get_direct_mongo_client(ops_test, online_unit.name) as client:
+    with await get_direct_mongo_client(
+        ops_test, online_unit.name, use_subprocess_to_get_password=True
+    ) as client:
         data = client.admin.command("replSetGetStatus")
-    logger.info("Done in  %s. Status %s", time.time() - start, data)
 
     for member in data["members"]:
         if unit_to_check.name == host_to_unit(member["name"].split(":")[0]):

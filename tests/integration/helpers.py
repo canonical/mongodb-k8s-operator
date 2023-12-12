@@ -64,25 +64,16 @@ async def get_address_of_unit(ops_test: OpsTest, unit_id: int) -> str:
     return status["applications"][APP_NAME]["units"][f"{APP_NAME}/{unit_id}"]["address"]
 
 
-async def get_password(ops_test: OpsTest, unit_id: int = None, username="operator") -> str:
+async def get_password(ops_test: OpsTest, unit_id: int, username="operator") -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
         String with the password stored on the peer relation databag.
     """
-    if not unit_id:
-        unit_id = 0
-    result = subprocess.run(
-        ["juju", "run", f"{APP_NAME}/{unit_id}", "get-password", f"username={username}"], 
-        capture_output=True, check=True)
-    if result.returncode != 0 :
-        raise Exception
-    logger.error("Getting password with subprocess result %s", result.stdout)
     action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
         "get-password", **{"username": username}
     )
     action = await action.wait()
-   
     return action.results["password"]
 
 
@@ -106,7 +97,7 @@ async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
         f"ssh --container mongod {unit_name} ls /usr/bin/mongosh"
     )
     if ls_code != 0:
-        logger.info(f"mongosh not found. Reason: '{stderr}'. Switch ")
+        logger.info(f"mongosh not found. Reason: '{stderr}'. Switch to mongo")
     # mongo_cmd = "/usr/bin/mongo" if ls_code != 0 else "/usr/bin/mongosh"
     # TODO debug
     # "ERROR unrecognized command: juju ssh --container mongod mongodb-k8s/0 ls /usr/bin/mongosh"
@@ -115,22 +106,17 @@ async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
     return mongo_cmd
 
 
-async def mongodb_uri(ops_test: OpsTest, unit_ids: List[int] = None, leader_unit_id=0) -> str:
+async def mongodb_uri(
+    ops_test: OpsTest, unit_ids: List[int] = None, use_subprocess_to_get_password=False
+) -> str:
     if unit_ids is None:
         unit_ids = UNIT_IDS
-    addresses = []
-    for unit_id in unit_ids:
-        logger.info("Getting unit %s address...", unit_id)
-        start = time.time()
-        address = await get_address_of_unit(ops_test, unit_id)
-        logger.info("Done in %s", time.time() - start) 
-        addresses.append(address)
-    #addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in unit_ids]
+    addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in unit_ids]
     hosts = ",".join(addresses)
-    logger.info("Getting cluster password...")
-    start = time.time()
-    password = await get_password(ops_test, unit_id=leader_unit_id)
-    logger.info("Done in %s", time.time() - start)
+    if use_subprocess_to_get_password:
+        password = get_password_using_subprocess(ops_test)
+    else:
+        password = await get_password(ops_test, 0)
     return f"mongodb://operator:{password}@{hosts}/admin"
 
 
@@ -436,3 +422,36 @@ def is_pod_ready(namespace, pod_name):
         if condition["type"] == "Ready" and condition["status"] == "True":
             return True
     return False
+
+
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_fixed(30),
+    reraise=True,
+)
+def get_password_using_subprocess(ops_test: OpsTest, username="operator") -> str:
+    """Use the charm action to retrieve the password from provided unit.
+
+    Returns:
+        String with the password stored on the peer relation databag.
+    """
+    cmd = ["juju", "switch", ops_test.model_name]
+    result = subprocess.run(cmd, capture_output=True)
+    if result.returncode != 0:
+        logger.error(
+            "Failed to get password. Can't switch to juju model: '%s'. Error '%s'",
+            ops_test.model_name,
+            result.stderr,
+        )
+        raise Exception(f"Failed to get password: {result.stderr}")
+    cmd = ["juju", "run", f"{APP_NAME}/leader", "get-password", f"username={username}"]
+    result = subprocess.run(cmd, capture_output=True)
+    if result.returncode != 0:
+        logger.error("get-password command returned non 0 exit code: %s", result.stderr)
+        raise Exception(f"get-password command returned non 0 exit code: {result.stderr}")
+    try:
+        password = result.stdout.decode("utf-8").split("password:")[-1].strip()
+    except Exception as e:
+        logger.error("Failed to get password: %s", e)
+        raise Exception(f"Failed to get password: {e}")
+    return password
