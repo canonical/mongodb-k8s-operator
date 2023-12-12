@@ -97,7 +97,7 @@ async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
         f"ssh --container mongod {unit_name} ls /usr/bin/mongosh"
     )
     if ls_code != 0:
-        logger.info(f"mongosh not found. Reason: '{stderr}'. Switch to mongo")
+        logger.info(f"mongosh not found. Reason: '{stderr}'. Switch to /usr/bin/mongo")
     # mongo_cmd = "/usr/bin/mongo" if ls_code != 0 else "/usr/bin/mongosh"
     # TODO debug
     # "ERROR unrecognized command: juju ssh --container mongod mongodb-k8s/0 ls /usr/bin/mongosh"
