@@ -581,9 +581,9 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
 
     # Remove networkchaos policy isolating instance from cluster
     remove_instance_isolation(ops_test)
-    
+
     time.sleep(60)
-    
+
     await wait_until_unit_in_status(ops_test, primary, active_unit, "SECONDARY")
 
     # verify presence of primary, replica set member configuration, and number of primaries
