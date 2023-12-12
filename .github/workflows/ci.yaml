@@ -113,3 +113,9 @@ jobs:
         run: sg snap_microk8s -c "tox run -e ${{ matrix.tox-environments }} -- --model testing -m '${{ steps.select-tests.outputs.mark_expression }}'"
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
+      - name: Dump logs
+        uses: canonical/charm-logdump-action@main
+        if: failure()
+        with:
+          app: mongodb-k8s
+          model: testing
