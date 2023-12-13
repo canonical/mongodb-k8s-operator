@@ -416,7 +416,7 @@ class MongoDBCharm(CharmBase):
         try:
             self._initialise_users(event)
         except RetryError:
-            logger.error("Failed to initialise users. Deffering start event.")
+            logger.error("Failed to initialise users. Deferring start event.")
             event.defer()
             return
 
