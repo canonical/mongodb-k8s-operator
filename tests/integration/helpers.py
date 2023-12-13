@@ -157,7 +157,7 @@ async def run_mongo_op(
         "-i",
         "-n",
         ops_test.model_name,
-        "test",
+        HELPER_MONGO_POD_NAME,
         "--",
         "sh",
         "-c",
