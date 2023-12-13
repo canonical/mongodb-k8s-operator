@@ -113,6 +113,13 @@ jobs:
         run: sg snap_microk8s -c "tox run -e ${{ matrix.tox-environments }} -- --model testing -m '${{ steps.select-tests.outputs.mark_expression }}'"
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
+      
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
+        if: failure()
+
       - name: Dump logs
         uses: canonical/charm-logdump-action@main
         if: failure()
