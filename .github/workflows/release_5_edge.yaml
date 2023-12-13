@@ -30,7 +30,7 @@ jobs:
 
    build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v6
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v8
     with:
       charmcraft-snap-channel: "latest/edge"
 
@@ -39,7 +39,7 @@ jobs:
       needs:
         - ci-tests
         - build
-      uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v6
+      uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v8
       with:
         channel: 5/edge
         artifact-name: ${{ needs.build.outputs.artifact-name }}
