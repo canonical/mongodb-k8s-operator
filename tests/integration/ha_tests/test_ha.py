@@ -559,28 +559,36 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
 
     # Wait until Mongodb actually detects isolated instance
     logger.info(f"Waiting until Mongodb detects primary instance {primary.name} is not reachable")
+
     await wait_until_unit_in_status(ops_test, primary, active_unit, "(not reachable/healthy)")
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
     logger.info("Validating writes are continuing to DB")
-    with await get_mongo_client(ops_test, excluded=[primary.name]) as client:
+    with await get_mongo_client(
+        ops_test, excluded=[primary.name], use_subprocess_to_get_password=True
+    ) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
     assert more_writes > writes, "writes not continuing to DB"
 
     # verify that a new primary got elected, old primary is still cut off
-    new_primary = await get_replica_set_primary(ops_test, excluded=[primary.name])
+    new_primary = await get_replica_set_primary(
+        ops_test, excluded=[primary.name], use_subprocess_to_get_password=True
+    )
     assert new_primary.name != primary.name
 
     # Remove networkchaos policy isolating instance from cluster
     remove_instance_isolation(ops_test)
 
+    # we need to give juju some time to realize that the instance is back online
+    time.sleep(60)
+
     await wait_until_unit_in_status(ops_test, primary, active_unit, "SECONDARY")
 
     # verify presence of primary, replica set member configuration, and number of primaries
-    member_hosts = await fetch_replica_set_members(ops_test)
+    member_hosts = await fetch_replica_set_members(ops_test, use_subprocess_to_get_password=True)
     assert set(member_hosts) == set(hostnames)
     assert (
         await count_primaries(ops_test) == 1

@@ -46,9 +46,9 @@ jobs:
       matrix:
         charms: [".", "tests/integration/ha_tests/application_charm", "tests/integration/relation_tests/application-charm"]
     name: Build ${{matrix.charms}} charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v5
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v8
     with:
-      charmcraft-snap-channel: "latest/edge"
+      charmcraft-snap-revision: 1349
       path-to-charm-directory: ${{matrix.charms}}
 
   integration-test:
@@ -113,6 +113,7 @@ jobs:
         run: sg snap_microk8s -c "tox run -e ${{ matrix.tox-environments }} -- --model testing -m '${{ steps.select-tests.outputs.mark_expression }}'"
         env:
           CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
+
       - name: Dump logs
         uses: canonical/charm-logdump-action@main
         if: failure()
