@@ -63,7 +63,7 @@ from ops.pebble import (
     ServiceInfo,
 )
 from pymongo.errors import PyMongoError
-from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import RetryError, before_log, retry, stop_after_attempt, wait_fixed
 
 from config import Config
 from exceptions import AdminUserCreationError, MissingSecretError
@@ -75,6 +75,10 @@ UNIT_REMOVAL_TIMEOUT = 1000
 APP_SCOPE = Config.Relations.APP_SCOPE
 UNIT_SCOPE = Config.Relations.UNIT_SCOPE
 Scopes = Config.Relations.Scopes
+
+USER_CREATING_MAX_ATTEMPTS = 5
+USER_CREATION_COOLDOWN = 30
+REPLICA_SET_INIT_CHECK_TIMEOUT = 10
 
 
 class MongoDBCharm(CharmBase):
@@ -402,7 +406,12 @@ class MongoDBCharm(CharmBase):
             return
 
         self._initialise_replica_set(event)
-        self._initialise_users(event)
+        try:
+            self._initialise_users(event)
+        except RetryError:
+            logger.error("Failed to initialise users. Deferring start event.")
+            event.defer()
+            return
 
         # mongod is now active
         self.unit.status = ActiveStatus()
@@ -607,9 +616,8 @@ class MongoDBCharm(CharmBase):
 
     # BEGIN: user management
     @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(5),
-        reraise=True,
+        stop=stop_after_attempt(USER_CREATING_MAX_ATTEMPTS),
+        wait=wait_fixed(USER_CREATION_COOLDOWN),
         before=before_log(logger, logging.DEBUG),
     )
     def _initialise_users(self, event: StartEvent) -> None:
@@ -631,7 +639,6 @@ class MongoDBCharm(CharmBase):
             return
 
         logger.info("User initialization")
-
         try:
             self._init_operator_user()
             self._init_backup_user()
@@ -641,12 +648,14 @@ class MongoDBCharm(CharmBase):
             self.users_initialized = True
         except ExecError as e:
             logger.error("Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr)
-            event.defer()
-            return
+            raise  # we need to raise to make retry work
         except PyMongoError as e:
             logger.error("Deferring on_start since: error=%r", e)
+            raise  # we need to raise to make retry work
+        except AdminUserCreationError:
+            logger.error("Deferring on_start: Failed to create operator user.")
             event.defer()
-            return
+            raise  # we need to raise to make retry work
 
     @retry(
         stop=stop_after_attempt(3),

@@ -373,6 +373,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
+    @patch("tenacity.nap.time.sleep", MagicMock())
     def test_start_mongod_error_initalising_user(self, connection, init_user, provider, defer):
         """Tests that failure to initialise users set is properly handled.
 
@@ -401,6 +402,10 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
+    @patch("tenacity.nap.time.sleep", MagicMock())
+    @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
+    @patch("charm.USER_CREATION_COOLDOWN", 1)
+    @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
     def test_start_mongod_error_overseeing_users(self, connection, init_user, provider, defer):
         """Tests failures related to pymongo are properly handled when overseeing users.
 
@@ -594,7 +599,12 @@ class TestCharm(unittest.TestCase):
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongoDBConnection")
-    def test_start_init_operator_user_after_second_call(self, connection, oversee_users, defer):
+    def test_start_init_operator_user_after_second_call(
+        self,
+        connection,
+        oversee_users,
+        defer,
+    ):
         """Tests that the creation of the admin user is only performed once.
 
         Verifies that if the user is already set up, that no attempts to set it up again are
@@ -902,6 +912,10 @@ class TestCharm(unittest.TestCase):
         expected_uri = uri_template.format(password="mongo123")
         self.assertEqual(expected_uri, new_uri)
 
+    @patch("tenacity.nap.time.sleep", MagicMock())
+    @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
+    @patch("charm.USER_CREATION_COOLDOWN", 1)
+    @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBCharm._init_monitor_user")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
@@ -924,6 +938,7 @@ class TestCharm(unittest.TestCase):
         """Tests what backup user was created."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
+        self.harness.charm.app_peer_data["db_initialised"] = "True"
         self.harness.charm.on.start.emit()
         password = self.harness.charm.get_secret("app", "backup-password")
         self.assertIsNotNone(password)  # verify the password is set

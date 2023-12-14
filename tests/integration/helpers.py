@@ -4,6 +4,7 @@
 import json
 import logging
 import math
+import subprocess
 from datetime import datetime
 from pathlib import Path
 from random import choices
@@ -94,14 +95,17 @@ async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
     return mongo_cmd
 
 
-async def mongodb_uri(ops_test: OpsTest, unit_ids: List[int] = None) -> str:
+async def mongodb_uri(
+    ops_test: OpsTest, unit_ids: List[int] = None, use_subprocess_to_get_password=False
+) -> str:
     if unit_ids is None:
         unit_ids = UNIT_IDS
-
     addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in unit_ids]
     hosts = ",".join(addresses)
-    password = await get_password(ops_test, unit_id=0)
-
+    if use_subprocess_to_get_password:
+        password = get_password_using_subprocess(ops_test)
+    else:
+        password = await get_password(ops_test, 0)
     return f"mongodb://operator:{password}@{hosts}/admin"
 
 
@@ -344,3 +348,93 @@ async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
     _, stdout, _ = await ops_test.juju(*complete_command.split())
     data = json.loads(stdout)
     return data[secret_id]["content"]["Data"]
+
+
+def create_pod_if_not_exists(namespace, pod_name, container_name, image_name):
+    """Create a pod if not already exists."""
+    logger.info("Checking or creating helper mongo pod ...")
+    get_pod_cmd = f"kubectl get pod {pod_name} -n {namespace} -o json"
+    result = subprocess.run(get_pod_cmd, shell=True, capture_output=True, text=True)
+
+    if result.returncode == 0:
+        logger.info(f"pod '{pod_name}' in namespace '{namespace}' already exists.")
+        return
+
+    if "NotFound" in result.stderr:
+        pod_manifest = {
+            "apiVersion": "v1",
+            "kind": "Pod",
+            "metadata": {"name": pod_name, "namespace": namespace},
+            "spec": {
+                "restartPolicy": "Never",
+                "containers": [
+                    {
+                        "name": container_name,
+                        "image": image_name,
+                        "command": ["/bin/bash"],
+                        "stdin": True,
+                        "tty": True,
+                    }
+                ],
+            },
+        }
+
+        pod_manifest_json = json.dumps(pod_manifest)
+
+        create_pod_cmd = f"echo '{pod_manifest_json}' | kubectl apply -f -"
+        create_result = subprocess.run(create_pod_cmd, shell=True, capture_output=True, text=True)
+
+        if create_result.returncode == 0:
+            logger.info(f"pod '{pod_name}' created in namespace '{namespace}'.")
+        else:
+            logger.error(f"Failed to create pod: {create_result.stderr}")
+    else:
+        logger.error(f"Failed to check pod existence: {result.stderr}")
+
+
+def is_pod_ready(namespace, pod_name):
+    """Checks that the pod is ready."""
+    get_pod_cmd = f"kubectl get pod {pod_name} -n {namespace} -o json"
+    result = subprocess.run(get_pod_cmd, shell=True, capture_output=True, text=True)
+    logger.info(f"Checking pod {pod_name} is ready...")
+    if result.returncode != 0:
+        return False
+
+    pod_info = json.loads(result.stdout)
+    for condition in pod_info["status"].get("conditions", []):
+        if condition["type"] == "Ready" and condition["status"] == "True":
+            return True
+    return False
+
+
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_fixed(30),
+    reraise=True,
+)
+def get_password_using_subprocess(ops_test: OpsTest, username="operator") -> str:
+    """Use the charm action to retrieve the password from provided unit.
+
+    Returns:
+        String with the password stored on the peer relation databag.
+    """
+    cmd = ["juju", "switch", ops_test.model_name]
+    result = subprocess.run(cmd, capture_output=True)
+    if result.returncode != 0:
+        logger.error(
+            "Failed to get password. Can't switch to juju model: '%s'. Error '%s'",
+            ops_test.model_name,
+            result.stderr,
+        )
+        raise Exception(f"Failed to get password: {result.stderr}")
+    cmd = ["juju", "run", f"{APP_NAME}/leader", "get-password", f"username={username}"]
+    result = subprocess.run(cmd, capture_output=True)
+    if result.returncode != 0:
+        logger.error("get-password command returned non 0 exit code: %s", result.stderr)
+        raise Exception(f"get-password command returned non 0 exit code: {result.stderr}")
+    try:
+        password = result.stdout.decode("utf-8").split("password:")[-1].strip()
+    except Exception as e:
+        logger.error("Failed to get password: %s", e)
+        raise Exception(f"Failed to get password: {e}")
+    return password
