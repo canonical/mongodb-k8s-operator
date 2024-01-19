@@ -46,6 +46,8 @@ containers:
     mounts:
       - storage: mongodb
         location: /var/lib/mongodb
+      - storage: mongodb-logs
+        location: /var/log/mongodb
 resources:
   mongodb-image:
     type: oci-image
@@ -55,4 +57,6 @@ storage:
   mongodb:
     type: filesystem
     location: /var/lib/mongodb
-  
+  mongodb-logs:
+    type: filesystem
+    location: /var/log/mongodb
