@@ -45,7 +45,7 @@ MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
 DATA_DIR = "/var/lib/mongodb"
 CONF_DIR = "/etc/mongod"
-LOG_DIR = "/var/log/mongodb"
+LOG_DIR = "/var/lib/mongodb"
 MONGODB_LOG_FILENAME = "mongodb.log"
 logger = logging.getLogger(__name__)
 
