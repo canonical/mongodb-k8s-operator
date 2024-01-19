@@ -76,8 +76,8 @@ class TestCharm(unittest.TestCase):
                         f"--dbpath={DATA_DIR} "
                         "--auditDestination=file "
                         "--auditFormat=JSON "
-                        "--auditPath=/var/log/mongodb/audit.log "
-                        "--logpath=/var/log/mongodb/mongodb.log --auth "
+                        "--auditPath=/var/lib/mongodb/audit.log "
+                        "--logpath=/var/lib/mongodb/mongodb.log --auth "
                         "--clusterAuthMode=keyFile "
                         f"--keyFile={CONF_DIR}/{KEY_FILE} \n"
                     ),

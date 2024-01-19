@@ -13,7 +13,7 @@ class Config:
     UNIX_USER = "mongodb"
     UNIX_GROUP = "mongodb"
     DATA_DIR = "/var/lib/mongodb"
-    LOG_DIR = "/var/log/mongodb"
+    LOG_DIR = "/var/lib/mongodb"
     CONF_DIR = "/etc/mongod"
     MONGODB_LOG_FILENAME = "mongodb.log"
     LICENSE_PATH = "/licenses/LICENSE"
