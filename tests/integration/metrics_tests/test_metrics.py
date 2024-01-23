@@ -103,7 +103,10 @@ async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
 
     # Remove networkchaos policy isolating instance from cluster - ie resolve network
     ha_helpers.remove_instance_isolation(ops_test)
-
+    
+    # we need to give juju some time to realize that the instance is back online
+    time.sleep(60)
+    
     # Wait for the network to be restored
     await ha_helpers.wait_until_unit_in_status(ops_test, primary, active_unit, "SECONDARY")
 
