@@ -129,7 +129,7 @@ class MongoDBCharm(CharmBase):
         self.grafana_dashboards = GrafanaDashboardProvider(self)
         self.loki_push = LogProxyConsumer(
             self,
-            log_files=Config.LOG_FILES,
+            log_files=Config.get_logs_files_paths(),
             relation_name=Config.Relations.LOGGING,
             container_name=Config.CONTAINER_NAME,
         )

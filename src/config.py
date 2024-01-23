@@ -2,7 +2,7 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-from typing import Literal
+from typing import List, Literal
 
 
 class Config:
@@ -13,9 +13,9 @@ class Config:
     UNIX_USER = "mongodb"
     UNIX_GROUP = "mongodb"
     DATA_DIR = "/var/lib/mongodb"
+    LOG_DIR = "/var/lib/mongodb"
     CONF_DIR = "/etc/mongod"
     MONGODB_LOG_FILENAME = "mongodb.log"
-    LOG_FILES = [f"{DATA_DIR}/{MONGODB_LOG_FILENAME}"]
     LICENSE_PATH = "/licenses/LICENSE"
     CONTAINER_NAME = "mongod"
     SERVICE_NAME = "mongod"
@@ -23,11 +23,18 @@ class Config:
     APP_SCOPE = "app"
     UNIT_SCOPE = "unit"
 
+    # Keep these alphabetically sorted
     class Actions:
         """Actions related config for MongoDB Charm."""
 
         PASSWORD_PARAM_NAME = "password"
         USERNAME_PARAM_NAME = "username"
+
+    class AuditLog:
+        """Audit log related configuration."""
+
+        FORMAT = "JSON"
+        FILE_NAME = "audit.log"
 
     class Backup:
         """Backup related config for MongoDB Charm."""
@@ -95,3 +102,11 @@ class Config:
     def get_license_path(license_name: str) -> str:
         """Return the path to the license file."""
         return f"{Config.LICENSE_PATH}-{license_name}"
+
+    @staticmethod
+    def get_logs_files_paths() -> List[str]:
+        """Returns list of paths to mongodb related log files."""
+        return [
+            f"{Config.LOG_DIR}/{Config.MONGODB_LOG_FILENAME}",
+            f"{Config.LOG_DIR}/{Config.AuditLog.FILE_NAME}",
+        ]
