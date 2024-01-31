@@ -122,7 +122,7 @@
                         "type": "datasource",
                         "uid": "${prometheusds}"
                     },
-                    "expr": "(mongodb_mongod_replset_number_of_members{cluster=~\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",set=~\"$replset\"} or mongodb_mongod_replset_my_state{cluster=~\"$cluster\",juju_application=\"$juju_application\",juju_model=\"$juju_model\",juju_model_uuid=\"$juju_model_uuid\",juju_unit=\"$juju_unit\",set=~\"$replset\"})",
+                    "expr": "mongodb_mongod_replset_number_of_members{juju_application=~\"$juju_application\",juju_model=~\"$juju_model\",juju_model_uuid=~\"$juju_model_uuid\",juju_unit=~\"$juju_unit\"} ",
                     "interval": "5m",
                     "intervalFactor": 1,
                     "legendFormat": "",
@@ -440,7 +440,7 @@
             "dashLength": 10,
             "dashes": false,
             "datasource": {
-                "type": "prometheus",
+                "type": "datasource",
                 "uid": "${prometheusds}"
             },
             "decimals": 2,
@@ -2327,22 +2327,18 @@
             },
             {
                 "current": {
-                    "selected": true,
-                    "text": [
-                        "mod"
-                    ],
-                    "value": [
-                        "mod"
-                    ]
+                    "selected": false,
+                    "text": "default",
+                    "value": "default"
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
                 },
                 "definition": "label_values(up,juju_model)",
                 "hide": 0,
-                "includeAll": true,
+                "includeAll": false,
                 "label": "Juju model",
-                "multi": true,
+                "multi": false,
                 "name": "juju_model",
                 "options": [],
                 "query": {
@@ -2419,7 +2415,6 @@
                     }
                 ],
                 "query": "1s,5s,1m,5m,1h,6h,1d",
-                "queryValue": "",
                 "refresh": 2,
                 "skipUrlSync": false,
                 "type": "interval"
@@ -2516,13 +2511,9 @@
             {
                 "allFormat": "glob",
                 "current": {
-                    "selected": true,
-                    "text": [
-                        "All"
-                    ],
-                    "value": [
-                        "$__all"
-                    ]
+                    "selected": false,
+                    "text": "All",
+                    "value": "$__all"
                 },
                 "datasource": {
                     "uid": "${prometheusds}"
@@ -2801,15 +2792,12 @@
         "hidden": false,
         "now": true,
         "refresh_intervals": [
+            "1s",
             "5s",
-            "10s",
-            "30s",
             "1m",
             "5m",
-            "15m",
-            "30m",
             "1h",
-            "2h",
+            "6h",
             "1d"
         ],
         "time_options": [
