@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+import os
 import time
 from uuid import uuid4
 
@@ -18,8 +19,10 @@ from .helpers import (
     TEST_DOCUMENTS,
     UNIT_IDS,
     check_if_test_documents_stored,
+    check_or_scale_app,
     generate_collection_id,
     get_address_of_unit,
+    get_app_name,
     get_leader_id,
     get_mongo_cmd,
     get_password,
@@ -34,19 +37,28 @@ from .helpers import (
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.skipif(
+    os.environ.get("PYTEST_SKIP_DEPLOY", False),
+    reason="skipping deploy, model expected to be provided.",
+)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest):
     """Build the charm-under-test and deploy it together with related charms.
 
     Assert on the unit status before any relations/configurations take place.
     """
+    app_name = await get_app_name(ops_test)
+    if app_name:
+        return await check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
+
+    app_name = APP_NAME
     # build and deploy charm from local source folder
     charm = await ops_test.build_charm(".")
     resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         charm,
         resources=resources,
-        application_name=APP_NAME,
+        application_name=app_name,
         num_units=len(UNIT_IDS),
         series="jammy",
     )
@@ -55,12 +67,12 @@ async def test_build_and_deploy(ops_test: OpsTest):
     await ops_test.model.set_config({"update-status-hook-interval": "10s"})
 
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
+        apps=[app_name],
         status="active",
         raise_on_blocked=True,
         timeout=1000,
     )
-    assert ops_test.model.applications[APP_NAME].units[0].workload_status == "active"
+    assert ops_test.model.applications[app_name].units[0].workload_status == "active"
 
     # effectively disable the update status from firing
     await ops_test.model.set_config({"update-status-hook-interval": "60m"})
@@ -103,7 +115,8 @@ async def test_application_primary(ops_test: OpsTest):
 
 async def test_monitor_user(ops_test: OpsTest) -> None:
     """Test verifies that the monitor user can perform operations such as 'rs.conf()'."""
-    unit = ops_test.model.applications[APP_NAME].units[0]
+    app_name = await get_app_name(ops_test)
+    unit = ops_test.model.applications[app_name].units[0]
     password = await get_password(ops_test, unit_id=0, username="monitor")
     addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in UNIT_IDS]
     hosts = ",".join(addresses)
@@ -195,12 +208,13 @@ async def test_scale_up(ops_test: OpsTest):
     Verifies that when a new unit is added to the MongoDB application that it is added to the
     MongoDB replica set configuration.
     """
+    app_name = await get_app_name(ops_test)
     # add two units and wait for idle
-    await ops_test.model.applications[APP_NAME].scale(scale_change=2)
+    await ops_test.model.applications[app_name].scale(scale_change=2)
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", timeout=1000, wait_for_exact_units=5
+        apps=[app_name], status="active", timeout=1000, wait_for_exact_units=5
     )
-    num_units = len(ops_test.model.applications[APP_NAME].units)
+    num_units = len(ops_test.model.applications[app_name].units)
     assert num_units == 5
 
     # grab juju hosts
@@ -231,12 +245,13 @@ async def test_scale_down(ops_test: OpsTest):
     1. multiple units can be removed while still maintaining a majority (ie remove a minority)
     2. Replica set hosts are properly updated on unit removal
     """
+    app_name = await get_app_name(ops_test)
     # add two units and wait for idle
-    await ops_test.model.applications[APP_NAME].scale(scale_change=-2)
+    await ops_test.model.applications[app_name].scale(scale_change=-2)
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", timeout=1000, wait_for_exact_units=3
+        apps=[app_name], status="active", timeout=1000, wait_for_exact_units=3
     )
-    num_units = len(ops_test.model.applications[APP_NAME].units)
+    num_units = len(ops_test.model.applications[app_name].units)
     assert num_units == 3
 
     # grab juju hosts
@@ -304,19 +319,20 @@ async def test_replication_data_consistency(ops_test: OpsTest):
     Verifies that after writing data to the primary the data on
     the secondaries match.
     """
+    app_name = await get_app_name(ops_test)
     # generate a collection id
     collection_id = generate_collection_id()
 
     # Create a database and a collection (lazily)
     create_collection = await run_mongo_op(
-        ops_test, f'db.createCollection("{collection_id}")', suffix=f"?replicaSet={APP_NAME}"
+        ops_test, f'db.createCollection("{collection_id}")', suffix=f"?replicaSet={app_name}"
     )
     assert create_collection.succeeded and create_collection.data["ok"] == 1
     # Store a few test documents
     insert_many_docs = await run_mongo_op(
         ops_test,
         f"db.{collection_id}.insertMany({TEST_DOCUMENTS})",
-        suffix=f"?replicaSet={APP_NAME}",
+        suffix=f"?replicaSet={app_name}",
     )
     assert insert_many_docs.succeeded and len(insert_many_docs.data["insertedIds"]) == 2
     # attempt ensuring that the replication happened on all secondaries
@@ -328,7 +344,7 @@ async def test_replication_data_consistency(ops_test: OpsTest):
     set_primary_read_pref = await run_mongo_op(
         ops_test,
         'db.getMongo().setReadPref("primary")',
-        suffix=f"?replicaSet={APP_NAME}",
+        suffix=f"?replicaSet={app_name}",
         expecting_output=False,
     )
     assert set_primary_read_pref.succeeded
@@ -338,7 +354,7 @@ async def test_replication_data_consistency(ops_test: OpsTest):
     set_secondary_read_pref = await run_mongo_op(
         ops_test,
         'db.getMongo().setReadPref("secondary")',
-        suffix=f"?replicaSet={APP_NAME}",
+        suffix=f"?replicaSet={app_name}",
         expecting_output=False,
     )
     assert set_secondary_read_pref.succeeded
