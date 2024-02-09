@@ -455,3 +455,39 @@ def get_password_using_subprocess(ops_test: OpsTest, username="operator") -> str
         logger.error("Failed to get password: %s", e)
         raise Exception(f"Failed to get password: {e}")
     return password
+
+
+async def get_app_name(ops_test: OpsTest, test_deployments: List[str] = []) -> str:
+    """Returns the name of the cluster running MongoDB.
+
+    This is important since not all deployments of the MongoDB charm have the application name
+    "mongodb".
+
+    Note: if multiple clusters are running MongoDB this will return the one first found.
+    """
+    status = await ops_test.model.get_status()
+    for app in ops_test.model.applications:
+        # note that format of the charm field is not exactly "mongodb" but instead takes the form
+        # of `local:focal/mongodb-6`
+        if "mongodb" in status["applications"][app]["charm"]:
+            logger.debug("Found mongodb app named '%s'", app)
+
+            if app in test_deployments:
+                logger.debug("mongodb app named '%s', was deployed by the test, not by user", app)
+                continue
+
+            return app
+
+    return None
+
+
+async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_units: int) -> None:
+    """A helper function that scales existing cluster if necessary."""
+    # check if we need to scale
+    current_units = len(ops_test.model.applications[user_app_name].units)
+
+    count = required_units - current_units
+    if required_units == current_units:
+        return
+    count = required_units - current_units
+    await ops_test.model.applications[user_app_name].scale(scale_change=count)
