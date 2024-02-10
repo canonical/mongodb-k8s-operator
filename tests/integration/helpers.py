@@ -4,6 +4,7 @@
 import json
 import logging
 import math
+import re
 import subprocess
 import time
 from datetime import datetime
@@ -129,7 +130,7 @@ async def run_mongo_op(
     suffix: str = "",
     expecting_output: bool = True,
     stringify: bool = True,
-    ignore_errors: bool = False,
+    expect_json_load: bool = True,
 ) -> SimpleNamespace():
     """Runs provided MongoDB operation in a separate container."""
     if mongo_uri is None:
@@ -189,10 +190,14 @@ async def run_mongo_op(
                 )
             )
             logger.error(f"Failed to serialize output: {output}".format(output=stdout))
-            if not ignore_errors:
+            if expect_json_load:
                 raise
             else:
-                output.data = stdout
+                logger.info("Attempt to cast to python dict manually")
+                # cast to python dict
+                dict_string = re.sub(r'(\w+)(\s*:\s*)', r'"\1"\2', stdout)
+                dict_string = dict_string.replace("true", "True").replace("false", "False").replace("null", "None")
+                output.data = eval(dict_string)
     logger.info("Done: '%s'", output)
     return output
 
