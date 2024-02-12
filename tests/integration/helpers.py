@@ -180,26 +180,38 @@ async def run_mongo_op(
 
     output.succeeded = True
     if expecting_output:
-        try:
-            output.data = json.loads(stdout)
-        except Exception:
-            logger.error(
-                "Could not serialize the output into json.{}{}".format(
-                    f"\n\tSTDOUT:\n\t {stdout}" if stdout else "",
-                    f"\n\tSTDERR:\n\t {stderr}" if stderr else "",
-                )
-            )
-            logger.error(f"Failed to serialize output: {output}".format(output=stdout))
-            if expect_json_load:
-                raise
-            else:
-                logger.info("Attempt to cast to python dict manually")
-                # cast to python dict
-                dict_string = re.sub(r'(\w+)(\s*:\s*)', r'"\1"\2', stdout)
-                dict_string = dict_string.replace("true", "True").replace("false", "False").replace("null", "None")
-                output.data = eval(dict_string)
+        output.data = _process_mongo_operation_result(stdout, stderr)
     logger.info("Done: '%s'", output)
     return output
+
+
+def _process_mongo_operation_result(stdout, stderr, expect_json_load):
+    try:
+        return json.loads(stdout)
+    except Exception:
+        logger.error(
+            "Could not serialize the output into json.{}{}".format(
+                f"\n\tSTDOUT:\n\t {stdout}" if stdout else "",
+                f"\n\tSTDERR:\n\t {stderr}" if stderr else "",
+            )
+        )
+        logger.error(f"Failed to load operation result: {stdout} to json")
+        if expect_json_load:
+            raise
+        else:
+            try:
+                logger.info("Attempt to cast to python dict manually")
+                # cast to python dict
+                dict_string = re.sub(r"(\w+)(\s*:\s*)", r'"\1"\2', stdout)
+                dict_string = (
+                    dict_string.replace("true", "True")
+                    .replace("false", "False")
+                    .replace("null", "None")
+                )
+                return eval(dict_string)
+            except Exception:
+                logger.error(f"Failed to cast response to python dict. Returning stdout: {stdout}")
+                return stdout
 
 
 def primary_host(rs_status_data: dict) -> Optional[str]:
