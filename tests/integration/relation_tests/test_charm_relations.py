@@ -120,8 +120,9 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     ubuntu_version = '{"version": "20.04"}'
     ubuntu_name_updated = '{"$set": {"release_name": "Fancy Fossa"}}'
     cmd = f"db.test_collection.updateOne({ubuntu_version}, {ubuntu_name_updated})"
-    result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=False, 
-                                expect_json_load=False)
+    result = await run_mongo_op(
+        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
+    )
     assert result.data["acknowledged"] is True
 
     # query the data
@@ -134,8 +135,9 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
 
     # delete the data
     cmd = 'db.test_collection.deleteOne({"release_name": "Fancy Fossa"})'
-    result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=False,
-                                expect_json_load=False)
+    result = await run_mongo_op(
+        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
+    )
     assert result.data["acknowledged"] is True
 
     # query the data
@@ -201,8 +203,8 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     )
 
     connection_data = parse_uri(connection_string)
-    assert len(connection_data["nodelist"]) == 1
-    assert connection_data["nodelist"][0][0] == "mongodb-k8s-0.mongodb-k8s-endpoints"
+    assert len(connection_data["nodelist"]) == 2
+    assert sorted(connection_data["nodelist"])[0][0] == "mongodb-k8s-0.mongodb-k8s-endpoints"
 
     # verify application metadata is correct after adding units.
     await ops_test.model.applications[db_app_name].add_units(count=2)
@@ -225,7 +227,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
     )
     scaled_up_data = parse_uri(scaled_up_string)
-    assert len(scaled_up_data["nodelist"]) == 3
+    assert len(scaled_up_data["nodelist"]) == 4
     scaled_up_data["nodelist"].sort()
     assert all(
         [
@@ -261,7 +263,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     )
 
     scaled_down_data = parse_uri(scaled_down_string)
-    assert len(scaled_down_data["nodelist"]) == 2
+    assert len(scaled_down_data["nodelist"]) == 3
     scaled_down_data["nodelist"].sort()
     assert all(
         [
@@ -295,8 +297,8 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
     )
     scaled_down_data = parse_uri(scaled_down_string)
-    assert len(scaled_down_data["nodelist"]) == 1
-    assert scaled_down_data["nodelist"][0][0] == "mongodb-k8s-0.mongodb-k8s-endpoints"
+    assert len(scaled_down_data["nodelist"]) == 2
+    assert sorted(scaled_down_data["nodelist"])[0][0] == "mongodb-k8s-0.mongodb-k8s-endpoints"
 
     # test crud operations
     await verify_crud_operations(ops_test, scaled_down_string)
@@ -313,7 +315,7 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
 
     cmd = f'db.createUser({{user: "newTestUser", pwd: "Test123", roles: [{{role: "readWrite", db: "{database}"}}]}});'
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=True
+        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
     )
     assert 'user" : "newTestUser"' in result.data
     cmd = 'db = db.getSiblingDB("new_database"); db.test_collection.insertOne({"test": "one"});'
@@ -477,7 +479,7 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     removed_access = False
     cmd = "db.runCommand({ replSetGetStatus : 1 });"
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=True
+        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
     )
 
     removed_access = False
@@ -485,7 +487,7 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
         result.failed
         and "code" in result.data
         and result.data["code"] == 1
-        and "AuthenticationFailed" in result.data["stdout"]
+        and "Authentication failed" in result.data["stderr"]
     ):
         removed_access = True
     elif result.failed:
