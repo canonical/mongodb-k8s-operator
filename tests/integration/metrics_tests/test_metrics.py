@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
+import os
 import time
 from pathlib import Path
 
 import pytest
+from ..helpers import check_or_scale_app, get_app_name
 import urllib3
 import yaml
 from pytest_operator.plugin import OpsTest
@@ -49,30 +51,41 @@ async def verify_endpoints(ops_test: OpsTest, app_name=DATABASE_APP_NAME):
     assert mongodb_metrics.count("mongo") > 10
 
 
+@pytest.mark.skipif(
+    os.environ.get("PYTEST_SKIP_DEPLOY", False),
+    reason="skipping deploy, model expected to be provided.",
+)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
     # no need to build and deploy charm if provided
-    mongodb_application_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
-    if mongodb_application_name:
-        return
+    app_name = await get_app_name(ops_test)
+    num_units = 3
+    if app_name:
+        return await check_or_scale_app(ops_test, app_name, num_units)
 
     async with ops_test.fast_forward():
         my_charm = await ops_test.build_charm(".")
         resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
-        await ops_test.model.deploy(my_charm, num_units=3, resources=resources, series="jammy")
+        await ops_test.model.deploy(my_charm, num_units=num_units, resources=resources, series="jammy")
         await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=2000)
 
 
 async def test_endpoints(ops_test: OpsTest):
     """Sanity check that endpoints are running."""
-    mongodb_application_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
-    await verify_endpoints(ops_test, mongodb_application_name)
+    app_name = (
+        await get_app_name(ops_test)
+        or DATABASE_APP_NAME
+    )
+    await verify_endpoints(ops_test, app_name)
 
 
 async def test_endpoints_new_password(ops_test: OpsTest):
     """Verify that endpoints still function correctly after the monitor user password changes."""
-    mongodb_application_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
+    app_name = (
+        await get_app_name(ops_test)
+        or DATABASE_APP_NAME
+    )
     leader_unit = await ha_helpers.find_unit(ops_test, leader=True)
     action = await leader_unit.run_action("set-password", **{"username": "monitor"})
     action = await action.wait()
@@ -80,18 +93,21 @@ async def test_endpoints_new_password(ops_test: OpsTest):
     time.sleep(RESTART_TIMEOUT)
     await ops_test.model.wait_for_idle()
 
-    await verify_endpoints(ops_test, mongodb_application_name)
+    await verify_endpoints(ops_test, app_name)
 
 
 async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     """Verify that endpoint still function correctly after a network cut."""
     # retrieve a primary unit and a non-primary unit (active-unit). The primary unit will have its
     # network disrupted, while the active unit allows us to communicate to `mongod`
-    mongodb_application_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
+    app_name = (
+        await get_app_name(ops_test)
+        or DATABASE_APP_NAME
+    )
     primary = await ha_helpers.get_replica_set_primary(ops_test)
     active_unit = [
         unit
-        for unit in ops_test.model.applications[mongodb_application_name].units
+        for unit in ops_test.model.applications[app_name].units
         if unit.name != primary.name
     ][0]
 
@@ -110,4 +126,4 @@ async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     # Wait for the network to be restored
     await ha_helpers.wait_until_unit_in_status(ops_test, primary, active_unit, "SECONDARY")
 
-    await verify_endpoints(ops_test, mongodb_application_name)
+    await verify_endpoints(ops_test, app_name)
