@@ -6,12 +6,12 @@ import time
 from pathlib import Path
 
 import pytest
-from ..helpers import check_or_scale_app, get_app_name
 import urllib3
 import yaml
 from pytest_operator.plugin import OpsTest
 
 from ..ha_tests import helpers as ha_helpers
+from ..helpers import check_or_scale_app, get_app_name
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 DATABASE_APP_NAME = "mongodb-k8s"
@@ -67,25 +67,21 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     async with ops_test.fast_forward():
         my_charm = await ops_test.build_charm(".")
         resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
-        await ops_test.model.deploy(my_charm, num_units=num_units, resources=resources, series="jammy")
+        await ops_test.model.deploy(
+            my_charm, num_units=num_units, resources=resources, series="jammy"
+        )
         await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=2000)
 
 
 async def test_endpoints(ops_test: OpsTest):
     """Sanity check that endpoints are running."""
-    app_name = (
-        await get_app_name(ops_test)
-        or DATABASE_APP_NAME
-    )
+    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
     await verify_endpoints(ops_test, app_name)
 
 
 async def test_endpoints_new_password(ops_test: OpsTest):
     """Verify that endpoints still function correctly after the monitor user password changes."""
-    app_name = (
-        await get_app_name(ops_test)
-        or DATABASE_APP_NAME
-    )
+    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
     leader_unit = await ha_helpers.find_unit(ops_test, leader=True)
     action = await leader_unit.run_action("set-password", **{"username": "monitor"})
     action = await action.wait()
@@ -100,15 +96,10 @@ async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     """Verify that endpoint still function correctly after a network cut."""
     # retrieve a primary unit and a non-primary unit (active-unit). The primary unit will have its
     # network disrupted, while the active unit allows us to communicate to `mongod`
-    app_name = (
-        await get_app_name(ops_test)
-        or DATABASE_APP_NAME
-    )
+    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
     primary = await ha_helpers.get_replica_set_primary(ops_test)
     active_unit = [
-        unit
-        for unit in ops_test.model.applications[app_name].units
-        if unit.name != primary.name
+        unit for unit in ops_test.model.applications[app_name].units if unit.name != primary.name
     ][0]
 
     # Create networkchaos policy to isolate instance from cluster - ie cut network
