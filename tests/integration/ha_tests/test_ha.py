@@ -10,7 +10,7 @@ import pytest
 import pytest_asyncio
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import APP_NAME
+from ..helpers import APP_NAME, check_or_scale_app
 from .helpers import (
     ANOTHER_DATABASE_APP_NAME,
     MONGOD_PROCESS_NAME,
@@ -111,10 +111,15 @@ async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
     # is a pre-existing cluster.
     mongodb_application_name = await get_application_name(ops_test, APP_NAME)
+
+    num_units = 3
     if not mongodb_application_name:
         mongodb_application_name = await deploy_and_scale_mongodb(
-            ops_test, charm_path=cmd_mongodb_charm
+            ops_test, charm_path=cmd_mongodb_charm, num_units=num_units
         )
+    else:
+        check_or_scale_app(ops_test, mongodb_application_name, num_units)
+
     application_name = await get_application_name(ops_test, "application")
     if not application_name:
         application_name = await deploy_and_scale_application(ops_test)
