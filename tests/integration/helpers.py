@@ -180,7 +180,7 @@ async def run_mongo_op(
 
     output.succeeded = True
     if expecting_output:
-        output.data = _process_mongo_operation_result(stdout, stderr)
+        output.data = _process_mongo_operation_result(stdout, stderr, expect_json_load)
     logger.info("Done: '%s'", output)
     return output
 
