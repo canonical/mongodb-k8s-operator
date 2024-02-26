@@ -1,8 +1,7 @@
 # Charmed MongoDB on Kubernetes
 [![CharmHub Badge](https://charmhub.io/mongodb-k8s/badge.svg)](https://charmhub.io/mongodb-k8s)
-[![Release](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/release.yaml/badge.svg)](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/release.yaml)
-[![Tests](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/ci.yaml?query=branch%3Amain)
-[![Docs](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/sync_docs.yaml/badge.svg)](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/sync_docs.yaml)
+[![Release to 6/edge](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/release.yaml/badge.svg)](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/release.yaml)
+[![Tests](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/ci.yaml/badge.svg)](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/ci.yaml)
 ## Overview
 
 The Charmed MongoDB Operator delivers automated operations management from [day 0 to day 2](https://codilime.com/glossary/day-0-day-1-day-2/#:~:text=Day%200%2C%20Day%201%2C%20and,just%20a%20daily%20operations%20routine.) on the [MongoDB Community Edition](https://github.com/mongodb/mongo) document database. It is an open source, end-to-end, production ready data platform on top of cloud native technologies.
