@@ -53,7 +53,7 @@ if __name__ == "__main__":
     parser.add_argument("--namespace", help="The k8s namespace to cleanup")
     parser.add_argument(
         "--cleanup",
-        choices=["cleanup_after_ha", "juju_models", "all"],
+        choices=["cleanup_chaos_mesh", "juju_models", "all"],
         help="The type of cleanup to perform",
     )
 

@@ -14,7 +14,7 @@ import signal
 import subprocess
 from typing import Dict, Optional
 
-from charms.data_platform_libs.v0.database_requires import DatabaseRequires
+from charms.data_platform_libs.v0.data_interfaces import DatabaseRequires
 from ops.charm import ActionEvent, CharmBase
 from ops.main import main
 from ops.model import ActiveStatus, Relation, WaitingStatus

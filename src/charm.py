@@ -63,7 +63,14 @@ from ops.pebble import (
     ServiceInfo,
 )
 from pymongo.errors import PyMongoError
-from tenacity import before_log, retry, stop_after_attempt, wait_fixed
+from tenacity import (
+    RetryError,
+    Retrying,
+    before_log,
+    retry,
+    stop_after_attempt,
+    wait_fixed,
+)
 
 from config import Config
 from exceptions import AdminUserCreationError, MissingSecretError
@@ -75,6 +82,10 @@ UNIT_REMOVAL_TIMEOUT = 1000
 APP_SCOPE = Config.Relations.APP_SCOPE
 UNIT_SCOPE = Config.Relations.UNIT_SCOPE
 Scopes = Config.Relations.Scopes
+
+USER_CREATING_MAX_ATTEMPTS = 5
+USER_CREATION_COOLDOWN = 30
+REPLICA_SET_INIT_CHECK_TIMEOUT = 10
 
 
 class MongoDBCharm(CharmBase):
@@ -118,7 +129,7 @@ class MongoDBCharm(CharmBase):
         self.grafana_dashboards = GrafanaDashboardProvider(self)
         self.loki_push = LogProxyConsumer(
             self,
-            log_files=Config.LOG_FILES,
+            log_files=Config.get_logs_files_paths(),
             relation_name=Config.Relations.LOGGING,
             container_name=Config.CONTAINER_NAME,
         )
@@ -271,6 +282,21 @@ class MongoDBCharm(CharmBase):
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
 
+    @property
+    def users_initialized(self) -> bool:
+        """Check if MongoDB users are created."""
+        return "users_initialized" in self.app_peer_data
+
+    @users_initialized.setter
+    def users_initialized(self, value):
+        """Set the users_initialized flag."""
+        if isinstance(value, bool):
+            self.app_peer_data["users_initialized"] = str(value)
+        else:
+            raise ValueError(
+                f"'users_initialized' must be a boolean value. Proivded: {value} is of type {type(value)}"
+            )
+
     # END: properties
 
     # BEGIN: generic helper methods
@@ -387,6 +413,12 @@ class MongoDBCharm(CharmBase):
             return
 
         self._initialise_replica_set(event)
+        try:
+            self._initialise_users(event)
+        except RetryError:
+            logger.error("Failed to initialise users. Deferring start event.")
+            event.defer()
+            return
 
         # mongod is now active
         self.unit.status = ActiveStatus()
@@ -508,47 +540,28 @@ class MongoDBCharm(CharmBase):
 
     def _on_set_password(self, event: ActionEvent) -> None:
         """Set the password for the specified user."""
-        # changing the backup password while a backup/restore is in progress can be disastrous
-        pbm_status = self.backups._get_pbm_status()
-        if isinstance(pbm_status, MaintenanceStatus):
-            event.fail("Cannot change password while a backup/restore is in progress.")
-            return
-
-        # only leader can write the new password into peer relation.
-        if not self.unit.is_leader():
-            event.fail("The action can be run only on leader unit.")
+        if not self.pass_pre_set_password_checks(event):
             return
 
         username = self._get_user_or_fail_event(
             event, default_username=OperatorUser.get_username()
         )
         if not username:
-            return
+            return False
 
         new_password = event.params.get(Config.Actions.PASSWORD_PARAM_NAME, generate_password())
 
-        if new_password == self.get_secret(
-            APP_SCOPE, MonitorUser.get_password_key_name_for_user(username)
-        ):
-            event.log("The old and new passwords are equal.")
-            event.set_results({Config.Actions.PASSWORD_PARAM_NAME: new_password})
+        if len(new_password) > Config.Secrets.MAX_PASSWORD_LENGTH:
+            event.fail(
+                f"Password cannot be longer than {Config.Secrets.MAX_PASSWORD_LENGTH} characters."
+            )
+            return False
+
+        try:
+            secret_id = self.set_password(username, new_password)
+        except SetPasswordError as e:
+            event.fail(f"{e}")
             return
-
-        with MongoDBConnection(self.mongodb_config) as mongo:
-            try:
-                mongo.set_user_password(username, new_password)
-            except NotReadyError:
-                event.fail(
-                    "Failed to change the password: Not all members healthy or finished initial sync."
-                )
-                return
-            except PyMongoError as e:
-                event.fail(f"Failed changing the password: {e}")
-                return
-
-        secret_id = self.set_secret(
-            APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), new_password
-        )
 
         if username == BackupUser.get_username():
             self._connect_pbm_agent()
@@ -558,6 +571,26 @@ class MongoDBCharm(CharmBase):
 
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
+        )
+
+    def set_password(self, username, password) -> int:
+        """Sets the password for a given username and return the secret id.
+
+        Raises:
+            SetPasswordError
+        """
+        with MongoDBConnection(self.mongodb_config) as mongo:
+            try:
+                mongo.set_user_password(username, password)
+            except NotReadyError:
+                raise SetPasswordError(
+                    "Failed changing the password: Not all members healthy or finished initial sync."
+                )
+            except PyMongoError as e:
+                raise SetPasswordError(f"Failed changing the password: {e}")
+
+        return self.set_secret(
+            APP_SCOPE, MongoDBUser.get_password_key_name_for_user(username), password
         )
 
     def _on_secret_remove(self, event):
@@ -590,6 +623,48 @@ class MongoDBCharm(CharmBase):
     # END: actions
 
     # BEGIN: user management
+    @retry(
+        stop=stop_after_attempt(USER_CREATING_MAX_ATTEMPTS),
+        wait=wait_fixed(USER_CREATION_COOLDOWN),
+        before=before_log(logger, logging.DEBUG),
+    )
+    def _initialise_users(self, event: StartEvent) -> None:
+        """Create users.
+
+        User creation can only be completed after the replica set has
+        been initialised which requires some time.
+        In race conditions this can lead to failure to initialise users.
+        To prevent these race conditions from breaking the code, retry on failure.
+        """
+        if not self.db_initialised:
+            return
+
+        if self.users_initialized:
+            return
+
+        # only leader should create users
+        if not self.unit.is_leader():
+            return
+
+        logger.info("User initialization")
+        try:
+            self._init_operator_user()
+            self._init_backup_user()
+            self._init_monitor_user()
+            logger.info("Reconcile relations")
+            self.client_relations.oversee_users(None, event)
+            self.users_initialized = True
+        except ExecError as e:
+            logger.error("Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr)
+            raise  # we need to raise to make retry work
+        except PyMongoError as e:
+            logger.error("Deferring on_start since: error=%r", e)
+            raise  # we need to raise to make retry work
+        except AdminUserCreationError:
+            logger.error("Deferring on_start: Failed to create operator user.")
+            event.defer()
+            raise  # we need to raise to make retry work
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(5),
@@ -715,6 +790,21 @@ class MongoDBCharm(CharmBase):
             )
             return
         return username
+
+    def pass_pre_set_password_checks(self, event: ActionEvent) -> bool:
+        """Checks conditions for setting the password and fail if necessary."""
+        # changing the backup password while a backup/restore is in progress can be disastrous
+        pbm_status = self.backups._get_pbm_status()
+        if isinstance(pbm_status, MaintenanceStatus):
+            event.fail("Cannot change password while a backup/restore is in progress.")
+            return False
+
+        # only leader can write the new password into peer relation.
+        if not self.unit.is_leader():
+            event.fail("The action can be run only on leader unit.")
+            return False
+
+        return True
 
     def _check_or_set_user_password(self, user: MongoDBUser) -> None:
         key = user.get_password_key_name()
@@ -980,13 +1070,17 @@ class MongoDBCharm(CharmBase):
         container = self.unit.get_container(Config.CONTAINER_NAME)
 
         if not container.can_connect():
+            logger.debug(
+                "_connect_pbm_agent: can't connect to container %s. Returning.", container
+            )
             return
 
         if not self.db_initialised:
             return
 
         # must wait for leader to set URI before any attempts to update are made
-        if not self.get_secret("app", BackupUser.get_password_key_name()):
+        if not self.get_secret(APP_SCOPE, BackupUser.get_password_key_name()):
+            logger.debug("_connect_pbm_agent: can't get backup user password!. Returning.")
             return
 
         current_service_config = (
@@ -998,7 +1092,13 @@ class MongoDBCharm(CharmBase):
             return
 
         container.add_layer(Config.Backup.SERVICE_NAME, self._backup_layer, combine=True)
-        container.replan()
+        for attempt in Retrying(
+            stop=stop_after_attempt(10),
+            wait=wait_fixed(5),
+            reraise=True,
+        ):
+            with attempt:
+                container.replan()
 
     def has_backup_service(self) -> ServiceInfo:
         """Returns the backup service."""
@@ -1101,6 +1201,10 @@ class MongoDBCharm(CharmBase):
             )
 
     # END: static methods
+
+
+class SetPasswordError(Exception):
+    """Raised on failure to set password for MongoDB user."""
 
 
 if __name__ == "__main__":

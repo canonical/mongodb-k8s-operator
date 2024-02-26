@@ -19,6 +19,8 @@ from ops.model import (
 )
 from pymongo.errors import AutoReconnect, ServerSelectionTimeoutError
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "b9a7fe0c38d8486a9d1ce94c27d4758e"
 
@@ -43,13 +45,14 @@ MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 
 DATA_DIR = "/var/lib/mongodb"
 CONF_DIR = "/etc/mongod"
+LOG_DIR = "/var/lib/mongodb"
 MONGODB_LOG_FILENAME = "mongodb.log"
 logger = logging.getLogger(__name__)
 
 
 # noinspection GrazieInspection
 def get_create_user_cmd(
-    config: MongoDBConfiguration, mongo_path="charmed-mongodb.mongo"
+    config: MongoDBConfiguration, mongo_path="charmed-mongodb.mongosh"
 ) -> List[str]:
     """Creates initial admin user for MongoDB.
 
@@ -92,9 +95,10 @@ def get_mongod_args(
     """
     full_data_dir = f"{MONGODB_COMMON_DIR}{DATA_DIR}" if snap_install else DATA_DIR
     full_conf_dir = f"{MONGODB_SNAP_DATA_DIR}{CONF_DIR}" if snap_install else CONF_DIR
+    full_log_dir = f"{MONGODB_SNAP_DATA_DIR}{LOG_DIR}" if snap_install else LOG_DIR
     # in k8s the default logging options that are used for the vm charm are ignored and logs are
     # the output of the container. To enable logging to a file it must be set explicitly
-    logging_options = "" if snap_install else f"--logpath={full_data_dir}/{MONGODB_LOG_FILENAME}"
+    logging_options = "" if snap_install else f"--logpath={full_log_dir}/{MONGODB_LOG_FILENAME}"
     cmd = [
         # bind to localhost and external interfaces
         "--bind_ip_all",
@@ -102,6 +106,9 @@ def get_mongod_args(
         f"--replSet={config.replset}",
         # db must be located within the snap common directory since the snap is strictly confined
         f"--dbpath={full_data_dir}",
+        "--auditDestination=file",
+        f"--auditFormat={Config.AuditLog.FORMAT}",
+        f"--auditPath={full_log_dir}/{Config.AuditLog.FILE_NAME}",
         logging_options,
     ]
     if auth:
