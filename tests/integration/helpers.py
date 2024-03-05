@@ -4,6 +4,7 @@
 import json
 import logging
 import math
+import re
 import subprocess
 import time
 from datetime import datetime
@@ -129,7 +130,7 @@ async def run_mongo_op(
     suffix: str = "",
     expecting_output: bool = True,
     stringify: bool = True,
-    ignore_errors: bool = False,
+    expect_json_load: bool = True,
 ) -> SimpleNamespace():
     """Runs provided MongoDB operation in a separate container."""
     if mongo_uri is None:
@@ -179,22 +180,38 @@ async def run_mongo_op(
 
     output.succeeded = True
     if expecting_output:
-        try:
-            output.data = json.loads(stdout)
-        except Exception:
-            logger.error(
-                "Could not serialize the output into json.{}{}".format(
-                    f"\n\tSTDOUT:\n\t {stdout}" if stdout else "",
-                    f"\n\tSTDERR:\n\t {stderr}" if stderr else "",
-                )
-            )
-            logger.error(f"Failed to serialize output: {output}".format(output=stdout))
-            if not ignore_errors:
-                raise
-            else:
-                output.data = stdout
+        output.data = _process_mongo_operation_result(stdout, stderr, expect_json_load)
     logger.info("Done: '%s'", output)
     return output
+
+
+def _process_mongo_operation_result(stdout, stderr, expect_json_load):
+    try:
+        return json.loads(stdout)
+    except Exception:
+        logger.error(
+            "Could not serialize the output into json.{}{}".format(
+                f"\n\tSTDOUT:\n\t {stdout}" if stdout else "",
+                f"\n\tSTDERR:\n\t {stderr}" if stderr else "",
+            )
+        )
+        logger.error(f"Failed to load operation result: {stdout} to json")
+        if expect_json_load:
+            raise
+        else:
+            try:
+                logger.info("Attempt to cast to python dict manually")
+                # cast to python dict
+                dict_string = re.sub(r"(\w+)(\s*:\s*)", r'"\1"\2', stdout)
+                dict_string = (
+                    dict_string.replace("true", "True")
+                    .replace("false", "False")
+                    .replace("null", "None")
+                )
+                return eval(dict_string)
+            except Exception:
+                logger.error(f"Failed to cast response to python dict. Returning stdout: {stdout}")
+                return stdout
 
 
 def primary_host(rs_status_data: dict) -> Optional[str]:
@@ -455,3 +472,39 @@ def get_password_using_subprocess(ops_test: OpsTest, username="operator") -> str
         logger.error("Failed to get password: %s", e)
         raise Exception(f"Failed to get password: {e}")
     return password
+
+
+async def get_app_name(ops_test: OpsTest, test_deployments: List[str] = []) -> str:
+    """Returns the name of the cluster running MongoDB.
+
+    This is important since not all deployments of the MongoDB charm have the application name
+    "mongodb".
+
+    Note: if multiple clusters are running MongoDB this will return the one first found.
+    """
+    status = await ops_test.model.get_status()
+    for app in ops_test.model.applications:
+        # note that format of the charm field is not exactly "mongodb" but instead takes the form
+        # of `local:focal/mongodb-6`
+        if "mongodb" in status["applications"][app]["charm"]:
+            logger.debug("Found mongodb app named '%s'", app)
+
+            if app in test_deployments:
+                logger.debug("mongodb app named '%s', was deployed by the test, not by user", app)
+                continue
+
+            return app
+
+    return None
+
+
+async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_units: int) -> None:
+    """A helper function that scales existing cluster if necessary."""
+    # check if we need to scale
+    current_units = len(ops_test.model.applications[user_app_name].units)
+
+    count = required_units - current_units
+    if required_units == current_units:
+        return
+    count = required_units - current_units
+    await ops_test.model.applications[user_app_name].scale(scale_change=count)

@@ -652,9 +652,13 @@ def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
         # Apply the generated manifest, chaosmesh would then make the pod inaccessible
         env = os.environ
         env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
-        subprocess.check_output(
-            " ".join(["microk8s", "kubectl", "apply", "-f", temp_file.name]), shell=True, env=env
+        command_result = subprocess.check_output(
+            " ".join(["microk8s", "kubectl", "apply", "-f", temp_file.name]),
+            shell=True,
+            env=env,
+            stderr=subprocess.STDOUT,
         )
+        logger.info("Result of isolating unit from cluster is '%s'", command_result)
 
 
 def remove_instance_isolation(ops_test: OpsTest) -> None:

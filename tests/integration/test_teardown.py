@@ -3,12 +3,13 @@
 # See LICENSE file for licensing details.
 
 import logging
+import os
 
 import pytest
 from pytest_operator.plugin import OpsTest
 
 from .ha_tests.helpers import get_replica_set_primary as replica_set_primary
-from .helpers import METADATA, SERIES
+from .helpers import METADATA, SERIES, check_or_scale_app, get_app_name
 
 DATABASE_APP_NAME = "mongodb-k8s"
 MEDIAN_REELECTION_TIME = 12
@@ -16,19 +17,28 @@ MEDIAN_REELECTION_TIME = 12
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.skipif(
+    os.environ.get("PYTEST_SKIP_DEPLOY", False),
+    reason="skipping deploy, model expected to be provided.",
+)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest):
     """Build the charm-under-test and deploy it to the model.
 
     Assert that the application is active and the replica set is healthy.
     """
+    app_name = await get_app_name(ops_test)
+    if app_name:
+        return await check_or_scale_app(ops_test, app_name, 1)
+
+    app_name = DATABASE_APP_NAME
     # build and deploy charm from local source folder
     charm = await ops_test.build_charm(".")
     resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         charm,
         resources=resources,
-        application_name=DATABASE_APP_NAME,
+        application_name=app_name,
         num_units=1,
         series=SERIES,
     )
@@ -37,12 +47,12 @@ async def test_build_and_deploy(ops_test: OpsTest):
     await ops_test.model.set_config({"update-status-hook-interval": "10s"})
 
     await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME],
+        apps=[app_name],
         status="active",
         raise_on_blocked=True,
         timeout=1000,
     )
-    assert ops_test.model.applications[DATABASE_APP_NAME].units[0].workload_status == "active"
+    assert ops_test.model.applications[app_name].units[0].workload_status == "active"
 
     # effectively disable the update status from firing
     await ops_test.model.set_config({"update-status-hook-interval": "60m"})
@@ -65,12 +75,13 @@ async def scale_and_verify(ops_test: OpsTest, count: int):
     else:
         logger.info(f"Scaling down by {abs(count)} units")
 
-    await ops_test.model.applications[DATABASE_APP_NAME].scale(scale_change=count)
+    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    await ops_test.model.applications[app_name].scale(scale_change=count)
 
     await ops_test.model.wait_for_idle(
-        apps=[DATABASE_APP_NAME],
+        apps=[app_name],
         status="active",
         timeout=1000,
     )
-    primary = await replica_set_primary(ops_test, application_name=DATABASE_APP_NAME)
+    primary = await replica_set_primary(ops_test, application_name=app_name)
     assert primary is not None, "Replica set has no primary"
