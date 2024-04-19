@@ -17,7 +17,7 @@ from .helpers import (
     time_process_started,
 )
 
-TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
+TLS_CERTIFICATES_APP_NAME = "self-signed-certificates"
 DATABASE_APP_NAME = "mongodb-k8s"
 TLS_RELATION_NAME = "certificates"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
@@ -87,7 +87,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         await ops_test.model.deploy(my_charm, num_units=1, resources=resources, series="jammy")
         await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=2000)
 
-        config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
+        config = {"ca-common-name": "Test CA"}
         await ops_test.model.deploy(
             TLS_CERTIFICATES_APP_NAME, channel="stable", config=config, series="jammy"
         )
