@@ -128,7 +128,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         original_tls_times[unit.name]["mongod_service"] = await time_process_started(
             ops_test, unit.name, DB_SERVICE
         )
-        check_certs_correctly_distributed(ops_test, unit)
+        await check_certs_correctly_distributed(ops_test, unit)
 
     # set external and internal key using auto-generated key for each unit
     for unit in ops_test.model.applications[DATABASE_APP_NAME].units:
@@ -147,7 +147,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
 
-        check_certs_correctly_distributed(ops_test, unit)
+        await check_certs_correctly_distributed(ops_test, unit)
 
         assert (
             new_external_cert_time > original_tls_times[unit.name]["external_cert"]
@@ -225,7 +225,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
 
-        check_certs_correctly_distributed(ops_test, unit)
+        await check_certs_correctly_distributed(ops_test, unit)
 
         assert (
             new_external_cert_time > original_tls_times[unit.name]["external_cert"]

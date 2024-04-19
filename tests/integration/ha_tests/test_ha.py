@@ -83,7 +83,15 @@ async def change_logging(ops_test: OpsTest):
     mongodb_application_name = await get_application_name(ops_test, APP_NAME)
     unit_name = ops_test.model.applications[mongodb_application_name].units[0].name
     current_mongod_command = await retrieve_current_mongod_command(ops_test, unit_name)
-    current_mongod_command = "mongod --bind_ip_all --replSet=mongodb-k8s --dbpath=/var/lib/mongodb --logpath=/var/lib/mongodb/mongodb.log --auth --clusterAuthMode=keyFile --keyFile=/etc/mongod/keyFile"
+    current_mongod_command = (
+        "mongod"
+        " --bind_ip_all"
+        " --replSet=mongodb-k8s"
+        " --dbpath=/var/lib/mongodb"
+        " --logpath=/var/lib/mongodb/mongodb.log" 
+        " --auth --clusterAuthMode=keyFile" 
+        " --keyFile=/etc/mongod/keyFile"
+    )
 
     updated_mongod_command = current_mongod_command.replace(
         "--logpath=/var/lib/mongodb/mongodb.log", ""

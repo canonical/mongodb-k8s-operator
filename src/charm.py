@@ -547,7 +547,7 @@ class MongoDBCharm(CharmBase):
             event, default_username=OperatorUser.get_username()
         )
         if not username:
-            return False
+            return
 
         new_password = event.params.get(Config.Actions.PASSWORD_PARAM_NAME, generate_password())
 
@@ -555,7 +555,7 @@ class MongoDBCharm(CharmBase):
             event.fail(
                 f"Password cannot be longer than {Config.Secrets.MAX_PASSWORD_LENGTH} characters."
             )
-            return False
+            return
 
         try:
             secret_id = self.set_password(username, new_password)
@@ -682,7 +682,7 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
-        if self._is_user_created(OperatorUser):
+        if self._is_user_created(OperatorUser) or not self.unit.is_leader():
             return
 
         container = self.unit.get_container(Config.CONTAINER_NAME)
@@ -1100,15 +1100,14 @@ class MongoDBCharm(CharmBase):
             with attempt:
                 container.replan()
 
-    def has_backup_service(self) -> ServiceInfo:
+    def has_backup_service(self) -> bool:
         """Returns the backup service."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
         try:
             container.get_service(Config.Backup.SERVICE_NAME)
+            return True
         except ModelError:
             return False
-
-        return True
 
     def is_unit_in_replica_set(self) -> bool:
         """Check if the unit is in the replica set."""
