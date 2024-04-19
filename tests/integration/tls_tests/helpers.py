@@ -150,11 +150,9 @@ def process_ls_time(ls_output):
     time_as_str = "T".join(ls_output.split("\n")[0].split(" ")[5:7])
     # further strip down additional milliseconds
     time_as_str = time_as_str[0:-3]
-    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f")
-    return d
+    return datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f")
 
 
 def process_pebble_time(changes_output):
     """Parse time representation as returned by the 'pebble changes' command."""
-    d = datetime.strptime(changes_output, "%H:%M")
-    return d
+    return datetime.strptime(changes_output, "%H:%M")
