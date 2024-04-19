@@ -422,7 +422,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
     )
 
     # This test serves to verify behavior when all replicas are down at the same time that when
-    # they come back online they operate as expected. This check verifies that we meet the criterea
+    # they come back online they operate as expected. This check verifies that we meet the criteria
     # of all replicas being down at the same time.
     try:
         assert await are_all_db_processes_down(
@@ -492,7 +492,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes):
     )
 
     # This test serves to verify behavior when all replicas are down at the same time that when
-    # they come back online they operate as expected. This check verifies that we meet the criterea
+    # they come back online they operate as expected. This check verifies that we meet the criteria
     # of all replicas being down at the same time.
     try:
         assert await are_all_db_processes_down(

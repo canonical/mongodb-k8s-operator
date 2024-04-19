@@ -460,7 +460,7 @@ class MongoDBCharm(CharmBase):
 
                 # to avoid potential race conditions -
                 # remove unit before adding new replica set members
-                if type(event) == RelationDepartedEvent and event.unit:
+                if isinstance(event, RelationDepartedEvent) and event.unit:
                     mongodb_hosts = mongodb_hosts - set([self.get_hostname_for_unit(event.unit)])
 
                 self._add_units_from_replica_set(event, mongo, mongodb_hosts - replset_members)

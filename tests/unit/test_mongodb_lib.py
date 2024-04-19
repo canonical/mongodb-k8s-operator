@@ -90,7 +90,7 @@ class TestMongoServer(unittest.TestCase):
             # verify we close connection
             (mock_client.return_value.close).assert_called()
 
-    @patch("charms.mongodb.v0.mongodb.MongoDBConnection._is_any_sync")
+    @patch("charms.mongodb.v0.mongodb.MongoDBConnection.is_any_sync")
     @patch("charms.mongodb.v0.mongodb.MongoClient")
     @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
     def test_add_replset_member_wait_to_sync(self, config, mock_client, any_sync):

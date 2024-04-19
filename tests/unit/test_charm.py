@@ -652,6 +652,7 @@ class TestCharm(unittest.TestCase):
     def test_set_reset_existing_password_app(self):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         self._setup_secrets()
+        self.harness.set_leader(True)
 
         # Getting current password
         self.harness.charm.set_secret("app", "monitor-password", "bla")
@@ -660,6 +661,14 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.set_secret("app", "monitor-password", "blablabla")
         assert self.harness.charm.get_secret("app", "monitor-password") == "blablabla"
 
+    def test_set_reset_existing_password_app_nonleader(self):
+        self._setup_secrets()
+        self.harness.set_leader(False)
+
+        # Getting current password
+        with self.assertRaises(ModelError):
+            self.harness.charm.set_secret("app", "monitor-password", "bla")
+
     @parameterized.expand([("app"), ("unit")])
     def test_set_secret_returning_secret_id(self, scope):
         secret_id = self.harness.charm.set_secret(scope, "somekey", "bla")
@@ -667,7 +676,9 @@ class TestCharm(unittest.TestCase):
 
     @parameterized.expand([("app"), ("unit")])
     def test_set_reset_new_secret(self, scope):
-        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
+        if scope == "app":
+            self.harness.set_leader(True)
+
         # Getting current password
         self.harness.charm.set_secret(scope, "new-secret", "bla")
         assert self.harness.charm.get_secret(scope, "new-secret") == "bla"
@@ -680,6 +691,22 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.set_secret(scope, "new-secret2", "blablabla")
         assert self.harness.charm.get_secret(scope, "new-secret2") == "blablabla"
 
+    def test_set_reset_new_secret_non_leader(self):
+        self.harness.set_leader(True)
+
+        # Getting current password
+        self.harness.charm.set_secret("app", "new-secret", "bla")
+        assert self.harness.charm.get_secret("app", "new-secret") == "bla"
+
+        # Reset new secret
+        self.harness.set_leader(False)
+        with self.assertRaises(ModelError):
+            self.harness.charm.set_secret("app", "new-secret", "blablabla")
+
+        # Set another new secret
+        with self.assertRaises(ModelError):
+            self.harness.charm.set_secret("app", "new-secret2", "blablabla")
+
     @parameterized.expand([("app"), ("unit")])
     def test_invalid_secret(self, scope):
         with self.assertRaises(TypeError):
@@ -690,8 +717,8 @@ class TestCharm(unittest.TestCase):
 
     @pytest.mark.usefixtures("use_caplog")
     def test_delete_password(self):
-        """NOTE: currently ops.testing seems to allow for non-leader to remove secrets too!"""
         self._setup_secrets()
+        self.harness.set_leader(True)
 
         assert self.harness.charm.get_secret("app", "monitor-password")
         self.harness.charm.remove_secret("app", "monitor-password")
@@ -725,6 +752,13 @@ class TestCharm(unittest.TestCase):
                 "Non-existing secret unit:non-existing-secret was attempted to be removed."
                 in self._caplog.text
             )
+
+    def test_delete_password_non_leader(self):
+        self._setup_secrets()
+        self.harness.set_leader(False)
+        assert self.harness.charm.get_secret("app", "monitor-password")
+        with self.assertRaises(ModelError):
+            self.harness.charm.remove_secret("app", "monitor-password")
 
     @parameterized.expand([("app"), ("unit")])
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")

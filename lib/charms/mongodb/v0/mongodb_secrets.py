@@ -1,4 +1,5 @@
 """Secrets related helper classes/functions."""
+
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
@@ -6,7 +7,7 @@ from typing import Dict, Optional
 
 from ops import Secret, SecretInfo
 from ops.charm import CharmBase
-from ops.model import SecretNotFoundError
+from ops.model import ModelError, SecretNotFoundError
 
 from config import Config
 from exceptions import SecretAlreadyExistsError
@@ -63,7 +64,7 @@ class CachedSecret:
                 "Secret is already defined with uri %s", self._secret_uri
             )
 
-        if scope == Config.APP_SCOPE:
+        if scope == Config.Relations.APP_SCOPE:
             secret = self.charm.app.add_secret(content, label=self.label)
         else:
             secret = self.charm.unit.add_secret(content, label=self.label)
@@ -93,7 +94,21 @@ class CachedSecret:
         """Getting cached secret content."""
         if not self._secret_content:
             if self.meta:
-                self._secret_content = self.meta.get_content()
+                try:
+                    self._secret_content = self.meta.get_content(refresh=True)
+                except (ValueError, ModelError) as err:
+                    # https://bugs.launchpad.net/juju/+bug/2042596
+                    # Only triggered when 'refresh' is set
+                    known_model_errors = [
+                        "ERROR either URI or label should be used for getting an owned secret but not both",
+                        "ERROR secret owner cannot use --refresh",
+                    ]
+                    if isinstance(err, ModelError) and not any(
+                        msg in str(err) for msg in known_model_errors
+                    ):
+                        raise
+                    # Due to: ValueError: Secret owner cannot use refresh=True
+                    self._secret_content = self.meta.get_content()
         return self._secret_content
 
     def set_content(self, content: Dict[str, str]) -> None:
