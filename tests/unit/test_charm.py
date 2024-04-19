@@ -342,9 +342,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    def test_start_mongod_error_initalising_replica_set(
-        self, connection, defer
-    ):
+    def test_start_mongod_error_initalising_replica_set(self, connection, defer):
         """Tests that failure to initialise replica set is properly handled.
 
         Verifies that when there is a failure to initialise replica set that no operations related
