@@ -88,8 +88,8 @@ async def change_logging(ops_test: OpsTest):
         " --bind_ip_all"
         " --replSet=mongodb-k8s"
         " --dbpath=/var/lib/mongodb"
-        " --logpath=/var/lib/mongodb/mongodb.log" 
-        " --auth --clusterAuthMode=keyFile" 
+        " --logpath=/var/lib/mongodb/mongodb.log"
+        " --auth --clusterAuthMode=keyFile"
         " --keyFile=/etc/mongod/keyFile"
     )
 

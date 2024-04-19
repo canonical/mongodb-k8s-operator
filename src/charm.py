@@ -54,14 +54,7 @@ from ops.model import (
     Unit,
     WaitingStatus,
 )
-from ops.pebble import (
-    ChangeError,
-    ExecError,
-    Layer,
-    PathError,
-    ProtocolError,
-    ServiceInfo,
-)
+from ops.pebble import ChangeError, ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
 from tenacity import (
     RetryError,
