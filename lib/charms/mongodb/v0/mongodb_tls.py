@@ -13,10 +13,10 @@ import re
 import socket
 from typing import List, Optional, Tuple
 
-from charms.tls_certificates_interface.v1.tls_certificates import (
+from charms.tls_certificates_interface.v3.tls_certificates import (
     CertificateAvailableEvent,
     CertificateExpiringEvent,
-    TLSCertificatesRequiresV1,
+    TLSCertificatesRequiresV3,
     generate_csr,
     generate_private_key,
 )
@@ -39,8 +39,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
-
+LIBPATCH = 6
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +53,7 @@ class MongoDBTLS(Object):
         self.charm = charm
         self.substrate = substrate
         self.peer_relation = peer_relation
-        self.certs = TLSCertificatesRequiresV1(self.charm, Config.TLS.TLS_PEER_RELATION)
+        self.certs = TLSCertificatesRequiresV3(self.charm, Config.TLS.TLS_PEER_RELATION)
         self.framework.observe(
             self.charm.on.set_tls_private_key_action, self._on_set_tls_private_key
         )
@@ -70,7 +69,7 @@ class MongoDBTLS(Object):
         self.framework.observe(self.certs.on.certificate_expiring, self._on_certificate_expiring)
 
     def is_tls_enabled(self, scope: Scopes):
-        """Getting internal TLS flag (meaning)."""
+        """Returns a boolean indicating if TLS for a given `scope` is enabled."""
         return self.charm.get_secret(scope, Config.TLS.SECRET_CERT_LABEL) is not None
 
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
