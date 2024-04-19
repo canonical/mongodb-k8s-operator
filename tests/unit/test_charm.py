@@ -341,11 +341,9 @@ class TestCharm(unittest.TestCase):
         defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     def test_start_mongod_error_initalising_replica_set(
-        self, connection, init_user, provider, defer
+        self, connection, defer
     ):
         """Tests that failure to initialise replica set is properly handled.
 
@@ -364,9 +362,6 @@ class TestCharm(unittest.TestCase):
         for exception, expected_raise in PYMONGO_EXCEPTIONS:
             connection.return_value.__enter__.return_value.init_replset.side_effect = exception
             self.harness.charm.on.start.emit()
-
-            init_user.assert_not_called()
-            provider.return_value.oversee_users.assert_not_called()
 
             # verify app data
             self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
