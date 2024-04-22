@@ -39,10 +39,10 @@ jobs:
           - .
           - tests/integration/ha_tests/application_charm
           - tests/integration/relation_tests/application-charm
-    name: Build ${{matrix.path}} charm
+    name: Build ${{matrix.charms}} charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.1
     with:
-      path-to-charm-directory: ${{ matrix.path }}
+      path-to-charm-directory: ${{ matrix.charms }}
       cache: true
 
   integration-test:
@@ -81,8 +81,7 @@ jobs:
           name: ${{ needs.build.outputs.artifact-name }}
 
       - name: Check juju version
-        run: |
-          echo $(juju --version)
+        run: juju --version
 
       - name: Free disk space
         run: |
@@ -95,18 +94,6 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           echo "Free disk space after cleanup"
           df -T
-
-      - name: Select tests
-        id: select-tests
-        run: |
-          if [ "${{ github.event_name }}" == "schedule" ]
-          then
-            echo Running unstable and stable tests
-            echo "mark_expression=" >> $GITHUB_OUTPUT
-          else
-            echo Skipping unstable tests
-            echo "mark_expression=not unstable" >> $GITHUB_OUTPUT
-          fi
 
       - name: Run integration tests
         # set a predictable model name so it can be consumed by charm-logdump-action
