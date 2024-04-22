@@ -8,53 +8,52 @@ concurrency:
 
 on:
   pull_request:
+    paths-ignore:
+      - '.gitignore'
+      - '.jujuignore'
+      - 'LICENSE'
+      - '**.md'
+      - .github/renovate.json5
   schedule:
-    - cron: "53 0 * * *" # Daily at 00:53 UTC
+    - cron: '53 0 * * *' # Daily at 00:53 UTC
   # Triggered on push to branch "main" by .github/workflows/release.yaml
   workflow_call:
 
 jobs:
   lint:
     name: Lint
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v13.1.1
+
+  unit-test:
+    name: Unit test charm
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Install tox
-        # TODO: Consider replacing with custom image on self-hosted runner OR pinning version
-        run: python3 -m pip install tox
-      - name: Run linters
-        run: tox run -e lint
-
-  unit-test:
-    name: Unit tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install tox
-        # TODO: Consider replacing with custom image on self-hosted runner OR pinning version
-        run: python3 -m pip install --upgrade pip; python3 -m pip install tox
+      - name: Install tox & poetry
+        run: |
+          pipx install tox
+          pipx install poetry
       - name: Run tests
         run: tox run -e unit
 
   build:
+    name: Build "${{ matrix.charms }}" charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.1
     strategy:
       fail-fast: true
       matrix:
         charms:
-          - .
-          - tests/integration/ha_tests/application_charm
-          - tests/integration/relation_tests/application-charm
-    name: Build ${{matrix.charms}} charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.1
+          - "."
+          - "tests/integration/ha_tests/application_charm"
+          - "tests/integration/relation_tests/application-charm"
     with:
-      path-to-charm-directory: ${{ matrix.charms }}
       cache: true
+      path-to-charm-directory: "${{ matrix.charms }}"
 
   integration-test:
+    name: Integration test charm | 3.1.7
     strategy:
       fail-fast: false
       matrix:
@@ -63,56 +62,24 @@ jobs:
           - ha-integration
           - tls-integration
           - metrics-integration
-    name: ${{ matrix.tox-environments }}
     needs:
       - lint
       - unit-test
       - build
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup operator environment
-        # TODO: Replace with custom image on self-hosted runner
-        uses: charmed-kubernetes/actions-operator@main
-        with:
-          provider: microk8s
-          channel: "1.29-strict/stable"
-          bootstrap-constraints: "cores=2 mem=2G"
-          juju-channel: 3.3/stable
-          bootstrap-options: "--agent-version 3.1.7"
-
-      - name: Download packed charm(s)
-        uses: actions/download-artifact@v3
-        with:
-          name: ${{ needs.build.outputs.artifact-name }}
-
-      - name: Check juju version
-        run: juju --version
-
-      - name: Free disk space
-        run: |
-          echo "Free disk space before cleanup"
-          df -T
-          # free space in the runner
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/share/boost
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          echo "Free disk space after cleanup"
-          df -T
-
-      - name: Run integration tests
-        # set a predictable model name so it can be consumed by charm-logdump-action
-        run: sg snap_microk8s -c "tox run -e ${{ matrix.tox-environments }} -- --model testing -m '${{ steps.select-tests.outputs.mark_expression }}'"
-        env:
-          CI_PACKED_CHARMS: ${{ needs.build.outputs.charms }}
-
-      - name: Dump logs
-        uses: canonical/charm-logdump-action@main
-        if: failure()
-        with:
-          app: mongodb-k8s
-          model: testing
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v13.1.1
+    with:
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+      cloud: microk8s
+      microk8s-snap-channel: 1.29-strict/stable
+      juju-agent-version: 3.1.7
+      libjuju-version-constraint: 3.4.0.0
+    secrets:
+      integration-test: |
+        {
+          "AWS_ACCESS_KEY": "${{ secrets.AWS_ACCESS_KEY }}",
+          "AWS_SECRET_KEY": "${{ secrets.AWS_SECRET_KEY }}",
+          "GCP_ACCESS_KEY": "${{ secrets.GCP_ACCESS_KEY }}",
+          "GCP_SECRET_KEY": "${{ secrets.GCP_SECRET_KEY }}",
+        }
+    permissions:
+      contents: write  # Needed for Allure Report beta
