@@ -488,7 +488,6 @@ async def test_update_backup_password(ops_test: OpsTest) -> None:
 
 
 # TODO remove this workaround once issue with juju secrets is fixed
-@pytest.mark.group(1)
 def get_new_cluster_name(cloud_provider: str) -> str:
     """Generates a new cluster name."""
     return f"{NEW_CLUSTER}-{cloud_provider.lower()}"
