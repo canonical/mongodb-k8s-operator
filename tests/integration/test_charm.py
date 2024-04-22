@@ -34,6 +34,7 @@ from .helpers import (
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest):
     """Build the charm-under-test and deploy it together with related charms.
@@ -66,6 +67,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
     await ops_test.model.set_config({"update-status-hook-interval": "60m"})
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
 async def test_application_is_up(ops_test: OpsTest, unit_id: int):
@@ -74,6 +76,7 @@ async def test_application_is_up(ops_test: OpsTest, unit_id: int):
     assert response["ok"] == 1
 
 
+@pytest.mark.group(1)
 async def test_application_primary(ops_test: OpsTest):
     """Tests existence of primary and verifies the application is running as a replica set.
 
@@ -101,6 +104,7 @@ async def test_application_primary(ops_test: OpsTest):
     ), "primary not leader on deployment"
 
 
+@pytest.mark.group(1)
 async def test_monitor_user(ops_test: OpsTest) -> None:
     """Test verifies that the monitor user can perform operations such as 'rs.conf()'."""
     unit = ops_test.model.applications[APP_NAME].units[0]
@@ -116,6 +120,7 @@ async def test_monitor_user(ops_test: OpsTest) -> None:
     assert return_code == 0, f"command rs.conf() on monitor user does not work, error: {stderr}"
 
 
+@pytest.mark.group(1)
 async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: OpsTest) -> None:
     """Test verifies that only the leader can set a password, while all units can read it."""
     # Setting existing password
@@ -134,6 +139,7 @@ async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: 
         assert password2 == password
 
 
+@pytest.mark.group(1)
 async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> None:
     """Test verifies that we can set and retrieve the correct password using Juju 3.x secrets."""
     new_password = str(uuid4())
@@ -164,6 +170,7 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
     assert content["monitor-password"] == password
 
 
+@pytest.mark.group(1)
 async def test_empty_password(ops_test: OpsTest) -> None:
     """Test that the password can't be set to an empty string."""
     leader_id = await get_leader_id(ops_test)
@@ -176,6 +183,7 @@ async def test_empty_password(ops_test: OpsTest) -> None:
     assert password1 == password2
 
 
+@pytest.mark.group(1)
 async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None:
     """Test that in general, there is no change when password validation fails."""
     leader_id = await get_leader_id(ops_test)
@@ -189,6 +197,7 @@ async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None
     assert password1 == password2
 
 
+@pytest.mark.group(1)
 async def test_scale_up(ops_test: OpsTest):
     """Tests juju add-unit functionality.
 
@@ -224,6 +233,7 @@ async def test_scale_up(ops_test: OpsTest):
     )
 
 
+@pytest.mark.group(1)
 async def test_scale_down(ops_test: OpsTest):
     """Tests juju remove-unit functionality.
 
@@ -265,6 +275,7 @@ async def test_scale_down(ops_test: OpsTest):
     assert primary in juju_hosts, "no primary after scaling down"
 
 
+@pytest.mark.group(1)
 async def test_replication_primary_reelection(ops_test: OpsTest):
     """Tests removal of Mongodb primary and the reelection functionality.
 
@@ -298,6 +309,7 @@ async def test_replication_primary_reelection(ops_test: OpsTest):
     assert new_primary != primary
 
 
+@pytest.mark.group(1)
 async def test_replication_data_consistency(ops_test: OpsTest):
     """Test the data consistency between the primary and secondaries.
 

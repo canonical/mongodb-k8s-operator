@@ -26,6 +26,7 @@ INTERNAL_CERT_PATH = "/etc/mongod/internal-ca.crt"
 DB_SERVICE = "mongod.service"
 
 
+@pytest.mark.group(1)
 async def check_certs_correctly_distributed(ops_test: OpsTest, unit: Unit) -> None:
     """Comparing expected vs distributed certificates.
 
@@ -78,6 +79,7 @@ async def check_certs_correctly_distributed(ops_test: OpsTest, unit: Unit) -> No
         assert relation_internal_cert == internal_contents_file
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
@@ -96,6 +98,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         )
 
 
+@pytest.mark.group(1)
 async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
     # Relate it to the MongoDB to enable TLS.
@@ -108,6 +111,7 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
         assert await check_tls(ops_test, unit, enabled=True)
 
 
+@pytest.mark.group(1)
 async def test_rotate_tls_key(ops_test: OpsTest) -> None:
     """Verify rotating tls private keys restarts mongod with new certificates.
 
@@ -169,6 +173,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         ), f"tls is not enabled for {unit.name}."
 
 
+@pytest.mark.group(1)
 async def test_set_tls_key(ops_test: OpsTest) -> None:
     """Verify rotating tls private keys restarts mongod with new certificates.
 
@@ -247,6 +252,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         ), f"tls is not enabled for {unit.name}."
 
 
+@pytest.mark.group(1)
 async def test_disable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS disabled after removing relation to the TLS application."""
     # Remove the relation.

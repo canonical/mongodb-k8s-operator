@@ -54,17 +54,9 @@ jobs:
 
   integration-test:
     name: Integration test charm | 3.1.7
-    strategy:
-      fail-fast: false
-      matrix:
-        tox-environments:
-          - integration
-          - ha-integration
-          - tls-integration
-          - metrics-integration
     needs:
       - lint
-      - unit-test
+      # - unit-test
       - build
     uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v13.1.1
     with:

@@ -36,6 +36,7 @@ APP_NAMES = [APPLICATION_APP_NAME, DATABASE_APP_NAME, ANOTHER_DATABASE_APP_NAME]
 TEST_APP_CHARM_PATH = "tests/integration/relation_tests/application-charm"
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_deploy_charms(ops_test: OpsTest):
     """Deploy both charms (application and database) to use in the tests."""
@@ -66,6 +67,7 @@ async def test_deploy_charms(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", timeout=1000)
 
 
+@pytest.mark.group(1)
 async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     # insert some data
     cmd = (
@@ -110,6 +112,7 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     assert len(result.data) == 0
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     """Test basic functionality of database relation interface."""
@@ -125,6 +128,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     await verify_crud_operations(ops_test, connection_string)
 
 
+@pytest.mark.group(1)
 async def verify_primary(ops_test: OpsTest, application_name: str):
     # verify primary is present in hosts provided to application
     # sleep for twice the median election time
@@ -141,6 +145,7 @@ async def verify_primary(ops_test: OpsTest, application_name: str):
     assert primary is not None, "Replica set has no primary"
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     """Verifies that the app metadata changes with db relation joined and departed events."""
@@ -258,6 +263,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     await verify_crud_operations(ops_test, scaled_down_string)
 
 
+@pytest.mark.group(1)
 async def test_user_with_extra_roles(ops_test: OpsTest):
     """Test superuser actions (ie creating a new user and creating a new database)."""
     connection_string = await get_connection_string(
@@ -279,6 +285,7 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
     assert '"acknowledged" : true' in result.data
 
 
+@pytest.mark.group(1)
 async def test_two_applications_doesnt_share_the_same_relation_data(ops_test: OpsTest):
     """Test that two different application connect to the database with different credentials."""
     # Set some variables to use in this test.
@@ -311,6 +318,7 @@ async def test_two_applications_doesnt_share_the_same_relation_data(ops_test: Op
     assert application_connection_string != another_application_connection_string
 
 
+@pytest.mark.group(1)
 async def test_an_application_can_connect_to_multiple_database_clusters(ops_test: OpsTest):
     """Test that an application can connect to different clusters of the same database."""
     # Relate the application with both database clusters
@@ -343,6 +351,7 @@ async def test_an_application_can_connect_to_multiple_database_clusters(ops_test
     assert application_connection_string != another_application_connection_string
 
 
+@pytest.mark.group(1)
 async def test_an_application_can_connect_to_multiple_aliased_database_clusters(ops_test: OpsTest):
     """Test that an application can connect to different clusters of the same database."""
     # Relate the application with both database clusters
@@ -379,6 +388,7 @@ async def test_an_application_can_connect_to_multiple_aliased_database_clusters(
     assert application_connection_string != another_application_connection_string
 
 
+@pytest.mark.group(1)
 async def test_an_application_can_request_multiple_databases(ops_test: OpsTest):
     """Test that an application can request additional databases using the same interface."""
     # Relate the charms using another relation and wait for them exchanging some connection data.
@@ -399,6 +409,7 @@ async def test_an_application_can_request_multiple_databases(ops_test: OpsTest):
     assert first_database_connection_string != second_database_connection_string
 
 
+@pytest.mark.group(1)
 async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     """Verify removed applications no longer have access to the database."""
     # before removing relation we need its authorisation via connection string
