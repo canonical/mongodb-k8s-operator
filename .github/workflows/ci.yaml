@@ -3,7 +3,7 @@
 name: Tests
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
 on:
@@ -16,27 +16,18 @@ on:
 jobs:
   lint:
     name: Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-      - name: Install tox
-        # TODO: Consider replacing with custom image on self-hosted runner OR pinning version
-        run: python3 -m pip install tox
-      - name: Run linters
-        run: tox run -e lint
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v13.1.2
 
   unit-test:
     name: Unit tests
     runs-on: ubuntu-latest
-    timeout-minutes: 15 # TODO: reduce to 5 minutes
+    timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install tox
         # TODO: Consider replacing with custom image on self-hosted runner OR pinning version
-        run: python3 -m pip install tox
+        run: python3 -m pip install --upgrade pip; python3 -m pip install tox
       - name: Run tests
         run: tox run -e unit
 
@@ -44,12 +35,15 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        charms: [".", "tests/integration/ha_tests/application_charm", "tests/integration/relation_tests/application-charm"]
-    name: Build ${{matrix.charms}} charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm_without_cache.yaml@v8
+        path:
+          - .
+          - tests/integration/ha_tests/application_charm
+          - tests/integration/relation_tests/application-charm
+    name: Build ${{matrix.path}} charm
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.1
     with:
-      charmcraft-snap-revision: 1349
-      path-to-charm-directory: ${{matrix.charms}}
+      path-to-charm-directory: ${{ matrix.path }}
+      cache: true
 
   integration-test:
     strategy:
@@ -69,23 +63,27 @@ jobs:
     timeout-minutes: 120
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
       - name: Setup operator environment
         # TODO: Replace with custom image on self-hosted runner
         uses: charmed-kubernetes/actions-operator@main
         with:
           provider: microk8s
-          channel: "1.27-strict/stable"
+          channel: "1.28-strict/stable"
           bootstrap-constraints: "cores=2 mem=2G"
-          juju-channel: 3.1/stable
-          bootstrap-options: "--agent-version 3.1.6"
+          juju-channel: 3.3/stable
+          bootstrap-options: "--agent-version 3.1.7"
+
       - name: Download packed charm(s)
         uses: actions/download-artifact@v3
         with:
           name: ${{ needs.build.outputs.artifact-name }}
+
       - name: Check juju version
         run: |
           echo $(juju --version)
+
       - name: Free disk space
         run: |
           echo "Free disk space before cleanup"
@@ -97,6 +95,7 @@ jobs:
           sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           echo "Free disk space after cleanup"
           df -T
+
       - name: Select tests
         id: select-tests
         run: |
@@ -108,6 +107,7 @@ jobs:
             echo Skipping unstable tests
             echo "mark_expression=not unstable" >> $GITHUB_OUTPUT
           fi
+
       - name: Run integration tests
         # set a predictable model name so it can be consumed by charm-logdump-action
         run: sg snap_microk8s -c "tox run -e ${{ matrix.tox-environments }} -- --model testing -m '${{ steps.select-tests.outputs.mark_expression }}'"

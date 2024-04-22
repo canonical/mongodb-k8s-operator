@@ -840,6 +840,12 @@ class MongoDBCharm(CharmBase):
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
+                logger.info("User initialization")
+                self._init_operator_user()
+                self._init_backup_user()
+                self._init_monitor_user()
+                logger.info("Reconcile relations")
+                self.client_relations.oversee_users(None, event)
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
@@ -848,6 +854,10 @@ class MongoDBCharm(CharmBase):
                 return
             except PyMongoError as e:
                 logger.error("Deferring on_start since: error=%r", e)
+                event.defer()
+                return
+            except AdminUserCreationError as e:
+                logger.error("Deferring on_start because of users creation: error=%r", e)
                 event.defer()
                 return
 
