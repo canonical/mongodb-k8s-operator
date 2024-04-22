@@ -30,14 +30,14 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.2
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.1
 
   release:
       name: Release charm
       needs:
         - ci-tests
         - build
-      uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v13.1.2
+      uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v13.1.1
       with:
         channel: 6/edge
         artifact-name: ${{ needs.build.outputs.artifact-name }}

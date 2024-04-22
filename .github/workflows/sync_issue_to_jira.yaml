@@ -9,11 +9,11 @@ on:
 jobs:
   sync:
     name: Sync GitHub issue to Jira
-    uses: canonical/data-platform-workflows/.github/workflows/sync_issue_to_jira.yaml@v8
+    uses: canonical/data-platform-workflows/.github/workflows/sync_issue_to_jira.yaml@v13.1.1
     with:
       jira-base-url: https://warthogs.atlassian.net
       jira-project-key: DPE
-      jira-component-names: mongodb-k8s
+      jira-component-names: postgresql-k8s
     secrets:
       jira-api-token: ${{ secrets.JIRA_API_TOKEN }}
       jira-user-email: ${{ secrets.JIRA_USER_EMAIL }}

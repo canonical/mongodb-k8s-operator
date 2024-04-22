@@ -24,10 +24,7 @@ pyyaml = "^6.0.1"
 cosl = "^0.0.11"
 
 [tool.poetry.group.charm-libs.dependencies]
-# data_platform_libs/v0/data_interfaces.py
 ops = "^2.12.0"
-# data_platform_libs/v0/upgrade.py
-# grafana_agent/v0/cos_agent.py requires pydantic <2
 pydantic = "^1.10.7"
 cryptography = "^42.0.5"
 jsonschema = "^4.21.1"
@@ -70,6 +67,8 @@ cosl = "^0.0.11"
 bcrypt = "^4.0.1"
 juju = "3.4.0"
 pytest-operator-cache = {git = "https://github.com/canonical/data-platform-workflows", tag = "v13.1.1", subdirectory = "python/pytest_plugins/pytest_operator_cache"}
+pytest-operator-groups = {git = "https://github.com/canonical/data-platform-workflows", tag = "v13.1.1", subdirectory = "python/pytest_plugins/pytest_operator_groups"}
+pytest-github-secrets = {git = "https://github.com/canonical/data-platform-workflows", tag = "v13.1.1", subdirectory = "python/pytest_plugins/github_secrets"}
 
 [build-system]
 requires = ["poetry-core>=1.9.0"]
@@ -90,7 +89,7 @@ markers = ["unstable"]
 # Formatting tools configuration
 [tool.black]
 line-length = 99
-target-version = ["py38"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"

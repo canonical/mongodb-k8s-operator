@@ -39,18 +39,18 @@ jobs:
         run: tox run -e unit
 
   build:
-    name: Build "${{ matrix.charms }}" charm
+    name: Build "${{ matrix.path }}" charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.1
     strategy:
       fail-fast: true
       matrix:
-        charms:
+        path:
           - "."
           - "tests/integration/ha_tests/application_charm"
           - "tests/integration/relation_tests/application-charm"
     with:
       cache: true
-      path-to-charm-directory: "${{ matrix.charms }}"
+      path-to-charm-directory: "${{ matrix.path }}"
 
   integration-test:
     name: Integration test charm | 3.1.7
