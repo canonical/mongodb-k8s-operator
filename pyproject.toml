@@ -21,9 +21,20 @@ tenacity = "^8.2.3"
 cryptography = "^42.0.5"
 jsonschema = "^4.21.1"
 pyyaml = "^6.0.1"
-cosl = "0.0.11"
+cosl = "^0.0.11"
 
-[tool.poetry.group.fmt.dependencies]
+[tool.poetry.group.charm-libs.dependencies]
+# data_platform_libs/v0/data_interfaces.py
+ops = "^2.12.0"
+# data_platform_libs/v0/upgrade.py
+# grafana_agent/v0/cos_agent.py requires pydantic <2
+pydantic = "^1.10.7"
+cryptography = "^42.0.5"
+jsonschema = "^4.21.1"
+cosl = "^0.0.11"
+bcrypt = "^4.0.1"
+
+[tool.poetry.group.format.dependencies]
 black = "^24.4.0"
 isort = "^5.13.2"
 
@@ -35,6 +46,7 @@ flake8-builtins = "^2.5.0"
 pyproject-flake8 = "^7.0.0"
 pep8-naming = "^0.13.3"
 codespell = "^2.2.6"
+shellcheck-py = "^0.10.0.1"
 
 [tool.poetry.group.unit.dependencies]
 coverage = {extras = ["toml"], version = "^7.4.4"}
@@ -42,12 +54,20 @@ pytest = "^8.1.1"
 parameterized = "^0.9.0"
 
 [tool.poetry.group.integration.dependencies]
+ops = "^2.12.0"
+tenacity = "^8.2.3"
+pymongo = "^4.6.3"
 lightkube = "^0.15.2"
 pytest = "^8.1.1"
 pytest-mock = "^3.14.0"
 pytest-operator = "^0.34.0"
+parameterized = "^0.9.0"
+cryptography = "^42.0.5"
+jsonschema = "^4.21.1"
+cosl = "^0.0.11"
+bcrypt = "^4.0.1"
 juju = "3.4.0"
-pytest-operator-cache = {git = "https://github.com/canonical/data-platform-workflows", tag = "v5", subdirectory = "python/pytest_plugins/pytest_operator_cache"}
+pytest-operator-cache = {git = "https://github.com/canonical/data-platform-workflows", tag = "v13.1.1", subdirectory = "python/pytest_plugins/pytest_operator_cache"}
 
 [build-system]
 requires = ["poetry-core>=1.9.0"]
