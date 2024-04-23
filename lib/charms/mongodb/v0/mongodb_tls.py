@@ -182,18 +182,17 @@ class MongoDBTLS(Object):
             self.charm.set_secret(scope, Config.TLS.SECRET_CERT_LABEL, event.certificate)
             self.charm.set_secret(scope, Config.TLS.SECRET_CA_LABEL, event.ca)
 
+        self.charm.unit.status = MaintenanceStatus("enabling TLS")
         if self._waiting_for_certs():
             logger.debug(
-                "Defer till both internal and external TLS certificates available to avoid second restart."
+                "Return till both internal and external TLS certificates available to avoid second restart."
             )
-            event.defer()
             return
 
         logger.info("Restarting mongod with TLS enabled.")
 
         self.charm.delete_tls_certificate_from_workload()
         self.charm.push_tls_certificate_to_workload()
-        self.charm.unit.status = MaintenanceStatus("enabling TLS")
         self.charm.restart_mongod_service()
         self.charm.unit.status = ActiveStatus()
 

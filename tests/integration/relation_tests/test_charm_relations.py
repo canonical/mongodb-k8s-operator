@@ -87,7 +87,9 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     ubuntu_version = '{"version": "20.04"}'
     ubuntu_name_updated = '{"$set": {"release_name": "Fancy Fossa"}}'
     cmd = f"db.test_collection.updateOne({ubuntu_version}, {ubuntu_name_updated})"
-    result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=False)
+    result = await run_mongo_op(
+        ops_test, f"JSON.stringify({cmd})", f'"{connection_string}"', stringify=False
+    )
     assert result.data["acknowledged"] is True
 
     # query the data
@@ -100,7 +102,9 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
 
     # delete the data
     cmd = 'db.test_collection.deleteOne({"release_name": "Fancy Fossa"})'
-    result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=False)
+    result = await run_mongo_op(
+        ops_test, f"JSON.stringify({cmd})", f'"{connection_string}"', stringify=False
+    )
     assert result.data["acknowledged"] is True
 
     # query the data
@@ -274,12 +278,20 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
 
     cmd = f'db.createUser({{user: "newTestUser", pwd: "Test123", roles: [{{role: "readWrite", db: "{database}"}}]}});'
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=True
+        ops_test,
+        f"JSON.stringify({cmd})",
+        f'"{connection_string}"',
+        stringify=False,
+        ignore_errors=True,
     )
     assert 'user" : "newTestUser"' in result.data
     cmd = 'db = db.getSiblingDB("new_database"); db.test_collection.insertOne({"test": "one"});'
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=True
+        ops_test,
+        f"JSON.stringify({cmd})",
+        f'"{connection_string}"',
+        stringify=False,
+        ignore_errors=True,
     )
     assert '"acknowledged" : true' in result.data
 
@@ -424,7 +436,11 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     removed_access = False
     cmd = "db.runCommand({ replSetGetStatus : 1 });"
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=True
+        ops_test,
+        f"JSON.stringify({cmd})",
+        f'"{connection_string}"',
+        stringify=False,
+        ignore_errors=True,
     )
 
     removed_access = False
