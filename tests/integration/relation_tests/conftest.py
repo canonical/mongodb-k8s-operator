@@ -9,6 +9,9 @@ from pytest_operator.plugin import OpsTest
 @pytest.fixture(scope="module")
 async def local_application_charm(ops_test: OpsTest):
     """Build the application charm."""
+    import os
+    os.system("pwd; ls -la")
+
     shutil.copyfile(
         "./lib/charms/data_platform_libs/v0/data_interfaces.py",
         "./tests/integration/relation_tests/application-charm/lib/charms/data_platform_libs/v0/data_interfaces.py",

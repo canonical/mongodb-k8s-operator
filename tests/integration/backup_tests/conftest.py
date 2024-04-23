@@ -11,6 +11,9 @@ from ..ha_tests.helpers import get_application_name
 @pytest.fixture(scope="module")
 async def local_application_charm(ops_test: OpsTest):
     """Build the application charm."""
+    import os
+    os.system("pwd; ls -la")
+
     application_name = await get_application_name(ops_test, "application")
     if application_name:
         return None
