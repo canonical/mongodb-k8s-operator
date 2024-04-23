@@ -44,7 +44,7 @@ async def test_deploy_charms(ops_test: OpsTest):
     # Deploy both charms (2 units for each application to test that later they correctly
     # set data in the relation application databag using only the leader unit).
 
-    os.system("pwd; ls -la")
+    os.system(f"pwd; echo ''; ls -la {TEST_APP_CHARM_PATH} || true")
     application_charm = await ops_test.build_charm(TEST_APP_CHARM_PATH)
     database_charm = await ops_test.build_charm(".")
     db_resources = {
