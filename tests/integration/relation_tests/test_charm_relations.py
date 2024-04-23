@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 import asyncio
 import logging
+import os
 import time
 from pathlib import Path
 
@@ -33,7 +34,7 @@ MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "multiple-database-clusters"
 ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "aliased-multiple-database-clusters"
 ANOTHER_DATABASE_APP_NAME = "another-database"
 APP_NAMES = [APPLICATION_APP_NAME, DATABASE_APP_NAME, ANOTHER_DATABASE_APP_NAME]
-TEST_APP_CHARM_PATH = "tests/integration/relation_tests/application-charm"
+TEST_APP_CHARM_PATH = "./tests/integration/relation_tests/application-charm"
 
 
 @pytest.mark.group(1)
@@ -43,6 +44,7 @@ async def test_deploy_charms(ops_test: OpsTest):
     # Deploy both charms (2 units for each application to test that later they correctly
     # set data in the relation application databag using only the leader unit).
 
+    os.system("pwd; ls -la")
     application_charm = await ops_test.build_charm(TEST_APP_CHARM_PATH)
     database_charm = await ops_test.build_charm(".")
     db_resources = {
