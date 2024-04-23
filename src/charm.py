@@ -412,6 +412,12 @@ class MongoDBCharm(CharmBase):
             self.unit.status = BlockedStatus("couldn't start mongodb exporter")
             return
 
+        # mongod is now active
+        self.unit.status = ActiveStatus()
+
+        if not self.unit.is_leader():
+            return
+
         self._initialise_replica_set(event)
         try:
             self._initialise_users(event)
@@ -419,9 +425,6 @@ class MongoDBCharm(CharmBase):
             logger.error("Failed to initialise users. Deferring start event.")
             event.defer()
             return
-
-        # mongod is now active
-        self.unit.status = ActiveStatus()
 
     def _relation_changes_handler(self, event) -> None:
         """Handles different relation events and updates MongoDB replica set."""
@@ -648,6 +651,7 @@ class MongoDBCharm(CharmBase):
 
         logger.info("User initialization")
         try:
+            logger.info("User initialization")
             self._init_operator_user()
             self._init_backup_user()
             self._init_monitor_user()
@@ -847,12 +851,6 @@ class MongoDBCharm(CharmBase):
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
-                logger.info("User initialization")
-                self._init_operator_user()
-                self._init_backup_user()
-                self._init_monitor_user()
-                logger.info("Reconcile relations")
-                self.client_relations.oversee_users(None, event)
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
