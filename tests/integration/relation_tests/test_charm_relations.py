@@ -33,24 +33,22 @@ MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "multiple-database-clusters"
 ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "aliased-multiple-database-clusters"
 ANOTHER_DATABASE_APP_NAME = "another-database"
 APP_NAMES = [APPLICATION_APP_NAME, DATABASE_APP_NAME, ANOTHER_DATABASE_APP_NAME]
-TEST_APP_CHARM_PATH = "tests/integration/relation_tests/application-charm"
+TEST_APP_CHARM_PATH = "./tests/integration/relation_tests/application-charm"
 
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_deploy_charms(ops_test: OpsTest):
+async def test_deploy_charms(ops_test: OpsTest, local_application_charm):
     """Deploy both charms (application and database) to use in the tests."""
     # Deploy both charms (2 units for each application to test that later they correctly
     # set data in the relation application databag using only the leader unit).
-
-    application_charm = await ops_test.build_charm(TEST_APP_CHARM_PATH)
     database_charm = await ops_test.build_charm(".")
     db_resources = {
         "mongodb-image": DATABASE_METADATA["resources"]["mongodb-image"]["upstream-source"]
     }
     await asyncio.gather(
         ops_test.model.deploy(
-            application_charm,
+            local_application_charm,
             application_name=APPLICATION_APP_NAME,
             num_units=2,
         ),

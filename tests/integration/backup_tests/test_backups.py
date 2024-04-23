@@ -73,7 +73,7 @@ async def add_writes_to_db(ops_test: OpsTest):
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest) -> None:
+async def test_build_and_deploy(ops_test: OpsTest, local_application_charm) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for testing. Hence check if there
     # is a pre-existing cluster.
@@ -93,7 +93,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     # test application
     application_name = await ha_helpers.get_application_name(ops_test, "application")
     if not application_name:
-        application_name = await ha_helpers.deploy_and_scale_application(ops_test)
+        application_name = await ha_helpers.deploy_and_scale_local_application(
+            ops_test, local_application_charm
+        )
 
     db_app_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
     await ha_helpers.relate_mongodb_and_application(ops_test, db_app_name, application_name)

@@ -182,28 +182,16 @@ async def deploy_and_scale_mongodb(
     return mongodb_application_name
 
 
-async def deploy_and_scale_application(ops_test: OpsTest) -> str:
+async def deploy_and_scale_local_application(ops_test: OpsTest, local_app_charm) -> str:
     """Deploys and scales the test application charm.
 
     Args:
         ops_test: The ops test framework
+        local_app_charm: local app charm
     """
-    application_name = await get_application_name(ops_test, "application")
-
-    if application_name:
-        await scale_application(ops_test, application_name, 1)
-
-        return application_name
-
-    global application_charm
-    if not application_charm:
-        charm = await ops_test.build_charm("./tests/integration/ha_tests/application_charm/")
-        # Cache the built charm to avoid rebuilding it between tests
-        application_charm = charm
-
     async with ops_test.fast_forward():
         await ops_test.model.deploy(
-            application_charm,
+            local_app_charm,
             application_name=APPLICATION_DEFAULT_APP_NAME,
             num_units=1,
             series="jammy",

@@ -20,7 +20,7 @@ from .helpers import (
     are_all_db_processes_down,
     check_db_stepped_down,
     count_primaries,
-    deploy_and_scale_application,
+    deploy_and_scale_local_application,
     deploy_and_scale_mongodb,
     deploy_chaos_mesh,
     destroy_chaos_mesh,
@@ -115,7 +115,9 @@ def chaos_mesh(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
+async def test_build_and_deploy(
+    ops_test: OpsTest, cmd_mongodb_charm, local_application_charm
+) -> None:
     """Build and deploy three units of MongoDB and one test unit."""
     # it is possible for users to provide their own cluster for HA testing. Hence check if there
     # is a pre-existing cluster.
@@ -126,7 +128,9 @@ async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
         )
     application_name = await get_application_name(ops_test, "application")
     if not application_name:
-        application_name = await deploy_and_scale_application(ops_test)
+        application_name = await deploy_and_scale_local_application(
+            ops_test, local_application_charm
+        )
 
     await relate_mongodb_and_application(ops_test, mongodb_application_name, application_name)
 
