@@ -287,7 +287,7 @@ class MongoDBCharm(CharmBase):
         """Check if the MongoDB replica set is initialised."""
         return "replica_set_initialised" in self.app_peer_data
 
-    @db_initialised.setter
+    @replica_set_initialised.setter
     def replica_set_initialised(self, value):
         """Set the replica_set_initialised flag."""
         if isinstance(value, bool):

@@ -297,7 +297,7 @@ class TestCharm(unittest.TestCase):
         mock_container.return_value.exists.return_value = True
         self.harness.charm.unit.get_container = mock_container
 
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
         self.harness.charm.app_peer_data["users_initialized"] = "True"
 
         self.harness.charm.on.start.emit()
@@ -369,7 +369,7 @@ class TestCharm(unittest.TestCase):
             provider.return_value.oversee_users.assert_not_called()
 
             # verify app data
-            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+            self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
             defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
@@ -399,7 +399,7 @@ class TestCharm(unittest.TestCase):
         defer.assert_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+        self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -432,7 +432,7 @@ class TestCharm(unittest.TestCase):
             defer.assert_called()
 
             # verify app data
-            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+            self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
@@ -620,6 +620,7 @@ class TestCharm(unittest.TestCase):
 
         oversee_users.side_effect = PyMongoError()
 
+        self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
         self.harness.charm.on.start.emit()
 
         # verify app data
@@ -935,6 +936,7 @@ class TestCharm(unittest.TestCase):
     ):
         """Tests what backup user was created."""
         container = self.harness.model.unit.get_container("mongod")
+        self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
         self.harness.set_can_connect(container, True)
         self.harness.charm.on.start.emit()
         password = self.harness.charm.get_secret("app", "backup-password")
