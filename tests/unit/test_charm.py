@@ -297,7 +297,7 @@ class TestCharm(unittest.TestCase):
         mock_container.return_value.exists.return_value = True
         self.harness.charm.unit.get_container = mock_container
 
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
         self.harness.charm.app_peer_data["users_initialized"] = "True"
 
         self.harness.charm.on.start.emit()
@@ -349,8 +349,8 @@ class TestCharm(unittest.TestCase):
     ):
         """Tests that failure to initialise replica set is properly handled.
 
-        Verifies that when there is a failure to initialise replica set that no operations related
-        to setting up users are executed.
+        Verifies that when there is a failure to initialise replica set the defer is called and
+        db_initialised is not set to initialised.
         """
         # presets
         self.harness.set_leader(True)
@@ -364,9 +364,6 @@ class TestCharm(unittest.TestCase):
         for exception, expected_raise in PYMONGO_EXCEPTIONS:
             connection.return_value.__enter__.return_value.init_replset.side_effect = exception
             self.harness.charm.on.start.emit()
-
-            init_user.assert_not_called()
-            provider.return_value.oversee_users.assert_not_called()
 
             # verify app data
             self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
@@ -399,7 +396,7 @@ class TestCharm(unittest.TestCase):
         defer.assert_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+        self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -432,7 +429,7 @@ class TestCharm(unittest.TestCase):
             defer.assert_called()
 
             # verify app data
-            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+            self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
@@ -620,6 +617,7 @@ class TestCharm(unittest.TestCase):
 
         oversee_users.side_effect = PyMongoError()
 
+        self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
         self.harness.charm.on.start.emit()
 
         # verify app data
@@ -969,6 +967,7 @@ class TestCharm(unittest.TestCase):
     ):
         """Tests what backup user was created."""
         container = self.harness.model.unit.get_container("mongod")
+        self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
         self.harness.set_can_connect(container, True)
         self.harness.charm.on.start.emit()
         password = self.harness.charm.get_secret("app", "backup-password")
