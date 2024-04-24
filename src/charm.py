@@ -436,12 +436,11 @@ class MongoDBCharm(CharmBase):
         self._initialise_replica_set(event)
         try:
             self._initialise_users(event)
+            self.db_initialised = True
         except RetryError:
             logger.error("Failed to initialise users. Deferring start event.")
             event.defer()
             return
-
-        self.db_initialised = True
 
     def _relation_changes_handler(self, event) -> None:
         """Handles different relation events and updates MongoDB replica set."""

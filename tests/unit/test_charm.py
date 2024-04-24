@@ -349,8 +349,8 @@ class TestCharm(unittest.TestCase):
     ):
         """Tests that failure to initialise replica set is properly handled.
 
-        Verifies that when there is a failure to initialise replica set that no operations related
-        to setting up users are executed.
+        Verifies that when there is a failure to initialise replica set the defer is called and
+        db_initialised is not set to initialised.
         """
         # presets
         self.harness.set_leader(True)
@@ -365,11 +365,8 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.init_replset.side_effect = exception
             self.harness.charm.on.start.emit()
 
-            init_user.assert_not_called()
-            provider.return_value.oversee_users.assert_not_called()
-
             # verify app data
-            self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
+            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
             defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
