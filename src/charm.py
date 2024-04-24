@@ -656,13 +656,6 @@ class MongoDBCharm(CharmBase):
         In race conditions this can lead to failure to initialise users.
         To prevent these race conditions from breaking the code, retry on failure.
         """
-        if not self.replica_set_initialised:
-            logger.error(
-                "Deferring on_start: Failed to create operator user, since replica set is not initialised."
-            )
-            event.defer()
-            return
-
         if self.users_initialized:
             return
 
