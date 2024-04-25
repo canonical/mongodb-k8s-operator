@@ -152,7 +152,7 @@ async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: 
         password=new_password,
         app_name=app_name,
     )
-    # get password after attemtp to set it up with non-leader
+    # get password after attempt to set it up with non-leader
     password1 = await get_password(
         ops_test, unit_id=leader_id, username="monitor", app_name=app_name
     )
@@ -218,7 +218,7 @@ async def test_empty_password(ops_test: OpsTest) -> None:
     """Test that the password can't be set to an empty string."""
     app_name = await get_app_name(ops_test)
     leader_id = await get_leader_id(ops_test, app_name=app_name)
-    
+
     password1 = await get_password(
         ops_test, unit_id=leader_id, username="monitor", app_name=app_name
     )

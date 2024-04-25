@@ -49,7 +49,6 @@ logger = logging.getLogger(__name__)
 
 async def get_leader_id(ops_test: OpsTest, app_name: str = APP_NAME) -> int:
     """Returns the unit number of the juju leader unit."""
-
     for unit in ops_test.model.applications[app_name].units:
         if await unit.is_leader_from_status():
             return int(unit.entity_id.split("/")[-1])
