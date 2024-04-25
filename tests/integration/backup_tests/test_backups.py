@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 @pytest_asyncio.fixture
 async def continuous_writes_to_db(ops_test: OpsTest):
     """Continuously writes to DB for the duration of the test."""
-    application_name = ha_helpers.get_application_name(ops_test, "application")
+    application_name = await ha_helpers.get_application_name(ops_test, "application")
 
     application_unit = ops_test.model.applications[application_name].units[0]
 
@@ -52,7 +52,7 @@ async def continuous_writes_to_db(ops_test: OpsTest):
 @pytest_asyncio.fixture
 async def add_writes_to_db(ops_test: OpsTest):
     """Adds writes to DB before test starts and clears writes at the end of the test."""
-    application_name = ha_helpers.get_application_name(ops_test, "application")
+    application_name = await ha_helpers.get_application_name(ops_test, "application")
     application_unit = ops_test.model.applications[application_name].units[0]
 
     clear_writes_action = await application_unit.run_action("clear-continuous-writes")

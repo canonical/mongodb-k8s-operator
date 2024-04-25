@@ -47,31 +47,33 @@ HELPER_MONGO_POD_NAME = "mongodb-helper"
 logger = logging.getLogger(__name__)
 
 
-async def get_leader_id(ops_test: OpsTest) -> int:
+async def get_leader_id(ops_test: OpsTest, app_name: str = APP_NAME) -> int:
     """Returns the unit number of the juju leader unit."""
-    leader_unit_id = 0
-    for unit in ops_test.model.applications[APP_NAME].units:
+
+    for unit in ops_test.model.applications[app_name].units:
         if await unit.is_leader_from_status():
-            return leader_unit_id
+            return int(unit.entity_id.split("/")[-1])
 
-        leader_unit_id += 1
+    assert (
+        False
+    ), f"Failed to find unit leader for {app_name} using 'unit.is_leader_from_status()' !!!"
 
-    return leader_unit_id
 
-
-async def get_address_of_unit(ops_test: OpsTest, unit_id: int) -> str:
+async def get_address_of_unit(ops_test: OpsTest, unit_id: int, app_name: str = APP_NAME) -> str:
     """Retrieves the address of the unit based on provided id."""
     status = await ops_test.model.get_status()
-    return status["applications"][APP_NAME]["units"][f"{APP_NAME}/{unit_id}"]["address"]
+    return status["applications"][app_name]["units"][f"{app_name}/{unit_id}"]["address"]
 
 
-async def get_password(ops_test: OpsTest, unit_id: int, username="operator") -> str:
+async def get_password(
+    ops_test: OpsTest, unit_id: int, username="operator", app_name: str = APP_NAME
+) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
         String with the password stored on the peer relation databag.
     """
-    action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
+    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action(
         "get-password", **{"username": username}
     )
     action = await action.wait()
@@ -79,14 +81,18 @@ async def get_password(ops_test: OpsTest, unit_id: int, username="operator") -> 
 
 
 async def set_password(
-    ops_test: OpsTest, unit_id: int, username: str = "operator", password: str = "secret"
+    ops_test: OpsTest,
+    unit_id: int,
+    username: str = "operator",
+    password: str = "secret",
+    app_name: str = APP_NAME,
 ) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
         String with the password stored on the peer relation databag.
     """
-    action = await ops_test.model.units.get(f"{APP_NAME}/{unit_id}").run_action(
+    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action(
         "set-password", **{"username": username, "password": password}
     )
     action = await action.wait()
