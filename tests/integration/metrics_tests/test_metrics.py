@@ -56,7 +56,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
     # no need to build and deploy charm if provided
     app_name = await get_app_name(ops_test)
-    num_units = NUM_UNITS
     if app_name:
         return await check_or_scale_app(ops_test, app_name, NUM_UNITS)
 
@@ -64,7 +63,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         my_charm = await ops_test.build_charm(".")
         resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
         await ops_test.model.deploy(
-            my_charm, num_units=num_units, resources=resources, series="jammy"
+            my_charm, num_units=NUM_UNITS, resources=resources, series="jammy"
         )
         await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=2000)
 
