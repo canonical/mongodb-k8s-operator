@@ -17,6 +17,7 @@ DATABASE_APP_NAME = "mongodb-k8s"
 MONGODB_EXPORTER_PORT = 9216
 MEDIAN_REELECTION_TIME = 12
 RESTART_TIMEOUT = 10
+NUM_UNITS = 3
 
 
 @pytest.fixture(scope="module")
@@ -55,9 +56,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
     # no need to build and deploy charm if provided
     app_name = await get_app_name(ops_test)
-    num_units = 3
+    num_units = NUM_UNITS
     if app_name:
-        return await check_or_scale_app(ops_test, app_name, num_units)
+        return await check_or_scale_app(ops_test, app_name, NUM_UNITS)
 
     async with ops_test.fast_forward():
         my_charm = await ops_test.build_charm(".")
