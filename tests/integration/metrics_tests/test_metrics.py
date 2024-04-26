@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-import os
 import time
 from pathlib import Path
 
@@ -51,10 +50,6 @@ async def verify_endpoints(ops_test: OpsTest, app_name=DATABASE_APP_NAME):
     assert mongodb_metrics.count("mongo") > 10
 
 
-@pytest.mark.skipif(
-    os.environ.get("PYTEST_SKIP_DEPLOY", False),
-    reason="skipping deploy, model expected to be provided.",
-)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
