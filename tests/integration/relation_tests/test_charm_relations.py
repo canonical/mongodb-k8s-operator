@@ -81,7 +81,7 @@ async def test_deploy_charms(ops_test: OpsTest):
         ),
     )
 
-APP_NAMES.append(await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME]))
+    APP_NAMES.append(await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME]))
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", timeout=1000)
 
 
