@@ -3,7 +3,6 @@
 # See LICENSE file for licensing details.
 
 import logging
-import os
 
 import pytest
 from pytest_operator.plugin import OpsTest
@@ -17,10 +16,6 @@ MEDIAN_REELECTION_TIME = 12
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.skipif(
-    os.environ.get("PYTEST_SKIP_DEPLOY", False),
-    reason="skipping deploy, model expected to be provided.",
-)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest):
     """Build the charm-under-test and deploy it to the model.
@@ -75,7 +70,7 @@ async def scale_and_verify(ops_test: OpsTest, count: int):
     else:
         logger.info(f"Scaling down by {abs(count)} units")
 
-    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    app_name = await get_app_name(ops_test)
     await ops_test.model.applications[app_name].scale(scale_change=count)
 
     await ops_test.model.wait_for_idle(

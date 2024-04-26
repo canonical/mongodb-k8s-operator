@@ -129,7 +129,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
     # Relate it to the MongoDB to enable TLS.
-    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    app_name = await get_app_name(ops_test)
     # check if relation exists
     await ops_test.model.relate(app_name, TLS_CERTIFICATES_APP_NAME)
 
@@ -146,7 +146,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
 
     This test rotates tls private keys to randomly generated keys.
     """
-    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    app_name = await get_app_name(ops_test)
     # dict of values for cert file certion and mongod service start times. After resetting the
     # private keys these certificates should be updated and the mongod service should be
     # restarted
@@ -208,7 +208,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
 
     This test rotates tls private keys to user specified keys.
     """
-    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    app_name = await get_app_name(ops_test)
     # dict of values for cert file certion and mongod service start times. After resetting the
     # private keys these certificates should be updated and the mongod service should be
     # restarted
@@ -284,7 +284,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
 
 async def test_disable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS disabled after removing relation to the TLS application."""
-    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    app_name = await get_app_name(ops_test)
     # Remove the relation.
     await ops_test.model.applications[app_name].remove_relation(
         f"{app_name}:certificates", f"{TLS_CERTIFICATES_APP_NAME}:certificates"

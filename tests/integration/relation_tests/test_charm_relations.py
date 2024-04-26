@@ -35,6 +35,7 @@ ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "aliased-multiple-database-cl
 ANOTHER_DATABASE_APP_NAME = "another-database"
 APP_NAMES = [APPLICATION_APP_NAME, DATABASE_APP_NAME, ANOTHER_DATABASE_APP_NAME]
 TEST_APP_CHARM_PATH = "tests/integration/relation_tests/application-charm"
+REQUIRED_UNITS = 2
 
 
 @pytest.mark.skipif(
@@ -50,48 +51,41 @@ async def test_deploy_charms(ops_test: OpsTest):
     application_charm = await ops_test.build_charm(TEST_APP_CHARM_PATH)
     database_charm = await ops_test.build_charm(".")
 
-    required_units = 2
     app_name = await get_app_name(ops_test)
     if app_name == ANOTHER_DATABASE_APP_NAME:
         assert (
             False
         ), f"provided MongoDB application, cannot be named {ANOTHER_DATABASE_APP_NAME}, this name is reserved for this test."
 
+    db_resources = {
+        "mongodb-image": DATABASE_METADATA["resources"]["mongodb-image"]["upstream-source"]
+    }
+
     if app_name:
-        db_resources = {
-            "mongodb-image": DATABASE_METADATA["resources"]["mongodb-image"]["upstream-source"]
-        }
-        await asyncio.gather(
-            ops_test.model.deploy(
-                application_charm,
-                application_name=APPLICATION_APP_NAME,
-                num_units=required_units,
-            ),
-            check_or_scale_app(ops_test, app_name, required_units),
-            ops_test.model.deploy(
-                database_charm,
-                application_name=ANOTHER_DATABASE_APP_NAME,
-                resources=db_resources,
-                num_units=required_units,
-            ),
-        )
+        await asyncio.gather(check_or_scale_app(ops_test, app_name, REQUIRED_UNITS))
     else:
         await asyncio.gather(
             ops_test.model.deploy(
-                application_charm,
-                application_name=APPLICATION_APP_NAME,
-                num_units=required_units,
-            ),
-            ops_test.model.deploy(
                 database_charm,
                 application_name=DATABASE_APP_NAME,
-                num_units=required_units,
-            ),
-            ops_test.model.deploy(
-                database_charm,
-                application_name=ANOTHER_DATABASE_APP_NAME,
-            ),
+                num_units=REQUIRED_UNITS,
+            )
         )
+
+    await asyncio.gather(
+        ops_test.model.deploy(
+            application_charm,
+            application_name=APPLICATION_APP_NAME,
+            num_units=REQUIRED_UNITS,
+        ),
+        ops_test.model.deploy(
+            database_charm,
+            application_name=ANOTHER_DATABASE_APP_NAME,
+            resources=db_resources,
+            num_units=REQUIRED_UNITS,
+        ),
+    )
+
     if app_name:
         APP_NAMES.append(app_name)
     else:

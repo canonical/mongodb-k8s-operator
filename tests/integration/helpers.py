@@ -513,3 +513,4 @@ async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_uni
         return
     count = required_units - current_units
     await ops_test.model.applications[user_app_name].scale(scale_change=count)
+    await ops_test.model.wait_for_idle(apps=[user_app_name], status="active", timeout=2000)

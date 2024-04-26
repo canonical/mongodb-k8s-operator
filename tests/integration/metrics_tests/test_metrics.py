@@ -75,13 +75,13 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 async def test_endpoints(ops_test: OpsTest):
     """Sanity check that endpoints are running."""
-    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    app_name = await get_app_name(ops_test)
     await verify_endpoints(ops_test, app_name)
 
 
 async def test_endpoints_new_password(ops_test: OpsTest):
     """Verify that endpoints still function correctly after the monitor user password changes."""
-    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    app_name = await get_app_name(ops_test)
     leader_unit = await ha_helpers.find_unit(ops_test, leader=True)
     action = await leader_unit.run_action("set-password", **{"username": "monitor"})
     action = await action.wait()
@@ -96,7 +96,7 @@ async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     """Verify that endpoint still function correctly after a network cut."""
     # retrieve a primary unit and a non-primary unit (active-unit). The primary unit will have its
     # network disrupted, while the active unit allows us to communicate to `mongod`
-    app_name = await get_app_name(ops_test) or DATABASE_APP_NAME
+    app_name = await get_app_name(ops_test)
     primary = await ha_helpers.get_replica_set_primary(ops_test)
     active_unit = [
         unit for unit in ops_test.model.applications[app_name].units if unit.name != primary.name
