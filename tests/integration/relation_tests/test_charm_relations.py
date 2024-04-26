@@ -38,10 +38,6 @@ TEST_APP_CHARM_PATH = "tests/integration/relation_tests/application-charm"
 REQUIRED_UNITS = 2
 
 
-@pytest.mark.skipif(
-    os.environ.get("PYTEST_SKIP_DEPLOY", False),
-    reason="skipping deploy, model expected to be provided.",
-)
 @pytest.mark.abort_on_fail
 async def test_deploy_charms(ops_test: OpsTest):
     """Deploy both charms (application and database) to use in the tests."""

@@ -88,10 +88,6 @@ async def check_certs_correctly_distributed(ops_test: OpsTest, unit: Unit) -> No
         assert relation_internal_cert == internal_contents_file
 
 
-@pytest.mark.skipif(
-    os.environ.get("PYTEST_SKIP_DEPLOY", False),
-    reason="skipping deploy, model expected to be provided.",
-)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
