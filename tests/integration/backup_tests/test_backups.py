@@ -15,6 +15,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
+from ..helpers import check_or_scale_app, get_app_name
 from . import helpers
 
 S3_APP_NAME = "s3-integrator"
@@ -23,6 +24,7 @@ ENDPOINT = "s3-credentials"
 NEW_CLUSTER = "new-mongodb"
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 DATABASE_APP_NAME = METADATA["name"]
+NUM_UNITS = 3
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +53,6 @@ async def continuous_writes_to_db(ops_test: OpsTest):
 async def add_writes_to_db(ops_test: OpsTest):
     """Adds writes to DB before test starts and clears writes at the end of the test."""
     application_name = await ha_helpers.get_application_name(ops_test, "application")
-
     application_unit = ops_test.model.applications[application_name].units[0]
 
     clear_writes_action = await application_unit.run_action("clear-continuous-writes")
@@ -76,15 +77,21 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy one unit of MongoDB."""
     # it is possible for users to provide their own cluster for testing. Hence check if there
     # is a pre-existing cluster.
-    db_app_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
+    db_app_name = await get_app_name(ops_test)
     if db_app_name:
-        return
-
-    async with ops_test.fast_forward():
-        my_charm = await ops_test.build_charm(".")
-        resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
-        await ops_test.model.deploy(my_charm, num_units=3, resources=resources, series="jammy")
-        await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=2000)
+        await check_or_scale_app(ops_test, db_app_name, NUM_UNITS)
+    else:
+        async with ops_test.fast_forward():
+            my_charm = await ops_test.build_charm(".")
+            resources = {
+                "mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]
+            }
+            await ops_test.model.deploy(
+                my_charm, num_units=NUM_UNITS, resources=resources, series="jammy"
+            )
+            await ops_test.model.wait_for_idle(
+                apps=[DATABASE_APP_NAME], status="active", timeout=2000
+            )
 
     # deploy the s3 integrator charm
     await ops_test.model.deploy(S3_APP_NAME, channel="edge")
@@ -94,7 +101,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     if not application_name:
         application_name = await ha_helpers.deploy_and_scale_application(ops_test)
 
-    db_app_name = await ha_helpers.get_application_name(ops_test, DATABASE_APP_NAME)
+    db_app_name = await get_app_name(ops_test)
     await ha_helpers.relate_mongodb_and_application(ops_test, db_app_name, application_name)
 
     await ops_test.model.wait_for_idle()
@@ -103,7 +110,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     """Verifies that the charm goes into blocked status when s3 creds are incorrect."""
-    db_app_name = await helpers.app_name(ops_test)
+    db_app_name = await get_app_name(ops_test)
 
     # set incorrect s3 credentials
     s3_integrator_unit = ops_test.model.applications[S3_APP_NAME].units[0]
@@ -111,9 +118,9 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     action = await s3_integrator_unit.run_action(action_name="sync-s3-credentials", **parameters)
     await action.wait()
 
-    # relate after s3 becomes active add and wait for relation
+    # integrate after s3 becomes active add and wait for relation
     await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
-    await ops_test.model.add_relation(S3_APP_NAME, db_app_name)
+    await ops_test.model.integrate(S3_APP_NAME, db_app_name)
     await ops_test.model.block_until(
         lambda: helpers.is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
         timeout=TIMEOUT,
@@ -132,7 +139,7 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_blocked_incorrect_conf(ops_test: OpsTest) -> None:
     """Verifies that the charm goes into blocked status when s3 config options are incorrect."""
-    db_app_name = await helpers.app_name(ops_test)
+    db_app_name = await get_app_name(ops_test)
 
     # set correct AWS credentials for s3 storage but incorrect configs
     await helpers.set_credentials(ops_test, cloud="AWS")
@@ -149,7 +156,7 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     """Verifies charm goes into active status when s3 config and creds options are correct."""
-    db_app_name = await helpers.app_name(ops_test)
+    db_app_name = await get_app_name(ops_test)
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
     configuration_parameters = {
@@ -204,7 +211,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
     from AWS to GCP. This test verifies that the first backup in AWS is made, the second backup
     in GCP is made, and that before the second backup is made that pbm correctly resyncs.
     """
-    db_app_name = await helpers.app_name(ops_test)
+    db_app_name = await get_app_name(ops_test)
     db_unit = await helpers.get_leader_unit(ops_test)
 
     # create first backup once ready
@@ -290,7 +297,7 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
     assert number_writes > 0, "no writes to backup"
 
     # create a backup in the AWS bucket
-    db_app_name = await helpers.app_name(ops_test)
+    db_app_name = await get_app_name(ops_test)
     db_unit = await helpers.get_leader_unit(ops_test)
     prev_backups = await helpers.count_logical_backups(db_unit)
     action = await db_unit.run_action(action_name="create-backup")
@@ -308,7 +315,7 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
 
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
-    application_name = await ha_helpers.get_application_name(ops_test, "application")
+    application_name = await get_app_name(ops_test)
     application_unit = ops_test.model.applications[application_name].units[0]
     start_writes_action = await application_unit.run_action("start-continuous-writes")
     await start_writes_action.wait()
@@ -346,7 +353,7 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
 @pytest.mark.parametrize("cloud_provider", ["AWS", "GCP"])
 async def test_restore_new_cluster(ops_test: OpsTest, continuous_writes_to_db, cloud_provider):
     # configure test for the cloud provider
-    db_app_name = await helpers.app_name(ops_test)
+    db_app_name = await get_app_name(ops_test)
     leader_unit = await helpers.get_leader_unit(ops_test, db_app_name)
     await helpers.set_credentials(ops_test, cloud=cloud_provider)
     if cloud_provider == "AWS":
@@ -454,7 +461,8 @@ async def test_restore_new_cluster(ops_test: OpsTest, continuous_writes_to_db, c
 @pytest.mark.abort_on_fail
 async def test_update_backup_password(ops_test: OpsTest) -> None:
     """Verifies that after changing the backup password the pbm tool is updated and functional."""
-    db_app_name = await helpers.app_name(ops_test)
+    db_app_name = await get_app_name(ops_test)
+
     leader_unit = await helpers.get_leader_unit(ops_test)
 
     # wait for charm to be idle before setting password
