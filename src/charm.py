@@ -682,8 +682,6 @@ class MongoDBCharm(CharmBase):
             event.defer()
             raise  # we need to raise to make retry work
 
-        self.replica_set_initialised = True
-
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(5),
@@ -876,6 +874,8 @@ class MongoDBCharm(CharmBase):
                 logger.error("Deferring on_start since: error=%r", e)
                 event.defer()
                 return
+
+        self.replica_set_initialised = True
 
     def _add_units_from_replica_set(
         self, event, mongo: MongoDBConnection, units_to_add: Set[str]
