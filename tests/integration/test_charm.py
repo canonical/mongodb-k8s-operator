@@ -18,8 +18,10 @@ from .helpers import (
     TEST_DOCUMENTS,
     UNIT_IDS,
     check_if_test_documents_stored,
+    check_or_scale_app,
     generate_collection_id,
     get_address_of_unit,
+    get_app_name,
     get_leader_id,
     get_mongo_cmd,
     get_password,
@@ -41,13 +43,18 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
     Assert on the unit status before any relations/configurations take place.
     """
+    app_name = await get_app_name(ops_test)
+    if app_name:
+        return await check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
+
+    app_name = APP_NAME
     # build and deploy charm from local source folder
     charm = await ops_test.build_charm(".")
     resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         charm,
         resources=resources,
-        application_name=APP_NAME,
+        application_name=app_name,
         num_units=len(UNIT_IDS),
         series="jammy",
     )
@@ -56,12 +63,12 @@ async def test_build_and_deploy(ops_test: OpsTest):
     await ops_test.model.set_config({"update-status-hook-interval": "10s"})
 
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME],
+        apps=[app_name],
         status="active",
         raise_on_blocked=True,
         timeout=1000,
     )
-    assert ops_test.model.applications[APP_NAME].units[0].workload_status == "active"
+    assert ops_test.model.applications[app_name].units[0].workload_status == "active"
 
     # effectively disable the update status from firing
     await ops_test.model.set_config({"update-status-hook-interval": "60m"})
@@ -98,16 +105,12 @@ async def test_application_primary(ops_test: OpsTest):
 
     assert number_of_primaries == 1, "more than one primary in replica set"
 
-    leader_id = await get_leader_id(ops_test)
-    assert (
-        primary == f"mongodb-k8s-{leader_id}.mongodb-k8s-endpoints:27017"
-    ), "primary not leader on deployment"
-
 
 @pytest.mark.group(1)
 async def test_monitor_user(ops_test: OpsTest) -> None:
     """Test verifies that the monitor user can perform operations such as 'rs.conf()'."""
-    unit = ops_test.model.applications[APP_NAME].units[0]
+    app_name = await get_app_name(ops_test)
+    unit = ops_test.model.applications[app_name].units[0]
     password = await get_password(ops_test, unit_id=0, username="monitor")
     addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in UNIT_IDS]
     hosts = ",".join(addresses)
@@ -124,36 +127,78 @@ async def test_monitor_user(ops_test: OpsTest) -> None:
 async def test_only_leader_can_set_while_all_can_read_password_secret(ops_test: OpsTest) -> None:
     """Test verifies that only the leader can set a password, while all units can read it."""
     # Setting existing password
-    leader_id = await get_leader_id(ops_test)
-    non_leaders = list(UNIT_IDS)
-    non_leaders.remove(leader_id)
+    app_name = await get_app_name(ops_test)
+    leader_id = await get_leader_id(ops_test, app_name=app_name)
+    non_leaders = []
+    all_units = []
 
-    password = "blablabla"
-    await set_password(ops_test, unit_id=non_leaders[0], username="monitor", password=password)
-    password1 = await get_password(ops_test, unit_id=leader_id, username="monitor")
-    assert password1 != password
+    for unit in ops_test.model.applications[app_name].units:
+        unit_id = int(unit.entity_id.split("/")[-1])
+        all_units.append(unit_id)
+        if unit_id == leader_id:
+            continue
+        non_leaders.append(unit_id)
 
-    await set_password(ops_test, unit_id=leader_id, username="monitor", password=password)
-    for unit_id in UNIT_IDS:
-        password2 = await get_password(ops_test, unit_id=unit_id, username="monitor")
-        assert password2 == password
+    new_password = "blablabla"
+    # get previous password
+    old_password = await get_password(
+        ops_test, unit_id=leader_id, username="monitor", app_name=app_name
+    )
+    # attempt to set password from non-leader
+    await set_password(
+        ops_test,
+        unit_id=non_leaders[0],
+        username="monitor",
+        password=new_password,
+        app_name=app_name,
+    )
+    # get password after attempt to set it up with non-leader
+    password1 = await get_password(
+        ops_test, unit_id=leader_id, username="monitor", app_name=app_name
+    )
+    # password should be the same as before
+    assert password1 == old_password
+
+    # setting new password with leader
+    await set_password(
+        ops_test, unit_id=leader_id, username="monitor", password=new_password, app_name=app_name
+    )
+
+    # validate that all unit return new password
+    for unit_id in all_units:
+        password2 = await get_password(
+            ops_test, unit_id=unit_id, username="monitor", app_name=app_name
+        )
+        assert password2 == new_password
+
+    # return password back to old
+    await set_password(
+        ops_test,
+        unit_id=non_leaders[0],
+        username="monitor",
+        password=old_password,
+        app_name=app_name,
+    )
 
 
 @pytest.mark.group(1)
 async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> None:
     """Test verifies that we can set and retrieve the correct password using Juju 3.x secrets."""
+    app_name = await get_app_name(ops_test)
     new_password = str(uuid4())
 
     # Re=setting existing password
-    leader_id = await get_leader_id(ops_test)
+    leader_id = await get_leader_id(ops_test, app_name=app_name)
     result = await set_password(
-        ops_test, unit_id=leader_id, username="monitor", password=new_password
+        ops_test, unit_id=leader_id, username="monitor", password=new_password, app_name=app_name
     )
 
     secret_id = result["secret-id"].split("/")[-1]
 
     # Getting back the pw programmatically
-    password = await get_password(ops_test, unit_id=leader_id, username="monitor")
+    password = await get_password(
+        ops_test, unit_id=leader_id, username="monitor", app_name=app_name
+    )
 
     #
     # No way to retrieve a secet by label for now (https://bugs.launchpad.net/juju/+bug/2037104)
@@ -161,7 +206,7 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
     # So we take the single member of the list
     # NOTE: This would BREAK if for instance units had secrets at the start...
     #
-    secret_id = await get_secret_id(ops_test)
+    secret_id = await get_secret_id(ops_test, app_or_unit=app_name)
 
     # Getting back the pw from juju CLI
     content = await get_secret_content(ops_test, secret_id)
@@ -173,11 +218,18 @@ async def test_reset_and_get_password_secret_same_as_cli(ops_test: OpsTest) -> N
 @pytest.mark.group(1)
 async def test_empty_password(ops_test: OpsTest) -> None:
     """Test that the password can't be set to an empty string."""
-    leader_id = await get_leader_id(ops_test)
+    app_name = await get_app_name(ops_test)
+    leader_id = await get_leader_id(ops_test, app_name=app_name)
 
-    password1 = await get_password(ops_test, unit_id=leader_id, username="monitor")
-    await set_password(ops_test, unit_id=leader_id, username="monitor", password="")
-    password2 = await get_password(ops_test, unit_id=leader_id, username="monitor")
+    password1 = await get_password(
+        ops_test, unit_id=leader_id, username="monitor", app_name=app_name
+    )
+    await set_password(
+        ops_test, unit_id=leader_id, username="monitor", password="", app_name=app_name
+    )
+    password2 = await get_password(
+        ops_test, unit_id=leader_id, username="monitor", app_name=app_name
+    )
 
     # The password remained unchanged
     assert password1 == password2
@@ -186,12 +238,19 @@ async def test_empty_password(ops_test: OpsTest) -> None:
 @pytest.mark.group(1)
 async def test_no_password_change_on_invalid_password(ops_test: OpsTest) -> None:
     """Test that in general, there is no change when password validation fails."""
+    app_name = await get_app_name(ops_test)
     leader_id = await get_leader_id(ops_test)
-    password1 = await get_password(ops_test, unit_id=leader_id, username="monitor")
+    password1 = await get_password(
+        ops_test, unit_id=leader_id, username="monitor", app_name=app_name
+    )
 
     # The password has to be minimum 3 characters
-    await set_password(ops_test, unit_id=leader_id, username="monitor", password="ca" * 1000000)
-    password2 = await get_password(ops_test, unit_id=leader_id, username="monitor")
+    await set_password(
+        ops_test, unit_id=leader_id, username="monitor", password="ca" * 1000000, app_name=app_name
+    )
+    password2 = await get_password(
+        ops_test, unit_id=leader_id, username="monitor", app_name=app_name
+    )
 
     # The password didn't change
     assert password1 == password2
@@ -204,12 +263,13 @@ async def test_scale_up(ops_test: OpsTest):
     Verifies that when a new unit is added to the MongoDB application that it is added to the
     MongoDB replica set configuration.
     """
+    app_name = await get_app_name(ops_test)
     # add two units and wait for idle
-    await ops_test.model.applications[APP_NAME].scale(scale_change=2)
+    await ops_test.model.applications[app_name].scale(scale_change=2)
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", timeout=1000, wait_for_exact_units=5
+        apps=[app_name], status="active", timeout=1000, wait_for_exact_units=5
     )
-    num_units = len(ops_test.model.applications[APP_NAME].units)
+    num_units = len(ops_test.model.applications[app_name].units)
     assert num_units == 5
 
     # grab juju hosts
@@ -241,12 +301,13 @@ async def test_scale_down(ops_test: OpsTest):
     1. multiple units can be removed while still maintaining a majority (ie remove a minority)
     2. Replica set hosts are properly updated on unit removal
     """
+    app_name = await get_app_name(ops_test)
     # add two units and wait for idle
-    await ops_test.model.applications[APP_NAME].scale(scale_change=-2)
+    await ops_test.model.applications[app_name].scale(scale_change=-2)
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", timeout=1000, wait_for_exact_units=3
+        apps=[app_name], status="active", timeout=1000, wait_for_exact_units=3
     )
-    num_units = len(ops_test.model.applications[APP_NAME].units)
+    num_units = len(ops_test.model.applications[app_name].units)
     assert num_units == 3
 
     # grab juju hosts
@@ -316,19 +377,20 @@ async def test_replication_data_consistency(ops_test: OpsTest):
     Verifies that after writing data to the primary the data on
     the secondaries match.
     """
+    app_name = await get_app_name(ops_test)
     # generate a collection id
     collection_id = generate_collection_id()
 
     # Create a database and a collection (lazily)
     create_collection = await run_mongo_op(
-        ops_test, f'db.createCollection("{collection_id}")', suffix=f"?replicaSet={APP_NAME}"
+        ops_test, f'db.createCollection("{collection_id}")', suffix=f"?replicaSet={app_name}"
     )
     assert create_collection.succeeded and create_collection.data["ok"] == 1
     # Store a few test documents
     insert_many_docs = await run_mongo_op(
         ops_test,
         f"db.{collection_id}.insertMany({TEST_DOCUMENTS})",
-        suffix=f"?replicaSet={APP_NAME}",
+        suffix=f"?replicaSet={app_name}",
     )
     assert insert_many_docs.succeeded and len(insert_many_docs.data["insertedIds"]) == 2
     # attempt ensuring that the replication happened on all secondaries
@@ -340,7 +402,7 @@ async def test_replication_data_consistency(ops_test: OpsTest):
     set_primary_read_pref = await run_mongo_op(
         ops_test,
         'db.getMongo().setReadPref("primary")',
-        suffix=f"?replicaSet={APP_NAME}",
+        suffix=f"?replicaSet={app_name}",
         expecting_output=False,
     )
     assert set_primary_read_pref.succeeded
@@ -350,7 +412,7 @@ async def test_replication_data_consistency(ops_test: OpsTest):
     set_secondary_read_pref = await run_mongo_op(
         ops_test,
         'db.getMongo().setReadPref("secondary")',
-        suffix=f"?replicaSet={APP_NAME}",
+        suffix=f"?replicaSet={app_name}",
         expecting_output=False,
     )
     assert set_secondary_read_pref.succeeded

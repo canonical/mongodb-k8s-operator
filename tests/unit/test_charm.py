@@ -18,6 +18,7 @@ from pymongo.errors import (
     OperationFailure,
     PyMongoError,
 )
+from tenacity import stop_after_attempt, wait_fixed, wait_none
 
 from charm import MongoDBCharm, NotReadyError
 
@@ -342,10 +343,10 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
+    @patch("charm.MongoDBCharm._initialise_users")
     @patch("charm.MongoDBConnection")
     def test_start_mongod_error_initalising_replica_set(
-        self, connection, init_user, provider, defer
+        self, connection, init_users, provider, defer
     ):
         """Tests that failure to initialise replica set is properly handled.
 
@@ -361,12 +362,12 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.unit.get_container = mock_container
         connection.return_value.__enter__.return_value.is_ready = True
 
-        for exception, expected_raise in PYMONGO_EXCEPTIONS:
+        for exception, _ in PYMONGO_EXCEPTIONS:
             connection.return_value.__enter__.return_value.init_replset.side_effect = exception
             self.harness.charm.on.start.emit()
 
             # verify app data
-            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+            self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
             defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
@@ -374,7 +375,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     @patch("tenacity.nap.time.sleep", MagicMock())
-    def test_start_mongod_error_initalising_user(self, connection, init_user, provider, defer):
+    def test_error_initalising_users(self, connection, init_user, provider, defer):
         """Tests that failure to initialise users set is properly handled.
 
         Verifies that when there is a failure to initialise users that overseeing users is not
@@ -390,13 +391,14 @@ class TestCharm(unittest.TestCase):
         connection.return_value.__enter__.return_value.is_ready = True
 
         init_user.side_effect = ExecError("command", 0, "stdout", "stderr")
+        self.harness.charm._initialise_users.retry.wait = wait_none()
         self.harness.charm.on.start.emit()
 
         provider.return_value.oversee_users.assert_not_called()
         defer.assert_called()
 
         # verify app data
-        self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
+        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -406,7 +408,11 @@ class TestCharm(unittest.TestCase):
     @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
     @patch("charm.USER_CREATION_COOLDOWN", 1)
     @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
-    def test_start_mongod_error_overseeing_users(self, connection, init_user, provider, defer):
+    @patch("charm.wait_fixed")
+    @patch("charm.stop_after_attempt")
+    def test_start_mongod_error_overseeing_users(
+        self, retry_stop, retry_wait, connection, init_user, provider, defer
+    ):
         """Tests failures related to pymongo are properly handled when overseeing users.
 
         Verifies that when there is a failure to oversee users that we defer and do not set the
@@ -420,8 +426,11 @@ class TestCharm(unittest.TestCase):
         mock_container.return_value.exists.return_value = True
         self.harness.charm.unit.get_container = mock_container
         connection.return_value.__enter__.return_value.is_ready = True
+        retry_stop.return_value = stop_after_attempt(1)
+        retry_wait.return_value = wait_fixed(1)
+        self.harness.charm._initialise_users.retry.wait = wait_none()
 
-        for exception, expected_raise in PYMONGO_EXCEPTIONS:
+        for exception, _ in PYMONGO_EXCEPTIONS:
             provider.side_effect = exception
             self.harness.charm.on.start.emit()
 
@@ -429,7 +438,7 @@ class TestCharm(unittest.TestCase):
             defer.assert_called()
 
             # verify app data
-            self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
+            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
@@ -605,6 +614,10 @@ class TestCharm(unittest.TestCase):
         Verifies that if the user is already set up, that no attempts to set it up again are
         made when a failure happens causing an event deferring calling the init_user again
         """
+        self.harness.charm.USER_CREATING_MAX_ATTEMPTS = 1
+        self.harness.charm.USER_CREATION_COOLDOWN = 1
+        self.harness.charm._initialise_users.retry.wait = wait_none()
+
         mock_container = mock.Mock()
         mock_container.return_value.can_connect.return_value = True
         mock_container.return_value.exists.return_value = True
@@ -619,8 +632,6 @@ class TestCharm(unittest.TestCase):
 
         self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
         self.harness.charm.on.start.emit()
-
-        # verify app data
         self.assertEqual("operator-user-created" in self.harness.charm.app_peer_data, True)
         defer.assert_called()
 
@@ -966,11 +977,13 @@ class TestCharm(unittest.TestCase):
         _init_monitor_user,
     ):
         """Tests what backup user was created."""
+        self.harness.charm._initialise_users.retry.wait = wait_none()
         container = self.harness.model.unit.get_container("mongod")
         self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
         self.harness.set_can_connect(container, True)
         self.harness.charm.on.start.emit()
         password = self.harness.charm.get_secret("app", "backup-password")
+        self.harness.charm._initialise_users.retry.wait = wait_none()
         self.assertIsNotNone(password)  # verify the password is set
 
     @patch("charm.MongoDBConnection")
