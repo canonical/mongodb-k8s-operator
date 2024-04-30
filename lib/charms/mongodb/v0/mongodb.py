@@ -145,7 +145,6 @@ class MongoDBConnection:
         try:
             for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
                 with attempt:
-                    print("ATTEMPT")
                     # The ping command is cheap and does not require auth.
                     self.client.admin.command("ping")
         except RetryError:
