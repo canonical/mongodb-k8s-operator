@@ -6,6 +6,7 @@ from unittest.mock import call, patch
 
 from charms.mongodb.v0.mongodb import MongoDBConnection, NotReadyError
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
+from tenacity import RetryError, wait_none
 
 MONGO_CONFIG = {
     "replset": "mongo-k8s",
@@ -23,17 +24,17 @@ PYMONGO_EXCEPTIONS = [
 
 
 class TestMongoServer(unittest.TestCase):
+    @patch("charms.mongodb.v0.mongodb.Retrying")
     @patch("charms.mongodb.v0.mongodb.MongoClient")
     @patch("charms.mongodb.v0.mongodb.MongoDBConfiguration")
-    def test_is_ready_error_handling(self, config, mock_client):
+    def test_is_ready_error_handling(self, config, mock_client, retrying):
         """Test failure to check ready of replica returns False.
 
         Test also verifies that when an exception is raised we still close the client connection.
         """
         for exception, _ in PYMONGO_EXCEPTIONS:
             with MongoDBConnection(config) as mongo:
-                mock_client.return_value.admin.command.side_effect = exception
-
+                retrying.side_effect = RetryError(None)
                 #  verify ready is false when an error occurs
                 ready = mongo.is_ready
                 self.assertEqual(ready, False)
@@ -51,6 +52,8 @@ class TestMongoServer(unittest.TestCase):
         for exception, expected_raise in PYMONGO_EXCEPTIONS:
             with self.assertRaises(expected_raise):
                 with MongoDBConnection(config) as mongo:
+                    mongo.init_replset.retry.wait = wait_none()
+
                     mock_client.return_value.admin.command.side_effect = exception
                     mongo.init_replset()
 
@@ -122,6 +125,7 @@ class TestMongoServer(unittest.TestCase):
         for exception, expected_raise in PYMONGO_EXCEPTIONS:
             with self.assertRaises(expected_raise):
                 with MongoDBConnection(config) as mongo:
+                    mongo.remove_replset_member.retry.wait = wait_none()
                     mock_client.return_value.admin.command.side_effect = exception
                     mongo.remove_replset_member("hostname")
 
@@ -140,6 +144,7 @@ class TestMongoServer(unittest.TestCase):
         any_remove.return_value = True
         with self.assertRaises(NotReadyError):
             with MongoDBConnection(config) as mongo:
+                mongo.remove_replset_member.retry.wait = wait_none()
                 mongo.remove_replset_member("hostname")
 
         # verify we close connection and that no attempt to reconfigure was made

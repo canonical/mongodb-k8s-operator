@@ -4,7 +4,6 @@ import unittest
 from unittest import mock
 from unittest.mock import patch
 
-import tenacity
 from charms.mongodb.v0.helpers import current_pbm_op
 from charms.mongodb.v0.mongodb_backups import (
     PBMBusyError,
@@ -155,7 +154,11 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
     @patch("charm.MongoDBBackups._get_pbm_status")
-    def test_verify_resync_syncing(self, pbm_status, run_pbm_command, service, start, restart):
+    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
+    def test_verify_resync_syncing(
+        self, retry_stop, retry_wait, pbm_status, run_pbm_command, service, start, restart
+    ):
         """Tests that when pbm is syncing that it raises an error."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
@@ -166,10 +169,12 @@ class TestMongoBackups(unittest.TestCase):
             '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
         )
 
-        # disable retry
-        self.harness.charm.backups._wait_pbm_status.retry.retry = tenacity.retry_if_not_result(
-            lambda x: True
-        )
+        # disable retry from the function
+        self.harness.charm.backups._wait_pbm_status.retry.stop = stop_after_attempt(1)
+
+        # disable secondary retry from within the function
+        retry_stop.return_value = stop_after_attempt(1)
+        retry_wait.return_value = wait_fixed(1)
 
         with self.assertRaises(PBMBusyError):
             self.harness.charm.backups._resync_config_options()

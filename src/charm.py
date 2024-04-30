@@ -283,6 +283,21 @@ class MongoDBCharm(CharmBase):
             )
 
     @property
+    def replica_set_initialised(self) -> bool:
+        """Check if the MongoDB replica set is initialised."""
+        return "replica_set_initialised" in self.app_peer_data
+
+    @replica_set_initialised.setter
+    def replica_set_initialised(self, value):
+        """Set the replica_set_initialised flag."""
+        if isinstance(value, bool):
+            self.app_peer_data["replica_set_initialised"] = str(value)
+        else:
+            raise ValueError(
+                f"'replica_set_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
+            )
+
+    @property
     def users_initialized(self) -> bool:
         """Check if MongoDB users are created."""
         return "users_initialized" in self.app_peer_data
@@ -412,16 +427,20 @@ class MongoDBCharm(CharmBase):
             self.unit.status = BlockedStatus("couldn't start mongodb exporter")
             return
 
+        # mongod is now active
+        self.unit.status = ActiveStatus()
+
+        if not self.unit.is_leader():
+            return
+
         self._initialise_replica_set(event)
         try:
             self._initialise_users(event)
+            self.db_initialised = True
         except RetryError:
             logger.error("Failed to initialise users. Deferring start event.")
             event.defer()
             return
-
-        # mongod is now active
-        self.unit.status = ActiveStatus()
 
     def _relation_changes_handler(self, event) -> None:
         """Handles different relation events and updates MongoDB replica set."""
@@ -636,9 +655,6 @@ class MongoDBCharm(CharmBase):
         In race conditions this can lead to failure to initialise users.
         To prevent these race conditions from breaking the code, retry on failure.
         """
-        if not self.db_initialised:
-            return
-
         if self.users_initialized:
             return
 
@@ -648,6 +664,7 @@ class MongoDBCharm(CharmBase):
 
         logger.info("User initialization")
         try:
+            logger.info("User initialization")
             self._init_operator_user()
             self._init_backup_user()
             self._init_monitor_user()
@@ -832,7 +849,7 @@ class MongoDBCharm(CharmBase):
 
     def _initialise_replica_set(self, event: StartEvent) -> None:
         """Initialise replica set and create users."""
-        if self.db_initialised:
+        if self.replica_set_initialised:
             # The replica set should be initialised only once. Check should be
             # external (e.g., check initialisation inside peer relation). We
             # shouldn't rely on MongoDB response because the data directory
@@ -847,12 +864,6 @@ class MongoDBCharm(CharmBase):
             try:
                 logger.info("Replica Set initialization")
                 direct_mongo.init_replset()
-                logger.info("User initialization")
-                self._init_operator_user()
-                self._init_backup_user()
-                self._init_monitor_user()
-                logger.info("Reconcile relations")
-                self.client_relations.oversee_users(None, event)
             except ExecError as e:
                 logger.error(
                     "Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr
@@ -864,7 +875,7 @@ class MongoDBCharm(CharmBase):
                 event.defer()
                 return
 
-            self.db_initialised = True
+        self.replica_set_initialised = True
 
     def _add_units_from_replica_set(
         self, event, mongo: MongoDBConnection, units_to_add: Set[str]
