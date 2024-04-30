@@ -38,11 +38,10 @@ async def get_address(ops_test: OpsTest, app_name=DATABASE_APP_NAME, unit_num=0)
 
 async def verify_endpoints(ops_test: OpsTest, app_name=DATABASE_APP_NAME):
     """Verifies mongodb endpoint is functional on a given unit."""
-    http = urllib3.PoolManager()
-
     for unit_id in range(len(ops_test.model.applications[app_name].units)):
-        app_address = await get_address(ops_test=ops_test, app_name=app_name, unit_num=unit_id)
-        mongo_resp = http.request("GET", f"http://{app_address}:{MONGODB_EXPORTER_PORT}/metrics")
+        http = urllib3.PoolManager()
+        unit_address = await get_address(ops_test=ops_test, app_name=app_name, unit_num=unit_id)
+        mongo_resp = http.request("GET", f"http://{unit_address}:{MONGODB_EXPORTER_PORT}/metrics")
 
     assert mongo_resp.status == 200
 
@@ -70,8 +69,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 async def test_endpoints(ops_test: OpsTest):
     """Sanity check that endpoints are running."""
-    app_name = await get_app_name(ops_test)
-    await verify_endpoints(ops_test, app_name)
+    await verify_endpoints(ops_test, app_name=await get_app_name(ops_test))
 
 
 async def test_endpoints_new_password(ops_test: OpsTest):
