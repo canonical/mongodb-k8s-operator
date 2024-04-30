@@ -36,13 +36,15 @@ async def get_address(ops_test: OpsTest, app_name=DATABASE_APP_NAME, unit_num=0)
     return address
 
 
-async def verify_endpoints(ops_test: OpsTest, app_name=DATABASE_APP_NAME):
+async def verify_endpoints(ops_test: OpsTest, unit):
     """Verifies mongodb endpoint is functional on a given unit."""
+    app_name = await get_app_name(ops_test)
+    unit_id = unit.name.split("/")[1]
     http = urllib3.PoolManager()
 
-    for unit_id in range(len(ops_test.model.applications[app_name].units)):
-        app_address = await get_address(ops_test=ops_test, app_name=app_name, unit_num=unit_id)
-        mongo_resp = http.request("GET", f"http://{app_address}:{MONGODB_EXPORTER_PORT}/metrics")
+    unit_address = await get_address(ops_test=ops_test, app_name=app_name, unit_num=unit_id)
+    mongodb_exporter_url = f"http://{unit_address}:{MONGODB_EXPORTER_PORT}/metrics"
+    mongo_resp = http.request("GET", mongodb_exporter_url)
 
     assert mongo_resp.status == 200
 
@@ -71,7 +73,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 async def test_endpoints(ops_test: OpsTest):
     """Sanity check that endpoints are running."""
     app_name = await get_app_name(ops_test)
-    await verify_endpoints(ops_test, app_name)
+    for unit in ops_test.model.applications[app_name].units:
+        await verify_endpoints(ops_test, unit)
 
 
 async def test_endpoints_new_password(ops_test: OpsTest):
@@ -84,7 +87,8 @@ async def test_endpoints_new_password(ops_test: OpsTest):
     time.sleep(RESTART_TIMEOUT)
     await ops_test.model.wait_for_idle()
 
-    await verify_endpoints(ops_test, app_name)
+    for unit in ops_test.model.applications[app_name].units:
+        await verify_endpoints(ops_test, unit)
 
 
 async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
@@ -112,4 +116,5 @@ async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     # Wait for the network to be restored
     await ha_helpers.wait_until_unit_in_status(ops_test, primary, active_unit, "SECONDARY")
 
-    await verify_endpoints(ops_test, app_name)
+    for unit in ops_test.model.applications[app_name].units:
+        await verify_endpoints(ops_test, unit)
