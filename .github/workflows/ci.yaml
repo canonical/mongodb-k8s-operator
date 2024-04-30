@@ -22,7 +22,7 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v13.1.1
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v13.1.2
 
   lib-check:
     name: Check libraries
@@ -60,7 +60,7 @@ jobs:
 
   build:
     name: Build "${{ matrix.path }}" charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.1
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.2
     strategy:
       fail-fast: true
       matrix:
@@ -78,7 +78,7 @@ jobs:
       - lint
       # - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v13.1.1
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v13.1.2
     with:
       artifact-prefix: packed-charm-cache-true
       cloud: microk8s
