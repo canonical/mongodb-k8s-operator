@@ -70,7 +70,7 @@ jobs:
       path-to-charm-directory: ${{ matrix.path }}
 
   integration-test:
-    name: Integration test charm | ${{ JUJU_VERSION }}
+    name: Integration test charm | ${{ env.JUJU_VERSION }}
     needs:
       - lint
       - unit-test
@@ -79,8 +79,8 @@ jobs:
     with:
       artifact-prefix: packed-charm-cache-true
       cloud: microk8s
-      microk8s-snap-channel: ${{ MICROK8S_VERSION }}-strict/stable
-      juju-agent-version: ${{ JUJU_VERSION }}
+      microk8s-snap-channel: ${{ env.MICROK8S_VERSION }}-strict/stable
+      juju-agent-version: ${{ env.JUJU_VERSION }}
     secrets:
       integration-test: |
         {  "AWS_ACCESS_KEY": "${{ secrets.AWS_ACCESS_KEY }}",
