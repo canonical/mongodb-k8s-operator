@@ -87,11 +87,9 @@ jobs:
       libjuju-version-constraint: 3.4.0.0
     secrets:
       integration-test: |
-        {
-          "AWS_ACCESS_KEY": "${{ secrets.AWS_ACCESS_KEY }}",
+        {  "AWS_ACCESS_KEY": "${{ secrets.AWS_ACCESS_KEY }}",
           "AWS_SECRET_KEY": "${{ secrets.AWS_SECRET_KEY }}",
           "GCP_ACCESS_KEY": "${{ secrets.GCP_ACCESS_KEY }}",
-          "GCP_SECRET_KEY": "${{ secrets.GCP_SECRET_KEY }}",
-        }
+          "GCP_SECRET_KEY": "${{ secrets.GCP_SECRET_KEY }}", }
     permissions:
       contents: write  # Needed for Allure Report beta
