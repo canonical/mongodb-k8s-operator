@@ -135,7 +135,7 @@ async def run_mongo_op(
     suffix: str = "",
     expecting_output: bool = True,
     stringify: bool = True,
-    expect_json_load: bool = True,
+    ignore_errors: bool = False,
 ) -> SimpleNamespace():
     """Runs provided MongoDB operation in a separate container."""
     if mongo_uri is None:
@@ -185,7 +185,20 @@ async def run_mongo_op(
 
     output.succeeded = True
     if expecting_output:
-        output.data = _process_mongo_operation_result(stdout, stderr, expect_json_load)
+        try:
+            output.data = json.loads(stdout)
+        except Exception:
+            logger.error(
+                "Could not serialize the output into json.{}{}".format(
+                    f"\n\tSTDOUT:\n\t {stdout}" if stdout else "",
+                    f"\n\tSTDERR:\n\t {stderr}" if stderr else "",
+                )
+            )
+            logger.error(f"Failed to serialize output: {output}".format(output=stdout))
+            if not ignore_errors:
+                raise
+            else:
+                output.data = stdout
     logger.info("Done: '%s'", output)
     return output
 
