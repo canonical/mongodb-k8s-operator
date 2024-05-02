@@ -63,6 +63,7 @@ async def test_deploy_charms(ops_test: OpsTest):
             ops_test.model.deploy(
                 database_charm,
                 application_name=DATABASE_APP_NAME,
+                resources=db_resources,
                 num_units=REQUIRED_UNITS,
             )
         )
