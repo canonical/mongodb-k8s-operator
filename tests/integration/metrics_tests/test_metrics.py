@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 import pytest
-import urllib3
+import requests
 import yaml
 from pytest_operator.plugin import OpsTest
 
@@ -41,17 +41,15 @@ async def verify_endpoints(ops_test: OpsTest, unit):
     """Verifies mongodb endpoint is functional on a given unit."""
     app_name = await get_app_name(ops_test)
     unit_id = unit.name.split("/")[1]
-    http = urllib3.PoolManager()
+    with requests.Session() as http:
+        unit_address = await get_address(ops_test=ops_test, app_name=app_name, unit_num=unit_id)
+        mongodb_exporter_url = f"http://{unit_address}:{MONGODB_EXPORTER_PORT}/metrics"
+        mongo_resp = http.get(mongodb_exporter_url)
 
-    unit_address = await get_address(ops_test=ops_test, app_name=app_name, unit_num=unit_id)
-    mongodb_exporter_url = f"http://{unit_address}:{MONGODB_EXPORTER_PORT}/metrics"
-    mongo_resp = http.request("GET", mongodb_exporter_url)
-
-    assert mongo_resp.status == 200
+    assert mongo_resp.status_code == 200
 
     # if configured correctly there should be more than one mongodb metric present
-    mongodb_metrics = mongo_resp._body.decode("utf8")
-    assert mongodb_metrics.count("mongo") > 10
+    assert mongo_resp.text.count("mongo") > 10
 
 
 @pytest.mark.group(1)
