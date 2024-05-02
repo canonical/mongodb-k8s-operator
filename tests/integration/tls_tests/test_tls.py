@@ -3,7 +3,6 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-import time
 
 import pytest
 from ops import Unit
@@ -169,9 +168,9 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         action = await action.wait()
         assert action.status == "completed", "setting external and internal key failed."
 
-    # wait for certificate to be available and processed. Can get receive two certificate
-    # available events and restart twice so we do not wait for idle here
-    time.sleep(60)
+    # wait for certificate to be available and processed. Larger than normal idle period so that
+    # we guarantee that the charm receives + processes all events
+    await ops_test.model.wait_for_idle(status="active", timeout=1000, idle_period=30)
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
@@ -249,9 +248,9 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         action = await action.wait()
         assert action.status == "completed", "setting external and internal key failed."
 
-    # wait for certificate to be available and processed. Can get receive two certificate
-    # available events and restart twice so we do not wait for idle here
-    time.sleep(60)
+    # wait for certificate to be available and processed. Larger than normal idle period so that
+    # we guarantee that the charm receives + processes all events
+    await ops_test.model.wait_for_idle(status="active", timeout=1000, idle_period=30)
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
