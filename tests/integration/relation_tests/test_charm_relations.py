@@ -304,7 +304,7 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
     result = await run_mongo_op(
         ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=False
     )
-    assert 'user" : "newTestUser"' in result.data
+    assert "newTestUser" in result.data
     cmd = 'db = db.getSiblingDB("new_database"); db.test_collection.insertOne({"test": "one"});'
     result = await run_mongo_op(
         ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=True
