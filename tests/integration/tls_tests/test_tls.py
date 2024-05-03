@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 import json
 import logging
+import time
 
 import pytest
 from ops import Unit
@@ -162,6 +163,10 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         )
         await check_certs_correctly_distributed(ops_test, unit)
 
+    # restart times for mongod_service are in the format H:M, meaning that if we want to check that
+    # the restart time is different, we have to ensure that a minute has passed.
+    time.sleep(61)
+
     # set external and internal key using auto-generated key for each unit
     for unit in ops_test.model.applications[app_name].units:
         action = await unit.run_action(action_name="set-tls-private-key")
@@ -223,6 +228,10 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         original_tls_times[unit.name]["mongod_service"] = await time_process_started(
             ops_test, unit.name, DB_SERVICE
         )
+
+    # restart times for mongod_service are in the format H:M, meaning that if we want to check that
+    # the restart time is different, we have to ensure that a minute has passed.
+    time.sleep(61)
 
     with open(f"{TLS_TEST_DATA}/internal-key.pem") as f:
         internal_key_contents = f.readlines()

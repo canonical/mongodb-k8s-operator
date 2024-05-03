@@ -118,6 +118,7 @@ async def time_process_started(ops_test: OpsTest, unit_name: str, process_name: 
     logs = await run_command_on_unit(ops_test, unit_name, "/charm/bin/pebble changes")
 
     # find most recent start time. By parsing most recent logs (ie in reverse order)
+    print(logs)
     for log in reversed(logs.split("\n")):
         if "Replan" in log:
             return process_pebble_time(log.split()[4])

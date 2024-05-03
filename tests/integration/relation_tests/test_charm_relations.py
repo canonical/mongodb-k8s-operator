@@ -302,7 +302,7 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
 
     cmd = f'db.createUser({{user: "newTestUser", pwd: "Test123", roles: [{{role: "readWrite", db: "{database}"}}]}});'
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
+        ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=False
     )
     assert 'user" : "newTestUser"' in result.data
     cmd = 'db = db.getSiblingDB("new_database"); db.test_collection.insertOne({"test": "one"});'
@@ -460,7 +460,7 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     removed_access = False
     cmd = "db.runCommand({ replSetGetStatus : 1 });"
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
+        ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=False
     )
 
     removed_access = False
