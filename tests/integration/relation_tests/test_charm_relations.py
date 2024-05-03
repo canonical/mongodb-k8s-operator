@@ -311,7 +311,7 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
     )
     addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in range(REQUIRED_UNITS)]
     hosts = ",".join(addresses)
-    mongo_uri = f"mongodb://newTestUser:Test123@{hosts}"
+    mongo_uri = f"mongodb://newTestUser:Test123@{hosts}/new_database"
     cmd = 'db = db.getSiblingDB("new_database"); db.test_collection.insertOne({"test": "one"});'
     result = await run_mongo_op(
         ops_test, cmd, f'"{mongo_uri}"', stringify=False, expect_json_load=False
