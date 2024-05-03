@@ -135,7 +135,7 @@ async def run_mongo_op(
     suffix: str = "",
     expecting_output: bool = True,
     stringify: bool = True,
-    ignore_errors: bool = False,
+    expect_json_load: bool = True,
 ) -> SimpleNamespace():
     """Runs provided MongoDB operation in a separate container."""
     if mongo_uri is None:
@@ -185,37 +185,38 @@ async def run_mongo_op(
 
     output.succeeded = True
     if expecting_output:
-        try:
-            output.data = json.loads(stdout)
-        except Exception:
-            logger.error(
-                "Could not serialize the output into json.{}{}".format(
-                    f"\n\tSTDOUT:\n\t {stdout}" if stdout else "",
-                    f"\n\tSTDERR:\n\t {stderr}" if stderr else "",
-                )
-            )
-            logger.error(f"Failed to serialize output: {output}".format(output=stdout))
-            if not ignore_errors:
-                raise
-            else:
-                output.data = _process_mongo_operation_result(stdout)
+        output.data = _process_mongo_operation_result(stdout, stderr, expect_json_load)
     logger.info("Done: '%s'", output)
     return output
 
 
-def _process_mongo_operation_result(stdout: str):
-    """Attempts to process the mongo operation result when `json.loads` fails to do so."""
+def _process_mongo_operation_result(stdout, stderr, expect_json_load):
     try:
-        logger.info("Attempt to cast to python dict manually")
-        # cast to python dict
-        dict_string = re.sub(r"(\w+)(\s*:\s*)", r'"\1"\2', stdout)
-        dict_string = (
-            dict_string.replace("true", "True").replace("false", "False").replace("null", "None")
-        )
-        return eval(dict_string)
+        return json.loads(stdout)
     except Exception:
-        logger.error(f"Failed to cast response to python dict. Returning stdout: {stdout}")
-        return stdout
+        logger.error(
+            "Could not serialize the output into json.{}{}".format(
+                f"\n\tSTDOUT:\n\t {stdout}" if stdout else "",
+                f"\n\tSTDERR:\n\t {stderr}" if stderr else "",
+            )
+        )
+        logger.error(f"Failed to load operation result: {stdout} to json")
+        if expect_json_load:
+            raise
+        else:
+            try:
+                logger.info("Attempt to cast to python dict manually")
+                # cast to python dict
+                dict_string = re.sub(r"(\w+)(\s*:\s*)", r'"\1"\2', stdout)
+                dict_string = (
+                    dict_string.replace("true", "True")
+                    .replace("false", "False")
+                    .replace("null", "None")
+                )
+                return eval(dict_string)
+            except Exception:
+                logger.error(f"Failed to cast response to python dict. Returning stdout: {stdout}")
+                return stdout
 
 
 def primary_host(rs_status_data: dict) -> Optional[str]:
