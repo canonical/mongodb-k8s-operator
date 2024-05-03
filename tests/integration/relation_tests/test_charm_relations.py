@@ -13,12 +13,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ..ha_tests.helpers import get_replica_set_primary as replica_set_primary
-from ..helpers import (
-    check_or_scale_app,
-    get_address_of_unit,
-    get_app_name,
-    run_mongo_op,
-)
+from ..helpers import check_or_scale_app, get_app_name, run_mongo_op
 from .helpers import (
     get_application_relation_data,
     get_connection_string,
@@ -91,7 +86,6 @@ async def test_deploy_charms(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", timeout=1000)
 
 
-@pytest.mark.group(1)
 async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     # insert some data
     cmd = (
@@ -158,7 +152,6 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     await verify_crud_operations(ops_test, connection_string)
 
 
-@pytest.mark.group(1)
 async def verify_primary(ops_test: OpsTest, application_name: str):
     # verify primary is present in hosts provided to application
     # sleep for twice the median election time
@@ -309,14 +302,17 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
     result = await run_mongo_op(
         ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
     )
-    addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in range(REQUIRED_UNITS)]
-    hosts = ",".join(addresses)
-    mongo_uri = f"mongodb://newTestUser:Test123@{hosts}/new_database"
+    cmd = "db.getUsers();"
+
+    result = await run_mongo_op(
+        ops_test, f'"{cmd}"', f'"{connection_string}"', stringify=False, expect_json_load=False
+    )
+    assert "application_first_database.newTestUser" in str(result)
     cmd = 'db = db.getSiblingDB("new_database"); db.test_collection.insertOne({"test": "one"});'
     result = await run_mongo_op(
-        ops_test, cmd, f'"{mongo_uri}"', stringify=False, expect_json_load=False
+        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
     )
-    assert '"acknowledged" : true' in result.data
+    assert "acknowledged: true" in str(result.data)
 
 
 @pytest.mark.group(1)
