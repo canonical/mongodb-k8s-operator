@@ -108,7 +108,7 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     ubuntu_name_updated = '{"$set": {"release_name": "Fancy Fossa"}}'
     cmd = f"db.test_collection.updateOne({ubuntu_version}, {ubuntu_name_updated})"
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
+        ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=True
     )
     assert result.data["acknowledged"] is True
 
@@ -123,7 +123,7 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     # delete the data
     cmd = 'db.test_collection.deleteOne({"release_name": "Fancy Fossa"})'
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
+        ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=True
     )
     assert result.data["acknowledged"] is True
 
