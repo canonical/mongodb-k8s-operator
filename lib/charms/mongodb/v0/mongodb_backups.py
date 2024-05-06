@@ -19,11 +19,18 @@ from charms.data_platform_libs.v0.s3 import CredentialsChangedEvent, S3Requirer
 from charms.mongodb.v0.helpers import (
     current_pbm_op,
     process_pbm_error,
+    process_pbm_error_k8s,
     process_pbm_status,
 )
 from charms.operator_libs_linux.v2 import snap
 from ops.framework import Object
-from ops.model import BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus
+from ops.model import (
+    ActiveStatus,
+    BlockedStatus,
+    MaintenanceStatus,
+    StatusBase,
+    WaitingStatus,
+)
 from ops.pebble import ExecError
 from tenacity import (
     Retrying,
@@ -104,10 +111,11 @@ def _restore_retry_stop_condition(retry_state) -> bool:
 class MongoDBBackups(Object):
     """Manages MongoDB backups."""
 
-    def __init__(self, charm):
+    def __init__(self, charm, substrate="vm"):
         """Manager of MongoDB client relations."""
         super().__init__(charm, "client-relations")
         self.charm = charm
+        self.substrate = substrate
 
         # s3 relation handles the config options for s3 backups
         self.s3_client = S3Requirer(self.charm, S3_RELATION)
@@ -433,13 +441,24 @@ class MongoDBBackups(Object):
             previous_pbm_status = self.charm.unit.status
             pbm_status = self.charm.run_pbm_command(PBM_STATUS_CMD)
             self._log_backup_restore_result(pbm_status, previous_pbm_status)
-            return process_pbm_status(pbm_status)
+            unit_status_pbm = process_pbm_status(pbm_status)
+
+            # K8s charms require special processing for pbm errors
+            pbm_error = (
+                process_pbm_error_k8s(pbm_status, self.charm.unit.name)
+                if self.substrate == "k8s"
+                else None
+            )
+            if unit_status_pbm == ActiveStatus() and pbm_error:
+                return BlockedStatus(pbm_error)
+
+            return unit_status_pbm
         except ExecError as e:
             logger.error(f"Failed to get pbm status. {e}")
             return BlockedStatus(process_pbm_error(e.stdout))
         except subprocess.CalledProcessError as e:
-            # pbm pipes a return code of 1, but its output shows the true error code so it is
-            # necessary to parse the output
+            # VM deployments only -  pbm pipes a return code of 1, but its output shows the true
+            # error code so it is necessary to parse the output
             return BlockedStatus(process_pbm_error(e.output))
         except Exception as e:
             # pbm pipes a return code of 1, but its output shows the true error code so it is

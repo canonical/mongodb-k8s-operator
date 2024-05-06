@@ -114,7 +114,7 @@ class MongoDBCharm(CharmBase):
 
         self.client_relations = MongoDBProvider(self)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
-        self.backups = MongoDBBackups(self)
+        self.backups = MongoDBBackups(self, Config.SUBSTRATE)
 
         self.metrics_endpoint = MetricsEndpointProvider(
             self, refresh_event=self.on.start, jobs=Config.Monitoring.JOBS
