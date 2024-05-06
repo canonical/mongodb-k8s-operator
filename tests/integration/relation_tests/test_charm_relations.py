@@ -86,6 +86,7 @@ async def test_deploy_charms(ops_test: OpsTest):
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", timeout=1000)
 
 
+@pytest.mark.group(1)
 async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     # insert some data
     cmd = (
@@ -152,6 +153,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     await verify_crud_operations(ops_test, connection_string)
 
 
+@pytest.mark.group(1)
 async def verify_primary(ops_test: OpsTest, application_name: str):
     # verify primary is present in hosts provided to application
     # sleep for twice the median election time
