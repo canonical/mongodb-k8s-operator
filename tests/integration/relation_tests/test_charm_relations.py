@@ -63,6 +63,7 @@ async def test_deploy_charms(ops_test: OpsTest):
             ops_test.model.deploy(
                 database_charm,
                 application_name=DATABASE_APP_NAME,
+                resources=db_resources,
                 num_units=REQUIRED_UNITS,
             )
         )
@@ -303,12 +304,17 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
     result = await run_mongo_op(
         ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
     )
-    assert 'user" : "newTestUser"' in result.data
+    cmd = "db.getUsers();"
+
+    result = await run_mongo_op(
+        ops_test, f'"{cmd}"', f'"{connection_string}"', stringify=False, expect_json_load=False
+    )
+    assert "application_first_database.newTestUser" in str(result)
     cmd = 'db = db.getSiblingDB("new_database"); db.test_collection.insertOne({"test": "one"});'
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, ignore_errors=True
+        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
     )
-    assert '"acknowledged" : true' in result.data
+    assert "acknowledged: true" in str(result.data)
 
 
 @pytest.mark.group(1)

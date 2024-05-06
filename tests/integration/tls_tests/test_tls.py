@@ -163,15 +163,19 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         )
         await check_certs_correctly_distributed(ops_test, unit)
 
+    # restart times for mongod_service are in the format H:M, meaning that if we want to check that
+    # the restart time is different, we have to ensure that a minute has passed.
+    time.sleep(61)
+
     # set external and internal key using auto-generated key for each unit
     for unit in ops_test.model.applications[app_name].units:
         action = await unit.run_action(action_name="set-tls-private-key")
         action = await action.wait()
         assert action.status == "completed", "setting external and internal key failed."
 
-    # wait for certificate to be available and processed. Can get receive two certificate
-    # available events and restart twice so we do not wait for idle here
-    time.sleep(60)
+    # wait for certificate to be available and processed. Larger than normal idle period so that
+    # we guarantee that the charm receives + processes all events
+    await ops_test.model.wait_for_idle(status="active", timeout=1000, idle_period=30)
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
@@ -225,6 +229,10 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
             ops_test, unit.name, DB_SERVICE
         )
 
+    # restart times for mongod_service are in the format H:M, meaning that if we want to check that
+    # the restart time is different, we have to ensure that a minute has passed.
+    time.sleep(61)
+
     with open(f"{TLS_TEST_DATA}/internal-key.pem") as f:
         internal_key_contents = f.readlines()
         internal_key_contents = "".join(internal_key_contents)
@@ -249,9 +257,9 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         action = await action.wait()
         assert action.status == "completed", "setting external and internal key failed."
 
-    # wait for certificate to be available and processed. Can get receive two certificate
-    # available events and restart twice so we do not wait for idle here
-    time.sleep(60)
+    # wait for certificate to be available and processed. Larger than normal idle period so that
+    # we guarantee that the charm receives + processes all events
+    await ops_test.model.wait_for_idle(status="active", timeout=1000, idle_period=30)
 
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
