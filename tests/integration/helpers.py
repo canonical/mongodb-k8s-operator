@@ -359,25 +359,22 @@ async def get_application_relation_data(
 
 
 async def get_secret_id(ops_test, app_or_unit: Optional[str] = None) -> str:
-    """Retrieve secert ID for an app or unit."""
+    """Retrieve secret ID for an app or unit."""
     complete_command = "list-secrets"
 
-    prefix = ""
     if app_or_unit:
-        if app_or_unit[-1].isdigit():
-            # it's a unit
-            app_or_unit = "-".join(app_or_unit.split("/"))
-            prefix = "unit-"
-        else:
-            prefix = "application-"
-        complete_command += f" --owner {prefix}{app_or_unit}"
+        prefix = "unit" if app_or_unit[-1].isdigit() else "application"
+        formated_app_or_unit = f"{prefix}-{app_or_unit}"
+        if prefix == "unit":
+            formated_app_or_unit = formated_app_or_unit.replace("/", "-")
+        complete_command += f" --owner {formated_app_or_unit}"
 
     _, stdout, _ = await ops_test.juju(*complete_command.split())
-    output_lines_split = [line.split() for line in stdout.split("\n")]
+    output_lines_split = [line.split() for line in stdout.strip().split("\n")]
     if app_or_unit:
         return [line[0] for line in output_lines_split if app_or_unit in line][0]
-    else:
-        return output_lines_split[1][0]
+
+    return output_lines_split[1][0]
 
 
 async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:

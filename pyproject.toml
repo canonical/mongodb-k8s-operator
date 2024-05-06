@@ -5,52 +5,72 @@
 name = "mongodb-k8s"
 version = "0.0.1-dev.0"
 description = ""
+license = "Apache-2.0"
 authors = [
     "Mykola Marzhan <mykola.marzhan@canonical.com>"
 ]
-license = "Apache-2.0"
 readme = "README.md"
 homepage = "https://charmhub.io/mongodb-k8s?channel=6/edge"
 repository = "https://github.com/canonical/mongodb-k8s-operator"
 
 [tool.poetry.dependencies]
-python = "^3.8.10"
-ops = "^2.4.1"
-pymongo = "^4.3.3"
-tenacity = "^8.2.2"
-cryptography = "^40.0.2"
-jsonschema = "^4.17.3"
+python = "^3.10.12"
+ops = "^2.12.0"
+pymongo = "^4.7.1"
+tenacity = "^8.2.3"
 pyyaml = "^6.0.1"
-cosl = "0.0.7"
 
-[tool.poetry.group.fmt.dependencies]
-black = "^23.3.0"
-isort = "^5.12.0"
+[tool.poetry.group.charm-libs.dependencies]
+ops = "^2.12.0"
+pydantic = "^1.10.7"  # cos_agent lib
+cryptography = "^42.0.5"  # tls_certificates lib v3
+jsonschema = "^4.22.0"  # tls_certificates lib v3
+cosl = "^0.0.11"  # loki_push_api
+
+[tool.poetry.group.format]
+optional = true
+
+[tool.poetry.group.format.dependencies]
+black = "^24.4.2"
+isort = "^5.13.2"
+
+[tool.poetry.group.lint]
+optional = true
 
 [tool.poetry.group.lint.dependencies]
-flake8 = "^6.0.0"
+flake8 = "^7.0.0"
 flake8-docstrings = "^1.7.0"
 flake8-copyright = "^0.2.4"
-flake8-builtins = "^2.1.0"
-pyproject-flake8 = "^6.0.0-post1"
+flake8-builtins = "^2.5.0"
+pyproject-flake8 = "^7.0.0"
 pep8-naming = "^0.13.3"
-codespell = "^2.2.4"
+codespell = "^2.2.6"
+shellcheck-py = "^0.10.0.1"
+black = "^24.4.2"
+isort = "^5.13.2"
 
 [tool.poetry.group.unit.dependencies]
-coverage = {extras = ["toml"], version = "^7.2.7"}
-pytest = "^7.3.1"
+coverage = {extras = ["toml"], version = "^7.5.0"}
+pytest = "^8.1.1"
 parameterized = "^0.9.0"
 
 [tool.poetry.group.integration.dependencies]
-lightkube = "^0.13.0"
-pytest = "^7.3.1"
-pytest-mock = "^3.11.1"
-pytest-operator = "^0.27.0"
-juju = "3.2.2"
-pytest-operator-cache = {git = "https://github.com/canonical/data-platform-workflows", tag = "v5", subdirectory = "python/pytest_plugins/pytest_operator_cache"}
+ops = "^2.12.0"
+tenacity = "^8.2.3"
+pymongo = "^4.7.1"
+lightkube = "^0.15.2"
+parameterized = "^0.9.0"
+juju = "^3.4.0"
+pytest = "^8.1.1"
+pytest-asyncio = "^0.21.1"
+pytest-mock = "^3.14.0"
+pytest-operator = "^0.34.0"
+pytest-operator-cache = {git = "https://github.com/canonical/data-platform-workflows", tag = "v13.1.2", subdirectory = "python/pytest_plugins/pytest_operator_cache"}
+pytest-operator-groups = {git = "https://github.com/canonical/data-platform-workflows", tag = "v13.1.2", subdirectory = "python/pytest_plugins/pytest_operator_groups"}
+pytest-github-secrets = {git = "https://github.com/canonical/data-platform-workflows", tag = "v13.1.2", subdirectory = "python/pytest_plugins/github_secrets"}
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.9.0"]
 build-backend = "poetry.core.masonry.api"
 
 # Testing tools configuration
@@ -64,11 +84,12 @@ show_missing = true
 minversion = "6.0"
 log_cli_level = "INFO"
 markers = ["unstable"]
+asyncio_mode = "auto"
 
 # Formatting tools configuration
 [tool.black]
 line-length = 99
-target-version = ["py38"]
+target-version = ["py310"]
 
 [tool.isort]
 profile = "black"

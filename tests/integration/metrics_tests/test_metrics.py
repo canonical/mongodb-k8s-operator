@@ -36,6 +36,7 @@ async def get_address(ops_test: OpsTest, app_name=DATABASE_APP_NAME, unit_num=0)
     return address
 
 
+@pytest.mark.group(1)
 async def verify_endpoints(ops_test: OpsTest, unit):
     """Verifies mongodb endpoint is functional on a given unit."""
     app_name = await get_app_name(ops_test)
@@ -53,6 +54,7 @@ async def verify_endpoints(ops_test: OpsTest, unit):
     assert mongodb_metrics.count("mongo") > 10
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
@@ -70,6 +72,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=2000)
 
 
+@pytest.mark.group(1)
 async def test_endpoints(ops_test: OpsTest):
     """Sanity check that endpoints are running."""
     app_name = await get_app_name(ops_test)
@@ -77,6 +80,7 @@ async def test_endpoints(ops_test: OpsTest):
         await verify_endpoints(ops_test, unit)
 
 
+@pytest.mark.group(1)
 async def test_endpoints_new_password(ops_test: OpsTest):
     """Verify that endpoints still function correctly after the monitor user password changes."""
     app_name = await get_app_name(ops_test)
@@ -91,6 +95,7 @@ async def test_endpoints_new_password(ops_test: OpsTest):
         await verify_endpoints(ops_test, unit)
 
 
+@pytest.mark.group(1)
 async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     """Verify that endpoint still function correctly after a network cut."""
     # retrieve a primary unit and a non-primary unit (active-unit). The primary unit will have its

@@ -1,4 +1,5 @@
 """Users configuration for MongoDB."""
+
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 from typing import List

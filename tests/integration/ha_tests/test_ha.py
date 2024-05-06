@@ -83,7 +83,15 @@ async def change_logging(ops_test: OpsTest):
     mongodb_application_name = await get_application_name(ops_test, APP_NAME)
     unit_name = ops_test.model.applications[mongodb_application_name].units[0].name
     current_mongod_command = await retrieve_current_mongod_command(ops_test, unit_name)
-    current_mongod_command = "mongod --bind_ip_all --replSet=mongodb-k8s --dbpath=/var/lib/mongodb --logpath=/var/lib/mongodb/mongodb.log --auth --clusterAuthMode=keyFile --keyFile=/etc/mongod/keyFile"
+    current_mongod_command = (
+        "mongod"
+        " --bind_ip_all"
+        " --replSet=mongodb-k8s"
+        " --dbpath=/var/lib/mongodb"
+        " --logpath=/var/lib/mongodb/mongodb.log"
+        " --auth --clusterAuthMode=keyFile"
+        " --keyFile=/etc/mongod/keyFile"
+    )
 
     updated_mongod_command = current_mongod_command.replace(
         "--logpath=/var/lib/mongodb/mongodb.log", ""
@@ -105,6 +113,7 @@ def chaos_mesh(ops_test: OpsTest) -> None:
     destroy_chaos_mesh(ops_test.model.info.name)
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
     """Build and deploy three units of MongoDB and one test unit."""
@@ -127,6 +136,7 @@ async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
     await relate_mongodb_and_application(ops_test, mongodb_application_name, application_name)
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_scale_up_capablities(ops_test: OpsTest, continuous_writes) -> None:
     """Tests juju add-unit functionality.
@@ -151,6 +161,7 @@ async def test_scale_up_capablities(ops_test: OpsTest, continuous_writes) -> Non
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> None:
     """Tests clusters behavior when scaling down a minority and removing a primary replica."""
@@ -192,12 +203,14 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
     # verify that the no writes were skipped
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes, cmd_mongodb_charm) -> None:
     """Verify unique clusters do not share DBs."""
     # first find primary, write to primary,
@@ -237,6 +250,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes, cmd_mong
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     # locate primary unit
     hostnames = await get_units_hostnames(ops_test)
@@ -294,6 +308,7 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 async def test_freeze_db_process(ops_test, continuous_writes):
     # locate primary unit
     hostnames = await get_units_hostnames(ops_test)
@@ -357,6 +372,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     # locate primary unit
     old_primary = await get_replica_set_primary(ops_test)
@@ -403,6 +419,7 @@ async def test_restart_db_process(ops_test, continuous_writes, change_logging):
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
     mongodb_application_name = await get_application_name(ops_test, APP_NAME)
 
@@ -427,7 +444,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
     )
 
     # This test serves to verify behavior when all replicas are down at the same time that when
-    # they come back online they operate as expected. This check verifies that we meet the criterea
+    # they come back online they operate as expected. This check verifies that we meet the criteria
     # of all replicas being down at the same time.
     try:
         assert await are_all_db_processes_down(
@@ -473,6 +490,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes):
     mongodb_application_name = await get_application_name(ops_test, APP_NAME)
 
@@ -497,7 +515,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes):
     )
 
     # This test serves to verify behavior when all replicas are down at the same time that when
-    # they come back online they operate as expected. This check verifies that we meet the criterea
+    # they come back online they operate as expected. This check verifies that we meet the criteria
     # of all replicas being down at the same time.
     try:
         assert await are_all_db_processes_down(
@@ -543,6 +561,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     app = await get_application_name(ops_test, APP_NAME)
 
@@ -603,6 +622,7 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     await verify_writes(ops_test)
 
 
+@pytest.mark.group(1)
 async def test_storage_re_use(ops_test, continuous_writes):
     """Verifies that database units with attached storage correctly repurpose storage.
 

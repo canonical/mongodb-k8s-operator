@@ -197,7 +197,7 @@ async def deploy_and_scale_application(ops_test: OpsTest) -> str:
 
     global application_charm
     if not application_charm:
-        charm = await ops_test.build_charm("./tests/integration/ha_tests/application_charm/")
+        charm = await ops_test.build_charm("./tests/integration/ha_tests/application_charm")
         # Cache the built charm to avoid rebuilding it between tests
         application_charm = charm
 

@@ -21,7 +21,7 @@ from charms.mongodb.v0.helpers import (
     process_pbm_error,
     process_pbm_status,
 )
-from charms.operator_libs_linux.v1 import snap
+from charms.operator_libs_linux.v2 import snap
 from ops.framework import Object
 from ops.model import BlockedStatus, MaintenanceStatus, StatusBase, WaitingStatus
 from ops.pebble import ExecError

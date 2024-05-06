@@ -1,4 +1,5 @@
 """Simple functions, which can be used in both K8s and VM charms."""
+
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
@@ -217,7 +218,7 @@ def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
     message = "couldn't configure s3 backup option"
     if not error_string:
         return message
-    if type(error_string) == bytes:
+    if isinstance(error_string, bytes):
         error_string = error_string.decode("utf-8")
     if "status code: 403" in error_string:  # type: ignore
         message = "s3 credentials are incorrect."

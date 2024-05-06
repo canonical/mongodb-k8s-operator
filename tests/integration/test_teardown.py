@@ -16,6 +16,7 @@ MEDIAN_REELECTION_TIME = 12
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest):
     """Build the charm-under-test and deploy it to the model.
@@ -53,6 +54,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
     await ops_test.model.set_config({"update-status-hook-interval": "60m"})
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_long_scale_up_scale_down_units(ops_test: OpsTest):
     """Scale up and down the application and verify the replica set is healthy."""
@@ -61,6 +63,7 @@ async def test_long_scale_up_scale_down_units(ops_test: OpsTest):
         await scale_and_verify(ops_test, count=count)
 
 
+@pytest.mark.group(1)
 async def scale_and_verify(ops_test: OpsTest, count: int):
     if count == 0:
         logger.warning("Skipping scale up/down by 0")

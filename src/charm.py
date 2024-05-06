@@ -54,14 +54,7 @@ from ops.model import (
     Unit,
     WaitingStatus,
 )
-from ops.pebble import (
-    ChangeError,
-    ExecError,
-    Layer,
-    PathError,
-    ProtocolError,
-    ServiceInfo,
-)
+from ops.pebble import ChangeError, ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
 from tenacity import (
     RetryError,
@@ -479,7 +472,7 @@ class MongoDBCharm(CharmBase):
 
                 # to avoid potential race conditions -
                 # remove unit before adding new replica set members
-                if type(event) == RelationDepartedEvent and event.unit:
+                if isinstance(event, RelationDepartedEvent) and event.unit:
                     mongodb_hosts = mongodb_hosts - set([self.get_hostname_for_unit(event.unit)])
 
                 self._add_units_from_replica_set(event, mongo, mongodb_hosts - replset_members)
@@ -566,7 +559,7 @@ class MongoDBCharm(CharmBase):
             event, default_username=OperatorUser.get_username()
         )
         if not username:
-            return False
+            return
 
         new_password = event.params.get(Config.Actions.PASSWORD_PARAM_NAME, generate_password())
 
@@ -574,7 +567,7 @@ class MongoDBCharm(CharmBase):
             event.fail(
                 f"Password cannot be longer than {Config.Secrets.MAX_PASSWORD_LENGTH} characters."
             )
-            return False
+            return
 
         try:
             secret_id = self.set_password(username, new_password)
@@ -874,6 +867,10 @@ class MongoDBCharm(CharmBase):
                 logger.error("Deferring on_start since: error=%r", e)
                 event.defer()
                 return
+            except AdminUserCreationError as e:
+                logger.error("Deferring on_start because of users creation: error=%r", e)
+                event.defer()
+                return
 
         self.replica_set_initialised = True
 
@@ -1111,15 +1108,14 @@ class MongoDBCharm(CharmBase):
             with attempt:
                 container.replan()
 
-    def has_backup_service(self) -> ServiceInfo:
+    def has_backup_service(self) -> bool:
         """Returns the backup service."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
         try:
             container.get_service(Config.Backup.SERVICE_NAME)
+            return True
         except ModelError:
             return False
-
-        return True
 
     def is_unit_in_replica_set(self) -> bool:
         """Check if the unit is in the replica set."""

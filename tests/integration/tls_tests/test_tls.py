@@ -24,7 +24,7 @@ from .helpers import (
     time_process_started,
 )
 
-TLS_CERTIFICATES_APP_NAME = "tls-certificates-operator"
+TLS_CERTIFICATES_APP_NAME = "self-signed-certificates"
 DATABASE_APP_NAME = "mongodb-k8s"
 TLS_RELATION_NAME = "certificates"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
@@ -35,6 +35,7 @@ DB_SERVICE = "mongod.service"
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.group(1)
 async def check_certs_correctly_distributed(ops_test: OpsTest, unit: Unit) -> None:
     """Comparing expected vs distributed certificates.
 
@@ -87,6 +88,7 @@ async def check_certs_correctly_distributed(ops_test: OpsTest, unit: Unit) -> No
         assert relation_internal_cert == internal_contents_file
 
 
+@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
@@ -112,7 +114,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
     if not tls_app_deployed:
         async with ops_test.fast_forward():
-            config = {"generate-self-signed-certificates": "true", "ca-common-name": "Test CA"}
+            config = {"ca-common-name": "Test CA"}
             await ops_test.model.deploy(
                 TLS_CERTIFICATES_APP_NAME, channel="stable", config=config, series="jammy"
             )
@@ -121,12 +123,13 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             )
 
 
+@pytest.mark.group(1)
 async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
     # Relate it to the MongoDB to enable TLS.
     app_name = await get_app_name(ops_test)
     # check if relation exists
-    await ops_test.model.relate(app_name, TLS_CERTIFICATES_APP_NAME)
+    await ops_test.model.integrate(app_name, TLS_CERTIFICATES_APP_NAME)
 
     async with ops_test.fast_forward():
         await ops_test.model.wait_for_idle(status="active", timeout=1000)
@@ -136,6 +139,7 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
         assert await check_tls(ops_test, unit, enabled=True)
 
 
+@pytest.mark.group(1)
 async def test_rotate_tls_key(ops_test: OpsTest) -> None:
     """Verify rotating tls private keys restarts mongod with new certificates.
 
@@ -157,7 +161,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         original_tls_times[unit.name]["mongod_service"] = await time_process_started(
             ops_test, unit.name, DB_SERVICE
         )
-        check_certs_correctly_distributed(ops_test, unit)
+        await check_certs_correctly_distributed(ops_test, unit)
 
     # set external and internal key using auto-generated key for each unit
     for unit in ops_test.model.applications[app_name].units:
@@ -176,7 +180,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
 
-        check_certs_correctly_distributed(ops_test, unit)
+        await check_certs_correctly_distributed(ops_test, unit)
 
         assert (
             new_external_cert_time > original_tls_times[unit.name]["external_cert"]
@@ -198,6 +202,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         ), f"tls is not enabled for {unit.name}."
 
 
+@pytest.mark.group(1)
 async def test_set_tls_key(ops_test: OpsTest) -> None:
     """Verify rotating tls private keys restarts mongod with new certificates.
 
@@ -255,7 +260,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
 
-        check_certs_correctly_distributed(ops_test, unit)
+        await check_certs_correctly_distributed(ops_test, unit)
 
         assert (
             new_external_cert_time > original_tls_times[unit.name]["external_cert"]
@@ -277,6 +282,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         ), f"tls is not enabled for {unit.name}."
 
 
+@pytest.mark.group(1)
 async def test_disable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS disabled after removing relation to the TLS application."""
     app_name = await get_app_name(ops_test)

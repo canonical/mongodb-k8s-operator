@@ -1,4 +1,5 @@
 """Code for interactions with MongoDB."""
+
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
@@ -21,6 +22,8 @@ from tenacity import (
     wait_fixed,
 )
 
+from config import Config
+
 # The unique Charmhub library identifier, never change it
 LIBID = "49c69d9977574dd7942eb7b54f43355b"
 
@@ -29,7 +32,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 9
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -56,6 +59,7 @@ class MongoDBConfiguration:
     roles: Set[str]
     tls_external: bool
     tls_internal: bool
+    standalone: bool = False
 
     @property
     def uri(self):
@@ -65,6 +69,14 @@ class MongoDBConfiguration:
         auth_source = ""
         if self.database != "admin":
             auth_source = "&authSource=admin"
+
+        if self.standalone:
+            return (
+                f"mongodb://{quote_plus(self.username)}:"
+                f"{quote_plus(self.password)}@"
+                f"localhost:{Config.MONGODB_PORT}/?authSource=admin"
+            )
+
         return (
             f"mongodb://{quote_plus(self.username)}:"
             f"{quote_plus(self.password)}@"
@@ -224,7 +236,7 @@ class MongoDBConnection:
         # Such operation reduce performance of the cluster. To avoid huge performance
         # degradation, before adding new members, it is needed to check that all other
         # members finished init sync.
-        if self._is_any_sync(rs_status):
+        if self.is_any_sync(rs_status):
             # it can take a while, we should defer
             raise NotReadyError
 
@@ -274,6 +286,10 @@ class MongoDBConnection:
         logger.debug("rs_config: %r", dumps(rs_config["config"]))
         self.client.admin.command("replSetReconfig", rs_config["config"])
 
+    def step_down_primary(self) -> None:
+        """Steps down the current primary, forcing a re-election."""
+        self.client.admin.command("replSetStepDown", {"stepDownSecs": "60"})
+
     def create_user(self, config: MongoDBConfiguration):
         """Create user.
 
@@ -308,7 +324,7 @@ class MongoDBConnection:
 
         Args:
             role_name: name of the role to be added.
-            privileges: privledges to be associated with the role.
+            privileges: privileges to be associated with the role.
             roles: List of roles from which this role inherits privileges.
         """
         try:
@@ -402,7 +418,7 @@ class MongoDBConnection:
         return primary
 
     @staticmethod
-    def _is_any_sync(rs_status: Dict) -> bool:
+    def is_any_sync(rs_status: Dict) -> bool:
         """Returns true if any replica set members are syncing data.
 
         Checks if any members in replica set are syncing data. Note it is recommended to run only
