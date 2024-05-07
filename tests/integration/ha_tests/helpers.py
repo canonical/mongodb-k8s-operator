@@ -130,10 +130,8 @@ async def relate_mongodb_and_application(
 
 async def deploy_and_scale_mongodb(
     ops_test: OpsTest,
-    check_for_existing_application: bool = True,
     mongodb_application_name: str = APP_NAME,
     num_units: int = 3,
-    charm_path: Optional[Path] = None,
 ) -> str:
     """Deploys and scales the mongodb application charm.
 
@@ -143,41 +141,24 @@ async def deploy_and_scale_mongodb(
             in the model
         mongodb_application_name: The name of the mongodb application if it is to be deployed
         num_units: The desired number of units
-        charm_path: The location of a prebuilt mongodb-k8s charm
     """
-    application_name = await get_application_name(ops_test, mongodb_application_name)
-
-    if check_for_existing_application and application_name:
-        await scale_application(ops_test, application_name, num_units)
-
-        return application_name
-
-    global mongodb_charm
-    # if provided an existing charm, use it instead of building
-    if charm_path:
-        mongodb_charm = charm_path
-    if not mongodb_charm:
-        charm = await ops_test.build_charm(".")
-        # Cache the built charm to avoid rebuilding it between tests
-        mongodb_charm = charm
-
+    charm = await ops_test.build_charm(".")
     resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
 
-    async with ops_test.fast_forward():
-        await ops_test.model.deploy(
-            mongodb_charm,
-            application_name=mongodb_application_name,
-            resources=resources,
-            num_units=num_units,
-            series="jammy",
-        )
+    await ops_test.model.deploy(
+        charm,
+        application_name=mongodb_application_name,
+        resources=resources,
+        num_units=num_units,
+        series="jammy",
+    )
 
-        await ops_test.model.wait_for_idle(
-            apps=[mongodb_application_name],
-            status="active",
-            raise_on_blocked=True,
-            timeout=TIMEOUT,
-        )
+    await ops_test.model.wait_for_idle(
+        apps=[mongodb_application_name],
+        status="active",
+        raise_on_blocked=True,
+        timeout=TIMEOUT,
+    )
 
     return mongodb_application_name
 

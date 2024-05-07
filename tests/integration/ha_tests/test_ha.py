@@ -123,9 +123,7 @@ async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
 
     num_units = 3
     if not mongodb_application_name:
-        mongodb_application_name = await deploy_and_scale_mongodb(
-            ops_test, charm_path=cmd_mongodb_charm, num_units=num_units
-        )
+        mongodb_application_name = await deploy_and_scale_mongodb(ops_test, num_units=num_units)
     else:
         check_or_scale_app(ops_test, mongodb_application_name, num_units)
 
