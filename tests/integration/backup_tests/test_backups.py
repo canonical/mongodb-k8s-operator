@@ -139,12 +139,12 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_blocked_incorrect_conf(ops_test: OpsTest) -> None:
+async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None:
     """Verifies that the charm goes into blocked status when s3 config options are incorrect."""
     db_app_name = await get_app_name(ops_test)
 
     # set correct AWS credentials for s3 storage but incorrect configs
-    await helpers.set_credentials(ops_test, cloud="AWS")
+    await helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
 
     # wait for both applications to be idle with the correct statuses
     await asyncio.gather(
@@ -209,7 +209,7 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
+async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db, github_secrets) -> None:
     """With writes in the DB test creating a backup while another one is running.
 
     Note that before creating the second backup we change the bucket and change the s3 storage
@@ -230,7 +230,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
 
     # while first backup is running change access key, secret keys, and bucket name
     # for GCP
-    await helpers.set_credentials(ops_test, cloud="GCP")
+    await helpers.set_credentials(ops_test, github_secrets, cloud="GCP")
 
     # change to GCP configs and wait for PBM to resync
     configuration_parameters = {
@@ -273,7 +273,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
         assert backups == 1, "Backup not created in first bucket on GCP."
 
     # set AWS credentials, set configs for s3 storage, and wait to resync
-    await helpers.set_credentials(ops_test, cloud="AWS")
+    await helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     configuration_parameters = {
         "bucket": "data-charms-testing",
         "region": "us-east-1",
@@ -358,11 +358,13 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
 @pytest.mark.group(1)
 @pytest.mark.unstable
 @pytest.mark.parametrize("cloud_provider", ["AWS", "GCP"])
-async def test_restore_new_cluster(ops_test: OpsTest, continuous_writes_to_db, cloud_provider):
+async def test_restore_new_cluster(
+    ops_test: OpsTest, continuous_writes_to_db, cloud_provider, github_secrets
+):
     # configure test for the cloud provider
     db_app_name = await get_app_name(ops_test)
     leader_unit = await helpers.get_leader_unit(ops_test, db_app_name)
-    await helpers.set_credentials(ops_test, cloud=cloud_provider)
+    await helpers.set_credentials(ops_test, github_secrets, cloud=cloud_provider)
     if cloud_provider == "AWS":
         configuration_parameters = {
             "bucket": "data-charms-testing",
