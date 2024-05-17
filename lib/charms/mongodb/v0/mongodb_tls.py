@@ -13,10 +13,10 @@ import re
 import socket
 from typing import List, Optional, Tuple
 
-from charms.tls_certificates_interface.v3.tls_certificates import (
+from charms.tls_certificates_interface.v1.tls_certificates import (
     CertificateAvailableEvent,
     CertificateExpiringEvent,
-    TLSCertificatesRequiresV3,
+    TLSCertificatesRequiresV1,
     generate_csr,
     generate_private_key,
 )
@@ -39,7 +39,8 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 5
+
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +54,7 @@ class MongoDBTLS(Object):
         self.charm = charm
         self.substrate = substrate
         self.peer_relation = peer_relation
-        self.certs = TLSCertificatesRequiresV3(self.charm, Config.TLS.TLS_PEER_RELATION)
+        self.certs = TLSCertificatesRequiresV1(self.charm, Config.TLS.TLS_PEER_RELATION)
         self.framework.observe(
             self.charm.on.set_tls_private_key_action, self._on_set_tls_private_key
         )
@@ -69,7 +70,7 @@ class MongoDBTLS(Object):
         self.framework.observe(self.certs.on.certificate_expiring, self._on_certificate_expiring)
 
     def is_tls_enabled(self, scope: Scopes):
-        """Returns a boolean indicating if TLS for a given `scope` is enabled."""
+        """Getting internal TLS flag (meaning)."""
         return self.charm.get_secret(scope, Config.TLS.SECRET_CERT_LABEL) is not None
 
     def _on_set_tls_private_key(self, event: ActionEvent) -> None:
@@ -182,17 +183,18 @@ class MongoDBTLS(Object):
             self.charm.set_secret(scope, Config.TLS.SECRET_CERT_LABEL, event.certificate)
             self.charm.set_secret(scope, Config.TLS.SECRET_CA_LABEL, event.ca)
 
-        self.charm.unit.status = MaintenanceStatus("enabling TLS")
         if self._waiting_for_certs():
             logger.debug(
-                "Return till both internal and external TLS certificates available to avoid second restart."
+                "Defer till both internal and external TLS certificates available to avoid second restart."
             )
+            event.defer()
             return
 
         logger.info("Restarting mongod with TLS enabled.")
 
         self.charm.delete_tls_certificate_from_workload()
         self.charm.push_tls_certificate_to_workload()
+        self.charm.unit.status = MaintenanceStatus("enabling TLS")
         self.charm.restart_mongod_service()
         self.charm.unit.status = ActiveStatus()
 
