@@ -213,6 +213,24 @@ def copy_licenses_to_unit():
 _StrOrBytes = Union[str, bytes]
 
 
+def process_pbm_error_k8s(status_str: str, unit_name: str) -> Optional[str]:
+    """Processes the pbm error for the k8s charm.
+
+    Unlike the VM charm, the K8s pbm command does not cause an exception when it fails and it is
+    necessary to process the errors manually
+    """
+    try:
+        status_str = json.loads(status_str)
+        for node_info in status_str["cluster"][0]["nodes"]:
+            if unit_name.replace("/", "-") not in node_info["host"]:
+                continue
+
+            return process_pbm_error(node_info["errors"][0])
+    except KeyError:
+        # if the keys for parsing errors are not present, proceed as normal
+        pass
+
+
 def process_pbm_error(error_string: Optional[_StrOrBytes]) -> str:
     """Parses pbm error string and returns a user friendly message."""
     message = "couldn't configure s3 backup option"

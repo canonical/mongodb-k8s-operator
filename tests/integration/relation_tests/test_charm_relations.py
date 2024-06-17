@@ -145,7 +145,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     await ops_test.model.integrate(
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", db_app_name
     )
-    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
+    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", idle_period=30)
 
     connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
