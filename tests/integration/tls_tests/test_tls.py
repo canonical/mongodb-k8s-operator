@@ -3,12 +3,12 @@
 # See LICENSE file for licensing details.
 import json
 import logging
+import os
 import time
 
 import pytest
 from ops import Unit
 from pytest_operator.plugin import OpsTest
-import os
 
 from ..helpers import (
     check_or_scale_app,

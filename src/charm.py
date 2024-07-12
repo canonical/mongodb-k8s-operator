@@ -268,15 +268,15 @@ class MongoDBCharm(CharmBase):
         return "db_initialised" in self.app_peer_data
 
     def is_role(self, role_name: str) -> bool:
-        """TODO: Implement this as part of sharding"""
+        """TODO: Implement this as part of sharding."""
         return False
 
     def has_config_server(self) -> bool:
-        """TODO: Implement this function as part of sharding"""
+        """TODO: Implement this function as part of sharding."""
         return False
 
     def get_config_server_name(self) -> None:
-        """TODO: Implement this function as part of sharding"""
+        """TODO: Implement this function as part of sharding."""
         return None
 
     @db_initialised.setter
@@ -396,6 +396,7 @@ class MongoDBCharm(CharmBase):
             return
 
     def is_db_service_ready(self) -> bool:
+        """Checks if the MongoDB service is ready to accept connections."""
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             return direct_mongo.is_ready
 
@@ -1034,7 +1035,7 @@ class MongoDBCharm(CharmBase):
     def push_file_to_container(
         self, container: Container, parent_dir: str, file_name: str, source: str
     ) -> None:
-        """Push the file on the container, with the right permissions"""
+        """Push the file on the container, with the right permissions."""
         container.push(
             f"{parent_dir}/{file_name}",
             source,
