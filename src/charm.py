@@ -27,6 +27,7 @@ from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
+from charms.mongodb.v0.set_status import MongoDBStatusHandler
 from charms.mongodb.v0.users import (
     CHARM_USERS,
     BackupUser,
@@ -126,6 +127,7 @@ class MongoDBCharm(CharmBase):
             relation_name=Config.Relations.LOGGING,
             container_name=Config.CONTAINER_NAME,
         )
+        self.status = MongoDBStatusHandler(self)
         self.secrets = SecretCache(self)
 
     # BEGIN: properties
@@ -265,6 +267,18 @@ class MongoDBCharm(CharmBase):
         """Check if MongoDB is initialised."""
         return "db_initialised" in self.app_peer_data
 
+    def is_role(self, role_name: str) -> bool:
+        """TODO: Implement this as part of sharding"""
+        return False
+
+    def has_config_server(self) -> bool:
+        """TODO: Implement this function as part of sharding"""
+        return False
+
+    def get_config_server_name(self) -> None:
+        """TODO: Implement this function as part of sharding"""
+        return None
+
     @db_initialised.setter
     def db_initialised(self, value):
         """Set the db_initialised flag."""
@@ -274,6 +288,11 @@ class MongoDBCharm(CharmBase):
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
+
+    @property
+    def upgrade_in_progress(self):
+        """TODO: implement this as part of upgrades."""
+        return False
 
     @property
     def replica_set_initialised(self) -> bool:
@@ -376,6 +395,10 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
+    def is_db_service_ready(self) -> bool:
+        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
+            return direct_mongo.is_ready
+
     def _on_start(self, event) -> None:
         """Initialise MongoDB.
 
@@ -405,11 +428,10 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
-            if not direct_mongo.is_ready:
-                logger.debug("mongodb service is not ready yet.")
-                event.defer()
-                return
+        if not self.is_db_service_ready():
+            logger.debug("mongodb service is not ready yet.")
+            event.defer()
+            return
 
         try:
             self._connect_mongodb_exporter()
@@ -417,11 +439,11 @@ class MongoDBCharm(CharmBase):
             logger.error(
                 "An exception occurred when starting mongodb exporter, error: %s.", str(e)
             )
-            self.unit.status = BlockedStatus("couldn't start mongodb exporter")
+            self.status.set_and_share_status(BlockedStatus("couldn't start mongodb exporter"))
             return
 
         # mongod is now active
-        self.unit.status = ActiveStatus()
+        self.status.set_and_share_status(ActiveStatus())
 
         if not self.unit.is_leader():
             return
@@ -509,7 +531,8 @@ class MongoDBCharm(CharmBase):
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
-                self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                # self.unit.status = WaitingStatus("Waiting for MongoDB to start")
+                self.status.set_and_share_status(WaitingStatus("Waiting for MongoDB to start"))
                 return
 
         # leader should periodically handle configuring the replica set. Incidents such as network
@@ -771,8 +794,8 @@ class MongoDBCharm(CharmBase):
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: List[str]
     ) -> MongoDBConfiguration:
-        external_ca, _ = self.tls.get_tls_files(UNIT_SCOPE)
-        internal_ca, _ = self.tls.get_tls_files(APP_SCOPE)
+        external_ca, _ = self.tls.get_tls_files(internal=False)
+        internal_ca, _ = self.tls.get_tls_files(internal=True)
         password = self.get_secret(APP_SCOPE, user.get_password_key_name())
         if not password:
             raise MissingSecretError(
@@ -899,7 +922,7 @@ class MongoDBCharm(CharmBase):
             isinstance(self.unit.status, WaitingStatus)
             and self.unit.status.message == "waiting to reconfigure replica set"
         ):
-            self.unit.status = ActiveStatus()
+            self.status.set_and_share_status(ActiveStatus())
 
     def get_secret(self, scope: Scopes, key: str) -> Optional[str]:
         """Getting a secret."""
@@ -943,7 +966,7 @@ class MongoDBCharm(CharmBase):
         content[key] = Config.Secrets.SECRET_DELETED_LABEL
         secret.set_content(content)
 
-    def restart_mongod_service(self):
+    def restart_charm_services(self):
         """Restart mongod service."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
         container.stop(Config.SERVICE_NAME)
@@ -960,62 +983,66 @@ class MongoDBCharm(CharmBase):
         if not keyfile:
             raise MissingSecretError(f"No secret defined for {APP_SCOPE}, keyfile")
         else:
-            container.push(
-                Config.CONF_DIR + "/" + Config.TLS.KEY_FILE_NAME,
-                keyfile,  # type: ignore
-                make_dirs=True,
-                permissions=0o400,
-                user=Config.UNIX_USER,
-                group=Config.UNIX_GROUP,
+            self.push_file_to_container(
+                container, Config.CONF_DIR, Config.TLS.KEY_FILE_NAME, keyfile
             )
 
     def push_tls_certificate_to_workload(self) -> None:
         """Uploads certificate to the workload container."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
-        external_ca, external_pem = self.tls.get_tls_files(UNIT_SCOPE)
+
+        # Handling of external CA and PEM files
+        external_ca, external_pem = self.tls.get_tls_files(internal=False)
 
         if external_ca is not None:
             logger.debug("Uploading external ca to workload container")
-            container.push(
-                Config.CONF_DIR + "/" + Config.TLS.EXT_CA_FILE,
-                external_ca,
-                make_dirs=True,
-                permissions=0o400,
-                user=Config.UNIX_USER,
-                group=Config.UNIX_GROUP,
+            self.push_file_to_container(
+                container=container,
+                parent_dir=Config.CONF_DIR,
+                file_name=Config.TLS.EXT_CA_FILE,
+                source=external_ca,
             )
         if external_pem is not None:
             logger.debug("Uploading external pem to workload container")
-            container.push(
-                Config.CONF_DIR + "/" + Config.TLS.EXT_PEM_FILE,
-                external_pem,
-                make_dirs=True,
-                permissions=0o400,
-                user=Config.UNIX_USER,
-                group=Config.UNIX_GROUP,
+            self.push_file_to_container(
+                container=container,
+                parent_dir=Config.CONF_DIR,
+                file_name=Config.TLS.EXT_PEM_FILE,
+                source=external_pem,
             )
 
-        internal_ca, internal_pem = self.tls.get_tls_files(APP_SCOPE)
+        # Handling of external CA and PEM files
+        internal_ca, internal_pem = self.tls.get_tls_files(internal=True)
+
         if internal_ca is not None:
             logger.debug("Uploading internal ca to workload container")
-            container.push(
-                Config.CONF_DIR + "/" + Config.TLS.INT_CA_FILE,
-                internal_ca,
-                make_dirs=True,
-                permissions=0o400,
-                user=Config.UNIX_USER,
-                group=Config.UNIX_GROUP,
+            self.push_file_to_container(
+                container=container,
+                parent_dir=Config.CONF_DIR,
+                file_name=Config.TLS.INT_CA_FILE,
+                source=internal_ca,
             )
         if internal_pem is not None:
             logger.debug("Uploading internal pem to workload container")
-            container.push(
-                Config.CONF_DIR + "/" + Config.TLS.INT_PEM_FILE,
-                internal_pem,
-                make_dirs=True,
-                permissions=0o400,
-                user=Config.UNIX_USER,
-                group=Config.UNIX_GROUP,
+            self.push_file_to_container(
+                container=container,
+                parent_dir=Config.CONF_DIR,
+                file_name=Config.TLS.INT_PEM_FILE,
+                source=internal_pem,
             )
+
+    def push_file_to_container(
+        self, container: Container, parent_dir: str, file_name: str, source: str
+    ) -> None:
+        """Push the file on the container, with the right permissions"""
+        container.push(
+            f"{parent_dir}/{file_name}",
+            source,
+            make_dirs=True,
+            permissions=0o400,
+            user=Config.UNIX_USER,
+            group=Config.UNIX_GROUP,
+        )
 
     def delete_tls_certificate_from_workload(self) -> None:
         """Deletes certificate from the workload container."""

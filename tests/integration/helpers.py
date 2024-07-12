@@ -99,21 +99,18 @@ async def set_password(
 
 
 async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
-    ls_code, _, stderr = await ops_test.juju(
-        f"ssh --container mongod {unit_name} ls /usr/bin/mongosh"
-    )
-    if ls_code != 0:
-        logger.info(f"mongosh not found. Reason: '{stderr}'. Switch to /usr/bin/mongo")
-    # mongo_cmd = "/usr/bin/mongo" if ls_code != 0 else "/usr/bin/mongosh"
-    # TODO debug
-    # "ERROR unrecognized command: juju ssh --container mongod mongodb-k8s/0 ls /usr/bin/mongosh"
-    # For now,  for MongoDB 6 return /usr/bin/mongosh
-    mongo_cmd = "/usr/bin/mongosh"
-    return mongo_cmd
+    complete_command = f"ssh --container mongod {unit_name} ls /usr/bin/mongosh"
+    ls_code, _, stderr = await ops_test.juju(*complete_command.split())
+    match ls_code:
+        case 0:
+            return "/usr/bin/mongosh"
+        case _:
+            logger.info(f"mongosh not found. Reason: '{stderr}'. Using /usr/bin/mongo")
+            return "/usr/bin/mongo"
 
 
 async def mongodb_uri(
-    ops_test: OpsTest, unit_ids: List[int] = None, use_subprocess_to_get_password=False
+    ops_test: OpsTest, unit_ids: List[int] | None = None, use_subprocess_to_get_password=False
 ) -> str:
     if unit_ids is None:
         unit_ids = UNIT_IDS
