@@ -532,7 +532,6 @@ class MongoDBCharm(CharmBase):
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
-                # self.unit.status = WaitingStatus("Waiting for MongoDB to start")
                 self.status.set_and_share_status(WaitingStatus("Waiting for MongoDB to start"))
                 return
 
