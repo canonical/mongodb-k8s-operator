@@ -72,6 +72,14 @@ class Config:
 
         Scopes = Literal[APP_SCOPE, UNIT_SCOPE]
 
+    class Role:
+        """Role config names for MongoDB Charm."""
+
+        CONFIG_SERVER = "config-server"
+        REPLICATION = "replication"
+        SHARD = "shard"
+        MONGOS = "mongos"
+
     class TLS:
         """TLS related config for MongoDB Charm."""
 
