@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 import json
 import logging
+import os
 import time
 
 import pytest
@@ -36,56 +37,47 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.mark.group(1)
-async def check_certs_correctly_distributed(ops_test: OpsTest, unit: Unit) -> None:
+async def check_certs_correctly_distributed(
+    ops_test: OpsTest, unit: Unit, app_name: str | None = None
+) -> None:
     """Comparing expected vs distributed certificates.
 
     Verifying certificates downloaded on the charm against the ones distributed by the TLS operator
     """
-    app_secret_id = await get_secret_id(ops_test, DATABASE_APP_NAME)
+    app_name = app_name or await get_app_name(ops_test)
     unit_secret_id = await get_secret_id(ops_test, unit.name)
-    app_secret_content = await get_secret_content(ops_test, app_secret_id)
     unit_secret_content = await get_secret_content(ops_test, unit_secret_id)
-    app_current_crt = app_secret_content["csr-secret"]
-    unit_current_crt = unit_secret_content["csr-secret"]
 
     # Get the values for certs from the relation, as provided by TLS Charm
     certificates_raw_data = await get_application_relation_data(
-        ops_test, DATABASE_APP_NAME, TLS_RELATION_NAME, "certificates"
+        ops_test, app_name, TLS_RELATION_NAME, "certificates"
     )
     certificates_data = json.loads(certificates_raw_data)
 
-    external_item = [
-        data
-        for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == unit_current_crt.rstrip()
-    ][0]
-    internal_item = [
-        data
-        for data in certificates_data
-        if data["certificate_signing_request"].rstrip() == app_current_crt.rstrip()
-    ][0]
+    # compare the TLS resources stored on the disk of the unit with the ones from the TLS relation
+    for cert_type, cert_path in [("int", INTERNAL_CERT_PATH), ("ext", EXTERNAL_CERT_PATH)]:
+        unit_csr = unit_secret_content[f"{cert_type}-csr-secret"]
+        tls_item = [
+            data
+            for data in certificates_data
+            if data["certificate_signing_request"].rstrip() == unit_csr.rstrip()
+        ][0]
 
-    # Get a local copy of the external cert
-    external_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, EXTERNAL_CERT_PATH)
+        # Read the content of the cert file stored in the unit
+        cert_file_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, cert_path)
+        with open(cert_file_copy_path, mode="r") as f:
+            cert_file_content = f.read()
 
-    # Get the external cert value from the relation
-    relation_external_cert = "\n".join(external_item["chain"])
+        # cleanup the file
+        os.remove(cert_file_copy_path)
 
-    # CHECK: Compare if they are the same
-    with open(external_copy_path) as f:
-        external_contents_file = f.read()
-        assert relation_external_cert == external_contents_file
+        # Get the external cert value from the relation
+        relation_cert = "\n".join(tls_item["chain"]).strip()
 
-    # Get a local copy of the internal cert
-    internal_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, INTERNAL_CERT_PATH)
-
-    # Get the external cert value from the relation
-    relation_internal_cert = "\n".join(internal_item["chain"])
-
-    # CHECK: Compare if they are the same
-    with open(internal_copy_path) as f:
-        internal_contents_file = f.read()
-        assert relation_internal_cert == internal_contents_file
+        # confirm that they match
+        assert (
+            relation_cert == cert_file_content
+        ), f"Relation Content for {cert_type}-cert:\n{relation_cert}\nFile Content:\n{cert_file_content}\nMismatch."
 
 
 @pytest.mark.group(1)
@@ -94,7 +86,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy three units of MongoDB and one unit of TLS."""
     app_name = await get_app_name(ops_test)
     if app_name:
-        await check_or_scale_app(ops_test, app_name, 1)
+        await check_or_scale_app(ops_test, app_name, 3)
     else:
         app_name = DATABASE_APP_NAME
         async with ops_test.fast_forward():
@@ -102,7 +94,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             resources = {
                 "mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]
             }
-            await ops_test.model.deploy(my_charm, num_units=1, resources=resources, series="jammy")
+            await ops_test.model.deploy(my_charm, num_units=3, resources=resources, series="jammy")
             await ops_test.model.wait_for_idle(apps=[app_name], status="active", timeout=2000)
 
     tls_app_deployed = False
@@ -145,11 +137,13 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
 
     This test rotates tls private keys to randomly generated keys.
     """
-    app_name = await get_app_name(ops_test)
     # dict of values for cert file certion and mongod service start times. After resetting the
     # private keys these certificates should be updated and the mongod service should be
     # restarted
     original_tls_times = {}
+
+    app_name = await get_app_name(ops_test)
+
     for unit in ops_test.model.applications[app_name].units:
         original_tls_times[unit.name] = {}
         original_tls_times[unit.name]["external_cert"] = await time_file_created(
@@ -184,7 +178,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
         new_mongod_service_time = await time_process_started(ops_test, unit.name, DB_SERVICE)
 
-        await check_certs_correctly_distributed(ops_test, unit)
+        await check_certs_correctly_distributed(ops_test, unit, app_name=app_name)
 
         assert (
             new_external_cert_time > original_tls_times[unit.name]["external_cert"]
