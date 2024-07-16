@@ -356,7 +356,13 @@ class MongoDBCharm(CharmBase):
             return pure_id1 == pure_id2
         return False
 
-    # END: generic helper methods
+    def is_relation_feasible(self, rel_interface) -> bool:
+        """Returns true if the proposed relation is feasible.
+
+        TODO implement this in a future PR as part of sharding
+        """
+        logger.debug("checking if provided relation %s is feasible", rel_interface)
+        return True
 
     # BEGIN: charm events
     def _on_mongod_pebble_ready(self, event) -> None:

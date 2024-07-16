@@ -7,7 +7,7 @@ from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
-from charms.mongodb.v0.helpers import CONF_DIR, DATA_DIR, KEY_FILE
+from charms.mongodb.v1.helpers import CONF_DIR, DATA_DIR, KEY_FILE
 from ops.model import ActiveStatus, MaintenanceStatus, ModelError
 from ops.pebble import APIError, ExecError, PathError, ProtocolError
 from ops.testing import Harness
@@ -75,11 +75,13 @@ class TestCharm(unittest.TestCase):
                         "mongod --bind_ip_all "
                         "--replSet=mongodb-k8s "
                         f"--dbpath={DATA_DIR} "
+                        "--port=27017 "
+                        "--setParameter processUmask=037 "
+                        "--logRotate reopen --logappend --logpath=/var/log/mongodb/mongodb.log "
                         "--auditDestination=file "
                         "--auditFormat=JSON "
-                        "--auditPath=/var/lib/mongodb/audit.log "
-                        "--logpath=/var/lib/mongodb/mongodb.log --auth "
-                        "--clusterAuthMode=keyFile "
+                        "--auditPath=/var/log/mongodb/audit.log "
+                        "--auth --clusterAuthMode=keyFile "
                         f"--keyFile={CONF_DIR}/{KEY_FILE} \n"
                     ),
                     "startup": "enabled",
