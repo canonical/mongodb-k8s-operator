@@ -1214,6 +1214,16 @@ class MongoDBCharm(CharmBase):
                 "Scaling down the application, no need to process removed relation in broken hook."
             )
 
+    def is_scaling_down(self, rel_id: int) -> bool:
+        """Returns True if the application is scaling down."""
+        rel_departed_key = self._generate_relation_departed_key(rel_id)
+        return json.loads(self.unit_peer_data[rel_departed_key])
+
+    def has_departed_run(self, rel_id: int) -> bool:
+        """Returns True if the relation departed event has run."""
+        rel_departed_key = self._generate_relation_departed_key(rel_id)
+        return rel_departed_key in self.unit_peer_data
+
     def set_scaling_down(self, event: RelationDepartedEvent) -> bool:
         """Sets whether or not the current unit is scaling down."""
         # check if relation departed is due to current unit being removed. (i.e. scaling down the
@@ -1222,6 +1232,26 @@ class MongoDBCharm(CharmBase):
         scaling_down = event.departing_unit == self.unit
         self.unit_peer_data[rel_departed_key] = json.dumps(scaling_down)
         return scaling_down
+
+    def proceed_on_broken_event(self, event) -> bool:
+        """Returns relation_id if relation broken event occurred due to a removed relation."""
+        # Only relation_deparated events can check if scaling down
+        departed_relation_id = event.relation.id
+        if not self.has_departed_run(departed_relation_id):
+            logger.info(
+                "Deferring, must wait for relation departed hook to decide if relation should be removed."
+            )
+            event.defer()
+            return False
+
+        # check if were scaling down and add a log message
+        if self.is_scaling_down(departed_relation_id):
+            logger.info(
+                "Relation broken event occurring due to scale down, do not proceed to remove users."
+            )
+            return False
+
+        return True
 
     @staticmethod
     def _generate_relation_departed_key(rel_id: int) -> str:
