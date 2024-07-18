@@ -14,7 +14,7 @@ class Config:
     UNIX_USER = "mongodb"
     UNIX_GROUP = "mongodb"
     DATA_DIR = "/var/lib/mongodb"
-    LOG_DIR = "/var/lib/mongodb"
+    LOG_DIR = "/var/log/mongodb"
     CONF_DIR = "/etc/mongod"
     MONGODB_LOG_FILENAME = "mongodb.log"
     LICENSE_PATH = "/licenses/LICENSE"
@@ -35,6 +35,7 @@ class Config:
         """Audit log related configuration."""
 
         FORMAT = "JSON"
+        DESTINATION = "file"
         FILE_NAME = "audit.log"
 
     class Backup:
@@ -44,6 +45,12 @@ class Config:
         URI_PARAM_NAME = "pbm-uri"
         PBM_PATH = "/usr/bin/pbm"
         PBM_CONFIG_FILE_PATH = "/etc/pbm_config.yaml"
+
+    class LogRotate:
+        """Log rotate related constants."""
+
+        MAX_LOG_SIZE = "50M"
+        MAX_ROTATIONS_TO_KEEP = 10
 
     class Monitoring:
         """Monitoring related config for MongoDB Charm."""

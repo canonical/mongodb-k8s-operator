@@ -7,7 +7,7 @@ from unittest import mock
 from unittest.mock import MagicMock, patch
 
 import pytest
-from charms.mongodb.v0.helpers import CONF_DIR, DATA_DIR, KEY_FILE
+from charms.mongodb.v1.helpers import CONF_DIR, DATA_DIR, KEY_FILE
 from ops.model import ActiveStatus, MaintenanceStatus, ModelError
 from ops.pebble import APIError, ExecError, PathError, ProtocolError
 from ops.testing import Harness
@@ -75,11 +75,13 @@ class TestCharm(unittest.TestCase):
                         "mongod --bind_ip_all "
                         "--replSet=mongodb-k8s "
                         f"--dbpath={DATA_DIR} "
+                        "--port=27017 "
+                        "--setParameter processUmask=037 "
+                        "--logRotate reopen --logappend --logpath=/var/log/mongodb/mongodb.log "
                         "--auditDestination=file "
                         "--auditFormat=JSON "
-                        "--auditPath=/var/lib/mongodb/audit.log "
-                        "--logpath=/var/lib/mongodb/mongodb.log --auth "
-                        "--clusterAuthMode=keyFile "
+                        "--auditPath=/var/log/mongodb/audit.log "
+                        "--auth --clusterAuthMode=keyFile "
                         f"--keyFile={CONF_DIR}/{KEY_FILE} \n"
                     ),
                     "startup": "enabled",
@@ -813,7 +815,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm._on_set_password(action_event)
         connect_exporter.assert_called()
 
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
@@ -845,7 +847,7 @@ class TestCharm(unittest.TestCase):
         assert "password" in args_pw
         assert args_pw["password"] == pw
 
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
@@ -1003,7 +1005,7 @@ class TestCharm(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_set_backup_password_pbm_busy(self, pbm_status, has_backup_service):
         """Tests changes to passwords fail when pbm is restoring/backing up."""
         self.harness.set_leader(True)

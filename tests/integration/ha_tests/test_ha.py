@@ -41,13 +41,10 @@ from .helpers import (
     mongod_ready,
     relate_mongodb_and_application,
     remove_instance_isolation,
-    retrieve_current_mongod_command,
     retrieve_entries,
     reused_storage,
     scale_application,
     send_signal_to_pod_container_process,
-    set_log_level,
-    update_pebble_plans,
     verify_writes,
     wait_until_unit_in_status,
 )
@@ -75,33 +72,6 @@ async def continuous_writes(ops_test: OpsTest) -> None:
 
     clear_writes_action = await application_unit.run_action("clear-continuous-writes")
     await clear_writes_action.wait()
-
-
-@pytest_asyncio.fixture
-async def change_logging(ops_test: OpsTest):
-    """Increases and resets election logging verbosity."""
-    mongodb_application_name = await get_application_name(ops_test, APP_NAME)
-    unit_name = ops_test.model.applications[mongodb_application_name].units[0].name
-    current_mongod_command = await retrieve_current_mongod_command(ops_test, unit_name)
-    current_mongod_command = (
-        "mongod"
-        " --bind_ip_all"
-        " --replSet=mongodb-k8s"
-        " --dbpath=/var/lib/mongodb"
-        " --logpath=/var/lib/mongodb/mongodb.log"
-        " --auth --clusterAuthMode=keyFile"
-        " --keyFile=/etc/mongod/keyFile"
-    )
-
-    updated_mongod_command = current_mongod_command.replace(
-        "--logpath=/var/lib/mongodb/mongodb.log", ""
-    )
-    await update_pebble_plans(ops_test, {"command": updated_mongod_command})
-    await set_log_level(ops_test, 5, "replication.election")
-
-    yield
-    await update_pebble_plans(ops_test, {"command": current_mongod_command})
-    await set_log_level(ops_test, -1, "replication.election")
 
 
 @pytest.fixture(scope="module")
@@ -421,12 +391,13 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
 
 @pytest.mark.group(1)
-async def test_restart_db_process(ops_test, continuous_writes, change_logging):
+async def test_restart_db_process(ops_test, continuous_writes):
     # locate primary unit
     old_primary = await get_replica_set_primary(ops_test)
 
     # send SIGTERM
-    sig_term_time = datetime.now(timezone.utc)
+    my_tem = datetime.now(timezone.utc)
+    sig_term_time = my_tem.timestamp()
     await send_signal_to_pod_container_process(
         ops_test,
         old_primary.name,

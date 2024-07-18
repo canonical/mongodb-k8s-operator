@@ -29,12 +29,20 @@ from tenacity import (
     wait_fixed,
 )
 
-from ..helpers import APP_NAME, get_mongo_cmd, get_password, mongodb_uri, primary_host
+from ..helpers import (
+    APP_NAME,
+    get_app_name,
+    get_mongo_cmd,
+    get_password,
+    mongodb_uri,
+    primary_host,
+)
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGODB_CONTAINER_NAME = "mongod"
 MONGODB_SERVICE_NAME = "mongod"
 MONGOD_PROCESS_NAME = "mongod"
+MONGODB_LOG_PATH = "/var/log/mongodb/mongodb.log"
 APPLICATION_DEFAULT_APP_NAME = "application"
 TIMEOUT = 15 * 60
 TEST_DB = "continuous_writes_database"
@@ -418,56 +426,28 @@ async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
     ]
 
 
-async def check_db_stepped_down(ops_test: OpsTest, sigterm_time: datetime) -> None:
-    """Pipes the k8s logs, looking for stepdown message."""
-    kubectl_cmd = [
-        "microk8s",
-        "kubectl",
-        "logs",
-        f"-n{ops_test.model_name}",
-        f"--since-time={sigterm_time.isoformat()}",
-        "",
-        "-c",
-        MONGODB_CONTAINER_NAME,
-        "-f",
-    ]
-
-    grep_cmd = (
-        "grep",
-        "-m1",
-        '"Starting an election due to step up request"',
-    )
-
-    # Gets a stream of mongod container logs from kubectl and pipes them through grep looking for a
-    # step down election messages. The check is successful if one of the greps finds a match, the
-    # rest should be terminated after a reasonable wait. All the logs should be checked since any
-    # node can emit the log.
-    procs = []
-    for unit in ops_test.model.applications[APP_NAME].units:
-        kubectl_cmd[5] = unit.name.replace("/", "-")
-        kubectl_proc = subprocess.Popen(kubectl_cmd, stdout=subprocess.PIPE)
-        grep_proc = subprocess.Popen(
-            grep_cmd, stdin=kubectl_proc.stdout, stdout=subprocess.DEVNULL
+async def check_db_stepped_down(ops_test: OpsTest, sigterm_time: datetime):
+    # loop through all units that aren't the old primary
+    app_name = await get_app_name(ops_test)
+    for unit in ops_test.model.applications[app_name].units:
+        # these log files can get quite large. According to the Juju team the 'run' command
+        # cannot be used for more than 16MB of data so it is best to use juju ssh or juju scp.
+        logs = subprocess.check_output(
+            f"JUJU_MODEL={ops_test.model_full_name} juju ssh  --container mongod {unit.name} 'cat {MONGODB_LOG_PATH}'",
+            stderr=subprocess.PIPE,
+            shell=True,
+            universal_newlines=True,
         )
-        procs.append((kubectl_proc, grep_proc))
 
-    # Wait on the first grep pipe to potentially finish successfully. If it does not, don't wait
-    # for the rest. The check is successful if any of the greps manage to find the step down
-    # message.
-    timeout = 30
-    success = False
-    for kubectl_proc, grep_proc in procs:
-        try:
-            grep_proc.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            pass
-        if grep_proc.poll() == 0:
-            success = True
-        grep_proc.terminate()
-        kubectl_proc.terminate()
-        timeout = 0
+        filtered_logs = filter(filter_logs_by_step_down, logs.split("\n"))
 
-    assert success, "old primary departed without stepping down."
+        for log in filtered_logs:
+            item = json.loads(log)
+            step_down_time = convert_time(item["t"]["$date"])
+            if step_down_time >= sigterm_time:
+                return
+
+    assert False, "primary departed without stepping down."
 
 
 async def set_log_level(ops_test: OpsTest, level: int, component: str = None) -> None:
@@ -775,7 +755,7 @@ async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: dat
         "--container",
         MONGODB_CONTAINER_NAME,
         reused_unit.name,
-        "cat /var/lib/mongodb/mongodb.log",
+        f"cat {MONGODB_LOG_PATH}",
     ]
 
     return_code, logs, _ = await ops_test.juju(*cat_cmd)
@@ -784,7 +764,7 @@ async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: dat
         return_code == 0
     ), f"Failed catting mongodb logs, unit={reused_unit.name}, container={MONGODB_CONTAINER_NAME}"
 
-    filtered_logs = filter(filter_logs, logs.split("\n"))
+    filtered_logs = filter(filter_logs_by_startup, logs.split("\n"))
 
     for log in filtered_logs:
         item = json.loads(log)
@@ -795,15 +775,23 @@ async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: dat
     return False
 
 
-def filter_logs(log):
+def filter_logs_by_step_down(log):
+    return True if "Starting an election due to step up request" in log else False
+
+
+def filter_logs_by_startup(log):
     return True if '"newState":"STARTUP2","oldState":"REMOVED"' in log else False
 
 
 def convert_time(time_as_str: str) -> int:
     """Converts a string time representation to an integer time representation."""
-    # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM+00:00'
-    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f%z")
-    return time.mktime(d.timetuple())
+    # Remove the timezone information (the +00:00 part) for simplicity
+    time_as_str = time_as_str[:-6]
+
+    # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM'
+    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f")
+
+    return time.mktime(d.timetuple()) + d.microsecond / 1_000_000
 
 
 def get_highest_unit(ops_test: OpsTest, app_name: str) -> Unit:

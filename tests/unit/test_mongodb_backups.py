@@ -4,8 +4,8 @@ import unittest
 from unittest import mock
 from unittest.mock import patch
 
-from charms.mongodb.v0.helpers import current_pbm_op
-from charms.mongodb.v0.mongodb_backups import (
+from charms.mongodb.v1.helpers import current_pbm_op
+from charms.mongodb.v1.mongodb_backups import (
     PBMBusyError,
     ResyncError,
     SetPBMConfigError,
@@ -49,7 +49,7 @@ class TestMongoBackups(unittest.TestCase):
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         pbm_command.side_effect = ModelError("service pbm-agent not found")
-        self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
+        self.assertTrue(isinstance(self.harness.charm.backups.get_pbm_status(), BlockedStatus))
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -64,7 +64,7 @@ class TestMongoBackups(unittest.TestCase):
         pbm_command.return_value = (
             '{"running":{"type":"resync","opID":"64f5cc22a73b330c3880e3b2"}}'
         )
-        self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), WaitingStatus))
+        self.assertTrue(isinstance(self.harness.charm.backups.get_pbm_status(), WaitingStatus))
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -77,7 +77,7 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.set_can_connect(container, True)
         service.return_value = "pbm"
         pbm_command.return_value = '{"running":{}}'
-        self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), ActiveStatus))
+        self.assertTrue(isinstance(self.harness.charm.backups.get_pbm_status(), ActiveStatus))
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -92,7 +92,7 @@ class TestMongoBackups(unittest.TestCase):
         pbm_command.side_effect = ExecError(
             command=["/usr/bin/pbm", "status"], exit_code=1, stdout="status code: 403", stderr=""
         )
-        self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
+        self.assertTrue(isinstance(self.harness.charm.backups.get_pbm_status(), BlockedStatus))
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -107,10 +107,10 @@ class TestMongoBackups(unittest.TestCase):
         pbm_command.side_effect = ExecError(
             command=["/usr/bin/pbm", "status"], exit_code=1, stdout="status code: 404", stderr=""
         )
-        self.assertTrue(isinstance(self.harness.charm.backups._get_pbm_status(), BlockedStatus))
+        self.assertTrue(isinstance(self.harness.charm.backups.get_pbm_status(), BlockedStatus))
 
-    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
-    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
+    @patch("charms.mongodb.v1.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v1.mongodb_backups.stop_after_attempt")
     @patch("ops.model.Container.start")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -129,8 +129,8 @@ class TestMongoBackups(unittest.TestCase):
         with self.assertRaises(ExecError):
             self.harness.charm.backups._resync_config_options()
 
-    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
-    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
+    @patch("charms.mongodb.v1.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v1.mongodb_backups.stop_after_attempt")
     @patch("ops.model.Container.start")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -153,9 +153,9 @@ class TestMongoBackups(unittest.TestCase):
     @patch("ops.model.Container.start")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
-    @patch("charm.MongoDBBackups._get_pbm_status")
-    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
-    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
+    @patch("charm.MongoDBBackups.get_pbm_status")
+    @patch("charms.mongodb.v1.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v1.mongodb_backups.stop_after_attempt")
     def test_verify_resync_syncing(
         self, retry_stop, retry_wait, pbm_status, run_pbm_command, service, start, restart
     ):
@@ -180,10 +180,10 @@ class TestMongoBackups(unittest.TestCase):
             self.harness.charm.backups._resync_config_options()
 
     @patch("ops.model.Container.start")
-    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
-    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
+    @patch("charms.mongodb.v1.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v1.mongodb_backups.stop_after_attempt")
     @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_resync_config_options_failure(
         self, pbm_status, service, retry_stop, retry_wait, start
     ):
@@ -197,12 +197,12 @@ class TestMongoBackups(unittest.TestCase):
         with self.assertRaises(PBMBusyError):
             self.harness.charm.backups._resync_config_options()
 
-    @patch("charms.mongodb.v0.mongodb_backups.wait_fixed")
-    @patch("charms.mongodb.v0.mongodb_backups.stop_after_attempt")
+    @patch("charms.mongodb.v1.mongodb_backups.wait_fixed")
+    @patch("charms.mongodb.v1.mongodb_backups.stop_after_attempt")
     @patch("ops.model.Container.restart")
     @patch("ops.model.Container.start")
     @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_resync_config_restart(
         self, pbm_status, service, start, restart, retry_stop, retry_wait
     ):
@@ -298,7 +298,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBBackups._resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_s3_credentials_config_error(
         self, pbm_status, service, defer, resync, _set_config_options
     ):
@@ -328,7 +328,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBBackups._resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_s3_credentials_syncing(self, pbm_status, service, defer, resync, _set_config_options):
         """Test charm defers when more time is needed to sync pbm credentials."""
         container = self.harness.model.unit.get_container("mongod")
@@ -357,7 +357,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBBackups._resync_config_options")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_s3_credentials_pbm_busy(
         self, pbm_status, service, defer, resync, _set_config_options
     ):
@@ -422,7 +422,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_backup_failed(self, pbm_status, pbm_command, service):
         """Verifies backup is fails if the pbm command failed."""
         container = self.harness.model.unit.get_container("mongod")
@@ -453,7 +453,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
     def test_backup_list_syncing(self, pbm_command, service):
-        """Verifies backup list is deferred if more time is needed to resync."""
+        """Verifies backup list is failed if more time is needed to resync."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         service.return_value = "pbm"
@@ -468,7 +468,7 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_list_backups_action(action_event)
 
-        action_event.defer.assert_called()
+        action_event.fail.assert_called()
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -490,7 +490,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_backup_list_failed(self, pbm_status, pbm_command, service):
         """Verifies backup list fails if the pbm command fails."""
         mock_pbm_snap = mock.Mock()
@@ -573,7 +573,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
     def test_restore_syncing(self, pbm_command, service):
-        """Verifies restore is deferred if more time is needed to resync."""
+        """Verifies restore is failed if more time is needed to resync."""
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
         service.return_value = "pbm"
@@ -584,7 +584,7 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_restore_action(action_event)
 
-        action_event.defer.assert_called()
+        action_event.fail.assert_called()
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -603,7 +603,7 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
-    @patch("charm.MongoDBBackups._get_pbm_status")
+    @patch("charm.MongoDBBackups.get_pbm_status")
     def test_restore_wrong_cred(self, pbm_status, pbm_command, service):
         """Verifies restore is fails if the credentials are incorrect."""
         action_event = mock.Mock()
@@ -622,15 +622,16 @@ class TestMongoBackups(unittest.TestCase):
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
-    @patch("charm.MongoDBBackups._get_pbm_status")
-    def test_restore_failed(self, pbm_status, pbm_command, service):
+    @patch("charm.MongoDBBackups.get_pbm_status")
+    @patch("charm.MongoDBBackups._needs_provided_remap_arguments")
+    def test_restore_failed(self, remap, pbm_status, pbm_command, service):
         """Verifies restore is fails if the pbm command failed."""
         action_event = mock.Mock()
         action_event.params = {"backup-id": "back-me-up"}
         pbm_status.return_value = ActiveStatus("")
 
         pbm_command.side_effect = ExecError(
-            command=["/usr/bin/pbm", "list"], exit_code=1, stdout="failed", stderr=""
+            command=["/usr/bin/pbm", "restore"], exit_code=1, stdout="failed", stderr=""
         )
 
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
@@ -683,7 +684,7 @@ class TestMongoBackups(unittest.TestCase):
 
         # first case is that the backup is not in the error state
         remap = self.harness.charm.backups._remap_replicaset("2002-02-14T13:59:14Z")
-        self.assertEqual(remap, "--replset-remapping current-app-name=old-cluster-name")
+        self.assertEqual(remap, "current-app-name=old-cluster-name")
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
@@ -694,9 +695,7 @@ class TestMongoBackups(unittest.TestCase):
 
         service.return_value = "pbm"
         run_pbm_command.return_value = '{"running":{"type":"backup","name":"2023-09-04T12:15:58Z","startTS":1693829759,"status":"oplog backup","opID":"64f5ca7e777e294530289465"}}'
-        self.assertTrue(
-            isinstance(self.harness.charm.backups._get_pbm_status(), MaintenanceStatus)
-        )
+        self.assertTrue(isinstance(self.harness.charm.backups.get_pbm_status(), MaintenanceStatus))
 
     def test_current_pbm_op(self):
         """Test if _current_pbm_op can identify the operation pbm is running."""
@@ -709,7 +708,7 @@ class TestMongoBackups(unittest.TestCase):
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")
     def test_backup_syncing(self, run_pbm_command, service):
-        """Verifies backup is deferred if more time is needed to resync."""
+        """Verifies backup is failed if more time is needed to resync."""
         action_event = mock.Mock()
         action_event.params = {}
         service.return_value = "pbm"
@@ -720,7 +719,7 @@ class TestMongoBackups(unittest.TestCase):
         self.harness.add_relation(RELATION_NAME, "s3-integrator")
         self.harness.charm.backups._on_create_backup_action(action_event)
 
-        action_event.defer.assert_called()
+        action_event.fail.assert_called()
 
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBCharm.run_pbm_command")

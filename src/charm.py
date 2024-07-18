@@ -2,7 +2,7 @@
 """Charm code for MongoDB service on Kubernetes."""
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-
+import json
 import logging
 import re
 import time
@@ -10,21 +10,11 @@ from typing import Dict, List, Optional, Set
 
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
-from charms.mongodb.v0.helpers import (
-    build_unit_status,
-    generate_keyfile,
-    generate_password,
-    get_create_user_cmd,
-    get_mongod_args,
-    process_pbm_error,
-)
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
 )
-from charms.mongodb.v0.mongodb_backups import S3_RELATION, MongoDBBackups
-from charms.mongodb.v0.mongodb_provider import MongoDBProvider
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.set_status import MongoDBStatusHandler
@@ -35,6 +25,15 @@ from charms.mongodb.v0.users import (
     MonitorUser,
     OperatorUser,
 )
+from charms.mongodb.v1.helpers import (
+    build_unit_status,
+    generate_keyfile,
+    generate_password,
+    get_create_user_cmd,
+    get_mongod_args,
+)
+from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
+from charms.mongodb.v1.mongodb_provider import MongoDBProvider
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import (
     ActionEvent,
@@ -357,7 +356,13 @@ class MongoDBCharm(CharmBase):
             return pure_id1 == pure_id2
         return False
 
-    # END: generic helper methods
+    def is_relation_feasible(self, rel_interface) -> bool:
+        """Returns true if the proposed relation is feasible.
+
+        TODO implement this in a future PR as part of sharding
+        """
+        logger.debug("checking if provided relation %s is feasible", rel_interface)
+        return True
 
     # BEGIN: charm events
     def _on_mongod_pebble_ready(self, event) -> None:
@@ -546,7 +551,7 @@ class MongoDBCharm(CharmBase):
         mongodb_status = build_unit_status(
             self.mongodb_config, self.get_hostname_for_unit(self.unit)
         )
-        pbm_status = self.backups._get_pbm_status()
+        pbm_status = self.backups.get_pbm_status()
         if (
             not isinstance(mongodb_status, ActiveStatus)
             or not self.model.get_relation(
@@ -827,7 +832,7 @@ class MongoDBCharm(CharmBase):
     def pass_pre_set_password_checks(self, event: ActionEvent) -> bool:
         """Checks conditions for setting the password and fail if necessary."""
         # changing the backup password while a backup/restore is in progress can be disastrous
-        pbm_status = self.backups._get_pbm_status()
+        pbm_status = self.backups.get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
             event.fail("Cannot change password while a backup/restore is in progress.")
             return False
@@ -1183,7 +1188,7 @@ class MongoDBCharm(CharmBase):
             )
         except ExecError as e:
             logger.error(f"Failed to set pbm config file. {e}")
-            self.unit.status = BlockedStatus(process_pbm_error(e.stdout))
+            self.unit.status = BlockedStatus(self.backups.process_pbm_error(e.stdout))
         return
 
     def start_backup_service(self) -> None:
@@ -1195,6 +1200,63 @@ class MongoDBCharm(CharmBase):
         """Restarts the backup service."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
         container.restart(Config.Backup.SERVICE_NAME)
+
+    def check_relation_broken_or_scale_down(self, event: RelationDepartedEvent) -> None:
+        """Checks relation departed event is the result of removed relation or scale down.
+
+        Relation departed and relation broken events occur during scaling down or during relation
+        removal, only relation departed events have access to metadata to determine which case.
+        """
+        scaling_down = self.set_scaling_down(event)
+
+        if scaling_down:
+            logger.info(
+                "Scaling down the application, no need to process removed relation in broken hook."
+            )
+
+    def is_scaling_down(self, rel_id: int) -> bool:
+        """Returns True if the application is scaling down."""
+        rel_departed_key = self._generate_relation_departed_key(rel_id)
+        return json.loads(self.unit_peer_data[rel_departed_key])
+
+    def has_departed_run(self, rel_id: int) -> bool:
+        """Returns True if the relation departed event has run."""
+        rel_departed_key = self._generate_relation_departed_key(rel_id)
+        return rel_departed_key in self.unit_peer_data
+
+    def set_scaling_down(self, event: RelationDepartedEvent) -> bool:
+        """Sets whether or not the current unit is scaling down."""
+        # check if relation departed is due to current unit being removed. (i.e. scaling down the
+        # application.)
+        rel_departed_key = self._generate_relation_departed_key(event.relation.id)
+        scaling_down = event.departing_unit == self.unit
+        self.unit_peer_data[rel_departed_key] = json.dumps(scaling_down)
+        return scaling_down
+
+    def proceed_on_broken_event(self, event) -> bool:
+        """Returns relation_id if relation broken event occurred due to a removed relation."""
+        # Only relation_deparated events can check if scaling down
+        departed_relation_id = event.relation.id
+        if not self.has_departed_run(departed_relation_id):
+            logger.info(
+                "Deferring, must wait for relation departed hook to decide if relation should be removed."
+            )
+            event.defer()
+            return False
+
+        # check if were scaling down and add a log message
+        if self.is_scaling_down(departed_relation_id):
+            logger.info(
+                "Relation broken event occurring due to scale down, do not proceed to remove users."
+            )
+            return False
+
+        return True
+
+    @staticmethod
+    def _generate_relation_departed_key(rel_id: int) -> str:
+        """Generates the relation departed key for a specified relation id."""
+        return f"relation_{rel_id}_departed"
 
     # END: helper functions
 
@@ -1226,13 +1288,14 @@ class MongoDBCharm(CharmBase):
         Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
         is available, we fix permissions incorrectly with chown.
         """
-        paths = container.list_files(Config.DATA_DIR, itself=True)
-        assert len(paths) == 1, "list_files doesn't return only the directory itself"
-        logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
-        if paths[0].user != Config.UNIX_USER or paths[0].group != Config.UNIX_GROUP:
-            container.exec(
-                f"chown {Config.UNIX_USER}:{Config.UNIX_GROUP} -R {Config.DATA_DIR}".split(" ")
-            )
+        for path in [Config.DATA_DIR, Config.LOG_DIR]:
+            paths = container.list_files(path, itself=True)
+            assert len(paths) == 1, "list_files doesn't return only the directory itself"
+            logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
+            if paths[0].user != Config.UNIX_USER or paths[0].group != Config.UNIX_GROUP:
+                container.exec(
+                    f"chown {Config.UNIX_USER}:{Config.UNIX_GROUP} -R {path}".split(" ")
+                )
 
     # END: static methods
 

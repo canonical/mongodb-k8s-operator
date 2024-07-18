@@ -277,13 +277,13 @@ juju relate <tls-certificates provider charm> <tls-certificates requirer charm>
 """  # noqa: D405, D410, D411, D214, D416
 
 import copy
+import ipaddress
 import json
 import logging
 import uuid
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from ipaddress import IPv4Address
 from typing import List, Literal, Optional, Union
 
 from cryptography import x509
@@ -317,7 +317,7 @@ LIBAPI = 3
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 13
+LIBPATCH = 17
 
 PYDEPS = ["cryptography", "jsonschema"]
 
@@ -735,16 +735,16 @@ def calculate_expiry_notification_time(
     """
     if provider_recommended_notification_time is not None:
         provider_recommended_notification_time = abs(provider_recommended_notification_time)
-        provider_recommendation_time_delta = (
-            expiry_time - timedelta(hours=provider_recommended_notification_time)
+        provider_recommendation_time_delta = expiry_time - timedelta(
+            hours=provider_recommended_notification_time
         )
         if validity_start_time < provider_recommendation_time_delta:
             return provider_recommendation_time_delta
 
     if requirer_recommended_notification_time is not None:
         requirer_recommended_notification_time = abs(requirer_recommended_notification_time)
-        requirer_recommendation_time_delta = (
-            expiry_time - timedelta(hours=requirer_recommended_notification_time)
+        requirer_recommendation_time_delta = expiry_time - timedelta(
+            hours=requirer_recommended_notification_time
         )
         if validity_start_time < requirer_recommendation_time_delta:
             return requirer_recommendation_time_delta
@@ -1077,7 +1077,7 @@ def generate_csr(  # noqa: C901
     if sans_oid:
         _sans.extend([x509.RegisteredID(x509.ObjectIdentifier(san)) for san in sans_oid])
     if sans_ip:
-        _sans.extend([x509.IPAddress(IPv4Address(san)) for san in sans_ip])
+        _sans.extend([x509.IPAddress(ipaddress.ip_address(san)) for san in sans_ip])
     if sans:
         _sans.extend([x509.DNSName(san) for san in sans])
     if sans_dns:
@@ -1093,6 +1093,13 @@ def generate_csr(  # noqa: C901
     return signed_certificate.public_bytes(serialization.Encoding.PEM)
 
 
+def get_sha256_hex(data: str) -> str:
+    """Calculate the hash of the provided data and return the hexadecimal representation."""
+    digest = hashes.Hash(hashes.SHA256())
+    digest.update(data.encode())
+    return digest.finalize().hex()
+
+
 def csr_matches_certificate(csr: str, cert: str) -> bool:
     """Check if a CSR matches a certificate.
 
@@ -1102,25 +1109,16 @@ def csr_matches_certificate(csr: str, cert: str) -> bool:
     Returns:
         bool: True/False depending on whether the CSR matches the certificate.
     """
-    try:
-        csr_object = x509.load_pem_x509_csr(csr.encode("utf-8"))
-        cert_object = x509.load_pem_x509_certificate(cert.encode("utf-8"))
+    csr_object = x509.load_pem_x509_csr(csr.encode("utf-8"))
+    cert_object = x509.load_pem_x509_certificate(cert.encode("utf-8"))
 
-        if csr_object.public_key().public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        ) != cert_object.public_key().public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo,
-        ):
-            return False
-        if (
-            csr_object.public_key().public_numbers().n  # type: ignore[union-attr]
-            != cert_object.public_key().public_numbers().n  # type: ignore[union-attr]
-        ):
-            return False
-    except ValueError:
-        logger.warning("Could not load certificate or CSR.")
+    if csr_object.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ) != cert_object.public_key().public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ):
         return False
     return True
 
@@ -1872,9 +1870,14 @@ class TLSCertificatesRequiresV3(Object):
         ]
         for certificate in provider_certificates:
             if certificate.csr in requirer_csrs:
+                csr_in_sha256_hex = get_sha256_hex(certificate.csr)
                 if certificate.revoked:
                     with suppress(SecretNotFoundError):
-                        secret = self.model.get_secret(label=f"{LIBID}-{certificate.csr}")
+                        logger.debug(
+                            "Removing secret with label %s",
+                            f"{LIBID}-{csr_in_sha256_hex}",
+                        )
+                        secret = self.model.get_secret(label=f"{LIBID}-{csr_in_sha256_hex}")
                         secret.remove_all_revisions()
                     self.on.certificate_invalidated.emit(
                         reason="revoked",
@@ -1885,16 +1888,23 @@ class TLSCertificatesRequiresV3(Object):
                     )
                 else:
                     try:
-                        secret = self.model.get_secret(label=f"{LIBID}-{certificate.csr}")
-                        secret.set_content({"certificate": certificate.certificate})
+                        logger.debug(
+                            "Setting secret with label %s", f"{LIBID}-{csr_in_sha256_hex}"
+                        )
+                        secret = self.model.get_secret(label=f"{LIBID}-{csr_in_sha256_hex}")
+                        secret.set_content(
+                            {"certificate": certificate.certificate, "csr": certificate.csr}
+                        )
                         secret.set_info(
                             expire=self._get_next_secret_expiry_time(certificate),
                         )
                     except SecretNotFoundError:
-                        logger.debug("Adding secret with label %s", f"{LIBID}-{certificate.csr}")
+                        logger.debug(
+                            "Creating new secret with label %s", f"{LIBID}-{csr_in_sha256_hex}"
+                        )
                         secret = self.charm.unit.add_secret(
-                            {"certificate": certificate.certificate},
-                            label=f"{LIBID}-{certificate.csr}",
+                            {"certificate": certificate.certificate, "csr": certificate.csr},
+                            label=f"{LIBID}-{csr_in_sha256_hex}",
                             expire=self._get_next_secret_expiry_time(certificate),
                         )
                     self.on.certificate_available.emit(
@@ -1957,7 +1967,7 @@ class TLSCertificatesRequiresV3(Object):
         """
         if not event.secret.label or not event.secret.label.startswith(f"{LIBID}-"):
             return
-        csr = event.secret.label[len(f"{LIBID}-") :]
+        csr = event.secret.get_content()["csr"]
         provider_certificate = self._find_certificate_in_relation_data(csr)
         if not provider_certificate:
             # A secret expired but we did not find matching certificate. Cleaning up
