@@ -5,6 +5,7 @@
 import json
 import logging
 import re
+import jinja2
 import time
 from typing import Dict, List, Optional, Set
 
@@ -219,6 +220,45 @@ class MongoDBCharm(CharmBase):
         return Layer(layer_config)  # type: ignore
 
     @property
+    def _log_rotate_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for log rotate."""
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+        # Before generating the log rotation layer we must first configure the log rotation template.
+        with open(Config.LOG_ROTATE_TEMPLATE, "r") as file:
+            template = jinja2.Template(file.read())
+
+        container.push(
+            Config.RENDERED_LOG_ROTATE_TEMPLATE,
+            template.render(
+                logs_directory=Config.LOG_DIR,
+                mongo_user=Config.UNIX_USER,
+                max_log_size=Config.LogRotate.MAX_LOG_SIZE,
+                max_rotations=Config.LogRotate.MAX_ROTATIONS_TO_KEEP,
+            ),
+            user=Config.UNIX_USER,
+            group=Config.UNIX_GROUP,
+        )
+
+        layer_config = {
+            "summary": "Log rotate layer",
+            "description": "Pebble config layer for rotating mongodb logs",
+            "services": {
+                "mongod": {
+                    "summary": "log rotate",
+                    # Pebble errors out if the command exits too fast (1s).
+                    "command": "sh -c 'logrotate /etc/logrotate.d/mongod; sleep 1'",
+                    "startup": "enabled",
+                    "override": "replace",
+                    "backoff-delay": "1m",
+                    "backoff-factor": 1,
+                    "user": Config.UNIX_USER,
+                    "group": Config.UNIX_GROUP,
+                }
+            },
+        }
+        return Layer(layer_config)  # type: ignore
+
+    @property
     def _backup_layer(self) -> Layer:
         """Returns a Pebble configuration layer for pbm."""
         layer_config = {
@@ -388,6 +428,8 @@ class MongoDBCharm(CharmBase):
 
         # Add initial Pebble config layer using the Pebble API
         container.add_layer("mongod", self._mongod_layer, combine=True)
+        container.add_layer("log_rotate", self._log_rotate_layer, combine=True)
+
         # Restart changed services and start startup-enabled services.
         container.replan()
 

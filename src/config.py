@@ -17,6 +17,8 @@ class Config:
     LOG_DIR = "/var/log/mongodb"
     CONF_DIR = "/etc/mongod"
     MONGODB_LOG_FILENAME = "mongodb.log"
+    LOG_ROTATE_TEMPLATE = "templates/logrotate.j2"
+    RENDERED_LOG_ROTATE_TEMPLATE = "/etc/logrotate.d/mongodb"
     LICENSE_PATH = "/licenses/LICENSE"
     CONTAINER_NAME = "mongod"
     SERVICE_NAME = "mongod"
