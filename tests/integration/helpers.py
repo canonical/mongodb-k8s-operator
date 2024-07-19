@@ -61,6 +61,12 @@ async def get_leader_id(ops_test: OpsTest, app_name: str = APP_NAME) -> int:
 async def get_address_of_unit(ops_test: OpsTest, unit_id: int, app_name: str = APP_NAME) -> str:
     """Retrieves the address of the unit based on provided id."""
     status = await ops_test.model.get_status()
+    print("status is ", status)
+    print(status["applications"])
+    print(status["applications"][app_name])
+    print(status["applications"][app_name]["units"])
+    print(status["applications"][app_name]["units"][f"{app_name}/{unit_id}"])
+    print(status["applications"][app_name]["units"][f"{app_name}/{unit_id}"]["address"])
     return status["applications"][app_name]["units"][f"{app_name}/{unit_id}"]["address"]
 
 
@@ -114,7 +120,10 @@ async def mongodb_uri(
 ) -> str:
     if unit_ids is None:
         unit_ids = UNIT_IDS
+
+    print("unit ids", unit_ids)
     addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in unit_ids]
+    print(addresses)
     hosts = ",".join(addresses)
     if use_subprocess_to_get_password:
         password = get_password_using_subprocess(ops_test)
@@ -508,3 +517,12 @@ async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_uni
     count = required_units - current_units
     await ops_test.model.applications[user_app_name].scale(scale_change=count)
     await ops_test.model.wait_for_idle(apps=[user_app_name], status="active", timeout=2000)
+
+
+def audit_log_line_sanity_check(entry) -> bool:
+    fields = ["atype", "ts", "local", "remote", "users", "roles", "param", "result"]
+    for field in fields:
+        if entry.get(field) is None:
+            logger.error("Field '%s' not found in audit log entry \"%s\"", field, entry)
+            return False
+    return True

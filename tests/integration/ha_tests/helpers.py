@@ -123,7 +123,7 @@ async def relate_mongodb_and_application(
     if is_relation_joined(ops_test, "database", "database"):
         return
 
-    await ops_test.model.relate(
+    await ops_test.model.integrate(
         f"{application_name}:database", f"{mongodb_application_name}:database"
     )
     await ops_test.model.block_until(lambda: is_relation_joined(ops_test, "database", "database"))
@@ -383,6 +383,7 @@ async def get_direct_mongo_client(
     ops_test: OpsTest, unit: str, use_subprocess_to_get_password=False
 ) -> MongoClient:
     """Returns a direct mongodb client to specific unit."""
+    print("unit id of online unit ", int(unit.split("/")[1]))
     url = await mongodb_uri(
         ops_test,
         [int(unit.split("/")[1])],
@@ -661,6 +662,7 @@ async def wait_until_unit_in_status(
     ops_test: OpsTest, unit_to_check: Unit, online_unit: Unit, status: str
 ) -> None:
     """Waits until a replica is in the provided status as reported by MongoDB or timeout occurs."""
+    print("unit name of online unit:", online_unit.name)
     with await get_direct_mongo_client(
         ops_test, online_unit.name, use_subprocess_to_get_password=True
     ) as client:
