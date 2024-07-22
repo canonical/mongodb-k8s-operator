@@ -53,7 +53,7 @@ class Config:
 
         MAX_LOG_SIZE = "50M"
         MAX_ROTATIONS_TO_KEEP = 10
-        LOG_ROTATE_TEMPLATE = "templates/logrotate.j2"
+        LOG_ROTATE_TEMPLATE = "./templates/logrotate.j2"
         RENDERED_TEMPLATE = "/etc/logrotate.d/mongodb"
         LOG_STATUS_DIR = "/var/lib/logrotate"
 

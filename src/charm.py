@@ -197,7 +197,7 @@ class MongoDBCharm(CharmBase):
                 }
             },
         }
-        return Layer(layer_config)  # type: ignore
+        return Layer(layer_config)
 
     @property
     def _monitor_layer(self) -> Layer:
@@ -217,7 +217,7 @@ class MongoDBCharm(CharmBase):
                 }
             },
         }
-        return Layer(layer_config)  # type: ignore
+        return Layer(layer_config)
 
     @property
     def _log_rotate_layer(self) -> Layer:
@@ -257,7 +257,7 @@ class MongoDBCharm(CharmBase):
                 }
             },
         }
-        return Layer(layer_config)  # type: ignore
+        return Layer(layer_config)
 
     @property
     def _backup_layer(self) -> Layer:
@@ -277,7 +277,7 @@ class MongoDBCharm(CharmBase):
                 }
             },
         }
-        return Layer(layer_config)  # type: ignore
+        return Layer(layer_config)
 
     @property
     def relation(self) -> Optional[Relation]:
