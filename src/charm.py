@@ -243,7 +243,7 @@ class MongoDBCharm(CharmBase):
             "summary": "Log rotate layer",
             "description": "Pebble config layer for rotating mongodb logs",
             "services": {
-                "mongod": {
+                "logrotate": {
                     "summary": "log rotate",
                     # Pebble errors out if the command exits too fast (1s).
                     "command": "sh -c 'logrotate /etc/logrotate.d/mongod; sleep 1'",
