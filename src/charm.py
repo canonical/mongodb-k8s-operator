@@ -224,11 +224,11 @@ class MongoDBCharm(CharmBase):
         """Returns a Pebble configuration layer for log rotate."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
         # Before generating the log rotation layer we must first configure the log rotation template.
-        with open(Config.LOG_ROTATE_TEMPLATE, "r") as file:
+        with open(Config.LogRotate.LOG_ROTATE_TEMPLATE, "r") as file:
             template = jinja2.Template(file.read())
 
         container.push(
-            Config.RENDERED_LOG_ROTATE_TEMPLATE,
+            Config.LogRotate.RENDERED_TEMPLATE,
             template.render(
                 logs_directory=Config.LOG_DIR,
                 mongo_user=Config.UNIX_USER,
@@ -246,7 +246,7 @@ class MongoDBCharm(CharmBase):
                 "logrotate": {
                     "summary": "log rotate",
                     # Pebble errors out if the command exits too fast (1s).
-                    "command": "sh -c 'logrotate /etc/logrotate.d/mongod; sleep 1'",
+                    "command": f"sh -c 'logrotate {Config.LogRotate.RENDERED_TEMPLATE}; sleep 1'",
                     "startup": "enabled",
                     "override": "replace",
                     "backoff-delay": "1m",
@@ -1330,7 +1330,7 @@ class MongoDBCharm(CharmBase):
         Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
         is available, we fix permissions incorrectly with chown.
         """
-        for path in [Config.DATA_DIR, Config.LOG_DIR]:
+        for path in [Config.DATA_DIR, Config.LOG_DIR, Config.LogRotate.LOG_STATUS_DIR]:
             paths = container.list_files(path, itself=True)
             assert len(paths) == 1, "list_files doesn't return only the directory itself"
             logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")

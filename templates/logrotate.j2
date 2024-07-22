@@ -10,7 +10,9 @@
   nocopytruncate
   sharedscripts
   postrotate
-    /bin/kill -SIGUSR1 $(systemctl show -p MainPID --value snap.charmed-mongodb.mongod.service)
+    {% for id in service_ids %}
+         pebble restart mongod_{{ id }}
+    {% endfor %}
   endscript
 }
 

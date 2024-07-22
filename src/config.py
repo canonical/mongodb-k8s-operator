@@ -14,11 +14,11 @@ class Config:
     UNIX_USER = "mongodb"
     UNIX_GROUP = "mongodb"
     DATA_DIR = "/var/lib/mongodb"
+
     LOG_DIR = "/var/log/mongodb"
     CONF_DIR = "/etc/mongod"
     MONGODB_LOG_FILENAME = "mongodb.log"
-    LOG_ROTATE_TEMPLATE = "templates/logrotate.j2"
-    RENDERED_LOG_ROTATE_TEMPLATE = "/etc/logrotate.d/mongodb"
+
     LICENSE_PATH = "/licenses/LICENSE"
     CONTAINER_NAME = "mongod"
     SERVICE_NAME = "mongod"
@@ -53,6 +53,9 @@ class Config:
 
         MAX_LOG_SIZE = "50M"
         MAX_ROTATIONS_TO_KEEP = 10
+        LOG_ROTATE_TEMPLATE = "templates/logrotate.j2"
+        RENDERED_TEMPLATE = "/etc/logrotate.d/mongodb"
+        LOG_STATUS_DIR = "/var/lib/logrotate"
 
     class Monitoring:
         """Monitoring related config for MongoDB Charm."""
