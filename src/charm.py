@@ -18,13 +18,6 @@ from charms.mongodb.v0.mongodb import (
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.set_status import MongoDBStatusHandler
-from charms.mongodb.v1.users import (
-    CHARM_USERS,
-    BackupUser,
-    MongoDBUser,
-    MonitorUser,
-    OperatorUser,
-)
 from charms.mongodb.v1.helpers import (
     build_unit_status,
     generate_keyfile,
@@ -34,6 +27,13 @@ from charms.mongodb.v1.helpers import (
 )
 from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
+from charms.mongodb.v1.users import (
+    CHARM_USERS,
+    BackupUser,
+    MongoDBUser,
+    MonitorUser,
+    OperatorUser,
+)
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import (
     ActionEvent,
