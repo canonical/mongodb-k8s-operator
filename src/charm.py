@@ -18,7 +18,7 @@ from charms.mongodb.v0.mongodb import (
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.set_status import MongoDBStatusHandler
-from charms.mongodb.v0.users import (
+from charms.mongodb.v1.users import (
     CHARM_USERS,
     BackupUser,
     MongoDBUser,

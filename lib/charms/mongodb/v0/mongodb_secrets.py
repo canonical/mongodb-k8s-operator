@@ -15,7 +15,7 @@ from exceptions import SecretAlreadyExistsError
 # The unique Charmhub library identifier, never change it
 
 # The unique Charmhub library identifier, never change it
-LIBID = "87456e41c7594240b92b783a648592b5"
+LIBID = "89cefc863fd747d7ace12cb508e7bec2"
 
 # Increment this major API version when introducing breaking changes
 LIBAPI = 0

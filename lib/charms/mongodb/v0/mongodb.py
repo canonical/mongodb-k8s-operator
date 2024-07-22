@@ -38,6 +38,10 @@ LIBPATCH = 9
 logger = logging.getLogger(__name__)
 
 
+class FailedToMovePrimaryError(Exception):
+    """Raised when attempt to move a primary fails."""
+
+
 @dataclass
 class MongoDBConfiguration:
     """Class for MongoDB configuration.
@@ -289,6 +293,60 @@ class MongoDBConnection:
     def step_down_primary(self) -> None:
         """Steps down the current primary, forcing a re-election."""
         self.client.admin.command("replSetStepDown", {"stepDownSecs": "60"})
+
+    def move_primary(self, new_primary_ip: str) -> None:
+        """Forcibly moves the primary to the new primary provided.
+
+        Args:
+            new_primary_ip: ip address of the unit chosen to be the new primary.
+        """
+        # Do not move a priary unless the cluster is in sync
+        rs_status = self.client.admin.command("replSetGetStatus")
+        if self.is_any_sync(rs_status):
+            # it can take a while, we should defer
+            raise NotReadyError
+
+        is_move_successful = True
+        self.set_replicaset_election_priority(priority=0.5, ignore_member=new_primary_ip)
+        try:
+            for attempt in Retrying(stop=stop_after_delay(180), wait=wait_fixed(3)):
+                with attempt:
+                    self.step_down_primary()
+                    if self.primary() != new_primary_ip:
+                        raise FailedToMovePrimaryError
+        except RetryError:
+            # catch all possible exceptions when failing to step down primary. We do this in order
+            # to ensure that we reset the replica set election priority.
+            is_move_successful = False
+
+        # reset all replicas to the same priority
+        self.set_replicaset_election_priority(priority=1)
+
+        if not is_move_successful:
+            raise FailedToMovePrimaryError
+
+    def set_replicaset_election_priority(self, priority: int, ignore_member: str = None) -> None:
+        """Set the election priority for the entire replica set."""
+        rs_config = self.client.admin.command("replSetGetConfig")
+        rs_config = rs_config["config"]
+        rs_config["version"] += 1
+
+        # keep track of the original configuration before setting the priority, reconfiguring the
+        # replica set can result in primary re-election, which would would like to avoid when
+        # possible.
+        original_rs_config = rs_config
+
+        for member in rs_config["members"]:
+            if member["host"] == ignore_member:
+                continue
+
+            member["priority"] = priority
+
+        if original_rs_config == rs_config:
+            return
+
+        logger.debug("rs_config: %r", rs_config)
+        self.client.admin.command("replSetReconfig", rs_config)
 
     def create_user(self, config: MongoDBConfiguration):
         """Create user.
