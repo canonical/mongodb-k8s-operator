@@ -123,7 +123,7 @@ async def relate_mongodb_and_application(
     if is_relation_joined(ops_test, "database", "database"):
         return
 
-    await ops_test.model.relate(
+    await ops_test.model.integrate(
         f"{application_name}:database", f"{mongodb_application_name}:database"
     )
     await ops_test.model.block_until(lambda: is_relation_joined(ops_test, "database", "database"))
