@@ -2,17 +2,22 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import logging
+import subprocess
 import time
 from uuid import uuid4
-import json
-import subprocess
+
 import pytest
 from lightkube import AsyncClient
 from lightkube.resources.core_v1 import Pod
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
+from .ha_tests.helpers import (
+    deploy_and_scale_application,
+    relate_mongodb_and_application,
+)
 from .helpers import (
     APP_NAME,
     METADATA,
@@ -34,8 +39,6 @@ from .helpers import (
     secondary_mongo_uris_with_sync_delay,
     set_password,
 )
-from .ha_tests.helpers import deploy_and_scale_application, relate_mongodb_and_application
-
 
 LOG_PATH = "/var/log/mongodb/"
 
@@ -115,7 +118,6 @@ async def test_application_primary(ops_test: OpsTest):
 @pytest.mark.group(1)
 async def test_audit_log(ops_test: OpsTest) -> None:
     """Test that audit log was created and contains actual audit data."""
-
     mongodb_application_name = await get_app_name(ops_test)
     audit_log_path = "/var/log/mongodb/audit.log"
 

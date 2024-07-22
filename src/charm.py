@@ -5,10 +5,10 @@
 import json
 import logging
 import re
-import jinja2
 import time
 from typing import Dict, List, Optional, Set
 
+import jinja2
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.mongodb.v0.mongodb import (
@@ -223,7 +223,8 @@ class MongoDBCharm(CharmBase):
     def _log_rotate_layer(self) -> Layer:
         """Returns a Pebble configuration layer for log rotate."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
-        # Before generating the log rotation layer we must first configure the log rotation template.
+        # Before generating the log rotation layer we must first configure the log rotation
+        # template.
         with open(Config.LogRotate.LOG_ROTATE_TEMPLATE, "r") as file:
             template = jinja2.Template(file.read())
 
