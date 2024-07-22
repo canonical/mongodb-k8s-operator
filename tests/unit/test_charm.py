@@ -66,6 +66,16 @@ class TestCharm(unittest.TestCase):
         # Expected plan after Pebble ready with default config
         expected_plan = {
             "services": {
+                "logrotate": {
+                    "summary": "log rotate",
+                    "startup": "enabled",
+                    "override": "replace",
+                    "command": "sh -c 'logrotate /etc/logrotate.d/mongodb; sleep 1'",
+                    "user": "mongodb",
+                    "group": "mongodb",
+                    "backoff-delay": "1m",
+                    "backoff-factor": 1,
+                },
                 "mongod": {
                     "user": "mongodb",
                     "group": "mongodb",
@@ -85,12 +95,13 @@ class TestCharm(unittest.TestCase):
                         f"--keyFile={CONF_DIR}/{KEY_FILE} \n"
                     ),
                     "startup": "enabled",
-                }
+                },
             },
         }
         # Get the mongod container from the model
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
+        container.make_dir("/etc/logrotate.d", make_parents=True)
         # Emit the PebbleReadyEvent carrying the mongod container
         self.harness.charm.on.mongod_pebble_ready.emit(container)
         # Get the plan now we've run PebbleReady
@@ -917,8 +928,12 @@ class TestCharm(unittest.TestCase):
         """Tests the _connect_mongodb_exporter method has been called."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
+        container.make_dir("/etc/logrotate.d", make_parents=True)
+
+        self.harness.set_can_connect(container, True)
         self.harness.charm.app_peer_data["db_initialised"] = "True"
         self.harness.charm.on.mongod_pebble_ready.emit(container)
+
         password = self.harness.charm.get_secret("app", "monitor-password")
 
         uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints/admin?replicaSet=mongodb-k8s"

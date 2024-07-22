@@ -2,7 +2,9 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import logging
+import subprocess
 import time
 from uuid import uuid4
 
@@ -12,11 +14,16 @@ from lightkube.resources.core_v1 import Pod
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
+from .ha_tests.helpers import (
+    deploy_and_scale_application,
+    relate_mongodb_and_application,
+)
 from .helpers import (
     APP_NAME,
     METADATA,
     TEST_DOCUMENTS,
     UNIT_IDS,
+    audit_log_line_sanity_check,
     check_if_test_documents_stored,
     check_or_scale_app,
     generate_collection_id,
@@ -32,6 +39,8 @@ from .helpers import (
     secondary_mongo_uris_with_sync_delay,
     set_password,
 )
+
+LOG_PATH = "/var/log/mongodb/"
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +113,83 @@ async def test_application_primary(ops_test: OpsTest):
             number_of_primaries += 1
 
     assert number_of_primaries == 1, "more than one primary in replica set"
+
+
+@pytest.mark.group(1)
+async def test_audit_log(ops_test: OpsTest) -> None:
+    """Test that audit log was created and contains actual audit data."""
+    mongodb_application_name = await get_app_name(ops_test)
+    audit_log_path = "/var/log/mongodb/audit.log"
+
+    for unit in ops_test.model.applications[mongodb_application_name].units:
+        audit_log = subprocess.check_output(
+            f"JUJU_MODEL={ops_test.model_full_name} juju ssh  --container mongod {unit.name}  'cat {audit_log_path}'",
+            stderr=subprocess.PIPE,
+            shell=True,
+            universal_newlines=True,
+        )
+
+        for line in audit_log.splitlines():
+            if not len(line):
+                continue
+            item = json.loads(line)
+            # basic sanity check
+            assert audit_log_line_sanity_check(
+                item
+            ), "Audit sanity log check failed for first line"
+
+
+@pytest.mark.group(1)
+async def test_log_rotate(ops_test: OpsTest) -> None:
+    """Test that log are being rotated."""
+    # deploy test application for writing data
+    application_name = await deploy_and_scale_application(ops_test)
+    mongodb_application_name = await get_app_name(ops_test)
+    await relate_mongodb_and_application(ops_test, mongodb_application_name, application_name)
+
+    # Note: this timeout out depends on max log size
+    # which is defined in "src/config.py::Config.MAX_LOG_SIZE"
+    logrotate_timeout = 60
+    audit_log_path = "/var/log/mongodb/"
+
+    for unit in ops_test.model.applications[mongodb_application_name].units:
+        log_files = subprocess.check_output(
+            f"JUJU_MODEL={ops_test.model_full_name} juju ssh  --container mongod {unit.name}  'ls {LOG_PATH}'",
+            stderr=subprocess.PIPE,
+            shell=True,
+            universal_newlines=True,
+        )
+
+        log_not_rotated = "audit.log.1.gz" not in log_files
+        assert (
+            log_not_rotated
+        ), f"Found rotated log in {log_files}, should not have already rotated."
+
+    application_unit = ops_test.model.applications[application_name].units[0]
+    start_writes_action = await application_unit.run_action("start-continuous-writes")
+    await start_writes_action.wait()
+
+    # before logs get rotated, they must reach the maximum log file size. Wait 10 minutes for
+    # enough writes to occur and for data to be written
+    time.sleep(600)
+
+    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
+    await clear_writes_action.wait()
+    time.sleep(logrotate_timeout)  # Just to make sure that logroate will run
+
+    for unit in ops_test.model.applications[mongodb_application_name].units:
+        log_files = subprocess.check_output(
+            f"JUJU_MODEL={ops_test.model_full_name} juju ssh  --container mongod {unit.name}  'ls {audit_log_path}'",
+            stderr=subprocess.PIPE,
+            shell=True,
+            universal_newlines=True,
+        )
+
+        log_rotated = "audit.log.1.gz" in log_files
+        assert log_rotated, f"Could not find rotated log in {log_files}"
+
+        audit_log_exists = "audit.log" in log_files
+        assert audit_log_exists, f"Could not find audit.log log in {log_files}"
 
 
 @pytest.mark.group(1)

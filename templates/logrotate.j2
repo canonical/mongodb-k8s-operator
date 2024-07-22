@@ -1,0 +1,18 @@
+{{logs_directory}}/*.log
+{
+  rotate {{max_rotations}}
+  size {{max_log_size}}
+  missingok
+  notifempty
+  create 0600 {{mongo_user}} {{mongo_user}}
+  compress
+  nomail
+  nocopytruncate
+  sharedscripts
+  postrotate
+    {% for id in service_ids %}
+         pebble restart mongod_{{ id }}
+    {% endfor %}
+  endscript
+}
+
