@@ -8,6 +8,7 @@ import re
 import time
 from typing import Dict, List, Optional, Set
 
+import jinja2
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.mongodb.v0.mongodb import (
@@ -196,7 +197,7 @@ class MongoDBCharm(CharmBase):
                 }
             },
         }
-        return Layer(layer_config)  # type: ignore
+        return Layer(layer_config)
 
     @property
     def _monitor_layer(self) -> Layer:
@@ -216,7 +217,47 @@ class MongoDBCharm(CharmBase):
                 }
             },
         }
-        return Layer(layer_config)  # type: ignore
+        return Layer(layer_config)
+
+    @property
+    def _log_rotate_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for log rotate."""
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+        # Before generating the log rotation layer we must first configure the log rotation
+        # template.
+        with open(Config.LogRotate.LOG_ROTATE_TEMPLATE, "r") as file:
+            template = jinja2.Template(file.read())
+
+        container.push(
+            Config.LogRotate.RENDERED_TEMPLATE,
+            template.render(
+                logs_directory=Config.LOG_DIR,
+                mongo_user=Config.UNIX_USER,
+                max_log_size=Config.LogRotate.MAX_LOG_SIZE,
+                max_rotations=Config.LogRotate.MAX_ROTATIONS_TO_KEEP,
+            ),
+            user=Config.UNIX_USER,
+            group=Config.UNIX_GROUP,
+        )
+
+        layer_config = {
+            "summary": "Log rotate layer",
+            "description": "Pebble config layer for rotating mongodb logs",
+            "services": {
+                "logrotate": {
+                    "summary": "log rotate",
+                    # Pebble errors out if the command exits too fast (1s).
+                    "command": f"sh -c 'logrotate {Config.LogRotate.RENDERED_TEMPLATE}; sleep 1'",
+                    "startup": "enabled",
+                    "override": "replace",
+                    "backoff-delay": "1m",
+                    "backoff-factor": 1,
+                    "user": Config.UNIX_USER,
+                    "group": Config.UNIX_GROUP,
+                }
+            },
+        }
+        return Layer(layer_config)
 
     @property
     def _backup_layer(self) -> Layer:
@@ -236,7 +277,7 @@ class MongoDBCharm(CharmBase):
                 }
             },
         }
-        return Layer(layer_config)  # type: ignore
+        return Layer(layer_config)
 
     @property
     def relation(self) -> Optional[Relation]:
@@ -388,6 +429,8 @@ class MongoDBCharm(CharmBase):
 
         # Add initial Pebble config layer using the Pebble API
         container.add_layer("mongod", self._mongod_layer, combine=True)
+        container.add_layer("log_rotate", self._log_rotate_layer, combine=True)
+
         # Restart changed services and start startup-enabled services.
         container.replan()
 
@@ -1288,7 +1331,7 @@ class MongoDBCharm(CharmBase):
         Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
         is available, we fix permissions incorrectly with chown.
         """
-        for path in [Config.DATA_DIR, Config.LOG_DIR]:
+        for path in [Config.DATA_DIR, Config.LOG_DIR, Config.LogRotate.LOG_STATUS_DIR]:
             paths = container.list_files(path, itself=True)
             assert len(paths) == 1, "list_files doesn't return only the directory itself"
             logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")

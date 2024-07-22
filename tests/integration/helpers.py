@@ -44,6 +44,7 @@ SERIES = "jammy"
 HELPER_MONGO_VERSION = "6.0.11"
 HELPER_MONGO_POD_NAME = "mongodb-helper"
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -114,6 +115,7 @@ async def mongodb_uri(
 ) -> str:
     if unit_ids is None:
         unit_ids = UNIT_IDS
+
     addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in unit_ids]
     hosts = ",".join(addresses)
     if use_subprocess_to_get_password:
@@ -508,3 +510,12 @@ async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_uni
     count = required_units - current_units
     await ops_test.model.applications[user_app_name].scale(scale_change=count)
     await ops_test.model.wait_for_idle(apps=[user_app_name], status="active", timeout=2000)
+
+
+def audit_log_line_sanity_check(entry) -> bool:
+    fields = ["atype", "ts", "local", "remote", "users", "roles", "param", "result"]
+    for field in fields:
+        if entry.get(field) is None:
+            logger.error("Field '%s' not found in audit log entry \"%s\"", field, entry)
+            return False
+    return True
