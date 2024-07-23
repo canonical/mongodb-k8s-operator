@@ -11,14 +11,12 @@ from typing import Dict, List, Optional, Set
 import jinja2
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
+from charms.mongodb.v0.config_server_interface import ClusterProvider
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
 )
-from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
-from charms.mongodb.v0.config_server_interface import ClusterProvider
-
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.set_status import MongoDBStatusHandler
@@ -32,6 +30,7 @@ from charms.mongodb.v1.helpers import (
 )
 from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
+from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
 from charms.mongodb.v1.users import (
     CHARM_USERS,
     BackupUser,
@@ -43,10 +42,10 @@ from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import (
     ActionEvent,
     CharmBase,
+    ConfigChangedEvent,
     RelationDepartedEvent,
     StartEvent,
     UpdateStatusEvent,
-    ConfigChangedEvent,
 )
 from ops.main import main
 from ops.model import (
