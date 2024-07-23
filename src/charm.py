@@ -397,7 +397,14 @@ class MongoDBCharm(CharmBase):
 
     @property
     def role(self) -> str:
-        """Returns role of MongoDB deployment."""
+        """Returns role of MongoDB deployment.
+
+        At any point in time the user can do juju config role=new-role, but this functionality is
+        not yet supported in the charm. This means that we cannot trust what is in
+        self.model.config["role"] since it can change at the users command. For this reason we save
+        the role in the application data bag and only refer to that as the official role.
+        """
+        # case 1: official role has not been set in the application peer data bag
         if (
             "role" not in self.app_peer_data
             and self.unit.is_leader()
@@ -406,10 +413,11 @@ class MongoDBCharm(CharmBase):
             self.app_peer_data["role"] = self.model.config["role"]
             # app data bag isn't set until function completes
             return self.model.config["role"]
+        # case 2: leader hasn't set the role yet
         elif "role" not in self.app_peer_data:
-            # if leader hasn't set the role yet, use the one set by model
             return self.model.config["role"]
 
+        # case 3: the role is already set
         return self.app_peer_data.get("role")
 
     # END: properties
@@ -1421,9 +1429,9 @@ class SetPasswordError(Exception):
     """Raised on failure to set password for MongoDB user."""
 
 
-if __name__ == "__main__":
-    main(MongoDBCharm)
-
-
 class ShardingMigrationError(Exception):
     """Raised when there is an attempt to change the role of a sharding component."""
+
+
+if __name__ == "__main__":
+    main(MongoDBCharm)
