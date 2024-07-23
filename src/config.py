@@ -10,6 +10,7 @@ class Config:
     """Configuration for MongoDB Charm."""
 
     SUBSTRATE = "k8s"
+    MONGOS_PORT = 27018
     MONGODB_PORT = 27017
     UNIX_USER = "mongodb"
     UNIX_GROUP = "mongodb"
@@ -82,6 +83,9 @@ class Config:
         PEERS = "database-peers"
         LOGGING = "logging"
 
+        SHARDING_RELATIONS_NAME = "sharding"
+        CONFIG_SERVER_RELATIONS_NAME = "config-server"
+        CLUSTER_RELATIONS_NAME = "cluster"
         Scopes = Literal[APP_SCOPE, UNIT_SCOPE]
 
     class Role:
