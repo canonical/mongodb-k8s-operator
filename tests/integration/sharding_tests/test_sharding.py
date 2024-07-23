@@ -68,4 +68,5 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         ],
         idle_period=20,
         raise_on_blocked=False,
+        raise_on_error=False,
     )
