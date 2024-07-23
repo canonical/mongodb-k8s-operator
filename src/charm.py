@@ -513,22 +513,23 @@ class MongoDBCharm(CharmBase):
         unresponsive therefore causing a cluster failure, error the component. This prevents it
         from executing other hooks with a new role.
         """
-        if self.is_role_changed():
+        # TODO in the future support migration of components
+        if not self.is_role_changed():
+            return
 
-            if self.upgrade_in_progress:
-                logger.warning(
-                    "Changing config options is not permitted during an upgrade. The charm may be in a broken, unrecoverable state."
-                )
-                event.defer()
-                return
+        if self.upgrade_in_progress:
+            logger.warning(
+                "Changing config options is not permitted during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
+            return
 
-            # TODO in the future support migration of components
-            logger.error(
-                f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
-            )
-            raise ShardingMigrationError(
-                f"Migration of sharding components not permitted, revert config role to {self.role}"
-            )
+        logger.error(
+            f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
+        )
+        raise ShardingMigrationError(
+            f"Migration of sharding components not permitted, revert config role to {self.role}"
+        )
 
     def _on_start(self, event) -> None:
         """Initialise MongoDB.
