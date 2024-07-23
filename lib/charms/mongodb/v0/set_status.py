@@ -18,7 +18,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 
 class MongoDBStatusHandler(Object):
@@ -54,19 +54,51 @@ class MongoDBStatusHandler(Object):
     def set_app_status(self):
         """TODO Future Feature/Epic: parse statuses and set a status for the entire app."""
 
-    def are_all_units_ready_for_upgrade(self) -> bool:
+    def is_current_unit_ready(self, ignore_unhealthy_upgrade: bool = False) -> bool:
+        """Returns True if the current unit status shows that the unit is ready.
+
+        Note: we allow the use of ignore_unhealthy_upgrade, to avoid infinite loops due to this
+        function returning False and preventing the status from being reset.
+        """
+        if isinstance(self.charm.unit.status, ActiveStatus):
+            return True
+
+        if ignore_unhealthy_upgrade and self.charm.unit.status == Config.Status.UNHEALTHY_UPGRADE:
+            return True
+
+        return self.is_status_related_to_mismatched_revision(
+            type(self.charm.unit.status).__name__.lower()
+        )
+
+    def is_status_related_to_mismatched_revision(self, status_type: str) -> bool:
+        """Returns True if the current status is related to a mimsatch in revision.
+
+        Note: A few functions calling this method receive states differently. One receives them by
+        "goal state" which processes data differently and the other via the ".status" property.
+        Hence we have to be flexible to handle each.
+        """
+        if not self.charm.get_cluster_mismatched_revision_status():
+            return False
+
+        if "waiting" in status_type and self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return True
+
+        if "blocked" in status_type and self.charm.is_role(Config.Role.SHARD):
+            return True
+
+        return False
+
+    def are_all_units_ready_for_upgrade(self, unit_to_ignore: str = "") -> bool:
         """Returns True if all charm units status's show that they are ready for upgrade."""
         goal_state = self.charm.model._backend._run(
             "goal-state", return_output=True, use_json=True
         )
-        is_different_revision = self.charm.get_cluster_mismatched_revision_status()
-        for _, unit_state in goal_state["units"].items():
+        for unit_name, unit_state in goal_state["units"].items():
+            if unit_name == unit_to_ignore:
+                continue
             if unit_state["status"] == "active":
                 continue
-            if unit_state["status"] != "waiting":
-                return False
-
-            if not is_different_revision:
+            if not self.is_status_related_to_mismatched_revision(unit_state["status"]):
                 return False
 
         return True
