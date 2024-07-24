@@ -68,7 +68,6 @@ class Unit:
         ip: str,
         hostname: str,
         is_leader: bool,
-        machine_id: int,
         workload_status: Status,
         agent_status: Status,
         app_status: Status,
@@ -78,7 +77,6 @@ class Unit:
         self.ip = ip
         self.hostname = hostname
         self.is_leader = is_leader
-        self.machine_id = machine_id
         self.workload_status = workload_status
         self.agent_status = agent_status
         self.app_status = app_status
@@ -590,18 +588,16 @@ async def get_application_units(ops_test: OpsTest, app: str) -> List[Unit]:
     units = []
     for u_name, unit in raw_app["units"].items():
         unit_id = int(u_name.split("/")[-1])
-
-        if not unit.get("public-address"):
+        if not unit.get("address", False):
             # unit not ready yet...
             continue
 
         unit = Unit(
             id=unit_id,
             name=u_name.replace("/", "-"),
-            ip=unit["public-address"],
+            ip=unit["address"],
             hostname=await get_unit_hostname(ops_test, unit_id, app),
             is_leader=unit.get("leader", False),
-            machine_id=int(unit["machine"]),
             workload_status=Status(
                 value=unit["workload-status"]["current"],
                 since=unit["workload-status"]["since"],
