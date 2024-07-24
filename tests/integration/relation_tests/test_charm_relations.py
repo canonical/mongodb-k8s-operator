@@ -300,21 +300,30 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "database"
     )
 
-    cmd = f'db.createUser({{user: "newTestUser", pwd: "Test123", roles: [{{role: "readWrite", db: "{database}"}}]}});'
+    cmd = f'db.createUser({{user: "newTestUser", pwd: "Test123", roles: [{{role: "readWrite", db: "{database}"}}]}})'
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
+        ops_test,
+        f'"EJSON.stringify({cmd})"',
+        f'"{connection_string}"',
+        stringify=False,
+        expect_json_load=False,
     )
-    cmd = "db.getUsers();"
+    cmd = "db.getUsers()"
 
     result = await run_mongo_op(
-        ops_test, f'"{cmd}"', f'"{connection_string}"', stringify=False, expect_json_load=False
+        ops_test,
+        f"EJSON.stringify({cmd})",
+        f'"{connection_string}"',
+        stringify=False,
+        expect_json_load=False,
     )
-    assert "application_first_database.newTestUser" in str(result)
-    cmd = 'db = db.getSiblingDB("new_database"); db.test_collection.insertOne({"test": "one"});'
+    # assert "application_first_database.newTestUser" in str(result)
+    assert result.data["users"][0]["_id"] == "application_first_database.newTestUser"
+    cmd = 'db = db.getSiblingDB("new_database"); EJSON.stringify(db.test_collection.insertOne({"test": "one"}));'
     result = await run_mongo_op(
         ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
     )
-    assert "acknowledged: true" in str(result.data)
+    assert result.data["acknowledged"] is True
 
 
 @pytest.mark.group(1)
