@@ -235,16 +235,17 @@ def build_unit_status(mongodb_config: MongoDBConfiguration, unit_host: str) -> S
 
             replica_status = replset_status[unit_host]
 
-            if replica_status == "PRIMARY":
-                return ActiveStatus("Primary")
-            elif replica_status == "SECONDARY":
-                return ActiveStatus("")
-            elif replica_status in ["STARTUP", "STARTUP2", "ROLLBACK", "RECOVERING"]:
-                return WaitingStatus("Member is syncing...")
-            elif replica_status == "REMOVED":
-                return WaitingStatus("Member is removing...")
-            else:
-                return BlockedStatus(replica_status)
+            match replica_status:
+                case "PRIMARY":
+                    return ActiveStatus("Primary")
+                case "SECONDARY":
+                    return ActiveStatus("")
+                case "STARTUP" | "STARTUP2" | "ROLLBACK" | "RECOVERING":
+                    return WaitingStatus("Member is syncing...")
+                case "REMOVED":
+                    return WaitingStatus("Member is removing...")
+                case _:
+                    return BlockedStatus(replica_status)
     except ServerSelectionTimeoutError as e:
         # ServerSelectionTimeoutError is commonly due to ReplicaSetNoPrimary
         logger.debug("Got error: %s, while checking replica set status", str(e))
