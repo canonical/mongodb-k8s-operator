@@ -91,7 +91,7 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     # insert some data
     cmd = (
         'var ubuntu = {"release_name": "Focal Fossa", "version": "20.04", "LTS": "true"}; '
-        "JSON.stringify(db.test_collection.insertOne(ubuntu));"
+        "EJSON.stringify(db.test_collection.insertOne(ubuntu), );"
     )
     result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=False)
     assert result.data["acknowledged"] is True
@@ -99,14 +99,14 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     # query the data
     cmd = 'db.test_collection.find({}, {"release_name": 1}).toArray()'
     result = await run_mongo_op(
-        ops_test, f"JSON.stringify({cmd})", f'"{connection_string}"', stringify=False
+        ops_test, f"EJSON.stringify({cmd})", f'"{connection_string}"', stringify=False
     )
     assert result.data[0]["release_name"] == "Focal Fossa"
 
     # update the data
     ubuntu_version = '{"version": "20.04"}'
     ubuntu_name_updated = '{"$set": {"release_name": "Fancy Fossa"}}'
-    cmd = f"db.test_collection.updateOne({ubuntu_version}, {ubuntu_name_updated})"
+    cmd = f"EJSON.stringify(db.test_collection.updateOne({ubuntu_version}, {ubuntu_name_updated}))"
     result = await run_mongo_op(
         ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
     )
@@ -115,13 +115,13 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     # query the data
     cmd = 'db.test_collection.find({}, {"release_name": 1}).toArray()'
     result = await run_mongo_op(
-        ops_test, f"JSON.stringify({cmd})", f'"{connection_string}"', stringify=False
+        ops_test, f"EJSON.stringify({cmd})", f'"{connection_string}"', stringify=False
     )
     assert len(result.data) == 1
     assert result.data[0]["release_name"] == "Fancy Fossa"
 
     # delete the data
-    cmd = 'db.test_collection.deleteOne({"release_name": "Fancy Fossa"})'
+    cmd = 'EJSON.stringify(db.test_collection.deleteOne({"release_name": "Fancy Fossa"}))'
     result = await run_mongo_op(
         ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
     )
@@ -130,7 +130,7 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     # query the data
     cmd = 'db.test_collection.find({}, {"release_name": 1}).toArray()'
     result = await run_mongo_op(
-        ops_test, f"JSON.stringify({cmd})", f'"{connection_string}"', stringify=False
+        ops_test, f"EJSON.stringify({cmd})", f'"{connection_string}"', stringify=False
     )
     assert len(result.data) == 0
 
