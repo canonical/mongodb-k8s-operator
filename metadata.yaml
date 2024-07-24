@@ -30,6 +30,11 @@ provides:
     interface: prometheus_scrape
   grafana-dashboard:
     interface: grafana_dashboard
+  config-server:
+    interface: shards
+  cluster:
+    interface: config-server
+
 requires:
   certificates:
     interface: tls-certificates
@@ -40,6 +45,11 @@ requires:
     optional: true
   s3-credentials:
     interface: s3
+  sharding:
+    interface: shards
+    # shards can only relate to one config-server
+    limit: 1
+
 containers:
   mongod:
     resource: mongodb-image

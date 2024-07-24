@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Set
 import jinja2
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
+from charms.mongodb.v0.config_server_interface import ClusterProvider
 from charms.mongodb.v0.mongodb import (
     MongoDBConfiguration,
     MongoDBConnection,
@@ -25,9 +26,11 @@ from charms.mongodb.v1.helpers import (
     generate_password,
     get_create_user_cmd,
     get_mongod_args,
+    get_mongos_args,
 )
 from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
+from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
 from charms.mongodb.v1.users import (
     CHARM_USERS,
     BackupUser,
@@ -39,6 +42,7 @@ from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
 from ops.charm import (
     ActionEvent,
     CharmBase,
+    ConfigChangedEvent,
     RelationDepartedEvent,
     StartEvent,
     UpdateStatusEvent,
@@ -130,6 +134,10 @@ class MongoDBCharm(CharmBase):
         self.status = MongoDBStatusHandler(self)
         self.secrets = SecretCache(self)
 
+        self.shard = ConfigServerRequirer(self)
+        self.config_server = ShardingProvider(self)
+        self.cluster = ClusterProvider(self)
+
     # BEGIN: properties
 
     @property
@@ -190,7 +198,7 @@ class MongoDBCharm(CharmBase):
                 "mongod": {
                     "override": "replace",
                     "summary": "mongod",
-                    "command": "mongod " + get_mongod_args(self.mongodb_config),
+                    "command": "mongod " + get_mongod_args(self.mongodb_config, role=self.role),
                     "startup": "enabled",
                     "user": Config.UNIX_USER,
                     "group": Config.UNIX_GROUP,
@@ -198,6 +206,25 @@ class MongoDBCharm(CharmBase):
             },
         }
         return Layer(layer_config)
+
+    @property
+    def _mongos_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for mongos."""
+        layer_config = {
+            "summary": "mongos layer",
+            "description": "Pebble config layer for mongos router",
+            "services": {
+                "mongos": {
+                    "override": "replace",
+                    "summary": "mongos",
+                    "command": "mongos " + get_mongos_args(self.mongodb_config),
+                    "startup": "enabled",
+                    "user": Config.UNIX_USER,
+                    "group": Config.UNIX_GROUP,
+                }
+            },
+        }
+        return Layer(layer_config)  # type: ignore
 
     @property
     def _monitor_layer(self) -> Layer:
@@ -307,9 +334,13 @@ class MongoDBCharm(CharmBase):
         """Check if MongoDB is initialised."""
         return "db_initialised" in self.app_peer_data
 
+    def is_role_changed(self) -> bool:
+        """Checks if application is running in provided role."""
+        return self.role != self.model.config["role"]
+
     def is_role(self, role_name: str) -> bool:
-        """TODO: Implement this as part of sharding."""
-        return False
+        """Checks if application is running in provided role."""
+        return self.role == role_name
 
     def has_config_server(self) -> bool:
         """TODO: Implement this function as part of sharding."""
@@ -363,6 +394,31 @@ class MongoDBCharm(CharmBase):
             raise ValueError(
                 f"'users_initialized' must be a boolean value. Proivded: {value} is of type {type(value)}"
             )
+
+    @property
+    def role(self) -> str:
+        """Returns role of MongoDB deployment.
+
+        At any point in time the user can do juju config role=new-role, but this functionality is
+        not yet supported in the charm. This means that we cannot trust what is in
+        self.model.config["role"] since it can change at the users command. For this reason we save
+        the role in the application data bag and only refer to that as the official role.
+        """
+        # case 1: official role has not been set in the application peer data bag
+        if (
+            "role" not in self.app_peer_data
+            and self.unit.is_leader()
+            and self.model.config["role"]
+        ):
+            self.app_peer_data["role"] = self.model.config["role"]
+            # app data bag isn't set until function completes
+            return self.model.config["role"]
+        # case 2: leader hasn't set the role yet
+        elif "role" not in self.app_peer_data:
+            return self.model.config["role"]
+
+        # case 3: the role is already set
+        return self.app_peer_data.get("role")
 
     # END: properties
 
@@ -430,6 +486,8 @@ class MongoDBCharm(CharmBase):
         # Add initial Pebble config layer using the Pebble API
         container.add_layer("mongod", self._mongod_layer, combine=True)
         container.add_layer("log_rotate", self._log_rotate_layer, combine=True)
+        if self.is_role(Config.Role.CONFIG_SERVER):
+            container.add_layer("mongos", self._mongos_layer, combine=True)
 
         # Restart changed services and start startup-enabled services.
         container.replan()
@@ -447,6 +505,31 @@ class MongoDBCharm(CharmBase):
         """Checks if the MongoDB service is ready to accept connections."""
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             return direct_mongo.is_ready
+
+    def _on_config_changed(self, event: ConfigChangedEvent) -> None:
+        """Listen to changes in application configuration.
+
+        To prevent a user from migrating a cluster, and causing the component to become
+        unresponsive therefore causing a cluster failure, error the component. This prevents it
+        from executing other hooks with a new role.
+        """
+        # TODO in the future support migration of components
+        if not self.is_role_changed():
+            return
+
+        if self.upgrade_in_progress:
+            logger.warning(
+                "Changing config options is not permitted during an upgrade. The charm may be in a broken, unrecoverable state."
+            )
+            event.defer()
+            return
+
+        logger.error(
+            f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
+        )
+        raise ShardingMigrationError(
+            f"Migration of sharding components not permitted, revert config role to {self.role}"
+        )
 
     def _on_start(self, event) -> None:
         """Initialise MongoDB.
@@ -1345,6 +1428,10 @@ class MongoDBCharm(CharmBase):
 
 class SetPasswordError(Exception):
     """Raised on failure to set password for MongoDB user."""
+
+
+class ShardingMigrationError(Exception):
+    """Raised when there is an attempt to change the role of a sharding component."""
 
 
 if __name__ == "__main__":

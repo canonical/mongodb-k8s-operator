@@ -5,6 +5,12 @@ options:
   auto-delete:
     type: boolean
     description: |
-        When a relation is removed, auto-delete ensures that any relevant databases 
-        associated with the relation are also removed
+      When a relation is removed, auto-delete ensures that any relevant databases 
+      associated with the relation are also removed
     default: false
+  role:
+    description: |
+      role config option exists to deploy the charmed-mongodb application as a shard, 
+      config-server, or as a replica set.
+    type: string
+    default: replication
