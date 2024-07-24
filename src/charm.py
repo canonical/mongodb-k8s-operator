@@ -21,15 +21,15 @@ from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.set_status import MongoDBStatusHandler
 from charms.mongodb.v1.helpers import (
-    build_unit_status,
     generate_keyfile,
     generate_password,
     get_create_user_cmd,
     get_mongod_args,
     get_mongos_args,
 )
-from charms.mongodb.v1.mongodb_backups import S3_RELATION, MongoDBBackups
+from charms.mongodb.v1.mongodb_backups import MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
+from charms.mongodb.v1.mongos import MongosConfiguration
 from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
 from charms.mongodb.v1.users import (
     CHARM_USERS,
@@ -141,18 +141,18 @@ class MongoDBCharm(CharmBase):
     # BEGIN: properties
 
     @property
-    def _unit_hosts(self) -> List[str]:
+    def app_hosts(self) -> List[str]:
         """Retrieve IP addresses associated with MongoDB application.
 
         Returns:
             a list of IP address associated with MongoDB application.
         """
-        self_unit = [self.get_hostname_for_unit(self.unit)]
+        self_unit = [self.unit_host(self.unit)]
 
         if not self._peers:
             return self_unit
 
-        return self_unit + [self.get_hostname_for_unit(unit) for unit in self._peers.units]
+        return self_unit + [self.unit_host(unit) for unit in self._peers.units]
 
     @property
     def _peers(self) -> Optional[Relation]:
@@ -172,21 +172,22 @@ class MongoDBCharm(CharmBase):
         Returns:
             A MongoDBConfiguration object
         """
-        return self._get_mongodb_config_for_user(OperatorUser, self._unit_hosts)
+        return self._get_mongodb_config_for_user(OperatorUser, self.app_hosts)
+
+    @property
+    def mongos_config(self) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
+        return self._get_mongos_config_for_user(OperatorUser, set(self.app_hosts))
 
     @property
     def monitor_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
-        return self._get_mongodb_config_for_user(
-            MonitorUser, [self.get_hostname_for_unit(self.unit)]
-        )
+        return self._get_mongodb_config_for_user(MonitorUser, [self.unit_host(self.unit)])
 
     @property
     def backup_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for backup."""
-        return self._get_mongodb_config_for_user(
-            BackupUser, [self.get_hostname_for_unit(self.unit)]
-        )
+        return self._get_mongodb_config_for_user(BackupUser, [self.unit_host(self.unit)])
 
     @property
     def _mongod_layer(self) -> Layer:
@@ -420,6 +421,15 @@ class MongoDBCharm(CharmBase):
         # case 3: the role is already set
         return self.app_peer_data.get("role")
 
+    @property
+    def drained(self) -> bool:
+        """Returns whether the shard has been drained."""
+        if not self.is_role(Config.Role.SHARD):
+            logger.info("Component %s is not a shard, cannot check draining status.", self.role)
+            return False
+
+        return self.unit_peer_data.get("drained", False)
+
     # END: properties
 
     # BEGIN: generic helper methods
@@ -627,7 +637,7 @@ class MongoDBCharm(CharmBase):
                 # to avoid potential race conditions -
                 # remove unit before adding new replica set members
                 if isinstance(event, RelationDepartedEvent) and event.unit:
-                    mongodb_hosts = mongodb_hosts - set([self.get_hostname_for_unit(event.unit)])
+                    mongodb_hosts = mongodb_hosts - set([self.unit_host(event.unit)])
 
                 self._add_units_from_replica_set(event, mongo, mongodb_hosts - replset_members)
 
@@ -672,22 +682,7 @@ class MongoDBCharm(CharmBase):
         if self.unit.is_leader():
             self._relation_changes_handler(event)
 
-        # update the units status based on it's replica set config and backup status. An error in
-        # the status of MongoDB takes precedence over pbm status.
-        mongodb_status = build_unit_status(
-            self.mongodb_config, self.get_hostname_for_unit(self.unit)
-        )
-        pbm_status = self.backups.get_pbm_status()
-        if (
-            not isinstance(mongodb_status, ActiveStatus)
-            or not self.model.get_relation(
-                S3_RELATION
-            )  # if s3 relation doesn't exist only report MongoDB status
-            or isinstance(pbm_status, ActiveStatus)  # pbm is ready then report the MongoDB status
-        ):
-            self.unit.status = mongodb_status
-        else:
-            self.unit.status = pbm_status
+        self.status.set_and_share_status(self.status.process_statuses())
 
     # END: charm events
 
@@ -944,6 +939,23 @@ class MongoDBCharm(CharmBase):
                 tls_internal=internal_ca is not None,
             )
 
+    def _get_mongos_config_for_user(
+        self, user: MongoDBUser, hosts: Set[str]
+    ) -> MongosConfiguration:
+        external_ca, _ = self.tls.get_tls_files(internal=False)
+        internal_ca, _ = self.tls.get_tls_files(internal=True)
+
+        return MongosConfiguration(
+            database=user.get_database_name(),
+            username=user.get_username(),
+            password=self.get_secret(APP_SCOPE, user.get_password_key_name()),
+            hosts=hosts,
+            port=Config.MONGOS_PORT,
+            roles=user.get_roles(),
+            tls_external=external_ca is not None,
+            tls_internal=internal_ca is not None,
+        )
+
     def _get_user_or_fail_event(self, event: ActionEvent, default_username: str) -> Optional[str]:
         """Returns MongoDBUser object or raises ActionFail if user doesn't exist."""
         username = event.params.get(Config.Actions.USERNAME_PARAM_NAME, default_username)
@@ -1190,7 +1202,7 @@ class MongoDBCharm(CharmBase):
             except PathError as err:
                 logger.debug("Path unavailable: %s (%s)", file, str(err))
 
-    def get_hostname_for_unit(self, unit: Unit) -> str:
+    def unit_host(self, unit: Unit) -> str:
         """Create a DNS name for a MongoDB unit.
 
         Args:
@@ -1280,7 +1292,7 @@ class MongoDBCharm(CharmBase):
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 replset_members = mongo.get_replset_members()
-                return self.get_hostname_for_unit(self.unit) in replset_members
+                return self.unit_host(self.unit) in replset_members
             except NotReadyError as e:
                 logger.error(f"{self.unit.name}.is_unit_in_replica_set NotReadyError={e}")
             except PyMongoError as e:
