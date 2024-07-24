@@ -846,7 +846,7 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
-        if self._is_user_created(OperatorUser):
+        if self._is_user_created(OperatorUser) or not self.unit.is_leader():
             return
 
         container = self.unit.get_container(Config.CONTAINER_NAME)
