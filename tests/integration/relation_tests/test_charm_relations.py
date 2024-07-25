@@ -13,7 +13,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ..ha_tests.helpers import get_replica_set_primary as replica_set_primary
-from ..helpers import check_or_scale_app, get_app_name, run_mongo_op, is_relation_joined
+from ..helpers import check_or_scale_app, get_app_name, is_relation_joined, run_mongo_op
 from .helpers import (
     get_application_relation_data,
     get_connection_string,

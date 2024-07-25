@@ -34,9 +34,9 @@ from ..helpers import (
     get_app_name,
     get_mongo_cmd,
     get_password,
+    is_relation_joined,
     mongodb_uri,
     primary_host,
-    is_relation_joined,
 )
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
