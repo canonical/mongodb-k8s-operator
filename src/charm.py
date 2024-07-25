@@ -187,7 +187,10 @@ class MongoDBCharm(CharmBase):
     @property
     def backup_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for backup."""
-        return self._get_mongodb_config_for_user(BackupUser, [self.unit_host(self.unit)])
+        self._check_or_set_user_password(BackupUser)
+        return self._get_mongodb_config_for_user(
+            BackupUser, BackupUser.get_hosts(), standalone=True
+        )
 
     @property
     def _mongod_layer(self) -> Layer:
@@ -430,9 +433,43 @@ class MongoDBCharm(CharmBase):
 
         return self.unit_peer_data.get("drained", False)
 
+    @property
+    def primary(self) -> str:
+        """Retrieves the unit with the primary replica."""
+        try:
+            with MongoDBConnection(self.mongodb_config) as mongo:
+                primary_ip = mongo.primary()
+        except PyMongoError as e:
+            logger.error("Unable to access primary due to: %s", e)
+            return None
+
+        # check if current unit matches primary ip
+        if primary_ip == self.unit_host(self.unit):
+            return self.unit.name
+
+        # check if peer unit matches primary ip
+        for unit in self.peers_units:
+            if primary_ip == self.unit_host(unit):
+                return unit.name
+
+        return None
+
     # END: properties
 
     # BEGIN: generic helper methods
+    def remote_mongos_config(self, hosts) -> MongosConfiguration:
+        """Generates a MongosConfiguration object for mongos in the deployment of MongoDB."""
+        # mongos that are part of the cluster have the same username and password, but different
+        # hosts
+        return self._get_mongos_config_for_user(OperatorUser, hosts)
+
+    def remote_mongodb_config(self, hosts, replset=None, standalone=None) -> MongoDBConfiguration:
+        """Generates a MongoDBConfiguration object for mongod in the deployment of MongoDB."""
+        # mongos that are part of the cluster have the same username and password, but different
+        # hosts
+        return self._get_mongodb_config_for_user(
+            OperatorUser, hosts, replset=replset, standalone=standalone
+        )
 
     def _scope_opj(self, scope: Scopes):
         if scope == APP_SCOPE:
@@ -994,6 +1031,20 @@ class MongoDBCharm(CharmBase):
     def _generate_keyfile(self) -> None:
         self.set_secret(APP_SCOPE, "keyfile", generate_keyfile())
 
+    def get_keyfile_contents(self) -> str:
+        """Retrieves the contents of the keyfile on host machine."""
+        # wait for keyFile to be created by leader unit
+        if not self.get_secret(APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME):
+            logger.debug("waiting for leader unit to generate keyfile contents")
+
+        try:
+            container = self.unit.get_container(Config.CONTAINER_NAME)
+            key = container.pull(f"{Config.MONGOD_CONF_DIR}/{Config.TLS.KEY_FILE_NAME}")
+            return key.read()
+        except PathError:
+            logger.info("no keyfile present")
+            return
+
     def _generate_secrets(self) -> None:
         """Generate passwords and put them into peer relation.
 
@@ -1126,8 +1177,11 @@ class MongoDBCharm(CharmBase):
         if not keyfile:
             raise MissingSecretError(f"No secret defined for {APP_SCOPE}, keyfile")
         else:
-            self.push_file_to_container(
-                container, Config.CONF_DIR, Config.TLS.KEY_FILE_NAME, keyfile
+            self.push_file_to_unit(
+                container=container,
+                parent_dir=Config.MONGOD_CONF_DIR,
+                file_name=Config.TLS.KEY_FILE_NAME,
+                file_contents=keyfile,
             )
 
     def push_tls_certificate_to_workload(self) -> None:
@@ -1139,19 +1193,19 @@ class MongoDBCharm(CharmBase):
 
         if external_ca is not None:
             logger.debug("Uploading external ca to workload container")
-            self.push_file_to_container(
+            self.push_file_to_unit(
                 container=container,
-                parent_dir=Config.CONF_DIR,
+                parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=Config.TLS.EXT_CA_FILE,
-                source=external_ca,
+                file_contents=external_ca,
             )
         if external_pem is not None:
             logger.debug("Uploading external pem to workload container")
-            self.push_file_to_container(
+            self.push_file_to_unit(
                 container=container,
-                parent_dir=Config.CONF_DIR,
+                parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=Config.TLS.EXT_PEM_FILE,
-                source=external_pem,
+                file_contents=external_pem,
             )
 
         # Handling of external CA and PEM files
@@ -1159,28 +1213,29 @@ class MongoDBCharm(CharmBase):
 
         if internal_ca is not None:
             logger.debug("Uploading internal ca to workload container")
-            self.push_file_to_container(
+            self.push_file_to_unit(
                 container=container,
-                parent_dir=Config.CONF_DIR,
+                parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=Config.TLS.INT_CA_FILE,
-                source=internal_ca,
+                file_contents=internal_ca,
             )
         if internal_pem is not None:
             logger.debug("Uploading internal pem to workload container")
-            self.push_file_to_container(
+            self.push_file_to_unit(
                 container=container,
-                parent_dir=Config.CONF_DIR,
+                parent_dir=Config.MONGOD_CONF_DIR,
                 file_name=Config.TLS.INT_PEM_FILE,
-                source=internal_pem,
+                file_contents=internal_pem,
             )
 
-    def push_file_to_container(
-        self, container: Container, parent_dir: str, file_name: str, source: str
+    def push_file_to_unit(
+        self, parent_dir: str, file_name: str, file_contents: str, container: Container = None
     ) -> None:
         """Push the file on the container, with the right permissions."""
+        container = container or self.unit.get_container(Config.CONTAINER_NAME)
         container.push(
             f"{parent_dir}/{file_name}",
-            source,
+            file_contents,
             make_dirs=True,
             permissions=0o400,
             user=Config.UNIX_USER,
@@ -1198,7 +1253,7 @@ class MongoDBCharm(CharmBase):
             Config.TLS.INT_PEM_FILE,
         ]:
             try:
-                container.remove_path(f"{Config.CONF_DIR}/{file}")
+                container.remove_path(f"{Config.MONGOD_CONF_DIR}/{file}")
             except PathError as err:
                 logger.debug("Path unavailable: %s (%s)", file, str(err))
 
