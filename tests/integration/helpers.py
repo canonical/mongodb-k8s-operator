@@ -141,7 +141,7 @@ async def run_mongo_op(
         mongo_uri = await mongodb_uri(ops_test)
 
     if stringify:
-        mongo_cmd = f"mongosh --quiet --eval 'JSON.stringify({mongo_op})' {mongo_uri}{suffix}"
+        mongo_cmd = f"mongosh --quiet --eval 'EJSON.stringify({mongo_op})' {mongo_uri}{suffix}"
     else:
         mongo_cmd = f"mongosh --quiet --eval '{mongo_op}' {mongo_uri}{suffix}"
 
