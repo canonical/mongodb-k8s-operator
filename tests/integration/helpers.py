@@ -519,3 +519,18 @@ def audit_log_line_sanity_check(entry) -> bool:
             logger.error("Field '%s' not found in audit log entry \"%s\"", field, entry)
             return False
     return True
+
+
+def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) -> bool:
+    """Check if a relation is joined.
+
+    Args:
+        ops_test: The ops test object passed into every test case
+        endpoint_one: The first endpoint of the relation
+        endpoint_two: The second endpoint of the relation
+    """
+    for rel in ops_test.model.relations:
+        endpoints = [endpoint.name for endpoint in rel.endpoints]
+        if endpoint_one in endpoints and endpoint_two in endpoints:
+            return True
+    return False

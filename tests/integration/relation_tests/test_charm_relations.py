@@ -13,7 +13,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ..ha_tests.helpers import get_replica_set_primary as replica_set_primary
-from ..helpers import check_or_scale_app, get_app_name, run_mongo_op
+from ..helpers import check_or_scale_app, get_app_name, run_mongo_op, is_relation_joined
 from .helpers import (
     get_application_relation_data,
     get_connection_string,
@@ -146,6 +146,15 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", db_app_name
     )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
+    await ops_test.model.block_until(
+        lambda: is_relation_joined(
+            ops_test,
+            f"{FIRST_DATABASE_RELATION_NAME}",
+            "database",
+        )
+        is True,
+        timeout=600,
+    )
 
     connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
