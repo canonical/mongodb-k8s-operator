@@ -141,7 +141,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     await ops_test.model.block_until(
         lambda: is_relation_joined(
             ops_test,
-            f"{FIRST_DATABASE_RELATION_NAME}",
+            FIRST_DATABASE_RELATION_NAME,
             "database",
         )
         is True,
