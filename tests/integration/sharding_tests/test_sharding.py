@@ -234,3 +234,103 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
         shard_name=SHARD_ONE_APP_NAME,
         expected_databases_on_shard=["animals_database_1", "animals_database_2"],
     ), "Not all databases on final shard"
+
+
+@pytest.mark.group(1)
+async def test_removal_of_non_primary_shard(ops_test: OpsTest):
+    """Tests safe removal of a shard that is not primary."""
+    # add back a shard so we can safely remove a shard.
+    await ops_test.model.integrate(
+        f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[
+            CONFIG_SERVER_APP_NAME,
+            SHARD_ONE_APP_NAME,
+            SHARD_TWO_APP_NAME,
+            SHARD_THREE_APP_NAME,
+        ],
+        idle_period=15,
+        status="active",
+        raise_on_error=False,
+    )
+
+    await ops_test.model.applications[CONFIG_SERVER_APP_NAME].remove_relation(
+        f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+        idle_period=15,
+        status="active",
+        raise_on_error=False,
+    )
+
+    mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
+
+    # verify sharded cluster config
+    assert has_correct_shards(
+        mongos_client, expected_shards=[SHARD_ONE_APP_NAME]
+    ), "Config server did not process config properly"
+
+    # verify no data lost
+    assert shard_has_databases(
+        mongos_client,
+        shard_name=SHARD_ONE_APP_NAME,
+        expected_databases_on_shard=["animals_database_1", "animals_database_2"],
+    ), "Not all databases on final shard"
+
+
+@pytest.mark.group(1)
+async def test_unconventual_shard_removal(ops_test: OpsTest):
+    """Tests that removing a shard application safely drains data.
+
+    It is preferred that users remove-relations instead of removing shard applications. But we do
+    support removing shard applications in a safe way.
+    """
+    # add back a shard so we can safely remove a shard.
+    await ops_test.model.integrate(
+        f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_TWO_APP_NAME],
+        idle_period=15,
+        status="active",
+        raise_on_error=False,
+    )
+
+    await ops_test.model.applications[SHARD_TWO_APP_NAME].scale(scale_change=-1)
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_TWO_APP_NAME],
+        idle_period=15,
+        status="active",
+        raise_on_error=False,
+    )
+
+    await ops_test.model.remove_application(SHARD_TWO_APP_NAME, block_until_done=True)
+
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME],
+        idle_period=15,
+        status="active",
+        raise_on_error=False,
+    )
+
+    mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
+
+    # verify sharded cluster config
+    assert has_correct_shards(
+        mongos_client, expected_shards=[SHARD_ONE_APP_NAME]
+    ), "Config server did not process config properly"
+
+    # verify no data lost
+    assert shard_has_databases(
+        mongos_client,
+        shard_name=SHARD_ONE_APP_NAME,
+        expected_databases_on_shard=["animals_database_1", "animals_database_2"],
+    ), "Not all databases on final shard"
