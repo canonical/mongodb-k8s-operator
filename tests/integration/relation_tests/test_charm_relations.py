@@ -13,7 +13,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ..ha_tests.helpers import get_replica_set_primary as replica_set_primary
-from ..helpers import check_or_scale_app, get_app_name, run_mongo_op
+from ..helpers import check_or_scale_app, get_app_name, is_relation_joined, run_mongo_op
 from .helpers import (
     get_application_relation_data,
     get_connection_string,
@@ -29,6 +29,7 @@ PORT = 27017
 DATABASE_APP_NAME = "mongodb-k8s"
 FIRST_DATABASE_RELATION_NAME = "first-database"
 SECOND_DATABASE_RELATION_NAME = "second-database"
+DATABASE_RELATION_NAME = "database"
 MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "multiple-database-clusters"
 ALIASED_MULTIPLE_DATABASE_CLUSTERS_RELATION_NAME = "aliased-multiple-database-clusters"
 ANOTHER_DATABASE_APP_NAME = "another-database"
@@ -91,16 +92,14 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     # insert some data
     cmd = (
         'var ubuntu = {"release_name": "Focal Fossa", "version": "20.04", "LTS": "true"}; '
-        "JSON.stringify(db.test_collection.insertOne(ubuntu));"
+        "EJSON.stringify(db.test_collection.insertOne(ubuntu), );"
     )
     result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=False)
     assert result.data["acknowledged"] is True
 
     # query the data
     cmd = 'db.test_collection.find({}, {"release_name": 1}).toArray()'
-    result = await run_mongo_op(
-        ops_test, f"JSON.stringify({cmd})", f'"{connection_string}"', stringify=False
-    )
+    result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=True)
     assert result.data[0]["release_name"] == "Focal Fossa"
 
     # update the data
@@ -108,30 +107,24 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     ubuntu_name_updated = '{"$set": {"release_name": "Fancy Fossa"}}'
     cmd = f"db.test_collection.updateOne({ubuntu_version}, {ubuntu_name_updated})"
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
+        ops_test, cmd, f'"{connection_string}"', stringify=True, expect_json_load=False
     )
     assert result.data["acknowledged"] is True
 
     # query the data
     cmd = 'db.test_collection.find({}, {"release_name": 1}).toArray()'
-    result = await run_mongo_op(
-        ops_test, f"JSON.stringify({cmd})", f'"{connection_string}"', stringify=False
-    )
+    result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=True)
     assert len(result.data) == 1
     assert result.data[0]["release_name"] == "Fancy Fossa"
 
     # delete the data
     cmd = 'db.test_collection.deleteOne({"release_name": "Fancy Fossa"})'
-    result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
-    )
+    result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=True)
     assert result.data["acknowledged"] is True
 
     # query the data
     cmd = 'db.test_collection.find({}, {"release_name": 1}).toArray()'
-    result = await run_mongo_op(
-        ops_test, f"JSON.stringify({cmd})", f'"{connection_string}"', stringify=False
-    )
+    result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=True)
     assert len(result.data) == 0
 
 
@@ -146,6 +139,15 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
         f"{APPLICATION_APP_NAME}:{FIRST_DATABASE_RELATION_NAME}", db_app_name
     )
     await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active")
+    await ops_test.model.block_until(
+        lambda: is_relation_joined(
+            ops_test,
+            FIRST_DATABASE_RELATION_NAME,
+            DATABASE_RELATION_NAME,
+        )
+        is True,
+        timeout=600,
+    )
 
     connection_string = await get_connection_string(
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME
@@ -300,21 +302,27 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "database"
     )
 
-    cmd = f'db.createUser({{user: "newTestUser", pwd: "Test123", roles: [{{role: "readWrite", db: "{database}"}}]}});'
+    cmd = f'db.createUser({{user: "newTestUser", pwd: "Test123", roles: [{{role: "readWrite", db: "{database}"}}]}})'
     result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
+        ops_test,
+        cmd,
+        f'"{connection_string}"',
+        stringify=True,
+        expect_json_load=False,
     )
-    cmd = "db.getUsers();"
 
+    cmd = "db.getUsers()"
     result = await run_mongo_op(
-        ops_test, f'"{cmd}"', f'"{connection_string}"', stringify=False, expect_json_load=False
+        ops_test,
+        cmd,
+        f'"{connection_string}"',
+        stringify=True,
     )
-    assert "application_first_database.newTestUser" in str(result)
-    cmd = 'db = db.getSiblingDB("new_database"); db.test_collection.insertOne({"test": "one"});'
-    result = await run_mongo_op(
-        ops_test, cmd, f'"{connection_string}"', stringify=False, expect_json_load=False
-    )
-    assert "acknowledged: true" in str(result.data)
+    assert result.data["users"][0]["_id"] == "application_first_database.newTestUser"
+
+    cmd = 'db = db.getSiblingDB("new_database"); EJSON.stringify(db.test_collection.insertOne({"test": "one"}));'
+    result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=False)
+    assert result.data["acknowledged"] is True
 
 
 @pytest.mark.group(1)
