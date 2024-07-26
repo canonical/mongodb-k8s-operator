@@ -119,21 +119,6 @@ async def set_credentials(ops_test: OpsTest, cloud: str) -> None:
     await action.wait()
 
 
-def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) -> bool:
-    """Check if a relation is joined.
-
-    Args:
-        ops_test: The ops test object passed into every test case
-        endpoint_one: The first endpoint of the relation
-        endpoint_two: The second endpoint of the relation
-    """
-    for rel in ops_test.model.relations:
-        endpoints = [endpoint.name for endpoint in rel.endpoints]
-        if endpoint_one in endpoints and endpoint_two in endpoints:
-            return True
-    return False
-
-
 async def insert_unwanted_data(ops_test: OpsTest) -> None:
     """Inserts the data into the MongoDB cluster via primary replica."""
     app = await app_name(ops_test)
