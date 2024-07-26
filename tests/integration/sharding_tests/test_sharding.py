@@ -4,7 +4,9 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
+from ..ha_tests.helpers import get_mongo_client
 from ..helpers import METADATA, wait_for_mongodb_units_blocked
+from .helpers import has_correct_shards
 
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
@@ -71,7 +73,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         ],
         idle_period=20,
         raise_on_blocked=False,
-        raise_on_error=False,
     )
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials
@@ -87,3 +88,40 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await wait_for_mongodb_units_blocked(
         ops_test, SHARD_THREE_APP_NAME, status=SHARD_NEEDS_CONFIG_SERVER_STATUS, timeout=300
     )
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_cluster_active(ops_test: OpsTest) -> None:
+    """Tests the integration of cluster components works without error."""
+    await ops_test.model.integrate(
+        f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+    await ops_test.model.integrate(
+        f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+    await ops_test.model.integrate(
+        f"{SHARD_THREE_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[
+            CONFIG_SERVER_APP_NAME,
+            SHARD_ONE_APP_NAME,
+            SHARD_TWO_APP_NAME,
+            SHARD_THREE_APP_NAME,
+        ],
+        idle_period=15,
+        status="active",
+    )
+
+    mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
+
+    # verify sharded cluster config
+    assert has_correct_shards(
+        mongos_client,
+        expected_shards=[SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, SHARD_THREE_APP_NAME],
+    ), "Config server did not process config properly"

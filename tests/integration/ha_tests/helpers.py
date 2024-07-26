@@ -31,6 +31,8 @@ from tenacity import (
 
 from ..helpers import (
     APP_NAME,
+    MONGOD_PORT,
+    MONGOS_PORT,
     get_app_name,
     get_mongo_cmd,
     get_password,
@@ -49,6 +51,7 @@ TEST_DB = "continuous_writes_database"
 TEST_COLLECTION = "test_collection"
 ANOTHER_DATABASE_APP_NAME = "another-database"
 EXCLUDED_APPS = [ANOTHER_DATABASE_APP_NAME]
+
 
 logger = logging.getLogger(__name__)
 
@@ -392,16 +395,24 @@ async def get_direct_mongo_client(
 
 
 async def get_mongo_client(
-    ops_test: OpsTest, excluded: List[str] = [], use_subprocess_to_get_password=False
+    ops_test: OpsTest,
+    excluded: List[str] = [],
+    app_name: str = None,
+    use_subprocess_to_get_password=False,
+    mongos: bool = False,
 ) -> MongoClient:
     """Returns a direct mongodb client potentially passing over some of the units."""
-    mongodb_name = await get_application_name(ops_test, APP_NAME)
+    mongodb_name = app_name or await get_application_name(ops_test, APP_NAME)
+    port = MONGOS_PORT if mongos else MONGOD_PORT
+
     for unit in ops_test.model.applications[mongodb_name].units:
         if unit.name not in excluded and unit.workload_status == "active":
             url = await mongodb_uri(
                 ops_test,
                 [int(unit.name.split("/")[1])],
                 use_subprocess_to_get_password=use_subprocess_to_get_password,
+                app_name=mongodb_name,
+                port=port,
             )
             return MongoClient(url, directConnection=True)
     assert False, "No fitting unit could be found"
