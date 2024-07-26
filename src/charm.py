@@ -164,6 +164,14 @@ class MongoDBCharm(CharmBase):
         return self.model.get_relation(Config.Relations.PEERS)
 
     @property
+    def peers_units(self) -> list[Unit]:
+        """Get peers units in a safe way."""
+        if not self._peers:
+            return []
+        else:
+            return self._peers.units
+
+    @property
     def mongodb_config(self) -> MongoDBConfiguration:
         """Create a configuration object with settings.
 
@@ -187,10 +195,7 @@ class MongoDBCharm(CharmBase):
     @property
     def backup_config(self) -> MongoDBConfiguration:
         """Generates a MongoDBConfiguration object for backup."""
-        self._check_or_set_user_password(BackupUser)
-        return self._get_mongodb_config_for_user(
-            BackupUser, BackupUser.get_hosts(), standalone=True
-        )
+        return self._get_mongodb_config_for_user(BackupUser, [self.unit_host(self.unit)])
 
     @property
     def _mongod_layer(self) -> Layer:
@@ -347,12 +352,18 @@ class MongoDBCharm(CharmBase):
         return self.role == role_name
 
     def has_config_server(self) -> bool:
-        """TODO: Implement this function as part of sharding."""
-        return False
+        """Returns True if we have a config-server."""
+        return self.get_config_server_name() is not None
 
     def get_config_server_name(self) -> None:
-        """TODO: Implement this function as part of sharding."""
-        return None
+        """Returns the name of the Juju Application that the shard is using as a config server."""
+        if not self.is_role(Config.Role.SHARD):
+            logger.info(
+                "Component %s is not a shard, cannot be integrated to a config-server.", self.role
+            )
+            return None
+
+        return self.shard.get_config_server_name()
 
     @db_initialised.setter
     def db_initialised(self, value):
@@ -596,6 +607,11 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
+        self.unit.open_port(protocol="tcp", port=Config.MONGODB_PORT)
+
+        if self.is_role(Config.Role.CONFIG_SERVER):
+            self.unit.open_port(protocol="tcp", port=Config.MONGOS_PORT)
+
         container = self.unit.get_container(Config.CONTAINER_NAME)
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
@@ -1309,6 +1325,13 @@ class MongoDBCharm(CharmBase):
             return
 
         if not self.db_initialised:
+            return
+
+        # pbm is not functional in shards without a config-server
+        if self.is_role(Config.Role.SHARD) and not (
+            self.has_config_server() and self.shard._is_added_to_cluster()
+        ):
+            logger.debug("Cannot start pbm on shard until shard is added to cluster.")
             return
 
         # must wait for leader to set URI before any attempts to update are made
