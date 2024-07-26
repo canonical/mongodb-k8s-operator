@@ -505,7 +505,7 @@ async def test_replication_data_consistency(ops_test: OpsTest):
     await check_if_test_documents_stored(ops_test, collection_id)
 
     # query the secondaries by targeting units
-    rs_status = await run_mongo_op(ops_test, "rs.status()")
+    rs_status = await run_mongo_op(ops_test, "JSON.stringify(rs.status())", stringify=False)
     assert rs_status.succeeded, "mongod had no response for 'rs.status()'"
 
     # get the secondaries ordered ASC by the least amount of data sync delay
