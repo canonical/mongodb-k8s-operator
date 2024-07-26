@@ -1187,6 +1187,8 @@ class MongoDBCharm(CharmBase):
         ]:
             try:
                 container.remove_path(f"{Config.CONF_DIR}/{file}")
+            except ConnectionError as err:
+                logger.debug(f"Connection error on pebble level: {str(err)}")
             except PathError as err:
                 logger.debug("Path unavailable: %s (%s)", file, str(err))
 
