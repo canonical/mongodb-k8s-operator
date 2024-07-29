@@ -607,11 +607,6 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
-        self.unit.open_port(protocol="tcp", port=Config.MONGODB_PORT)
-
-        if self.is_role(Config.Role.CONFIG_SERVER):
-            self.unit.open_port(protocol="tcp", port=Config.MONGOS_PORT)
-
         container = self.unit.get_container(Config.CONTAINER_NAME)
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
