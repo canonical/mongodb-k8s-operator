@@ -51,6 +51,28 @@ attrs = ">=16.0.0"
 pluggy = ">=0.4.0"
 
 [[package]]
+name = "anyio"
+version = "4.4.0"
+description = "High level compatibility layer for multiple asynchronous event loop implementations"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "anyio-4.4.0-py3-none-any.whl", hash = "sha256:c1b2d8f46a8a812513012e1107cb0e68c17159a7a594208005a57dc776e1bdc7"},
+    {file = "anyio-4.4.0.tar.gz", hash = "sha256:5aadc6a1bbb7cdb0bede386cac5e2940f5e2ff3aa20277e991cf028e0585ce94"},
+]
+
+[package.dependencies]
+exceptiongroup = {version = ">=1.0.2", markers = "python_version < \"3.11\""}
+idna = ">=2.8"
+sniffio = ">=1.1"
+typing-extensions = {version = ">=4.1", markers = "python_version < \"3.11\""}
+
+[package.extras]
+doc = ["Sphinx (>=7)", "packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme"]
+test = ["anyio[trio]", "coverage[toml] (>=7)", "exceptiongroup (>=1.2.0)", "hypothesis (>=4.0)", "psutil (>=5.9)", "pytest (>=7.0)", "pytest-mock (>=3.6.1)", "trustme", "uvloop (>=0.17)"]
+trio = ["trio (>=0.23)"]
+
+[[package]]
 name = "asttokens"
 version = "2.4.1"
 description = "Annotate AST trees with source code positions"
@@ -697,6 +719,62 @@ reauth = ["pyu2f (>=0.1.5)"]
 requests = ["requests (>=2.20.0,<3.0.0.dev0)"]
 
 [[package]]
+name = "h11"
+version = "0.14.0"
+description = "A pure-Python, bring-your-own-I/O implementation of HTTP/1.1"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "h11-0.14.0-py3-none-any.whl", hash = "sha256:e3fe4ac4b851c468cc8363d500db52c2ead036020723024a109d37346efaa761"},
+    {file = "h11-0.14.0.tar.gz", hash = "sha256:8f19fbbe99e72420ff35c00b27a34cb9937e902a8b810e2c88300c6f0a3b699d"},
+]
+
+[[package]]
+name = "httpcore"
+version = "1.0.5"
+description = "A minimal low-level HTTP client."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "httpcore-1.0.5-py3-none-any.whl", hash = "sha256:421f18bac248b25d310f3cacd198d55b8e6125c107797b609ff9b7a6ba7991b5"},
+    {file = "httpcore-1.0.5.tar.gz", hash = "sha256:34a38e2f9291467ee3b44e89dd52615370e152954ba21721378a87b2960f7a61"},
+]
+
+[package.dependencies]
+certifi = "*"
+h11 = ">=0.13,<0.15"
+
+[package.extras]
+asyncio = ["anyio (>=4.0,<5.0)"]
+http2 = ["h2 (>=3,<5)"]
+socks = ["socksio (==1.*)"]
+trio = ["trio (>=0.22.0,<0.26.0)"]
+
+[[package]]
+name = "httpx"
+version = "0.27.0"
+description = "The next generation HTTP client."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "httpx-0.27.0-py3-none-any.whl", hash = "sha256:71d5465162c13681bff01ad59b2cc68dd838ea1f10e51574bac27103f00c91a5"},
+    {file = "httpx-0.27.0.tar.gz", hash = "sha256:a0cb88a46f32dc874e04ee956e4c2764aba2aa228f650b06788ba6bda2962ab5"},
+]
+
+[package.dependencies]
+anyio = "*"
+certifi = "*"
+httpcore = "==1.*"
+idna = "*"
+sniffio = "*"
+
+[package.extras]
+brotli = ["brotli", "brotlicffi"]
+cli = ["click (==8.*)", "pygments (==2.*)", "rich (>=10,<14)"]
+http2 = ["h2 (>=3,<5)"]
+socks = ["socksio (==1.*)"]
+
+[[package]]
 name = "hvac"
 version = "2.2.0"
 description = "HashiCorp Vault API client"
@@ -899,13 +977,13 @@ websockets = ">=8.1"
 
 [[package]]
 name = "kubernetes"
-version = "29.0.0"
+version = "30.1.0"
 description = "Kubernetes python client"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "kubernetes-29.0.0-py2.py3-none-any.whl", hash = "sha256:ab8cb0e0576ccdfb71886366efb102c6a20f268d817be065ce7f9909c631e43e"},
-    {file = "kubernetes-29.0.0.tar.gz", hash = "sha256:c4812e227ae74d07d53c88293e564e54b850452715a59a927e7e1bc6b9a60459"},
+    {file = "kubernetes-30.1.0-py2.py3-none-any.whl", hash = "sha256:e212e8b7579031dd2e512168b617373bc1e03888d41ac4e04039240a292d478d"},
+    {file = "kubernetes-30.1.0.tar.gz", hash = "sha256:41e4c77af9f28e7a6c314e3bd06a8c6229ddd787cad684e0ab9f69b498e98ebc"},
 ]
 
 [package.dependencies]
@@ -922,6 +1000,33 @@ websocket-client = ">=0.32.0,<0.40.0 || >0.40.0,<0.41.dev0 || >=0.43.dev0"
 
 [package.extras]
 adal = ["adal (>=1.0.2)"]
+
+[[package]]
+name = "lightkube"
+version = "0.15.3"
+description = "Lightweight kubernetes client library"
+optional = false
+python-versions = "*"
+files = [
+    {file = "lightkube-0.15.3-py3-none-any.whl", hash = "sha256:0f1c5e3b80f727df161965eff9cd6bc029c47e5a8569ab3e1acc429fd8c73db1"},
+    {file = "lightkube-0.15.3.tar.gz", hash = "sha256:235b66409b67e06ce26bd5c7ae27e105bb6016ce0962d144e272a31155545e27"},
+]
+
+[package.dependencies]
+httpx = ">=0.24.0"
+lightkube-models = ">=1.15.12.0"
+PyYAML = "*"
+
+[[package]]
+name = "lightkube-models"
+version = "1.30.0.8"
+description = "Models and Resources for lightkube module"
+optional = false
+python-versions = "*"
+files = [
+    {file = "lightkube-models-1.30.0.8.tar.gz", hash = "sha256:d1fe87b6680a04d27440bb746f2bf2fb665e1515bab12efc3ace65118ecb7eac"},
+    {file = "lightkube_models-1.30.0.8-py3-none-any.whl", hash = "sha256:34c43ae4824214eb8bc5e219da57c319ba411a51f503f79510d8c1ae6966ecb5"},
+]
 
 [[package]]
 name = "macaroonbakery"
@@ -2016,6 +2121,17 @@ files = [
 ]
 
 [[package]]
+name = "sniffio"
+version = "1.3.1"
+description = "Sniff out which async library your code is running under"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "sniffio-1.3.1-py3-none-any.whl", hash = "sha256:2f6da418d1f1e0fddd844478f41680e794e6051915791a034ff65e5f100525a2"},
+    {file = "sniffio-1.3.1.tar.gz", hash = "sha256:f4324edc670a0f49750a81b895f35c3adb843cca46f0530f79fc1babb23789dc"},
+]
+
+[[package]]
 name = "snowballstemmer"
 version = "2.2.0"
 description = "This package provides 29 stemmers for 28 languages generated from Snowball algorithms."
@@ -2250,4 +2366,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10.12"
-content-hash = "a54ec3f6ea4e83ceb4ea5eaf40841a28920c01172c5b76af877b55e7bd525267"
+content-hash = "cfd290e39f10ff48cfbe442333a46d79a99dc61d778756727c81df5c48fa14d9"
