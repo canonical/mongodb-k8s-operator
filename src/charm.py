@@ -355,7 +355,7 @@ class MongoDBCharm(CharmBase):
         """Returns True if we have a config-server."""
         return self.get_config_server_name() is not None
 
-    def get_config_server_name(self) -> None:
+    def get_config_server_name(self) -> str | None:
         """Returns the name of the Juju Application that the shard is using as a config server."""
         if not self.is_role(Config.Role.SHARD):
             logger.info(
@@ -445,7 +445,7 @@ class MongoDBCharm(CharmBase):
         return self.unit_peer_data.get("drained", False)
 
     @property
-    def primary(self) -> str:
+    def primary(self) -> str | None:
         """Retrieves the unit with the primary replica."""
         try:
             with MongoDBConnection(self.mongodb_config) as mongo:
