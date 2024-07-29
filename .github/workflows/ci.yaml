@@ -16,7 +16,7 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v13.1.2
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v16.7.0
 
   lib-check:
     name: Check libraries
@@ -54,7 +54,7 @@ jobs:
 
   build:
     name: Build charm | ${{ matrix.path }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v13.1.2
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v16.7.0
     strategy:
       matrix:
         path:
@@ -66,17 +66,19 @@ jobs:
       path-to-charm-directory: ${{ matrix.path }}
 
   integration-test:
-    name: Integration test charm | 3.1.7
+    name: Integration test charm | 3.4.4
     needs:
       - lint
       - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v13.1.2
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v16.7.0
     with:
       artifact-prefix: packed-charm-cache-true
       cloud: microk8s
       microk8s-snap-channel: 1.29-strict/stable
-      juju-agent-version: 3.1.7
+      juju-agent-version: 3.4.4
+    permissions:
+      contents: write # Needed for Allure Report beta
     secrets:
       integration-test: |
         {  "AWS_ACCESS_KEY": "${{ secrets.AWS_ACCESS_KEY }}",

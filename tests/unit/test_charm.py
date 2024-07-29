@@ -688,7 +688,7 @@ class TestCharm(unittest.TestCase):
         self.harness.set_leader(False)
 
         # Getting current password
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.set_secret("app", "monitor-password", "bla")
 
     @parameterized.expand([("app"), ("unit")])
@@ -722,11 +722,11 @@ class TestCharm(unittest.TestCase):
 
         # Reset new secret
         self.harness.set_leader(False)
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.set_secret("app", "new-secret", "blablabla")
 
         # Set another new secret
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.set_secret("app", "new-secret2", "blablabla")
 
     @parameterized.expand([("app"), ("unit")])
@@ -779,7 +779,7 @@ class TestCharm(unittest.TestCase):
         self._setup_secrets()
         self.harness.set_leader(False)
         assert self.harness.charm.get_secret("app", "monitor-password")
-        with self.assertRaises(ModelError):
+        with self.assertRaises(RuntimeError):
             self.harness.charm.remove_secret("app", "monitor-password")
 
     @parameterized.expand([("app"), ("unit")])
