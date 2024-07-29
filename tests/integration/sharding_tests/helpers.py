@@ -33,7 +33,7 @@ def get_databases_for_shard(mongos_client, shard_name) -> Optional[List[str]]:
 
     databases_collection = config_db["databases"]
 
-    if databases_collection is None:
+    if not databases_collection:
         return
 
     return databases_collection.distinct("_id", {"primary": shard_name})
