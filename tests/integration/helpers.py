@@ -653,6 +653,7 @@ async def wait_for_mongodb_units_blocked(
         with attempt:
             await check_all_units_blocked_with_status(ops_test, db_app_name, status)
 
+
 def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) -> bool:
     """Check if a relation is joined.
 
@@ -666,4 +667,3 @@ def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) 
         if endpoint_one in endpoints and endpoint_two in endpoints:
             return True
     return False
-
