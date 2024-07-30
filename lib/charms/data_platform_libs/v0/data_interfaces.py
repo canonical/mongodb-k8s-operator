@@ -331,7 +331,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 34
+LIBPATCH = 38
 
 PYDEPS = ["ops>=2.0.0"]
 
@@ -642,8 +642,8 @@ class CachedSecret:
             return
 
         # Create a new secret with the new label
-        old_meta = self._secret_meta
         content = self._secret_meta.get_content()
+        self._secret_uri = None
 
         # I wish we could just check if we are the owners of the secret...
         try:
@@ -651,11 +651,15 @@ class CachedSecret:
         except ModelError as err:
             if "this unit is not the leader" not in str(err):
                 raise
-        old_meta.remove_all_revisions()
+        self.current_label = None
 
     def set_content(self, content: Dict[str, str]) -> None:
         """Setting cached secret content."""
         if not self.meta:
+            return
+
+        # DPE-4182: do not create new revision if the content stay the same
+        if content == self.get_content():
             return
 
         if content:
@@ -1586,7 +1590,7 @@ class RequirerData(Data):
         """
         label = self._generate_secret_label(relation_name, relation_id, group)
 
-        # Fetchin the Secret's meta information ensuring that it's locally getting registered with
+        # Fetching the Secret's meta information ensuring that it's locally getting registered with
         CachedSecret(self._model, self.component, label, secret_id).meta
 
     def _register_secrets_to_relation(self, relation: Relation, params_name_list: List[str]):
@@ -2309,7 +2313,7 @@ class RelationEventWithSecret(RelationEvent):
         return self._cached_secrets
 
     def _get_secret(self, group) -> Optional[Dict[str, str]]:
-        """Retrieveing secrets."""
+        """Retrieving secrets."""
         if not self.app:
             return
         if not self._secrets.get(group):
@@ -2602,6 +2606,14 @@ class DatabaseProviderData(ProviderData):
         """
         self.update_relation_data(relation_id, {"version": version})
 
+    def set_subordinated(self, relation_id: int) -> None:
+        """Raises the subordinated flag in the application relation databag.
+
+        Args:
+            relation_id: the identifier for a particular relation.
+        """
+        self.update_relation_data(relation_id, {"subordinated": "true"})
+
 
 class DatabaseProviderEventHandlers(EventHandlers):
     """Provider-side of the database relation handlers."""
@@ -2838,6 +2850,21 @@ class DatabaseRequirerEventHandlers(RequirerEventHandlers):
 
     def _on_relation_changed_event(self, event: RelationChangedEvent) -> None:
         """Event emitted when the database relation has changed."""
+        is_subordinate = False
+        remote_unit_data = None
+        for key in event.relation.data.keys():
+            if isinstance(key, Unit) and not key.name.startswith(self.charm.app.name):
+                remote_unit_data = event.relation.data[key]
+            elif isinstance(key, Application) and key.name != self.charm.app.name:
+                is_subordinate = event.relation.data[key].get("subordinated") == "true"
+
+        if is_subordinate:
+            if not remote_unit_data:
+                return
+
+            if remote_unit_data.get("state") != "ready":
+                return
+
         # Check which data has changed to emit customs events.
         diff = self._diff(event)
 
@@ -3016,7 +3043,7 @@ class KafkaRequiresEvents(CharmEvents):
 # Kafka Provides and Requires
 
 
-class KafkaProvidesData(ProviderData):
+class KafkaProviderData(ProviderData):
     """Provider-side of the Kafka relation."""
 
     def __init__(self, model: Model, relation_name: str) -> None:
@@ -3059,12 +3086,12 @@ class KafkaProvidesData(ProviderData):
         self.update_relation_data(relation_id, {"zookeeper-uris": zookeeper_uris})
 
 
-class KafkaProvidesEventHandlers(EventHandlers):
+class KafkaProviderEventHandlers(EventHandlers):
     """Provider-side of the Kafka relation."""
 
     on = KafkaProvidesEvents()  # pyright: ignore [reportAssignmentType]
 
-    def __init__(self, charm: CharmBase, relation_data: KafkaProvidesData) -> None:
+    def __init__(self, charm: CharmBase, relation_data: KafkaProviderData) -> None:
         super().__init__(charm, relation_data)
         # Just to keep lint quiet, can't resolve inheritance. The same happened in super().__init__() above
         self.relation_data = relation_data
@@ -3086,15 +3113,15 @@ class KafkaProvidesEventHandlers(EventHandlers):
             )
 
 
-class KafkaProvides(KafkaProvidesData, KafkaProvidesEventHandlers):
+class KafkaProvides(KafkaProviderData, KafkaProviderEventHandlers):
     """Provider-side of the Kafka relation."""
 
     def __init__(self, charm: CharmBase, relation_name: str) -> None:
-        KafkaProvidesData.__init__(self, charm.model, relation_name)
-        KafkaProvidesEventHandlers.__init__(self, charm, self)
+        KafkaProviderData.__init__(self, charm.model, relation_name)
+        KafkaProviderEventHandlers.__init__(self, charm, self)
 
 
-class KafkaRequiresData(RequirerData):
+class KafkaRequirerData(RequirerData):
     """Requirer-side of the Kafka relation."""
 
     def __init__(
@@ -3124,12 +3151,12 @@ class KafkaRequiresData(RequirerData):
         self._topic = value
 
 
-class KafkaRequiresEventHandlers(RequirerEventHandlers):
+class KafkaRequirerEventHandlers(RequirerEventHandlers):
     """Requires-side of the Kafka relation."""
 
     on = KafkaRequiresEvents()  # pyright: ignore [reportAssignmentType]
 
-    def __init__(self, charm: CharmBase, relation_data: KafkaRequiresData) -> None:
+    def __init__(self, charm: CharmBase, relation_data: KafkaRequirerData) -> None:
         super().__init__(charm, relation_data)
         # Just to keep lint quiet, can't resolve inheritance. The same happened in super().__init__() above
         self.relation_data = relation_data
@@ -3142,10 +3169,13 @@ class KafkaRequiresEventHandlers(RequirerEventHandlers):
             return
 
         # Sets topic, extra user roles, and "consumer-group-prefix" in the relation
-        relation_data = {
-            f: getattr(self, f.replace("-", "_"), "")
-            for f in ["consumer-group-prefix", "extra-user-roles", "topic"]
-        }
+        relation_data = {"topic": self.relation_data.topic}
+
+        if self.relation_data.extra_user_roles:
+            relation_data["extra-user-roles"] = self.relation_data.extra_user_roles
+
+        if self.relation_data.consumer_group_prefix:
+            relation_data["consumer-group-prefix"] = self.relation_data.consumer_group_prefix
 
         self.relation_data.update_relation_data(event.relation.id, relation_data)
 
@@ -3188,7 +3218,7 @@ class KafkaRequiresEventHandlers(RequirerEventHandlers):
             return
 
 
-class KafkaRequires(KafkaRequiresData, KafkaRequiresEventHandlers):
+class KafkaRequires(KafkaRequirerData, KafkaRequirerEventHandlers):
     """Provider-side of the Kafka relation."""
 
     def __init__(
@@ -3200,7 +3230,7 @@ class KafkaRequires(KafkaRequiresData, KafkaRequiresEventHandlers):
         consumer_group_prefix: Optional[str] = None,
         additional_secret_fields: Optional[List[str]] = [],
     ) -> None:
-        KafkaRequiresData.__init__(
+        KafkaRequirerData.__init__(
             self,
             charm.model,
             relation_name,
@@ -3209,7 +3239,7 @@ class KafkaRequires(KafkaRequiresData, KafkaRequiresEventHandlers):
             consumer_group_prefix,
             additional_secret_fields,
         )
-        KafkaRequiresEventHandlers.__init__(self, charm, self)
+        KafkaRequirerEventHandlers.__init__(self, charm, self)
 
 
 # Opensearch related events

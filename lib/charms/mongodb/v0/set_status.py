@@ -3,10 +3,14 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
+import logging
+from typing import Tuple
 
+from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import CharmBase
 from ops.framework import Object
-from ops.model import ActiveStatus, StatusBase, WaitingStatus
+from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
+from pymongo.errors import AutoReconnect, OperationFailure, ServerSelectionTimeoutError
 
 from config import Config
 
@@ -19,6 +23,13 @@ LIBAPI = 0
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
 LIBPATCH = 3
+
+AUTH_FAILED_CODE = 18
+UNAUTHORISED_CODE = 13
+TLS_CANNOT_FIND_PRIMARY = 133
+
+
+logger = logging.getLogger(__name__)
 
 
 class MongoDBStatusHandler(Object):
@@ -149,5 +160,100 @@ class MongoDBStatusHandler(Object):
             return True
 
         return False
+
+    def process_statuses(self) -> StatusBase:
+        """Retrieves statuses from processes inside charm and returns the highest priority status.
+
+        When a non-fatal error occurs while processing statuses, the error is processed and
+        returned as a statuses.
+
+        TODO: add more status handling here for other cases: i.e. TLS, or resetting a status that
+        should not be reset
+        """
+        # retrieve statuses of different services running on Charmed MongoDB
+        deployment_mode = (
+            "replica set" if self.charm.is_role(Config.Role.REPLICATION) else "cluster"
+        )
+        waiting_status = None
+        try:
+            statuses = self.get_statuses()
+        except OperationFailure as e:
+            if e.code in [UNAUTHORISED_CODE, AUTH_FAILED_CODE]:
+                waiting_status = f"Waiting to sync passwords across the {deployment_mode}"
+            elif e.code == TLS_CANNOT_FIND_PRIMARY:
+                waiting_status = (
+                    f"Waiting to sync internal membership across the {deployment_mode}"
+                )
+            else:
+                raise
+        except ServerSelectionTimeoutError:
+            waiting_status = f"Waiting to sync internal membership across the {deployment_mode}"
+
+        if waiting_status:
+            return WaitingStatus(waiting_status)
+
+        return self.prioritize_statuses(statuses)
+
+    def get_statuses(self) -> Tuple:
+        """Retrieves statuses for the different processes running inside the unit."""
+        mongodb_status = build_unit_status(
+            self.charm.mongodb_config, self.charm.unit_host(self.charm.unit)
+        )
+        shard_status = self.charm.shard.get_shard_status()
+        config_server_status = self.charm.config_server.get_config_server_status()
+        pbm_status = self.charm.backups.get_pbm_status()
+        return (mongodb_status, shard_status, config_server_status, pbm_status)
+
+    def prioritize_statuses(self, statuses: Tuple) -> StatusBase:
+        """Returns the status with the highest priority from backups, sharding, and mongod."""
+        mongodb_status, shard_status, config_server_status, pbm_status = statuses
+        # failure in mongodb takes precedence over sharding and config server
+        if not isinstance(mongodb_status, ActiveStatus):
+            return mongodb_status
+
+        if shard_status and not isinstance(shard_status, ActiveStatus):
+            return shard_status
+
+        if config_server_status and not isinstance(config_server_status, ActiveStatus):
+            return config_server_status
+
+        if pbm_status and not isinstance(pbm_status, ActiveStatus):
+            return pbm_status
+
+        # if all statuses are active report mongodb status over sharding status
+        return mongodb_status
+
+
+def build_unit_status(mongodb_config: MongoDBConfiguration, unit_host: str) -> StatusBase:
+    """Generates the status of a unit based on its status reported by mongod."""
+    try:
+        with MongoDBConnection(mongodb_config) as mongo:
+            replset_status = mongo.get_replset_status()
+
+            if unit_host not in replset_status:
+                return WaitingStatus("Member being added..")
+
+            replica_status = replset_status[unit_host]
+
+            match replica_status:
+                case "PRIMARY":
+                    return ActiveStatus("Primary")
+                case "SECONDARY":
+                    return ActiveStatus("")
+                case "STARTUP" | "STARTUP2" | "ROLLBACK" | "RECOVERING":
+                    return WaitingStatus("Member is syncing...")
+                case "REMOVED":
+                    return WaitingStatus("Member is removing...")
+                case _:
+                    return BlockedStatus(replica_status)
+    except ServerSelectionTimeoutError as e:
+        # ServerSelectionTimeoutError is commonly due to ReplicaSetNoPrimary
+        logger.debug("Got error: %s, while checking replica set status", str(e))
+        return WaitingStatus("Waiting for primary re-election..")
+    except AutoReconnect as e:
+        # AutoReconnect is raised when a connection to the database is lost and an attempt to
+        # auto-reconnect will be made by pymongo.
+        logger.debug("Got error: %s, while checking replica set status", str(e))
+        return WaitingStatus("Waiting to reconnect to unit..")
 
     # END: Helpers
