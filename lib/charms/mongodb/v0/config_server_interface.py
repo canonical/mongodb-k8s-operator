@@ -186,7 +186,7 @@ class ClusterProvider(Object):
         """Generates the config server database for mongos to connect to."""
         replica_set_name = self.charm.app.name
         hosts = []
-        for host in self.charm.unit_ips:
+        for host in self.charm.app_hosts:
             hosts.append(f"{host}:{Config.MONGODB_PORT}")
 
         hosts = ",".join(hosts)
