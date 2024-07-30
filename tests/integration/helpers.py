@@ -167,7 +167,7 @@ async def mongodb_uri(
     hosts = [f"{host}:{port}" for host in addresses]
     hosts = ",".join(hosts)
     if use_subprocess_to_get_password:
-        password = get_password_using_subprocess(ops_test, app_name)
+        password = get_password_using_subprocess(ops_test, app_name=app_name)
     else:
         password = await get_password(ops_test, 0, app_name=app_name)
     return f"mongodb://operator:{password}@{hosts}/admin"
