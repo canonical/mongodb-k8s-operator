@@ -5,7 +5,13 @@ import pytest
 from pytest_operator.plugin import OpsTest
 
 from ..ha_tests.helpers import get_mongo_client
-from ..helpers import METADATA, wait_for_mongodb_units_blocked
+from ..helpers import (
+    METADATA,
+    wait_for_mongodb_units_blocked,
+    get_password,
+    get_leader_id,
+    set_password,
+)
 from .helpers import (
     has_correct_shards,
     shard_has_databases,
@@ -28,7 +34,7 @@ SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 OPERATOR_USERNAME = "operator"
 OPERATOR_PASSWORD = "operator-password"
-
+DIFFERENT_OPERATOR_PASSWORD = "shard-set-password"
 CONFIG_SERVER_NEEDS_SHARD_STATUS = "missing relation to shard(s)"
 SHARD_NEEDS_CONFIG_SERVER_STATUS = "missing relation to config server"
 
@@ -182,6 +188,59 @@ async def test_sharding(ops_test: OpsTest) -> None:
         value="pegasus",
     )
     assert has_correct_data, "data not written to shard-three"
+
+
+@pytest.mark.group(1)
+async def test_set_operator_password(ops_test: OpsTest):
+    """Tests that the cluster can safely set the operator password."""
+    for cluster_app_name in CLUSTER_APPS:
+        operator_password = await get_password(
+            ops_test, username=OPERATOR_USERNAME, app_name=cluster_app_name, unit_id=0
+        )
+        assert (
+            operator_password != OPERATOR_PASSWORD
+        ), f"{cluster_app_name} is incorrectly already set to the new password."
+
+    # rotate password and verify that no unit goes into error as a result of password rotation
+    config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
+    await set_password(
+        ops_test,
+        app_name=CONFIG_SERVER_APP_NAME,
+        unit_id=config_leader_id,
+        username=OPERATOR_USERNAME,
+        password=OPERATOR_PASSWORD,
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_APPS,
+        status="active",
+        idle_period=30,
+    ),
+    # verify that the password was set across the cluster
+    for cluster_app_name in CLUSTER_APPS:
+        operator_password = await get_password(
+            ops_test, username=OPERATOR_USERNAME, app_name=cluster_app_name, unit_id=0
+        )
+        assert (
+            operator_password == OPERATOR_PASSWORD
+        ), f"{cluster_app_name} did not rotate to new password."
+
+    # verify that shards cannot rotate password
+    for shard_name in SHARD_APPS:
+        shard_leader_id = await get_leader_id(ops_test, app_name=shard_name)
+        await set_password(
+            ops_test,
+            app_name=shard_name,
+            unit_id=shard_leader_id,
+            username=OPERATOR_USERNAME,
+            password=DIFFERENT_OPERATOR_PASSWORD,
+        )
+        operator_password = await get_password(
+            ops_test, username=OPERATOR_USERNAME, app_name=shard_name, unit_id=shard_leader_id
+        )
+        assert (
+            operator_password != DIFFERENT_OPERATOR_PASSWORD
+        ), f"shard: {shard_name} rotated the password."
 
 
 @pytest.mark.group(1)
