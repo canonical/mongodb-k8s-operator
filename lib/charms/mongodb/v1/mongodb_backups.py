@@ -753,7 +753,7 @@ class MongoDBBackups(Object):
 
             for host_info in cluster["nodes"]:
                 replica_info = (
-                    f"mongodb/{self.charm.unit_ip(self.charm.unit)}:{Config.MONGOS_PORT}"
+                    f"mongodb/{self.charm.unit_host(self.charm.unit)}:{Config.MONGOS_PORT}"
                 )
                 if host_info["host"] == replica_info:
                     break
