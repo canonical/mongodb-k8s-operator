@@ -10,7 +10,7 @@ import string
 import subprocess
 from typing import List
 
-from charms.mongodb.v0.mongodb import MongoDBConfiguration
+from charms.mongodb.v1.mongodb import MongoDBConfiguration
 from ops.model import ActiveStatus, MaintenanceStatus, StatusBase, WaitingStatus
 
 from config import Config
@@ -23,7 +23,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 6
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"

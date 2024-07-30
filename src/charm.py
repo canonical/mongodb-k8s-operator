@@ -12,13 +12,13 @@ import jinja2
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.mongodb.v0.config_server_interface import ClusterProvider
-from charms.mongodb.v0.mongodb import (
+from charms.mongodb.v1.mongodb import (
     MongoDBConfiguration,
     MongoDBConnection,
     NotReadyError,
 )
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
-from charms.mongodb.v0.mongodb_tls import MongoDBTLS
+from charms.mongodb.v1.mongodb_tls import MongoDBTLS
 from charms.mongodb.v0.set_status import MongoDBStatusHandler
 from charms.mongodb.v1.helpers import (
     generate_keyfile,

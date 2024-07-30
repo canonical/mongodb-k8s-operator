@@ -34,11 +34,11 @@ Scopes = Config.Relations.Scopes
 LIBID = "e02a50f0795e4dd292f58e93b4f493dd"
 
 # Increment this major API version when introducing breaking changes
-LIBAPI = 0
+LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 15
+LIBPATCH = 1
 
 logger = logging.getLogger(__name__)
 

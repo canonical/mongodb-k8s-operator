@@ -15,13 +15,13 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
     DatabaseRequires,
 )
-from charms.mongodb.v0.mongodb import (
+from charms.mongodb.v1.helpers import KEY_FILE
+from charms.mongodb.v1.mongodb import (
     MongoDBConnection,
     NotReadyError,
     OperationFailure,
     PyMongoError,
 )
-from charms.mongodb.v1.helpers import KEY_FILE
 from charms.mongodb.v1.mongodb_provider import LEGACY_REL_NAME, REL_NAME
 from charms.mongodb.v1.mongos import (
     BalancerNotEnabledError,
@@ -63,7 +63,8 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 16
+LIBPATCH = 7
+
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
 OPERATOR_PASSWORD_KEY = MongoDBUser.get_password_key_name_for_user(OperatorUser.get_username())
