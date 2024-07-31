@@ -22,6 +22,8 @@ from tenacity import Retrying, retry, stop_after_attempt, stop_after_delay, wait
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 UNIT_IDS = [0, 1, 2]
+MONGOS_PORT = 27018
+MONGOD_PORT = 27017
 
 TEST_DOCUMENTS = """[
     {
@@ -152,17 +154,22 @@ async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
 
 
 async def mongodb_uri(
-    ops_test: OpsTest, unit_ids: List[int] | None = None, use_subprocess_to_get_password=False
+    ops_test: OpsTest,
+    unit_ids: List[int] | None = None,
+    use_subprocess_to_get_password=False,
+    port=MONGOD_PORT,
+    app_name: str = APP_NAME,
 ) -> str:
     if unit_ids is None:
         unit_ids = UNIT_IDS
 
-    addresses = [await get_address_of_unit(ops_test, unit_id) for unit_id in unit_ids]
-    hosts = ",".join(addresses)
+    addresses = [await get_address_of_unit(ops_test, unit_id, app_name) for unit_id in unit_ids]
+    hosts = [f"{host}:{port}" for host in addresses]
+    hosts = ",".join(hosts)
     if use_subprocess_to_get_password:
-        password = get_password_using_subprocess(ops_test)
+        password = get_password_using_subprocess(ops_test, app_name=app_name)
     else:
-        password = await get_password(ops_test, 0)
+        password = await get_password(ops_test, 0, app_name=app_name)
     return f"mongodb://operator:{password}@{hosts}/admin"
 
 
@@ -488,7 +495,9 @@ def is_pod_ready(namespace, pod_name):
     wait=wait_fixed(30),
     reraise=True,
 )
-def get_password_using_subprocess(ops_test: OpsTest, username="operator") -> str:
+def get_password_using_subprocess(
+    ops_test: OpsTest, username="operator", app_name=APP_NAME
+) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
     Returns:
@@ -503,7 +512,7 @@ def get_password_using_subprocess(ops_test: OpsTest, username="operator") -> str
             result.stderr,
         )
         raise Exception(f"Failed to get password: {result.stderr}")
-    cmd = ["juju", "run", f"{APP_NAME}/leader", "get-password", f"username={username}"]
+    cmd = ["juju", "run", f"{app_name}/leader", "get-password", f"username={username}"]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
         logger.error("get-password command returned non 0 exit code: %s", result.stderr)

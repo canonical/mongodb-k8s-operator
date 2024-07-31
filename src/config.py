@@ -5,6 +5,8 @@
 
 from typing import List, Literal
 
+from ops.model import BlockedStatus
+
 
 class Config:
     """Configuration for MongoDB Charm."""
@@ -17,7 +19,7 @@ class Config:
     DATA_DIR = "/var/lib/mongodb"
 
     LOG_DIR = "/var/log/mongodb"
-    CONF_DIR = "/etc/mongod"
+    MONGOD_CONF_DIR = "/etc/mongod"
     MONGODB_LOG_FILENAME = "mongodb.log"
 
     LICENSE_PATH = "/licenses/LICENSE"
@@ -122,6 +124,17 @@ class Config:
         SECRET_DELETED_LABEL = "None"
         SECRET_KEYFILE_NAME = "keyfile"
         MAX_PASSWORD_LENGTH = 4096
+
+    class Status:
+        """Status related constants.
+
+        TODO: move all status messages here.
+        """
+
+        STATUS_READY_FOR_UPGRADE = "status-shows-ready-for-upgrade"
+
+        # TODO Future PR add more status messages here as constants
+        UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
 
     @staticmethod
     def get_license_path(license_name: str) -> str:
