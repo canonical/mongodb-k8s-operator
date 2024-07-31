@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Tuple
 
-from charms.mongodb.v0.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
@@ -22,7 +22,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 3
+LIBPATCH = 1
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13

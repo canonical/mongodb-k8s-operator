@@ -495,7 +495,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    @patch("charms.mongodb.v0.mongodb.MongoClient")
+    @patch("charms.mongodb.v1.mongodb.MongoClient")
     def test_reconfigure_get_members_failure(self, client, connection, defer):
         """Tests reconfigure does not execute when unable to get the replica set members.
 
