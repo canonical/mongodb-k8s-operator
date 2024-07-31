@@ -71,11 +71,9 @@ async def test_build_and_deploy(ops_test: OpsTest):
     # issuing dummy update_status just to trigger an event
     await ops_test.model.set_config({"update-status-hook-interval": "10s"})
 
+    # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
     await ops_test.model.wait_for_idle(
-        apps=[app_name],
-        status="active",
-        raise_on_blocked=True,
-        timeout=1000,
+        apps=[app_name], status="active", raise_on_blocked=True, timeout=1000, raise_on_error=False
     )
     assert ops_test.model.applications[app_name].units[0].workload_status == "active"
 
@@ -352,8 +350,13 @@ async def test_scale_up(ops_test: OpsTest):
     app_name = await get_app_name(ops_test)
     # add two units and wait for idle
     await ops_test.model.applications[app_name].scale(scale_change=2)
+    # TODO: Remove the `raise_on_error` when we move to juju 3.5 (DPE-4996)
     await ops_test.model.wait_for_idle(
-        apps=[app_name], status="active", timeout=1000, wait_for_exact_units=5
+        apps=[app_name],
+        status="active",
+        timeout=1000,
+        wait_for_exact_units=5,
+        raise_on_error=False,
     )
     num_units = len(ops_test.model.applications[app_name].units)
     assert num_units == 5
@@ -390,8 +393,13 @@ async def test_scale_down(ops_test: OpsTest):
     app_name = await get_app_name(ops_test)
     # add two units and wait for idle
     await ops_test.model.applications[app_name].scale(scale_change=-2)
+    # TODO: Remove the `raise_on_error` when we move to juju 3.5 (DPE-4996)
     await ops_test.model.wait_for_idle(
-        apps=[app_name], status="active", timeout=1000, wait_for_exact_units=3
+        apps=[app_name],
+        status="active",
+        timeout=1000,
+        wait_for_exact_units=3,
+        raise_on_error=False,
     )
     num_units = len(ops_test.model.applications[app_name].units)
     assert num_units == 3

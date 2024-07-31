@@ -67,7 +67,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         await ops_test.model.deploy(
             my_charm, num_units=NUM_UNITS, resources=resources, series="jammy"
         )
-        await ops_test.model.wait_for_idle(apps=[DATABASE_APP_NAME], status="active", timeout=2000)
+        # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
+        await ops_test.model.wait_for_idle(
+            apps=[DATABASE_APP_NAME], status="active", raise_on_error=False, timeout=2000
+        )
 
 
 @pytest.mark.group(1)

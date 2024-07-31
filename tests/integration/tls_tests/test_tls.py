@@ -95,7 +95,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
                 "mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]
             }
             await ops_test.model.deploy(my_charm, num_units=3, resources=resources, series="jammy")
-            await ops_test.model.wait_for_idle(apps=[app_name], status="active", timeout=2000)
+            # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
+            await ops_test.model.wait_for_idle(
+                apps=[app_name], status="active", timeout=2000, raise_on_error=False
+            )
 
     tls_app_deployed = False
     status = await ops_test.model.get_status()
