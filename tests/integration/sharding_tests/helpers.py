@@ -3,10 +3,6 @@
 # See LICENSE file for licensing details.
 from typing import List, Optional
 
-from pytest_operator.plugin import OpsTest
-
-from ..helpers import get_password
-
 
 def get_cluster_shards(mongos_client) -> set:
     """Returns a set of the shard members."""
