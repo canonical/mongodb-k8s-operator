@@ -4,7 +4,7 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import wait_for_mongodb_units_blocked
+from ..helpers import wait_for_mongodb_units_blocked, METADATA
 
 S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard"
@@ -27,29 +27,30 @@ LEGACY_RELATION_NAME = "obsolete"
 @pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(
-    ops_test: OpsTest,
-    database_charm,
-) -> None:
+async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
+    database_charm = await ops_test.build_charm(".")
+    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
+
     await ops_test.model.deploy(
         database_charm,
         config={"role": "config-server"},
+        resources=resources,
         application_name=CONFIG_SERVER_ONE_APP_NAME,
     )
     await ops_test.model.deploy(
         database_charm,
         config={"role": "config-server"},
+        resources=resources,
         application_name=CONFIG_SERVER_TWO_APP_NAME,
     )
     await ops_test.model.deploy(
-        database_charm, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
+        database_charm,
+        resources=resources,
+        config={"role": "shard"},
+        application_name=SHARD_ONE_APP_NAME,
     )
-    await ops_test.model.deploy(
-        MONGOS_APP_NAME,
-        channel="6/edge",
-        revision=3,
-    )
+
     await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 
     await ops_test.model.wait_for_idle(
