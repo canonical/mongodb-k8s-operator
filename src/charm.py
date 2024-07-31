@@ -778,6 +778,12 @@ class MongoDBCharm(CharmBase):
         if username == MonitorUser.get_username():
             self._connect_mongodb_exporter()
 
+        if username in [OperatorUser.get_username(), BackupUser.get_username()]:
+            self.config_server.update_credentials(
+                MongoDBUser.get_password_key_name_for_user(username),
+                new_password,
+            )
+
         event.set_results(
             {Config.Actions.PASSWORD_PARAM_NAME: new_password, "secret-id": secret_id}
         )
@@ -1016,6 +1022,10 @@ class MongoDBCharm(CharmBase):
 
     def pass_pre_set_password_checks(self, event: ActionEvent) -> bool:
         """Checks conditions for setting the password and fail if necessary."""
+        if self.is_role(Config.Role.SHARD):
+            event.fail("Cannot set password on shard, please set password on config-server.")
+            return False
+
         # changing the backup password while a backup/restore is in progress can be disastrous
         pbm_status = self.backups.get_pbm_status()
         if isinstance(pbm_status, MaintenanceStatus):
@@ -1025,6 +1035,11 @@ class MongoDBCharm(CharmBase):
         # only leader can write the new password into peer relation.
         if not self.unit.is_leader():
             event.fail("The action can be run only on leader unit.")
+            return False
+
+        if self.upgrade_in_progress:
+            logger.debug("Do not set the password while a backup/restore is in progress.")
+            event.fail("Cannot set passwords while an upgrade is in progress.")
             return False
 
         return True
