@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Set, Tuple
 from urllib.parse import quote_plus
 
-from charms.mongodb.v0.mongodb import NotReadyError
+from charms.mongodb.v1.mongodb import NotReadyError
 from pymongo import MongoClient, collection
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
@@ -22,7 +22,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 5
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
