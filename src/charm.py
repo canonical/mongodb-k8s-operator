@@ -869,7 +869,6 @@ class MongoDBCharm(CharmBase):
             raise  # we need to raise to make retry work
         except AdminUserCreationError:
             logger.error("Deferring on_start: Failed to create operator user.")
-            event.defer()
             raise  # we need to raise to make retry work
 
     @retry(
