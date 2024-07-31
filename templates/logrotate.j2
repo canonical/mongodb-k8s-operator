@@ -10,9 +10,7 @@
   nocopytruncate
   sharedscripts
   postrotate
-    {% for id in service_ids %}
-         pebble restart mongod_{{ id }}
-    {% endfor %}
+    /bin/kill -SIGUSR1 $(pgrep -f "mongod.*--logpath=*")
   endscript
 }
 
