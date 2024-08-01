@@ -185,9 +185,8 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     db_unit = await helpers.get_leader_unit(ops_test)
 
     # verify backup list works
-    action = await db_unit.run_action(action_name="list-backups")
-    list_result = await action.wait()
-    backups = list_result.results["backups"]
+    db_app_name = await get_app_name(ops_test)
+    backups = await get_backup_list(ops_test, db_app_name=db_app_name)
 
     # verify backup is started
     action = await db_unit.run_action(action_name="create-backup")
