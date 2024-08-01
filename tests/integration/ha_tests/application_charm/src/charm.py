@@ -72,7 +72,13 @@ class ContinuousWritesApplication(CharmBase):
     @property
     def _database_config(self):
         """Returns the database config to use to connect to the MongoDB cluster."""
-        data = list(self.database.fetch_relation_data().values())[0]
+        # In some tests we want to write directly to mongos, but the config-server does not
+        # support integrations to client applications, so the data to connect is set via config.
+        data = list(self.database.fetch_relation_data().values())
+        if len(data) == 0:
+            return {"uris": self.model.config.get("mongos-uri", None)}
+
+        data = data[0]
         username, password, endpoints, replset, uris = (
             data.get("username"),
             data.get("password"),
@@ -80,8 +86,6 @@ class ContinuousWritesApplication(CharmBase):
             data.get("replset"),
             data.get("uris"),
         )
-        # mongos uri takes precendence over any other uri
-        uris = self.model.config["mongos-uri"] or uris
 
         if None in [username, password, endpoints, replset, uris]:
             return {}

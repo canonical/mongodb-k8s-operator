@@ -2,7 +2,6 @@
 # See LICENSE file for licensing details.
 
 import logging
-import subprocess
 from pathlib import Path
 from typing import Dict, List
 
@@ -10,8 +9,7 @@ import yaml
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import mongodb_uri, MONGOS_PORT
-
+from ..helpers import MONGOS_PORT, mongodb_uri
 
 # TODO move these to a separate file for constants \ config
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())

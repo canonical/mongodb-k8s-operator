@@ -13,7 +13,14 @@ from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from ..backup_tests import helpers as backup_helpers
 from ..ha_tests.helpers import deploy_and_scale_application, get_mongo_client
-from ..helpers import METADATA, get_leader_id, get_password, set_password, mongodb_uri, MONGOS_PORT
+from ..helpers import (
+    METADATA,
+    MONGOS_PORT,
+    get_leader_id,
+    get_password,
+    mongodb_uri,
+    set_password,
+)
 from ..sharding_tests import writes_helpers
 
 S3_APP_NAME = "s3-integrator"
@@ -46,8 +53,7 @@ async def add_writes_to_shards(ops_test: OpsTest):
     start_writes_action = await application_unit.run_action("start-continuous-writes")
     await start_writes_action.wait()
     time.sleep(20)
-    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
-    await clear_writes_action.wait()
+    await application_unit.run_action("stop-continuous-writes")
 
     # move continuous writes to shard-one
     mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
@@ -87,7 +93,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> None:
     """Tests that sharded cluster can be configured for s3 configurations."""
-
     await backup_helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
