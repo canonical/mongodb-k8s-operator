@@ -106,11 +106,11 @@ async def count_failed_backups(db_unit: ops.model.Unit) -> int:
     return failed_backups
 
 
-async def set_credentials(ops_test: OpsTest, cloud: str) -> None:
+async def set_credentials(ops_test: OpsTest, github_secrets, cloud: str) -> None:
     """Sets the s3 crednetials for the provided cloud, valid options are AWS or GCP."""
     # set access key and secret keys
-    access_key = os.environ.get(f"{cloud}_ACCESS_KEY", False)
-    secret_key = os.environ.get(f"{cloud}_SECRET_KEY", False)
+    access_key = github_secrets[f"{cloud}_ACCESS_KEY"]
+    secret_key = github_secrets[f"{cloud}_SECRET_KEY"]
     assert access_key and secret_key, f"{cloud} access key and secret key not provided."
 
     s3_integrator_unit = ops_test.model.applications[S3_APP_NAME].units[0]
