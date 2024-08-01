@@ -161,7 +161,7 @@ async def mongodb_uri(
     app_name: str = APP_NAME,
 ) -> str:
     if unit_ids is None:
-        unit_ids = UNIT_IDS
+        unit_ids = range(0, len(ops_test.model.applications[app_name].units))
 
     addresses = [await get_address_of_unit(ops_test, unit_id, app_name) for unit_id in unit_ids]
     hosts = [f"{host}:{port}" for host in addresses]

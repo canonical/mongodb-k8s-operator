@@ -13,9 +13,8 @@ from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from ..backup_tests import helpers as backup_helpers
 from ..ha_tests.helpers import deploy_and_scale_application, get_mongo_client
-from ..helpers import METADATA, get_leader_id, get_password, set_password
-from . import writes_helpers
-from .helpers import write_data_to_mongodb
+from ..helpers import METADATA, get_leader_id, get_password, set_password, mongodb_uri, MONGOS_PORT
+from ..sharding_tests import writes_helpers
 
 S3_APP_NAME = "s3-integrator"
 WRITE_APP = "application"
@@ -55,7 +54,7 @@ async def add_writes_to_shards(ops_test: OpsTest):
     mongos_client.admin.command("movePrimary", SHARD_ONE_DB_NAME, to=SHARD_ONE_APP_NAME)
 
     # add writes to shard-two
-    write_data_to_mongodb(
+    writes_helpers.write_data_to_mongodb(
         mongos_client,
         db_name=SHARD_TWO_DB_NAME,
         coll_name=SHARD_TWO_COLL_NAME,
@@ -77,14 +76,18 @@ async def add_writes_to_shards(ops_test: OpsTest):
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
     await deploy_and_scale_application(ops_test)
-
     await deploy_cluster_backup_test(ops_test)
+
+    # configure write app to use mongos uri
+    mongos_uri = await mongodb_uri(ops_test, app_name=CONFIG_SERVER_APP_NAME, port=MONGOS_PORT)
+    await ops_test.model.applications[WRITE_APP].set_config({"mongos-uri": mongos_uri})
 
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> None:
     """Tests that sharded cluster can be configured for s3 configurations."""
+
     await backup_helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     choices = string.ascii_letters + string.digits
     unique_path = "".join([secrets.choice(choices) for _ in range(4)])
@@ -323,7 +326,6 @@ async def deploy_cluster_backup_test(
 
     await ops_test.model.wait_for_idle(
         apps=[S3_APP_NAME, config_server_name, shard_one_name, shard_two_name],
-        resources=resources,
         idle_period=20,
         raise_on_blocked=False,
         timeout=TIMEOUT,
@@ -375,7 +377,7 @@ async def add_and_verify_unwanted_writes(ops_test, old_cluster_writes: Dict) -> 
     # writes to shard-two
     mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
 
-    write_data_to_mongodb(
+    writes_helpers.write_data_to_mongodb(
         mongos_client,
         db_name=SHARD_TWO_DB_NAME,
         coll_name=SHARD_TWO_COLL_NAME,
