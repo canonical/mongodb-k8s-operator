@@ -80,6 +80,9 @@ class ContinuousWritesApplication(CharmBase):
             data.get("replset"),
             data.get("uris"),
         )
+        # mongos uri takes precendence over any other uri
+        uris = self.model.config["mongos-uri"] or uris
+
         if None in [username, password, endpoints, replset, uris]:
             return {}
 
