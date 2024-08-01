@@ -15,7 +15,12 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
-from ..helpers import check_or_scale_app, get_app_name, is_relation_joined
+from ..helpers import (
+    check_or_scale_app,
+    get_app_name,
+    is_relation_joined,
+    wait_for_mongodb_units_blocked,
+)
 from . import helpers
 
 S3_APP_NAME = "s3-integrator"
@@ -90,7 +95,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
                 my_charm, num_units=NUM_UNITS, resources=resources, series="jammy"
             )
             await ops_test.model.wait_for_idle(
-                apps=[DATABASE_APP_NAME], status="active", timeout=2000
+                apps=[DATABASE_APP_NAME],
+                status="active",
+                timeout=2000,
+                raise_on_error=False,
             )
 
     # deploy the s3 integrator charm
@@ -128,13 +136,11 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     )
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked", idle_period=20),
-    )
-    db_unit = ops_test.model.applications[db_app_name].units[0]
 
-    assert db_unit.workload_status_message == "s3 credentials are incorrect."
+    await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
+    await wait_for_mongodb_units_blocked(
+        ops_test, db_app_name, status="s3 credentials are incorrect.", timeout=300
+    )
 
 
 @pytest.mark.group(1)
@@ -147,12 +153,10 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None
     await helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
 
     # wait for both applications to be idle with the correct statuses
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked", idle_period=20),
+    ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
+    await wait_for_mongodb_units_blocked(
+        ops_test, db_app_name, status="s3 configurations are incompatible.", timeout=300
     )
-    db_unit = ops_test.model.applications[db_app_name].units[0]
-    assert db_unit.workload_status_message == "s3 configurations are incompatible."
 
 
 @pytest.mark.group(1)
@@ -320,7 +324,7 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
 
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
-    application_name = await get_app_name(ops_test)
+    application_name = await get_app_name(ops_test, "application")
     application_unit = ops_test.model.applications[application_name].units[0]
     start_writes_action = await application_unit.run_action("start-continuous-writes")
     await start_writes_action.wait()
