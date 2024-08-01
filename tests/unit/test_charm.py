@@ -102,6 +102,7 @@ class TestCharm(unittest.TestCase):
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         container.make_dir("/etc/logrotate.d", make_parents=True)
+        container.exec = mock.Mock()
         # Emit the PebbleReadyEvent carrying the mongod container
         self.harness.charm.on.mongod_pebble_ready.emit(container)
         # Get the plan now we've run PebbleReady
@@ -928,6 +929,7 @@ class TestCharm(unittest.TestCase):
         """Tests the _connect_mongodb_exporter method has been called."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
+        container.exec = mock.Mock()
         container.make_dir("/etc/logrotate.d", make_parents=True)
 
         self.harness.set_can_connect(container, True)
