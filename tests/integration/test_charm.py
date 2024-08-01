@@ -185,11 +185,23 @@ async def test_log_rotate(ops_test: OpsTest) -> None:
             universal_newlines=True,
         )
 
-        log_rotated = "audit.log.1.gz" in log_files
+        log_rotated = "audit.log.1" in log_files
         assert log_rotated, f"Could not find rotated log in {log_files}"
 
         audit_log_exists = "audit.log" in log_files
         assert audit_log_exists, f"Could not find audit.log log in {log_files}"
+
+        # wait for some logs to be collected
+        time.sleep(10)
+
+        audit_log_content = subprocess.check_output(
+            f"JUJU_MODEL={ops_test.model_full_name} juju ssh  --container mongod {unit.name}  'cat {audit_log_path}audit.log'",
+            stderr=subprocess.PIPE,
+            shell=True,
+            universal_newlines=True,
+        )
+        audit_log_lines = audit_log_content.strip().split("\n")
+        assert len(audit_log_lines) > 0, "New audit logs have not been written after log rotation."
 
 
 @pytest.mark.group(1)

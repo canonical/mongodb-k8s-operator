@@ -272,8 +272,6 @@ class MongoDBCharm(CharmBase):
                 max_log_size=Config.LogRotate.MAX_LOG_SIZE,
                 max_rotations=Config.LogRotate.MAX_ROTATIONS_TO_KEEP,
             ),
-            user=Config.UNIX_USER,
-            group=Config.UNIX_GROUP,
         )
 
         layer_config = {
@@ -546,6 +544,8 @@ class MongoDBCharm(CharmBase):
         container.add_layer("log_rotate", self._log_rotate_layer, combine=True)
         if self.is_role(Config.Role.CONFIG_SERVER):
             container.add_layer("mongos", self._mongos_layer, combine=True)
+
+        container.exec(["chmod", "644", "/etc/logrotate.d/mongodb"])
 
         # Restart changed services and start startup-enabled services.
         container.replan()
