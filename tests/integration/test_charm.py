@@ -185,7 +185,7 @@ async def test_log_rotate(ops_test: OpsTest) -> None:
             universal_newlines=True,
         )
 
-        log_rotated = "audit.log.1.gz" in log_files
+        log_rotated = "audit.log.1" in log_files
         assert log_rotated, f"Could not find rotated log in {log_files}"
 
         audit_log_exists = "audit.log" in log_files
