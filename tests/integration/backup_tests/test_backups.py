@@ -71,7 +71,6 @@ async def add_writes_to_db(ops_test: OpsTest):
     await clear_writes_action.wait()
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
@@ -108,7 +107,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
@@ -139,7 +137,6 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     assert db_unit.workload_status_message == "s3 credentials are incorrect."
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_blocked_incorrect_conf(ops_test: OpsTest) -> None:
@@ -158,7 +155,6 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest) -> None:
     assert db_unit.workload_status_message == "s3 configurations are incompatible."
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_ready_correct_conf(ops_test: OpsTest) -> None:
@@ -183,7 +179,6 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     )
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_create_and_list_backups(ops_test: OpsTest) -> None:
@@ -212,7 +207,6 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
         assert backups == 1, "Backup not created."
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
@@ -300,7 +294,6 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
         assert backups == 2, "Backup not created in bucket on AWS."
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
@@ -362,7 +355,8 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
 
 
 # TODO remove unstable mark once juju issue with secrets is resolved
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
+
+
 @pytest.mark.group(1)
 @pytest.mark.unstable
 @pytest.mark.parametrize("cloud_provider", ["AWS", "GCP"])
@@ -473,7 +467,6 @@ async def test_restore_new_cluster(ops_test: OpsTest, continuous_writes_to_db, c
     # await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_update_backup_password(ops_test: OpsTest) -> None:
