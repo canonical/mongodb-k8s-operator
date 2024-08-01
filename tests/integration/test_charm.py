@@ -195,7 +195,7 @@ async def test_log_rotate(ops_test: OpsTest) -> None:
         time.sleep(10)
 
         audit_log_content = subprocess.check_output(
-            f"JUJU_MODEL={ops_test.model_full_name} juju ssh  --container mongod {unit.name}  'cat {audit_log_path}.audit.log'",
+            f"JUJU_MODEL={ops_test.model_full_name} juju ssh  --container mongod {unit.name}  'cat {audit_log_path}audit.log'",
             stderr=subprocess.PIPE,
             shell=True,
             universal_newlines=True,
