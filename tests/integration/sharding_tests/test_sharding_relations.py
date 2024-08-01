@@ -4,7 +4,7 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import wait_for_mongodb_units_blocked, METADATA
+from ..helpers import METADATA, wait_for_mongodb_units_blocked
 
 S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard"

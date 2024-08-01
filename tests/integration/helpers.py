@@ -109,7 +109,7 @@ async def get_address_of_unit(ops_test: OpsTest, unit_id: int, app_name: str = A
 
 
 async def get_password(
-    ops_test: OpsTest, unit_id: int, username="operator", app_name: str = APP_NAME
+    ops_test: OpsTest, unit_id: int = 0, username="operator", app_name: str = APP_NAME
 ) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
