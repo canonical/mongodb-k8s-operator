@@ -103,12 +103,14 @@ async def scale_application(
 
     if desired_count > 0 and wait:
         async with ops_test.fast_forward():
+            # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
             await ops_test.model.wait_for_idle(
                 apps=[application_name],
                 status="active",
                 timeout=TIMEOUT,
                 wait_for_exact_units=desired_count,
                 raise_on_blocked=True,
+                raise_on_error=False,
             )
 
     assert len(ops_test.model.applications[application_name].units) == desired_count
@@ -184,10 +186,12 @@ async def deploy_and_scale_mongodb(
             series="jammy",
         )
 
+        # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
         await ops_test.model.wait_for_idle(
             apps=[mongodb_application_name],
             status="active",
             raise_on_blocked=True,
+            raise_on_error=False,
             timeout=TIMEOUT,
         )
 
@@ -221,10 +225,12 @@ async def deploy_and_scale_application(ops_test: OpsTest) -> str:
             series="jammy",
         )
 
+        # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
         await ops_test.model.wait_for_idle(
             apps=[APPLICATION_DEFAULT_APP_NAME],
             status="waiting",
             raise_on_blocked=True,
+            raise_on_error=False,
             timeout=TIMEOUT,
         )
 

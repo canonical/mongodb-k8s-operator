@@ -76,10 +76,9 @@ async def scale_and_verify(ops_test: OpsTest, count: int):
     app_name = await get_app_name(ops_test)
     await ops_test.model.applications[app_name].scale(scale_change=count)
 
+    # TODO: Remove the `raise_on_error` when we move to juju 3.5 (DPE-4996)
     await ops_test.model.wait_for_idle(
-        apps=[app_name],
-        status="active",
-        timeout=1000,
+        apps=[app_name], status="active", timeout=1000, raise_on_error=False
     )
     primary = await replica_set_primary(ops_test, application_name=app_name)
     assert primary is not None, "Replica set has no primary"

@@ -76,6 +76,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         application_name=SHARD_THREE_APP_NAME,
     )
 
+    # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
     await ops_test.model.wait_for_idle(
         apps=[
             CONFIG_SERVER_APP_NAME,
@@ -85,6 +86,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         ],
         idle_period=20,
         raise_on_blocked=False,
+        raise_on_error=False,
     )
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials

@@ -559,7 +559,10 @@ async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_uni
         return
     count = required_units - current_units
     await ops_test.model.applications[user_app_name].scale(scale_change=count)
-    await ops_test.model.wait_for_idle(apps=[user_app_name], status="active", timeout=2000)
+    # TODO : Remove raise_on_error when we move to juju 3.5 (DPE-4996)
+    await ops_test.model.wait_for_idle(
+        apps=[user_app_name], status="active", raise_on_error=False, timeout=2000
+    )
 
 
 def audit_log_line_sanity_check(entry) -> bool:
