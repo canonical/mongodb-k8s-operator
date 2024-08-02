@@ -1,0 +1,81 @@
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-two/0 [idle] active: Shard drained from cluster, ready for removal
+  shard-two/1 [idle] active: Shard drained from cluster, ready for removal
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] maintenance: Adding shard to config-server
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-two/0 [idle] maintenance: Adding shard to config-server
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+  config-server-one/1 [idle] active: 
+  shard-one/0 [idle] active: Primary
+  shard-one/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+  config-server-one/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+  config-server-one/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+  config-server-one/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server-one/0 [idle] maintenance: Draining shard shard-two
+  config-server-one/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server-one/0 [idle] active: Primary
+  config-server-one/1 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  02:10:00Z
+
+App                Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+config-server-one           active      2  mongodb-k8s             0  10.152.183.82   no       
+shard-one                   active      2  mongodb-k8s             1  10.152.183.58   no       Primary
+shard-three                 active      2  mongodb-k8s             3  10.152.183.133  no       
+
+Unit                  Workload  Agent  Address     Ports  Message
+config-server-one/0*  active    idle   10.1.21.13         
+config-server-one/1   active    idle   10.1.21.12         
+shard-one/0           active    idle   10.1.21.18         Primary
+shard-one/1*          active    idle   10.1.21.19         
+shard-three/0*        active    idle   10.1.21.30         
+shard-three/1         active    idle   10.1.21.31         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-config-server-one-0: 01:44:08 ERROR unit.config-server-one/0.juju-log config-server:4: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1722563048, 1), \'signature\': {\'hash\': b\'\\xe3r\\x16\\xb5\\x16\\x91|y\\x08*P~\\xb6-6`\\x8d\\x02\\x0fq\', \'keyId\': 7398350186931552281}}, \'operationTime\': Timestamp(1722563048, 1)}')
+unit-config-server-one-0: 01:44:11 ERROR unit.config-server-one/0.juju-log config-server:4: Failed to add shard-two to cluster
+unit-config-server-one-0: 01:44:11 ERROR unit.config-server-one/0.juju-log config-server:4: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1722563048, 1), \'signature\': {\'hash\': b\'\\xe3r\\x16\\xb5\\x16\\x91|y\\x08*P~\\xb6-6`\\x8d\\x02\\x0fq\', \'keyId\': 7398350186931552281}}, \'operationTime\': Timestamp(1722563048, 1)}')
+unit-config-server-one-0: 01:44:26 ERROR unit.config-server-one/0.juju-log config-server:5: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1722563065, 2), 'signature': {'hash': b'\\xfai3\\x88\\xe6\\x89EA\\xa0\\xc4\\x8f\\xc6i$\\xfc\\xa3t\\xd9\\x9cB', 'keyId': 7398350186931552281}}, 'operationTime': Timestamp(1722563065, 2)}")
+unit-config-server-one-0: 01:44:26 ERROR unit.config-server-one/0.juju-log config-server:5: shard-three shard does not have the same auth as the config server.
+unit-config-server-one-0: 01:44:42 ERROR unit.config-server-one/0.juju-log config-server:6: Failed to add shard shard-three to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-three, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-three\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1722563081, 8), \'signature\': {\'hash\': b\'\\x06\\xb0\\x14kTl1\\xf5\\x8a\\xa5\\xeb\\xe4\\xeaBYP\\x04\\xa8\\x14/\', \'keyId\': 7398350186931552281}}, \'operationTime\': Timestamp(1722563081, 8)}')
+unit-config-server-one-0: 01:44:42 ERROR unit.config-server-one/0.juju-log config-server:6: Failed to add shard-three to cluster
+unit-config-server-one-0: 01:44:42 ERROR unit.config-server-one/0.juju-log config-server:6: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-three, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-three\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1722563081, 8), \'signature\': {\'hash\': b\'\\x06\\xb0\\x14kTl1\\xf5\\x8a\\xa5\\xeb\\xe4\\xeaBYP\\x04\\xa8\\x14/\', \'keyId\': 7398350186931552281}}, \'operationTime\': Timestamp(1722563081, 8)}')
+unit-shard-two-1: 02:06:50 ERROR unit.shard-two/1.juju-log shard-two/1.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ac3f39f119bf753bdfc3bb, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: RSGhost, rtt: 0.0005155429998922045>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
