@@ -84,7 +84,10 @@ async def test_deploy_charms(ops_test: OpsTest):
     )
 
     APP_NAMES.append(await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME]))
-    await ops_test.model.wait_for_idle(apps=APP_NAMES, status="active", timeout=1000)
+    # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
+    await ops_test.model.wait_for_idle(
+        apps=APP_NAMES, status="active", timeout=1000, raise_on_error=False
+    )
 
 
 @pytest.mark.group(1)
@@ -237,11 +240,10 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     # verify application metadata is correct after removing the pre-existing units. This is
     # this is important since we want to test that the application related will work with
     # only the newly added units from above.
+    # TODO: Remove the `raise_on_error` when we move to juju 3.5 (DPE-4996)
     await ops_test.model.applications[db_app_name].scale(scale_change=-1)
     await ops_test.model.wait_for_idle(
-        apps=APP_NAMES,
-        status="active",
-        timeout=1000,
+        apps=APP_NAMES, status="active", timeout=1000, raise_on_error=False
     )
 
     await verify_primary(ops_test, db_app_name)
@@ -265,11 +267,10 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     # test crud operations
     await verify_crud_operations(ops_test, scaled_down_string)
 
+    # TODO: Remove the `raise_on_error` when we move to juju 3.5 (DPE-4996)
     await ops_test.model.applications[db_app_name].scale(scale_change=-1)
     await ops_test.model.wait_for_idle(
-        apps=APP_NAMES,
-        status="active",
-        timeout=1000,
+        apps=APP_NAMES, status="active", timeout=1000, raise_on_error=False
     )
 
     try:
@@ -339,7 +340,8 @@ async def test_two_applications_doesnt_share_the_same_relation_data(ops_test: Op
         application_charm,
         application_name=another_application_app_name,
     )
-    await ops_test.model.wait_for_idle(apps=all_app_names, status="active")
+    # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
+    await ops_test.model.wait_for_idle(apps=all_app_names, status="active", raise_on_error=False)
 
     db_app_name = await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
 
