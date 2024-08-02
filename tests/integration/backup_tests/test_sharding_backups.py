@@ -16,6 +16,7 @@ from ..ha_tests.helpers import deploy_and_scale_application, get_mongo_client
 from ..helpers import (
     METADATA,
     MONGOS_PORT,
+    destroy_cluster,
     get_leader_id,
     get_password,
     mongodb_uri,
@@ -291,6 +292,110 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     ),
 
     await verify_writes_restored(ops_test, cluster_writes)
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_migrate_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
+    """Tests that sharded Charmed MongoDB cluster supports restores."""
+    config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME)
+    await set_password(
+        ops_test,
+        app_name=CONFIG_SERVER_APP_NAME,
+        unit_id=config_leader_id,
+        username="operator",
+        password=OPERATOR_PASSWORD,
+    )
+
+    await ops_test.model.wait_for_idle(apps=CLUSTER_APPS, status="active", idle_period=20)
+
+    # count total writes
+    cluster_writes = await writes_helpers.get_cluster_writes_count(
+        ops_test,
+        shard_app_names=SHARD_APPS,
+        db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
+        config_server_name=CONFIG_SERVER_APP_NAME,
+    )
+    assert cluster_writes["total_writes"], "no writes to backup"
+    assert cluster_writes[SHARD_ONE_APP_NAME], "no writes to backup for shard one"
+    assert cluster_writes[SHARD_TWO_APP_NAME], "no writes to backup for shard two"
+    assert (
+        cluster_writes[SHARD_ONE_APP_NAME] + cluster_writes[SHARD_TWO_APP_NAME]
+        == cluster_writes["total_writes"]
+    ), "writes not synced"
+
+    leader_unit = await backup_helpers.get_leader_unit(
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME
+    )
+    prev_backups = await backup_helpers.count_logical_backups(leader_unit)
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
+    ),
+    action = await leader_unit.run_action(action_name="create-backup")
+    first_backup = await action.wait()
+    assert first_backup.status == "completed", "First backup not started."
+
+    # verify that backup was made on the bucket
+    for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(5), reraise=True):
+        with attempt:
+            backups = await backup_helpers.count_logical_backups(leader_unit)
+            assert backups == prev_backups + 1, "Backup not created."
+
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
+    ),
+
+    # add writes to be cleared after restoring the backup.
+    await add_and_verify_unwanted_writes(ops_test, cluster_writes)
+
+    # Destroy the old cluster and create a new cluster with the same exact topology and password
+    await destroy_cluster(
+        ops_test, applications=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
+    )
+
+    await deploy_cluster_backup_test(ops_test, deploy_s3_integrator=False, new_names=True)
+    await setup_cluster_and_s3(ops_test, new_names=True)
+    config_leader_id = await get_leader_id(ops_test, app_name=CONFIG_SERVER_APP_NAME_NEW)
+    await set_password(
+        ops_test,
+        app_name=CONFIG_SERVER_APP_NAME,
+        unit_id=config_leader_id,
+        username="operator",
+        password=OPERATOR_PASSWORD,
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_APPS_NEW, status="active", idle_period=20, timeout=TIMEOUT
+    )
+
+    # find most recent backup id and restore
+    leader_unit = await backup_helpers.get_leader_unit(
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME_NEW
+    )
+    list_result = await backup_helpers.get_backup_list(
+        ops_test, db_app_name=CONFIG_SERVER_APP_NAME_NEW
+    )
+    most_recent_backup = list_result.split("\n")[-1]
+    backup_id = most_recent_backup.split()[0]
+
+    action = await leader_unit.run_action(action_name="restore", **{"backup-id": backup_id})
+    attempted_restore = await action.wait()
+    assert (
+        attempted_restore.status == "failed"
+    ), "config-server ran restore without necessary remapping."
+
+    remap_pattern = f"{CONFIG_SERVER_APP_NAME_NEW}={CONFIG_SERVER_APP_NAME},{SHARD_ONE_APP_NAME_NEW}={SHARD_ONE_APP_NAME},{SHARD_TWO_APP_NAME_NEW}={SHARD_TWO_APP_NAME}"
+    action = await leader_unit.run_action(
+        action_name="restore", **{"backup-id": backup_id, "remap-pattern": remap_pattern}
+    )
+    restore = await action.wait()
+    assert restore.results["restore-status"] == "restore started", "restore not successful"
+
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME_NEW], status="active", idle_period=20
+    ),
+
+    await verify_writes_restored(ops_test, cluster_writes, new_names=True)
 
 
 async def deploy_cluster_backup_test(
