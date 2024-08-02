@@ -17,12 +17,14 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 from ..ha_tests import helpers as ha_helpers
 from ..helpers import (
     check_or_scale_app,
+    destroy_cluster,
     get_app_name,
     is_relation_joined,
     wait_for_mongodb_units_blocked,
 )
 from . import helpers
 
+WRITE_APP = "application"
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 15 * 60
 ENDPOINT = "s3-credentials"
@@ -37,9 +39,7 @@ logger = logging.getLogger(__name__)
 @pytest_asyncio.fixture
 async def continuous_writes_to_db(ops_test: OpsTest):
     """Continuously writes to DB for the duration of the test."""
-    application_name = await ha_helpers.get_application_name(ops_test, "application")
-
-    application_unit = ops_test.model.applications[application_name].units[0]
+    application_unit = ops_test.model.applications[WRITE_APP].units[0]
 
     clear_writes_action = await application_unit.run_action("clear-continuous-writes")
     await clear_writes_action.wait()
@@ -56,8 +56,7 @@ async def continuous_writes_to_db(ops_test: OpsTest):
 @pytest_asyncio.fixture
 async def add_writes_to_db(ops_test: OpsTest):
     """Adds writes to DB before test starts and clears writes at the end of the test."""
-    application_name = await ha_helpers.get_application_name(ops_test, "application")
-    application_unit = ops_test.model.applications[application_name].units[0]
+    application_unit = ops_test.model.applications[WRITE_APP].units[0]
 
     clear_writes_action = await application_unit.run_action("clear-continuous-writes")
     await clear_writes_action.wait()
@@ -324,8 +323,7 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
 
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
-    application_name = await get_app_name(ops_test, "application")
-    application_unit = ops_test.model.applications[application_name].units[0]
+    application_unit = ops_test.model.applications[WRITE_APP].units[0]
     start_writes_action = await application_unit.run_action("start-continuous-writes")
     await start_writes_action.wait()
     time.sleep(20)
@@ -425,7 +423,7 @@ async def test_restore_new_cluster(
     assert action.status == "completed"
 
     # relate to s3 - s3 has the necessary configurations
-    await ops_test.model.add_relation(S3_APP_NAME, NEW_CLUSTER)
+    await ops_test.model.integrate(S3_APP_NAME, NEW_CLUSTER)
     await ops_test.model.block_until(
         lambda: is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
         timeout=TIMEOUT,
@@ -466,10 +464,7 @@ async def test_restore_new_cluster(
             writes_in_new_cluster == writes_in_old_cluster
         ), "new cluster writes do not match old cluster writes after restore"
 
-    # TODO there is an issue with on stop and secrets that need to be resolved before
-    # we can cleanup the new cluster, otherwise the test will fail.
-
-    # await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
+    await destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
 
 
 @pytest.mark.group(1)
