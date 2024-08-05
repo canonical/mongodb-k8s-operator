@@ -74,8 +74,7 @@ class ContinuousWritesApplication(CharmBase):
         """Returns the database config to use to connect to the MongoDB cluster."""
         # In some tests we want to write directly to mongos, but the config-server does not
         # support integrations to client applications, so the data to connect is set via config.
-        data = list(self.database.fetch_relation_data().values())
-        if len(data) == 0:
+        if not (data := list(self.database.fetch_relation_data().values())):
             return {"uris": self.model.config.get("mongos-uri", None)}
 
         data = data[0]
