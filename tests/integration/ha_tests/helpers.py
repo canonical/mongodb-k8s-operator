@@ -539,6 +539,10 @@ async def verify_writes(ops_test: OpsTest) -> int:
         role = "Primary" if unit.name == primary.name else "Secondary"
         with await get_direct_mongo_client(ops_test, unit.name) as client:
             actual_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
+        print("---------------")
+        print(f"{total_expected_writes=}")
+        print(f"{actual_writes=}")
+        print("---------------")
         assert (
             total_expected_writes == actual_writes
         ), f"{role} {unit.name} missed writes to the db."
