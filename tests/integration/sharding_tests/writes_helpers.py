@@ -40,7 +40,7 @@ async def remove_db_writes(
     ops_test: OpsTest,
     db_name: str,
     coll_name: str = DEFAULT_COLL_NAME,
-) -> bool:
+) -> None:
     """Stop the DB process and remove any writes to the test collection."""
     # remove collection from database
     config_server_name = APP_NAME if APP_NAME in ops_test.model.applications else APP_NAME_NEW
