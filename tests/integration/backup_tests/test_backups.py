@@ -464,7 +464,7 @@ async def test_restore_new_cluster(
             writes_in_new_cluster == writes_in_old_cluster
         ), "new cluster writes do not match old cluster writes after restore"
 
-    await destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
+    await destroy_cluster(ops_test, applications=[NEW_CLUSTER])
 
 
 @pytest.mark.group(1)
