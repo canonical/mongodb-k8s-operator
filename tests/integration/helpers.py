@@ -109,7 +109,7 @@ async def get_address_of_unit(ops_test: OpsTest, unit_id: int, app_name: str = A
 
 
 async def get_password(
-    ops_test: OpsTest, unit_id: int, username="operator", app_name: str = APP_NAME
+    ops_test: OpsTest, unit_id: int = 0, username: str = "operator", app_name: str = APP_NAME
 ) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
@@ -161,7 +161,7 @@ async def mongodb_uri(
     app_name: str = APP_NAME,
 ) -> str:
     if unit_ids is None:
-        unit_ids = UNIT_IDS
+        unit_ids = range(0, len(ops_test.model.applications[app_name].units))
 
     addresses = [await get_address_of_unit(ops_test, unit_id, app_name) for unit_id in unit_ids]
     hosts = [f"{host}:{port}" for host in addresses]
@@ -638,11 +638,11 @@ async def check_all_units_blocked_with_status(
     for unit in await get_application_units(ops_test, db_app_name):
         assert (
             unit.workload_status.value == "blocked"
-        ), f"unit {unit.name} not in blocked state, in {unit.workload_status}"
+        ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
         if status:
             assert (
                 unit.workload_status.message == status
-            ), f"unit {unit.name} not in blocked state, in {unit.workload_status}"
+            ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
 
 
 async def wait_for_mongodb_units_blocked(
@@ -670,3 +670,22 @@ def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) 
         if endpoint_one in endpoints and endpoint_two in endpoints:
             return True
     return False
+
+
+async def destroy_cluster(ops_test: OpsTest, applications: list[str]) -> None:
+    """Destroy cluster in a forceful way."""
+    for app in applications:
+        await ops_test.model.applications[app].destroy(
+            destroy_storage=True, force=True, no_wait=False
+        )
+
+    # destroy does not wait for applications to be removed, perform this check manually
+    for attempt in Retrying(stop=stop_after_attempt(100), wait=wait_fixed(10), reraise=True):
+        with attempt:
+            # pytest_operator has a bug where the number of applications does not get correctly
+            # updated. Wrapping the call with `fast_forward` resolves this
+            async with ops_test.fast_forward():
+                finished = all((item not in ops_test.model.applications for item in applications))
+            # This case we don't raise an error in the context manager which fails to restore the
+            # `update-status-hook-interval` value to it's former state.
+            assert finished, "old cluster not destroyed successfully"

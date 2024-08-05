@@ -15,9 +15,16 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
-from ..helpers import check_or_scale_app, get_app_name, is_relation_joined
+from ..helpers import (
+    check_or_scale_app,
+    destroy_cluster,
+    get_app_name,
+    is_relation_joined,
+    wait_for_mongodb_units_blocked,
+)
 from . import helpers
 
+WRITE_APP = "application"
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 15 * 60
 ENDPOINT = "s3-credentials"
@@ -32,9 +39,7 @@ logger = logging.getLogger(__name__)
 @pytest_asyncio.fixture
 async def continuous_writes_to_db(ops_test: OpsTest):
     """Continuously writes to DB for the duration of the test."""
-    application_name = await ha_helpers.get_application_name(ops_test, "application")
-
-    application_unit = ops_test.model.applications[application_name].units[0]
+    application_unit = ops_test.model.applications[WRITE_APP].units[0]
 
     clear_writes_action = await application_unit.run_action("clear-continuous-writes")
     await clear_writes_action.wait()
@@ -51,8 +56,7 @@ async def continuous_writes_to_db(ops_test: OpsTest):
 @pytest_asyncio.fixture
 async def add_writes_to_db(ops_test: OpsTest):
     """Adds writes to DB before test starts and clears writes at the end of the test."""
-    application_name = await ha_helpers.get_application_name(ops_test, "application")
-    application_unit = ops_test.model.applications[application_name].units[0]
+    application_unit = ops_test.model.applications[WRITE_APP].units[0]
 
     clear_writes_action = await application_unit.run_action("clear-continuous-writes")
     await clear_writes_action.wait()
@@ -71,7 +75,6 @@ async def add_writes_to_db(ops_test: OpsTest):
     await clear_writes_action.wait()
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
@@ -91,7 +94,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
                 my_charm, num_units=NUM_UNITS, resources=resources, series="jammy"
             )
             await ops_test.model.wait_for_idle(
-                apps=[DATABASE_APP_NAME], status="active", timeout=2000
+                apps=[DATABASE_APP_NAME],
+                status="active",
+                timeout=2000,
+                raise_on_error=False,
             )
 
     # deploy the s3 integrator charm
@@ -108,7 +114,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle()
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
@@ -130,35 +135,29 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     )
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked", idle_period=20),
+
+    await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
+    await wait_for_mongodb_units_blocked(
+        ops_test, db_app_name, status="s3 credentials are incorrect.", timeout=300
     )
-    db_unit = ops_test.model.applications[db_app_name].units[0]
-
-    assert db_unit.workload_status_message == "s3 credentials are incorrect."
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_blocked_incorrect_conf(ops_test: OpsTest) -> None:
+async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None:
     """Verifies that the charm goes into blocked status when s3 config options are incorrect."""
     db_app_name = await get_app_name(ops_test)
 
     # set correct AWS credentials for s3 storage but incorrect configs
-    await helpers.set_credentials(ops_test, cloud="AWS")
+    await helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
 
     # wait for both applications to be idle with the correct statuses
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active"),
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="blocked", idle_period=20),
+    await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
+    await wait_for_mongodb_units_blocked(
+        ops_test, db_app_name, status="s3 configurations are incompatible.", timeout=300
     )
-    db_unit = ops_test.model.applications[db_app_name].units[0]
-    assert db_unit.workload_status_message == "s3 configurations are incompatible."
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_ready_correct_conf(ops_test: OpsTest) -> None:
@@ -183,16 +182,14 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     )
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_create_and_list_backups(ops_test: OpsTest) -> None:
     db_unit = await helpers.get_leader_unit(ops_test)
 
     # verify backup list works
-    action = await db_unit.run_action(action_name="list-backups")
-    list_result = await action.wait()
-    backups = list_result.results["backups"]
+    db_app_name = await get_app_name(ops_test)
+    backups = await helpers.get_backup_list(ops_test, db_app_name=db_app_name)
 
     # verify backup is started
     action = await db_unit.run_action(action_name="create-backup")
@@ -212,10 +209,9 @@ async def test_create_and_list_backups(ops_test: OpsTest) -> None:
         assert backups == 1, "Backup not created."
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
+async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes_to_db) -> None:
     """With writes in the DB test creating a backup while another one is running.
 
     Note that before creating the second backup we change the bucket and change the s3 storage
@@ -236,7 +232,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
 
     # while first backup is running change access key, secret keys, and bucket name
     # for GCP
-    await helpers.set_credentials(ops_test, cloud="GCP")
+    await helpers.set_credentials(ops_test, github_secrets, cloud="GCP")
 
     # change to GCP configs and wait for PBM to resync
     configuration_parameters = {
@@ -279,7 +275,7 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
         assert backups == 1, "Backup not created in first bucket on GCP."
 
     # set AWS credentials, set configs for s3 storage, and wait to resync
-    await helpers.set_credentials(ops_test, cloud="AWS")
+    await helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
     configuration_parameters = {
         "bucket": "data-charms-testing",
         "region": "us-east-1",
@@ -300,7 +296,6 @@ async def test_multi_backup(ops_test: OpsTest, continuous_writes_to_db) -> None:
         assert backups == 2, "Backup not created in bucket on AWS."
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
@@ -328,8 +323,7 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
 
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
-    application_name = await get_app_name(ops_test)
-    application_unit = ops_test.model.applications[application_name].units[0]
+    application_unit = ops_test.model.applications[WRITE_APP].units[0]
     start_writes_action = await application_unit.run_action("start-continuous-writes")
     await start_writes_action.wait()
     time.sleep(20)
@@ -362,15 +356,18 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
 
 
 # TODO remove unstable mark once juju issue with secrets is resolved
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
+
+
 @pytest.mark.group(1)
 @pytest.mark.unstable
 @pytest.mark.parametrize("cloud_provider", ["AWS", "GCP"])
-async def test_restore_new_cluster(ops_test: OpsTest, continuous_writes_to_db, cloud_provider):
+async def test_restore_new_cluster(
+    ops_test: OpsTest, github_secrets, continuous_writes_to_db, cloud_provider
+):
     # configure test for the cloud provider
     db_app_name = await get_app_name(ops_test)
     leader_unit = await helpers.get_leader_unit(ops_test, db_app_name)
-    await helpers.set_credentials(ops_test, cloud=cloud_provider)
+    await helpers.set_credentials(ops_test, github_secrets, cloud=cloud_provider)
     if cloud_provider == "AWS":
         configuration_parameters = {
             "bucket": "data-charms-testing",
@@ -426,7 +423,7 @@ async def test_restore_new_cluster(ops_test: OpsTest, continuous_writes_to_db, c
     assert action.status == "completed"
 
     # relate to s3 - s3 has the necessary configurations
-    await ops_test.model.add_relation(S3_APP_NAME, NEW_CLUSTER)
+    await ops_test.model.integrate(S3_APP_NAME, NEW_CLUSTER)
     await ops_test.model.block_until(
         lambda: is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
         timeout=TIMEOUT,
@@ -467,13 +464,9 @@ async def test_restore_new_cluster(ops_test: OpsTest, continuous_writes_to_db, c
             writes_in_new_cluster == writes_in_old_cluster
         ), "new cluster writes do not match old cluster writes after restore"
 
-    # TODO there is an issue with on stop and secrets that need to be resolved before
-    # we can cleanup the new cluster, otherwise the test will fail.
-
-    # await helpers.destroy_cluster(ops_test, cluster_name=NEW_CLUSTER)
+    await destroy_cluster(ops_test, applications=[NEW_CLUSTER])
 
 
-@pytest.mark.skip("Skipping tests until fixing backup tests are addressed (DPE-4264).")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_update_backup_password(ops_test: OpsTest) -> None:

@@ -1,39 +1,12 @@
 # Copyright 2023 Canonical Ltd.
 # See LICENSE file for licensing details.
-import os
 
 import ops
-from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
 
-from ..ha_tests import helpers as ha_helpers
-
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 10 * 60
-
-
-async def destroy_cluster(ops_test: OpsTest, cluster_name: str) -> None:
-    """Destroy the cluster and wait for its removal."""
-    units = ops_test.model.applications[cluster_name].units
-    # best practice to scale down before removing the entire cluster. Wait for cluster to settle
-    # removing the next
-    for i in range(0, len(units[:-1])):
-        await units[i].remove()
-        await ops_test.model.block_until(
-            lambda: len(ops_test.model.applications[cluster_name].units) == len(units) - i - 1,
-            timeout=TIMEOUT,
-        )
-        ops_test.model.wait_for_idle(apps=[cluster_name], status="active")
-
-    # now that the cluster only has one unit left we can remove the application from Juju
-    await ops_test.model.applications[cluster_name].destroy()
-
-    # verify there are no more units.
-    await ops_test.model.block_until(
-        lambda: cluster_name not in ops_test.model.applications,
-        timeout=TIMEOUT,
-    )
 
 
 async def create_and_verify_backup(ops_test: OpsTest) -> None:
@@ -106,11 +79,11 @@ async def count_failed_backups(db_unit: ops.model.Unit) -> int:
     return failed_backups
 
 
-async def set_credentials(ops_test: OpsTest, cloud: str) -> None:
+async def set_credentials(ops_test: OpsTest, github_secrets, cloud: str) -> None:
     """Sets the s3 crednetials for the provided cloud, valid options are AWS or GCP."""
     # set access key and secret keys
-    access_key = os.environ.get(f"{cloud}_ACCESS_KEY", False)
-    secret_key = os.environ.get(f"{cloud}_SECRET_KEY", False)
+    access_key = github_secrets[f"{cloud}_ACCESS_KEY"]
+    secret_key = github_secrets[f"{cloud}_SECRET_KEY"]
     assert access_key and secret_key, f"{cloud} access key and secret key not provided."
 
     s3_integrator_unit = ops_test.model.applications[S3_APP_NAME].units[0]
@@ -119,16 +92,10 @@ async def set_credentials(ops_test: OpsTest, cloud: str) -> None:
     await action.wait()
 
 
-async def insert_unwanted_data(ops_test: OpsTest) -> None:
-    """Inserts the data into the MongoDB cluster via primary replica."""
-    app = await app_name(ops_test)
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary = (await ha_helpers.replica_set_primary(ip_addresses, ops_test)).public_address
-    password = await ha_helpers.get_password(ops_test, app)
-    client = MongoClient(ha_helpers.unit_uri(primary, password, app), directConnection=True)
-    db = client["new-db"]
-    test_collection = db["test_collection"]
-    test_collection.insert_one({"unwanted_data": "bad data 1"})
-    test_collection.insert_one({"unwanted_data": "bad data 2"})
-    test_collection.insert_one({"unwanted_data": "bad data 3"})
-    client.close()
+async def get_backup_list(ops_test: OpsTest, db_app_name=None) -> str:
+    """Count the number of logical backups."""
+    leader_unit = await get_leader_unit(ops_test, db_app_name=db_app_name)
+    action = await leader_unit.run_action(action_name="list-backups")
+    list_result = await action.wait()
+    list_result = list_result.results["backups"]
+    return list_result
