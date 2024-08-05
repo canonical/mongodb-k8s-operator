@@ -2,11 +2,8 @@
 # See LICENSE file for licensing details.
 
 import ops
-from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
-
-from ..ha_tests import helpers as ha_helpers
 
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 10 * 60
@@ -93,21 +90,6 @@ async def set_credentials(ops_test: OpsTest, github_secrets, cloud: str) -> None
     parameters = {"access-key": access_key, "secret-key": secret_key}
     action = await s3_integrator_unit.run_action(action_name="sync-s3-credentials", **parameters)
     await action.wait()
-
-
-async def insert_unwanted_data(ops_test: OpsTest) -> None:
-    """Inserts the data into the MongoDB cluster via primary replica."""
-    app = await app_name(ops_test)
-    ip_addresses = [unit.public_address for unit in ops_test.model.applications[app].units]
-    primary = (await ha_helpers.replica_set_primary(ip_addresses, ops_test)).public_address
-    password = await ha_helpers.get_password(ops_test, app)
-    client = MongoClient(ha_helpers.unit_uri(primary, password, app), directConnection=True)
-    db = client["new-db"]
-    test_collection = db["test_collection"]
-    test_collection.insert_one({"unwanted_data": "bad data 1"})
-    test_collection.insert_one({"unwanted_data": "bad data 2"})
-    test_collection.insert_one({"unwanted_data": "bad data 3"})
-    client.close()
 
 
 async def get_backup_list(ops_test: OpsTest, db_app_name=None) -> str:

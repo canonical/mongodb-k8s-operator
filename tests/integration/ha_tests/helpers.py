@@ -961,3 +961,11 @@ def copy_file_into_pod(
             api_response.close()
     except kubernetes.client.rest.ApiException:
         assert False
+
+
+async def count_writes(ops_test: OpsTest, app_name: str = None) -> int:
+    """New versions of pymongo no longer support the count operation, instead find is used."""
+    app_name = app_name or await get_app_name(ops_test)
+    unit = ops_test.model.applications[app_name].units[0]
+    with await get_direct_mongo_client(ops_test, unit.name) as client:
+        return client[TEST_DB][TEST_COLLECTION].count_documents({})
