@@ -152,7 +152,7 @@ async def test_blocked_incorrect_conf(ops_test: OpsTest, github_secrets) -> None
     await helpers.set_credentials(ops_test, github_secrets, cloud="AWS")
 
     # wait for both applications to be idle with the correct statuses
-    ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
+    await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active")
     await wait_for_mongodb_units_blocked(
         ops_test, db_app_name, status="s3 configurations are incompatible.", timeout=300
     )
