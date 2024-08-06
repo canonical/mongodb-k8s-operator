@@ -1,0 +1,21 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  02:00:44Z
+
+App                Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+config-server-one           active       1  mongodb-k8s                   0  10.152.183.190  no       
+config-server-two           active       1  mongodb-k8s                   1  10.152.183.184  no       
+s3-integrator               waiting      1  s3-integrator  latest/edge   29  10.152.183.18   no       installing agent
+shard                       blocked      1  mongodb-k8s                   2  10.152.183.187  no       Relation to s3-integrator is not supported, config role must be config-server
+
+Unit                  Workload  Agent      Address       Ports  Message
+config-server-one/0*  active    idle       10.1.205.202         
+config-server-two/0*  active    idle       10.1.205.205         
+s3-integrator/0*      blocked   executing  10.1.205.208         Missing parameters: ['access-key', 'secret-key']
+shard/0*              blocked   executing  10.1.205.209         Relation to s3-integrator is not supported, config role must be config-server
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...

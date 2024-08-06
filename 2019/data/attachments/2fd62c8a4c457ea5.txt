@@ -1,0 +1,138 @@
+[33mWARNING [0m juju.application:application.py:149 adding units to a container-based model not supported, auto-switching to scale
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  application/0 [idle] active: received database credentials of the first database
+  application/1 [idle] active: received database credentials of the first database
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  another-database/0 [idle] active: 
+  another-database/1 [idle] active: 
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  application/0 [idle] active: received database credentials of the first database
+  application/1 [idle] active: received database credentials of the first database
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [executing] maintenance: installing charm software
+  mongodb-k8s/3 [executing] maintenance: installing charm software
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [executing] maintenance: installing charm software
+  mongodb-k8s/3 [executing] maintenance: installing charm software
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'var ubuntu = {"release_name": "Focal Fossa", "version": "20.04", "LTS": "true"}; EJSON.stringify(db.test_collection.insertOne(ubuntu), );\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-3.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'acknowledged': True, 'insertedId': {'$oid': '66b17fd817b5ffb127f30fd0'}})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.find({}, {"release_name": 1}).toArray())\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-3.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[{'_id': {'$oid': '66b17fd817b5ffb127f30fd0'}, 'release_name': 'Focal Fossa'}])'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.updateOne({"version": "20.04"}, {"$set": {"release_name": "Fancy Fossa"}}))\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-3.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'acknowledged': True, 'insertedId': None, 'matchedCount': 1, 'modifiedCount': 1, 'upsertedCount': 0})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.find({}, {"release_name": 1}).toArray())\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-3.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[{'_id': {'$oid': '66b17fd817b5ffb127f30fd0'}, 'release_name': 'Fancy Fossa'}])'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.deleteOne({"release_name": "Fancy Fossa"}))\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-3.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'acknowledged': True, 'deletedCount': 1})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.find({}, {"release_name": 1}).toArray())\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-3.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[])'
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  application/0 [idle] active: received database credentials of the first database
+  application/1 [idle] active: received database credentials of the first database
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+  mongodb-k8s/3 [idle] active: 
+  another-database/0 [idle] active: 
+  another-database/1 [idle] active: Primary
+  mongodb-k8s/0 [executing] active: Primary
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active: 
+  mongodb-k8s/3 [executing] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'var ubuntu = {"release_name": "Focal Fossa", "version": "20.04", "LTS": "true"}; EJSON.stringify(db.test_collection.insertOne(ubuntu), );\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'acknowledged': True, 'insertedId': {'$oid': '66b18013a8f5e8562295c922'}})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.find({}, {"release_name": 1}).toArray())\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[{'_id': {'$oid': '66b18013a8f5e8562295c922'}, 'release_name': 'Focal Fossa'}])'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.updateOne({"version": "20.04"}, {"$set": {"release_name": "Fancy Fossa"}}))\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'acknowledged': True, 'insertedId': None, 'matchedCount': 1, 'modifiedCount': 1, 'upsertedCount': 0})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.find({}, {"release_name": 1}).toArray())\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[{'_id': {'$oid': '66b18013a8f5e8562295c922'}, 'release_name': 'Fancy Fossa'}])'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.deleteOne({"release_name": "Fancy Fossa"}))\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'acknowledged': True, 'deletedCount': 1})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.find({}, {"release_name": 1}).toArray())\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-2.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[])'
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  application/0 [idle] active: received database credentials of the first database
+  application/1 [idle] active: received database credentials of the first database
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+  another-database/0 [idle] active: 
+  another-database/1 [idle] active: Primary
+  mongodb-k8s/0 [executing] active: Primary
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'var ubuntu = {"release_name": "Focal Fossa", "version": "20.04", "LTS": "true"}; EJSON.stringify(db.test_collection.insertOne(ubuntu), );\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-1.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'acknowledged': True, 'insertedId': {'$oid': '66b180890aec6dc9f7df1c4e'}})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.find({}, {"release_name": 1}).toArray())\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-1.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[{'_id': {'$oid': '66b180890aec6dc9f7df1c4e'}, 'release_name': 'Focal Fossa'}])'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.updateOne({"version": "20.04"}, {"$set": {"release_name": "Fancy Fossa"}}))\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-1.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'acknowledged': True, 'insertedId': None, 'matchedCount': 1, 'modifiedCount': 1, 'upsertedCount': 0})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.find({}, {"release_name": 1}).toArray())\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-1.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[{'_id': {'$oid': '66b180890aec6dc9f7df1c4e'}, 'release_name': 'Fancy Fossa'}])'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.deleteOne({"release_name": "Fancy Fossa"}))\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-1.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'acknowledged': True, 'deletedCount': 1})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.test_collection.find({}, {"release_name": 1}).toArray())\' "mongodb://relation-2:heKvCHDnPss4aIvTCkFLwjexiI7HzrRc@mongodb-k8s-1.mongodb-k8s-endpoints,mongodb-k8s-0.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[])'
