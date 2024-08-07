@@ -1500,7 +1500,7 @@ class MongoDBCharm(CharmBase):
         for license_name in licenses:
             try:
                 license_file = container.pull(path=Config.get_license_path(license_name))
-                f = open("LICENSE", "x")
+                f = open(f"LICENSE_{license_name}", "x")
                 f.write(str(license_file.read()))
                 f.close()
             except FileExistsError:
