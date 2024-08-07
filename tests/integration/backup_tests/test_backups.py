@@ -222,9 +222,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
     db_unit = await helpers.get_leader_unit(ops_test)
 
     # create first backup once ready
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
 
     action = await db_unit.run_action(action_name="create-backup")
     first_backup = await action.wait()
@@ -242,9 +240,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
 
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
 
     # create a backup as soon as possible. might not be immediately possible since only one backup
     # can happen at a time.
@@ -261,9 +257,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
     # backup can take a lot of time so this function returns once the command was successfully
     # sent to pbm. Therefore before checking, wait for Charmed MongoDB to finish creating the
     # backup
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
 
     # verify that backups was made in GCP bucket
     try:
@@ -282,9 +276,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
         "endpoint": "https://s3.amazonaws.com",
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
 
     # verify that backups was made on the AWS bucket
     try:
@@ -379,8 +371,6 @@ async def test_restore_new_cluster(
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
     )
 
-    # sleep to allow for writes to be made
-    time.sleep(30)
     writes_in_old_cluster = await ha_helpers.get_total_writes(ops_test)
     assert writes_in_old_cluster > 0, "old cluster has no writes."
 
@@ -441,8 +431,6 @@ async def test_restore_new_cluster(
     restore = await action.wait()
     assert restore.results["restore-status"] == "restore started", "restore not successful"
 
-    # initialize with old values
-    writes_in_new_cluster = writes_in_old_cluster
     # verify all writes are present
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):
