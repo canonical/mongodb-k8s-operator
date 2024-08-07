@@ -1,0 +1,28 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  01:49:44Z
+
+App            Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             waiting      1  application                   0  10.152.183.241  no       installing agent
+config-server           active       2  mongodb-k8s                   0  10.152.183.102  no       Primary
+s3-integrator           active       1  s3-integrator  latest/edge   31  10.152.183.115  no       
+shard-one               waiting      2  mongodb-k8s                   1  10.152.183.184  no       installing agent
+shard-two               active       1  mongodb-k8s                   2  10.152.183.165  no       Primary
+
+Unit              Workload  Agent  Address     Ports  Message
+application/0*    waiting   idle   10.1.26.8          
+config-server/0*  active    idle   10.1.26.13         Primary
+config-server/1   active    idle   10.1.26.14         
+s3-integrator/0*  active    idle   10.1.26.23         
+shard-one/0*      active    idle   10.1.26.19         Primary
+shard-one/1       waiting   idle   10.1.26.20         waiting for pbm to start
+shard-two/0*      active    idle   10.1.26.24         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-config-server-0: 01:39:49 ERROR unit.config-server/0.juju-log config-server:6: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of pitr: unable check PITR config status: get config: missed config"}\n', stderr=''
+unit-config-server-0: 01:40:37 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1722994837, 1), 'signature': {'hash': b'L\\xc7\\xfb=E6`\\x15\\xa0Vv\\x9c(Z\\xf6D\\x1c\\x11\\xcf4', 'keyId': 7400205943515906056}}, 'operationTime': Timestamp(1722994837, 1)}")
+unit-config-server-0: 01:40:37 ERROR unit.config-server/0.juju-log config-server:7: shard-two shard does not have the same auth as the config server.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
