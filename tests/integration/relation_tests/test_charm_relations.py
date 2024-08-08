@@ -38,6 +38,7 @@ TEST_APP_CHARM_PATH = "./tests/integration/relation_tests/application-charm"
 REQUIRED_UNITS = 2
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_deploy_charms(ops_test: OpsTest):
@@ -90,6 +91,7 @@ async def test_deploy_charms(ops_test: OpsTest):
     )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     # insert some data
@@ -131,6 +133,7 @@ async def verify_crud_operations(ops_test: OpsTest, connection_string: str):
     assert len(result.data) == 0
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
@@ -158,6 +161,7 @@ async def test_database_relation_with_charm_libraries(ops_test: OpsTest):
     await verify_crud_operations(ops_test, connection_string)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def verify_primary(ops_test: OpsTest, application_name: str):
     # verify primary is present in hosts provided to application
@@ -175,6 +179,7 @@ async def verify_primary(ops_test: OpsTest, application_name: str):
     assert primary is not None, "Replica set has no primary"
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
@@ -293,6 +298,7 @@ async def test_app_relation_metadata_change(ops_test: OpsTest) -> None:
     await verify_crud_operations(ops_test, scaled_down_string)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_user_with_extra_roles(ops_test: OpsTest):
     """Test superuser actions (ie creating a new user and creating a new database)."""
@@ -326,6 +332,7 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
     assert result.data["acknowledged"] is True
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_two_applications_doesnt_share_the_same_relation_data(ops_test: OpsTest):
     """Test that two different application connect to the database with different credentials."""
@@ -362,6 +369,7 @@ async def test_two_applications_doesnt_share_the_same_relation_data(ops_test: Op
     assert application_connection_string != another_application_connection_string
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_an_application_can_connect_to_multiple_database_clusters(ops_test: OpsTest):
     """Test that an application can connect to different clusters of the same database."""
@@ -397,6 +405,7 @@ async def test_an_application_can_connect_to_multiple_database_clusters(ops_test
     assert application_connection_string != another_application_connection_string
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_an_application_can_connect_to_multiple_aliased_database_clusters(ops_test: OpsTest):
     """Test that an application can connect to different clusters of the same database."""
@@ -435,6 +444,7 @@ async def test_an_application_can_connect_to_multiple_aliased_database_clusters(
     assert application_connection_string != another_application_connection_string
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_an_application_can_request_multiple_databases(ops_test: OpsTest):
     """Test that an application can request additional databases using the same interface."""
@@ -458,6 +468,7 @@ async def test_an_application_can_request_multiple_databases(ops_test: OpsTest):
     assert first_database_connection_string != second_database_connection_string
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     """Verify removed applications no longer have access to the database."""

@@ -36,6 +36,7 @@ async def get_address(ops_test: OpsTest, app_name=DATABASE_APP_NAME, unit_num=0)
     return address
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def verify_endpoints(ops_test: OpsTest, unit):
     """Verifies mongodb endpoint is functional on a given unit."""
@@ -52,6 +53,7 @@ async def verify_endpoints(ops_test: OpsTest, unit):
     assert mongo_resp.text.count("mongo") > 10
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
@@ -73,6 +75,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_endpoints(ops_test: OpsTest):
     """Sanity check that endpoints are running."""
@@ -81,6 +84,7 @@ async def test_endpoints(ops_test: OpsTest):
         await verify_endpoints(ops_test, unit)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_endpoints_new_password(ops_test: OpsTest):
     """Verify that endpoints still function correctly after the monitor user password changes."""
@@ -96,6 +100,7 @@ async def test_endpoints_new_password(ops_test: OpsTest):
         await verify_endpoints(ops_test, unit)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     """Verify that endpoint still function correctly after a network cut."""

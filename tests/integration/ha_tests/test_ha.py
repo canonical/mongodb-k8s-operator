@@ -83,6 +83,7 @@ def chaos_mesh(ops_test: OpsTest) -> None:
     destroy_chaos_mesh(ops_test.model.info.name)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
@@ -106,6 +107,7 @@ async def test_build_and_deploy(ops_test: OpsTest, cmd_mongodb_charm) -> None:
     await relate_mongodb_and_application(ops_test, mongodb_application_name, application_name)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_storage_re_use(ops_test, continuous_writes):
     """Verifies that database units with attached storage correctly repurpose storage.
@@ -154,6 +156,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_scale_up_capablities(ops_test: OpsTest, continuous_writes) -> None:
@@ -179,6 +182,7 @@ async def test_scale_up_capablities(ops_test: OpsTest, continuous_writes) -> Non
     await verify_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> None:
@@ -221,6 +225,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
     await verify_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_replication_across_members(ops_test: OpsTest, continuous_writes) -> None:
     """Check consistency, ie write to primary, read data from secondaries."""
@@ -228,6 +233,7 @@ async def test_replication_across_members(ops_test: OpsTest, continuous_writes) 
     await verify_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes, cmd_mongodb_charm) -> None:
     """Verify unique clusters do not share DBs."""
@@ -268,6 +274,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes, cmd_mong
     await verify_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     # locate primary unit
@@ -326,6 +333,7 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_freeze_db_process(ops_test, continuous_writes):
     # locate primary unit
@@ -390,6 +398,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_restart_db_process(ops_test, continuous_writes):
     # locate primary unit
@@ -438,6 +447,7 @@ async def test_restart_db_process(ops_test, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
     mongodb_application_name = await get_application_name(ops_test, APP_NAME)
@@ -509,6 +519,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes):
     mongodb_application_name = await get_application_name(ops_test, APP_NAME)
@@ -580,6 +591,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes):
     await verify_writes(ops_test)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     app = await get_application_name(ops_test, APP_NAME)

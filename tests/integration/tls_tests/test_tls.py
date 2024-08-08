@@ -36,6 +36,7 @@ DB_SERVICE = "mongod.service"
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def check_certs_correctly_distributed(
     ops_test: OpsTest, unit: Unit, app_name: str | None = None
@@ -80,6 +81,7 @@ async def check_certs_correctly_distributed(
         ), f"Relation Content for {cert_type}-cert:\n{relation_cert}\nFile Content:\n{cert_file_content}\nMismatch."
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
@@ -118,6 +120,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             )
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_enable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS enabled after relating to the TLS application."""
@@ -134,6 +137,7 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
         assert await check_tls(ops_test, unit, enabled=True)
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_rotate_tls_key(ops_test: OpsTest) -> None:
     """Verify rotating tls private keys restarts mongod with new certificates.
@@ -203,6 +207,7 @@ async def test_rotate_tls_key(ops_test: OpsTest) -> None:
         ), f"tls is not enabled for {unit.name}."
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_set_tls_key(ops_test: OpsTest) -> None:
     """Verify rotating tls private keys restarts mongod with new certificates.
@@ -287,6 +292,7 @@ async def test_set_tls_key(ops_test: OpsTest) -> None:
         ), f"tls is not enabled for {unit.name}."
 
 
+@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 async def test_disable_tls(ops_test: OpsTest) -> None:
     """Verify each unit has TLS disabled after removing relation to the TLS application."""
