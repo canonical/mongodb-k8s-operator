@@ -1,0 +1,83 @@
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] active: Primary
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-08-08T01:52:44Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  config-server/0 [idle] active: Primary
+  config-server/1 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  02:00:41Z
+
+App            Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             waiting      1  application                   0  10.152.183.157  no       installing agent
+config-server           active       2  mongodb-k8s                   0  10.152.183.51   no       Primary
+s3-integrator           active       1  s3-integrator  latest/edge   31  10.152.183.169  no       
+shard-one               active       2  mongodb-k8s                   1  10.152.183.202  no       
+shard-two               active       1  mongodb-k8s                   2  10.152.183.222  no       Primary
+
+Unit              Workload  Agent  Address      Ports  Message
+application/0*    waiting   idle   10.1.126.8          
+config-server/0*  active    idle   10.1.126.13         Primary
+config-server/1   active    idle   10.1.126.14         
+s3-integrator/0*  active    idle   10.1.126.23         
+shard-one/0*      active    idle   10.1.126.19         
+shard-one/1       active    idle   10.1.126.20         Primary
+shard-two/0*      active    idle   10.1.126.24         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-config-server-0: 01:42:44 ERROR unit.config-server/0.juju-log config-server:6: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of pitr: unable check PITR config status: get config: missed config"}\n', stderr=''
+unit-config-server-0: 01:42:46 ERROR unit.config-server/0.juju-log config-server:7: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of pitr: unable check PITR config status: get config: missed config"}\n', stderr=''
+unit-config-server-0: 01:42:49 ERROR unit.config-server/0.juju-log config-server:6: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of pitr: unable check PITR config status: get config: missed config"}\n', stderr=''
+unit-config-server-0: 01:42:51 ERROR unit.config-server/0.juju-log config-server:7: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of pitr: unable check PITR config status: get config: missed config"}\n', stderr=''
+unit-shard-one-0: 01:47:39 ERROR unit.shard-one/0.juju-log Backup failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-0: 01:47:41 ERROR unit.shard-one/0.juju-log List-backups failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-0: 01:47:42 ERROR unit.shard-one/0.juju-log Restore failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
