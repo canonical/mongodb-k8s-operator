@@ -4,7 +4,7 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..ha_tests.helpers import get_mongo_client
+from ..ha_tests.helpers import get_direct_mongo_client
 from ..helpers import (
     METADATA,
     get_leader_id,
@@ -131,8 +131,9 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
         idle_period=15,
         status="active",
     )
-
-    mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
+    mongos_client = await get_direct_mongo_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
 
     # verify sharded cluster config
     assert has_correct_shards(
@@ -146,7 +147,9 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
 async def test_sharding(ops_test: OpsTest) -> None:
     """Tests writing data to mongos gets propagated to shards."""
     # write data to mongos on both shards.
-    mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
+    mongos_client = await get_direct_mongo_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
 
     # write data to shard two
     write_data_to_mongodb(
@@ -167,7 +170,7 @@ async def test_sharding(ops_test: OpsTest) -> None:
     mongos_client.admin.command("movePrimary", "animals_database_2", to=SHARD_THREE_APP_NAME)
 
     # log into shard two verify data
-    shard_two_client = await get_mongo_client(ops_test, app_name=SHARD_TWO_APP_NAME, mongos=False)
+    shard_two_client = await get_direct_mongo_client(ops_test, app_name=SHARD_TWO_APP_NAME)
 
     has_correct_data = verify_data_mongodb(
         shard_two_client,
@@ -179,9 +182,8 @@ async def test_sharding(ops_test: OpsTest) -> None:
     assert has_correct_data, "data not written to shard-two"
 
     # log into shard 2 verify data
-    shard_three_client = await get_mongo_client(
-        ops_test, app_name=SHARD_THREE_APP_NAME, mongos=False
-    )
+
+    shard_three_client = await get_direct_mongo_client(ops_test, app_name=SHARD_THREE_APP_NAME)
 
     has_correct_data = verify_data_mongodb(
         shard_three_client,
@@ -255,7 +257,9 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
     - Config server supp    orts removing multiple shards.
     """
     # turn off balancer.
-    mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
+    mongos_client = await get_direct_mongo_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
     mongos_client.admin.command("balancerStop")
     balancer_state = mongos_client.admin.command("balancerStatus")
     assert balancer_state["mode"] == "off", "balancer was not successfully turned off"
@@ -330,7 +334,9 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
         raise_on_error=False,
     )
 
-    mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
+    mongos_client = await get_direct_mongo_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
 
     # verify sharded cluster config
     assert has_correct_shards(
@@ -382,7 +388,9 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
         raise_on_error=False,
     )
 
-    mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
+    mongos_client = await get_direct_mongo_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
 
     # verify sharded cluster config
     assert has_correct_shards(

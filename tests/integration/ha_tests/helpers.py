@@ -328,7 +328,7 @@ async def get_replica_set_primary(
     use_subprocess_to_get_password=False,
 ) -> Optional[Unit]:
     """Returns the primary unit name based no the replica set host."""
-    with await get_mongo_client(
+    with await get_direct_mongo_client(
         ops_test, excluded, use_subprocess_to_get_password=use_subprocess_to_get_password
     ) as client:
         data = client.admin.command("replSetGetStatus")
@@ -349,7 +349,7 @@ async def get_replica_set_primary(
 
 async def count_primaries(ops_test: OpsTest) -> int:
     """Returns the number of primaries in a replica set."""
-    with await get_mongo_client(ops_test) as client:
+    with await get_direct_mongo_client(ops_test) as client:
         data = client.admin.command("replSetGetStatus")
 
     return len([member for member in data["members"] if member["stateStr"] == "PRIMARY"])
@@ -366,7 +366,7 @@ async def fetch_replica_set_members(
     """
     # connect to replica set uri
     # get ips from MongoDB replica set configuration
-    with await get_mongo_client(
+    with await get_direct_mongo_client(
         ops_test, use_subprocess_to_get_password=use_subprocess_to_get_password
     ) as client:
         data = client.admin.command("replSetGetConfig")
@@ -375,27 +375,25 @@ async def fetch_replica_set_members(
 
 
 async def get_direct_mongo_client(
-    ops_test: OpsTest, unit: str, use_subprocess_to_get_password=False
-) -> MongoClient:
-    """Returns a direct mongodb client to specific unit."""
-    url = await mongodb_uri(
-        ops_test,
-        [int(unit.split("/")[1])],
-        use_subprocess_to_get_password=use_subprocess_to_get_password,
-    )
-    return MongoClient(url, directConnection=True)
-
-
-async def get_mongo_client(
     ops_test: OpsTest,
+    unit: str = None,
     excluded: List[str] = [],
     app_name: str = None,
     use_subprocess_to_get_password=False,
     mongos: bool = False,
 ) -> MongoClient:
     """Returns a direct mongodb client potentially passing over some of the units."""
-    mongodb_name = app_name or await get_application_name(ops_test, APP_NAME)
     port = MONGOS_PORT if mongos else MONGOD_PORT
+    if unit:
+        url = await mongodb_uri(
+            ops_test,
+            [int(unit.split("/")[1])],
+            use_subprocess_to_get_password=use_subprocess_to_get_password,
+            port=port,
+        )
+        return MongoClient(url, directConnection=True)
+
+    mongodb_name = app_name or await get_application_name(ops_test, APP_NAME)
 
     for unit in ops_test.model.applications[mongodb_name].units:
         if unit.name not in excluded and unit.workload_status == "active":

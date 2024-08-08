@@ -315,7 +315,7 @@ async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
 
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
-    await helpers.insert_unwanted_data(ops_test)
+    await helpers.insert_unwanted_data(ops_test, app_name=db_app_name)
     new_number_of_writes = await ha_helpers.count_writes(ops_test)
     assert new_number_of_writes > number_writes, "No writes to be cleared after restoring."
 
