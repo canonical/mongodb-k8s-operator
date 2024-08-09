@@ -4,7 +4,14 @@
 import json
 
 from pytest_operator.plugin import OpsTest
-from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
+from tenacity import (
+    RetryError,
+    Retrying,
+    retry,
+    stop_after_attempt,
+    stop_after_delay,
+    wait_fixed,
+)
 
 from ..helpers import get_application_relation_data
 
@@ -50,12 +57,14 @@ async def get_secret_data(ops_test, secret_uri):
     return json.loads(stdout)[secret_unique_id]["content"]["Data"]
 
 
+@retry(stop=stop_after_attempt(10), wait=wait_fixed(15), reraise=True)
 async def get_connection_string(
     ops_test: OpsTest, app_name, relation_name, relation_id=None, relation_alias=None
 ) -> str:
     secret_uri = await get_application_relation_data(
         ops_test, app_name, relation_name, "secret-user", relation_id, relation_alias
     )
+    assert secret_uri, "No secret URI found"
 
     first_relation_user_data = await get_secret_data(ops_test, secret_uri)
     return first_relation_user_data.get("uris")
