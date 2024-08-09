@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Charm code for MongoDB service on Kubernetes."""
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 import json
 import logging
