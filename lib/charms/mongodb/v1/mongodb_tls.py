@@ -1,4 +1,4 @@
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """In this class we manage client database relations.
@@ -38,7 +38,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 logger = logging.getLogger(__name__)
 

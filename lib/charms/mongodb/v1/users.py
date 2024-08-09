@@ -1,6 +1,6 @@
 """Users configuration for MongoDB."""
 
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 from typing import Set
 
@@ -12,7 +12,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 
 class MongoDBUser:
