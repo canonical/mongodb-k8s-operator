@@ -1,0 +1,40 @@
+[32mINFO    [0m juju.model:model.py:2958 Waiting for model:
+  application/0 [idle] active: received database credentials of the second database
+  application/1 [idle] active: received database credentials of the second database
+  mongodb-k8s/0 [executing] active: Primary
+  mongodb-k8s/1 [executing] active: 
+  another-database/0 [idle] active: 
+  another-database/1 [idle] active: Primary
+  mongodb-k8s/0 [executing] active: Primary
+  mongodb-k8s/1 [executing] active: 
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'db.runCommand({ replSetGetStatus : 1 });\' "mongodb://relation-2:GD7CKTTUbJA2AveimR0MdwQcibFDDZae@mongodb-k8s-0.mongodb-k8s-endpoints,mongodb-k8s-1.mongodb-k8s-endpoints/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[1m[31mERROR   [0m integration.helpers:helpers.py:224 code 1; stdout ''; stderr: 'MongoServerError: Authentication failed.\ncommand terminated with exit code 1\n'
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  01:48:33Z
+
+App                  Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-application           active      1  application             1  10.152.183.86   no       received database credentials of the first database
+another-database              active      2  mongodb-k8s             1  10.152.183.144  no       
+application                   active      2  application             0  10.152.183.190  no       received database credentials of the second database
+mongodb-k8s                   active      2  mongodb-k8s             0  10.152.183.91   no       Primary
+
+Unit                    Workload  Agent  Address      Ports  Message
+another-application/0*  active    idle   10.1.55.157         received database credentials of the first database
+another-database/0      active    idle   10.1.55.149         
+another-database/1*     active    idle   10.1.55.148         Primary
+application/0*          active    idle   10.1.55.142         received database credentials of the second database
+application/1           active    idle   10.1.55.143         received database credentials of the second database
+mongodb-k8s/0*          active    idle   10.1.55.141         Primary
+mongodb-k8s/1           active    idle   10.1.55.140         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-mongodb-k8s-3: 01:43:10 ERROR unit.mongodb-k8s/3.juju-log mongodb-k8s/3.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66b8172dc60f7fa1e4e4680f, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0016522739999800251>]>
+unit-mongodb-k8s-2: 01:44:09 ERROR unit.mongodb-k8s/2.juju-log mongodb-k8s/2.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66b81768a095c261e5d1e72e, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0006293589999586402>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
