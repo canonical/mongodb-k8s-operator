@@ -1,4 +1,4 @@
-# Copyright 2023 Canonical Ltd.
+# Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 """In this class, we manage relations between config-servers and shards.
@@ -22,7 +22,7 @@ from charms.mongodb.v1.mongodb import (
     OperationFailure,
     PyMongoError,
 )
-from charms.mongodb.v1.mongodb_provider import LEGACY_REL_NAME, REL_NAME
+from charms.mongodb.v1.mongodb_provider import REL_NAME
 from charms.mongodb.v1.mongos import (
     BalancerNotEnabledError,
     MongosConnection,
@@ -63,7 +63,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 8
 
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
@@ -368,9 +368,6 @@ class ShardingProvider(Object):
             and self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
         ):
             return BlockedStatus("sharding interface cannot be used by replicas")
-
-        if self.model.relations[LEGACY_REL_NAME]:
-            return BlockedStatus(f"Sharding roles do not support {LEGACY_REL_NAME} interface.")
 
         if self.model.relations[REL_NAME]:
             return BlockedStatus(f"Sharding roles do not support {REL_NAME} interface.")
@@ -754,9 +751,9 @@ class ConfigServerRequirer(Object):
         if not self.pass_sanity_hook_checks(event):
             return False
 
-        # occasionally, broken events have no application, in these scenarios nothing should be
-        # processed.
-        if not event.relation.app and isinstance(event, RelationBrokenEvent):
+        # Edge case for DPE-4998
+        # TODO: Remove this when https://github.com/canonical/operator/issues/1306 is fixed.
+        if event.relation.app is None:
             return False
 
         mongos_hosts = event.relation.data[event.relation.app].get(HOSTS_KEY)
@@ -903,9 +900,6 @@ class ConfigServerRequirer(Object):
             and self.model.relations[Config.Relations.CONFIG_SERVER_RELATIONS_NAME]
         ):
             return BlockedStatus("sharding interface cannot be used by replicas")
-
-        if self.model.get_relation(LEGACY_REL_NAME):
-            return BlockedStatus(f"Sharding roles do not support {LEGACY_REL_NAME} interface.")
 
         if self.model.get_relation(REL_NAME):
             return BlockedStatus(f"Sharding roles do not support {REL_NAME} interface.")
