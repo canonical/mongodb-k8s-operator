@@ -107,7 +107,7 @@ async def insert_unwanted_data(ops_test: OpsTest, app_name: str) -> None:
     """Inserts the data into the MongoDB cluster via primary replica."""
     primary_unit = await get_replica_set_primary(ops_test, application_name=app_name)
     with await get_direct_mongo_client(ops_test, unit=primary_unit.name) as client:
-        db = client["new-db"]
+        db = client["continuous_writes_database"]
         test_collection = db["test_collection"]
         test_collection.insert_one({"unwanted_data": "bad data 1"})
         test_collection.insert_one({"unwanted_data": "bad data 2"})

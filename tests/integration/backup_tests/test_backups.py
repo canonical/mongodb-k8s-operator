@@ -371,7 +371,7 @@ async def test_restore_new_cluster(
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
     )
 
-    writes_in_old_cluster = await ha_helpers.get_total_writes(ops_test)
+    writes_in_old_cluster = await ha_helpers.count_writes(ops_test)
     assert writes_in_old_cluster > 0, "old cluster has no writes."
 
     # create a backup
