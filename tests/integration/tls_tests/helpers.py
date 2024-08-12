@@ -10,7 +10,7 @@ import yaml
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
-from ..helpers import get_mongo_cmd, get_password
+from ..helpers import get_app_name, get_mongo_cmd, get_password
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,13 @@ class ProcessError(Exception):
     """Raised when a process fails."""
 
 
-async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> bool:
+async def check_tls(
+    ops_test: OpsTest,
+    unit: ops.model.Unit,
+    enabled: bool,
+    app_name: str | None = None,
+    mongos: bool = False,
+) -> bool:
     """Returns whether TLS is enabled on the specific MongoDB instance.
 
     Args:
@@ -39,7 +45,7 @@ async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> b
             stop=stop_after_attempt(10), wait=wait_exponential(multiplier=1, min=2, max=30)
         ):
             with attempt:
-                return_code = await run_tls_check(ops_test, unit)
+                return_code = await run_tls_check(ops_test, unit, app_name, mongos=mongos)
                 tls_enabled = return_code == 0
                 if enabled != tls_enabled:
                     raise ValueError(
@@ -50,22 +56,34 @@ async def check_tls(ops_test: OpsTest, unit: ops.model.Unit, enabled: bool) -> b
         return False
 
 
-def parse_hostname(hostname: str) -> str:
+def parse_hostname(hostname: str, app_name: str) -> str:
     """Parses a hostname to the corresponding endpoint version."""
-    return hostname.replace("/", "-") + ".mongodb-k8s-endpoints"
+    unit_id = hostname.split("/")[1]
+    return f"{app_name}-{unit_id}.{app_name}-endpoints"
 
 
-async def run_tls_check(ops_test: OpsTest, unit: ops.model.Unit) -> int:
+async def run_tls_check(
+    ops_test: OpsTest, unit: ops.model.Unit, app_name: str | None = None, mongos: bool = False
+) -> int:
     """Returns the return code of the TLS check."""
-    hosts = [parse_hostname(unit.name) for unit in ops_test.model.applications[APP_NAME].units]
+    breakpoint()
+    app_name = app_name or get_app_name(ops_test)
+    port = "27017" if not mongos else "27018"
+    hosts = [
+        f"{parse_hostname(unit.name, app_name)}:{port}"
+        for unit in ops_test.model.applications[app_name].units
+    ]
     hosts = ",".join(hosts)
-    password = await get_password(ops_test, unit_id=0)
-    mongo_uri = f"mongodb://operator:{password}@{hosts}/admin?"
+    password = await get_password(ops_test, unit_id=0, app_name=app_name)
+    extra_args = f"?replicaSet={app_name}" if not mongos else ""
+    mongo_uri = f"mongodb://operator:{password}@{hosts}/admin{extra_args}"
 
     mongo_cmd = await get_mongo_cmd(ops_test, unit.name)
 
+    status_command = "rs.status()" if not mongos else "sh.status()"
+
     mongo_cmd += (
-        f" {mongo_uri} --eval 'rs.status()'"
+        f" {mongo_uri} --eval '{status_command}'"
         f" --tls --tlsCAFile /etc/mongod/external-ca.crt"
         f" --tlsCertificateKeyFile /etc/mongod/external-cert.pem"
     )
@@ -111,6 +129,13 @@ async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) 
         )
 
     return f"{filename}"
+
+
+async def get_file_content(ops_test: OpsTest, unit_name: str, path: str) -> str:
+    filename = await scp_file_preserve_ctime(ops_test, unit_name, path)
+
+    with open(filename, mode="r") as fd:
+        return fd.read()
 
 
 async def time_process_started(ops_test: OpsTest, unit_name: str, process_name: str) -> int:

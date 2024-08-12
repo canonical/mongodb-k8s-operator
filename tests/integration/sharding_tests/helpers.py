@@ -1,7 +1,86 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+from pytest_operator.plugin import OpsTest
+from ..helpers import METADATA
 from typing import List, Optional
+
+SHARD_ONE_APP_NAME = "shard-one"
+SHARD_TWO_APP_NAME = "shard-two"
+CONFIG_SERVER_APP_NAME = "config-server"
+CONFIG_SERVER_REL_NAME = "config-server"
+MONGODB_CHARM_NAME = "mongodb-k8s"
+SHARD_REL_NAME = "sharding"
+CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_NAME]
+TIMEOUT = 15 * 60
+
+
+async def deploy_cluster_components(
+    ops_test: OpsTest, num_units_cluster_config: dict | None = None, channel: str | None = None
+) -> None:
+    if not num_units_cluster_config:
+        num_units_cluster_config = {
+            CONFIG_SERVER_APP_NAME: 2,
+            SHARD_ONE_APP_NAME: 3,
+            SHARD_TWO_APP_NAME: 1,
+        }
+
+    if channel is None:
+        my_charm = await ops_test.build_charm(".")
+    else:
+        my_charm = MONGODB_CHARM_NAME
+
+    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
+    await ops_test.model.deploy(
+        my_charm,
+        resources=resources,
+        num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
+        config={"role": "config-server"},
+        application_name=CONFIG_SERVER_APP_NAME,
+        channel=channel,
+    )
+    await ops_test.model.deploy(
+        my_charm,
+        resources=resources,
+        num_units=num_units_cluster_config[SHARD_ONE_APP_NAME],
+        config={"role": "shard"},
+        application_name=SHARD_ONE_APP_NAME,
+        channel=channel,
+    )
+    await ops_test.model.deploy(
+        my_charm,
+        resources=resources,
+        num_units=num_units_cluster_config[SHARD_TWO_APP_NAME],
+        config={"role": "shard"},
+        application_name=SHARD_TWO_APP_NAME,
+        channel=channel,
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+        raise_on_blocked=False,
+        raise_on_error=False,
+    )
+
+
+async def integrate_cluster(ops_test: OpsTest) -> None:
+    """Integrates the cluster components with each other."""
+    await ops_test.model.integrate(
+        f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+    await ops_test.model.integrate(
+        f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
+        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=15,
+        status="active",
+    )
 
 
 def get_cluster_shards(mongos_client) -> set:
