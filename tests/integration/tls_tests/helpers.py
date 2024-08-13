@@ -5,18 +5,30 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+import json
+import os
 import ops
 import yaml
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_exponential
 
-from ..helpers import get_app_name, get_mongo_cmd, get_password
+from ..helpers import (
+    get_app_name,
+    get_application_relation_data,
+    get_mongo_cmd,
+    get_password,
+    get_secret_content,
+    get_secret_id,
+)
 
 logger = logging.getLogger(__name__)
 
 PORT = 27017
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
+EXTERNAL_CERT_PATH = "/etc/mongod/external-ca.crt"
+INTERNAL_CERT_PATH = "/etc/mongod/internal-ca.crt"
+TLS_RELATION_NAME = "certificates"
 
 
 class ProcessError(Exception):
@@ -66,7 +78,6 @@ async def run_tls_check(
     ops_test: OpsTest, unit: ops.model.Unit, app_name: str | None = None, mongos: bool = False
 ) -> int:
     """Returns the return code of the TLS check."""
-    breakpoint()
     app_name = app_name or get_app_name(ops_test)
     port = "27017" if not mongos else "27018"
     hosts = [
@@ -117,7 +128,7 @@ async def scp_file_preserve_ctime(ops_test: OpsTest, unit_name: str, path: str) 
     # Retrieving the file
     filename = path.split("/")[-1]
     complete_command = f"scp --container mongod {unit_name}:{path} {filename}"
-    return_code, scp_output, stderr = await ops_test.juju(*complete_command.split())
+    return_code, _, stderr = await ops_test.juju(*complete_command.split())
 
     if return_code != 0:
         logger.error(stderr)
@@ -181,3 +192,46 @@ def process_ls_time(ls_output):
 def process_pebble_time(changes_output):
     """Parse time representation as returned by the 'pebble changes' command."""
     return datetime.strptime(changes_output, "%H:%M")
+
+
+async def check_certs_correctly_distributed(
+    ops_test: OpsTest, unit: ops.Unit, app_name: str | None = None
+) -> None:
+    """Comparing expected vs distributed certificates.
+
+    Verifying certificates downloaded on the charm against the ones distributed by the TLS operator
+    """
+    app_name = app_name or await get_app_name(ops_test)
+    unit_secret_id = await get_secret_id(ops_test, unit.name)
+    unit_secret_content = await get_secret_content(ops_test, unit_secret_id)
+
+    # Get the values for certs from the relation, as provided by TLS Charm
+    certificates_raw_data = await get_application_relation_data(
+        ops_test, app_name, TLS_RELATION_NAME, "certificates"
+    )
+    certificates_data = json.loads(certificates_raw_data)
+
+    # compare the TLS resources stored on the disk of the unit with the ones from the TLS relation
+    for cert_type, cert_path in [("int", INTERNAL_CERT_PATH), ("ext", EXTERNAL_CERT_PATH)]:
+        unit_csr = unit_secret_content[f"{cert_type}-csr-secret"]
+        tls_item = [
+            data
+            for data in certificates_data
+            if data["certificate_signing_request"].rstrip() == unit_csr.rstrip()
+        ][0]
+
+        # Read the content of the cert file stored in the unit
+        cert_file_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, cert_path)
+        with open(cert_file_copy_path, mode="r") as f:
+            cert_file_content = f.read()
+
+        # cleanup the file
+        os.remove(cert_file_copy_path)
+
+        # Get the external cert value from the relation
+        relation_cert = "\n".join(tls_item["chain"]).strip()
+
+        # confirm that they match
+        assert (
+            relation_cert == cert_file_content
+        ), f"Relation Content for {cert_type}-cert:\n{relation_cert}\nFile Content:\n{cert_file_content}\nMismatch."
