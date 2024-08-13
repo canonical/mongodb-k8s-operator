@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-from pytest_operator.plugin import OpsTest
-from ..helpers import METADATA
 from typing import List, Optional
+
+from pytest_operator.plugin import OpsTest
+
+from ..helpers import METADATA
 
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"

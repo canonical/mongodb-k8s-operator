@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 
-import json
-import os
 import ops
 import yaml
 from pytest_operator.plugin import OpsTest

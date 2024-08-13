@@ -7,18 +7,15 @@ import time
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import (
-    check_or_scale_app,
-    get_app_name,
-)
+from ..helpers import check_or_scale_app, get_app_name
 from .helpers import (
-    METADATA,
-    check_tls,
-    check_certs_correctly_distributed,
-    time_file_created,
-    time_process_started,
     EXTERNAL_CERT_PATH,
     INTERNAL_CERT_PATH,
+    METADATA,
+    check_certs_correctly_distributed,
+    check_tls,
+    time_file_created,
+    time_process_started,
 )
 
 TLS_CERTIFICATES_APP_NAME = "self-signed-certificates"
