@@ -1,0 +1,100 @@
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.createCollection("collection_9boo"))\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017,10.1.28.79:27017,10.1.28.80:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'ok': 1})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.collection_9boo.insertMany([\n    {\n        "uid": 123,\n        "label": "Lorem",\n        "price": 2.3,\n        "currency": "eur",\n        "exp_date": "2022-12-12"\n    },\n    {\n        "uid": 3456,\n        "label": "Ipsum",\n        "price": 18,\n        "currency": "usd",\n        "exp_date": "2023-01-13"\n    }\n]))\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017,10.1.28.79:27017,10.1.28.80:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'acknowledged': True, 'insertedIds': {'0': {'$oid': '66babdd1c7abb0199293e23d'}, '1': {'$oid': '66babdd1c7abb0199293e23e'}}})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.getMongo().setReadPref("primary"))\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017,10.1.28.79:27017,10.1.28.80:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=None)'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.collection_9boo.countDocuments({"$or": [{"uid": 123}, {"uid": 3456}]}))\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017,10.1.28.79:27017,10.1.28.80:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=2)'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.collection_9boo.find({"$or": [{"uid": 123}, {"uid": 3456}]}).sort({uid: 1}).toArray())\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017,10.1.28.79:27017,10.1.28.80:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[{'_id': {'$oid': '66babdd1c7abb0199293e23d'}, 'uid': 123, 'label': 'Lorem', 'price': 2.3, 'currency': 'eur', 'exp_date': '2022-12-12'}, {'_id': {'$oid': '66babdd1c7abb0199293e23e'}, 'uid': 3456, 'label': 'Ipsum', 'price': 18, 'currency': 'usd', 'exp_date': '2023-01-13'}])'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.getMongo().setReadPref("secondary"))\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017,10.1.28.79:27017,10.1.28.80:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=None)'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.collection_9boo.countDocuments({"$or": [{"uid": 123}, {"uid": 3456}]}))\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017,10.1.28.79:27017,10.1.28.80:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=2)'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.collection_9boo.find({"$or": [{"uid": 123}, {"uid": 3456}]}).sort({uid: 1}).toArray())\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017,10.1.28.79:27017,10.1.28.80:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[{'_id': {'$oid': '66babdd1c7abb0199293e23d'}, 'uid': 123, 'label': 'Lorem', 'price': 2.3, 'currency': 'eur', 'exp_date': '2022-12-12'}, {'_id': {'$oid': '66babdd1c7abb0199293e23e'}, 'uid': 3456, 'label': 'Ipsum', 'price': 18, 'currency': 'usd', 'exp_date': '2023-01-13'}])'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: "mongosh --quiet --eval 'JSON.stringify(rs.status())' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017,10.1.28.79:27017,10.1.28.80:27017/admin"
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data={'set': 'mongodb-k8s', 'date': '2024-08-13T01:59:21.123Z', 'myState': 1, 'term': {'low': 2, 'high': 0, 'unsigned': False}, 'syncSourceHost': '', 'syncSourceId': -1, 'heartbeatIntervalMillis': {'low': 2000, 'high': 0, 'unsigned': False}, 'majorityVoteCount': 2, 'writeMajorityCount': 2, 'votingMembersCount': 3, 'writableVotingMembersCount': 3, 'optimes': {'lastCommittedOpTime': {'ts': {'$timestamp': '7402437806091403266'}, 't': {'low': 2, 'high': 0, 'unsigned': False}}, 'lastCommittedWallTime': '2024-08-13T01:59:19.092Z', 'readConcernMajorityOpTime': {'ts': {'$timestamp': '7402437806091403266'}, 't': {'low': 2, 'high': 0, 'unsigned': False}}, 'appliedOpTime': {'ts': {'$timestamp': '7402437806091403266'}, 't': {'low': 2, 'high': 0, 'unsigned': False}}, 'durableOpTime': {'ts': {'$timestamp': '7402437806091403266'}, 't': {'low': 2, 'high': 0, 'unsigned': False}}, 'lastAppliedWallTime': '2024-08-13T01:59:19.092Z', 'lastDurableWallTime': '2024-08-13T01:59:19.092Z'}, 'lastStableRecoveryTimestamp': {'$timestamp': '7402437784616566786'}, 'electionCandidateMetrics': {'lastElectionReason': 'stepUpRequestSkipDryRun', 'lastElectionDate': '2024-08-13T01:58:10.307Z', 'electionTerm': {'low': 2, 'high': 0, 'unsigned': False}, 'lastCommittedOpTimeAtElection': {'ts': {'$timestamp': '7402437505443692546'}, 't': {'low': 1, 'high': 0, 'unsigned': False}}, 'lastSeenOpTimeAtElection': {'ts': {'$timestamp': '7402437505443692546'}, 't': {'low': 1, 'high': 0, 'unsigned': False}}, 'numVotesNeeded': 2, 'priorityAtElection': 1, 'electionTimeoutMillis': {'low': 10000, 'high': 0, 'unsigned': False}, 'priorPrimaryMemberId': 1, 'numCatchUpOps': {'low': 0, 'high': 0, 'unsigned': False}, 'newTermStartDate': '2024-08-13T01:58:10.330Z', 'wMajorityWriteAvailabilityDate': '2024-08-13T01:58:11.314Z'}, 'electionParticipantMetrics': {'votedForCandidate': True, 'electionTerm': {'low': 1, 'high': 0, 'unsigned': False}, 'lastVoteDate': '2024-08-13T01:42:12.356Z', 'electionCandidateMemberId': 1, 'voteReason': '', 'lastAppliedOpTimeAtElection': {'ts': {'$timestamp': '7402433347915350017'}, 't': {'low': -1, 'high': -1, 'unsigned': False}}, 'maxAppliedOpTimeInSet': {'ts': {'$timestamp': '7402433347915350017'}, 't': {'low': -1, 'high': -1, 'unsigned': False}}, 'priorityAtElection': 1}, 'members': [{'_id': 0, 'name': 'mongodb-k8s-1.mongodb-k8s-endpoints:27017', 'health': 1, 'state': 1, 'stateStr': 'PRIMARY', 'uptime': 1042, 'optime': {'ts': {'$timestamp': '7402437806091403266'}, 't': {'low': 2, 'high': 0, 'unsigned': False}}, 'optimeDate': '2024-08-13T01:59:19.000Z', 'lastAppliedWallTime': '2024-08-13T01:59:19.092Z', 'lastDurableWallTime': '2024-08-13T01:59:19.092Z', 'syncSourceHost': '', 'syncSourceId': -1, 'infoMessage': '', 'electionTime': {'$timestamp': '7402437509738659841'}, 'electionDate': '2024-08-13T01:58:10.000Z', 'configVersion': 9, 'configTerm': 2, 'self': True, 'lastHeartbeatMessage': ''}, {'_id': 1, 'name': 'mongodb-k8s-0.mongodb-k8s-endpoints:27017', 'health': 1, 'state': 2, 'stateStr': 'SECONDARY', 'uptime': 44, 'optime': {'ts': {'$timestamp': '7402437806091403266'}, 't': {'low': 2, 'high': 0, 'unsigned': False}}, 'optimeDurable': {'ts': {'$timestamp': '7402437806091403266'}, 't': {'low': 2, 'high': 0, 'unsigned': False}}, 'optimeDate': '2024-08-13T01:59:19.000Z', 'optimeDurableDate': '2024-08-13T01:59:19.000Z', 'lastAppliedWallTime': '2024-08-13T01:59:19.092Z', 'lastDurableWallTime': '2024-08-13T01:59:19.092Z', 'lastHeartbeat': '2024-08-13T01:59:20.318Z', 'lastHeartbeatRecv': '2024-08-13T01:59:20.245Z', 'pingMs': {'low': 0, 'high': 0, 'unsigned': False}, 'lastHeartbeatMessage': '', 'syncSourceHost': 'mongodb-k8s-2.mongodb-k8s-endpoints:27017', 'syncSourceId': 2, 'infoMessage': '', 'configVersion': 9, 'configTerm': 2}, {'_id': 2, 'name': 'mongodb-k8s-2.mongodb-k8s-endpoints:27017', 'health': 1, 'state': 2, 'stateStr': 'SECONDARY', 'uptime': 1018, 'optime': {'ts': {'$timestamp': '7402437806091403266'}, 't': {'low': 2, 'high': 0, 'unsigned': False}}, 'optimeDurable': {'ts': {'$timestamp': '7402437806091403266'}, 't': {'low': 2, 'high': 0, 'unsigned': False}}, 'optimeDate': '2024-08-13T01:59:19.000Z', 'optimeDurableDate': '2024-08-13T01:59:19.000Z', 'lastAppliedWallTime': '2024-08-13T01:59:19.092Z', 'lastDurableWallTime': '2024-08-13T01:59:19.092Z', 'lastHeartbeat': '2024-08-13T01:59:20.316Z', 'lastHeartbeatRecv': '2024-08-13T01:59:19.254Z', 'pingMs': {'low': 0, 'high': 0, 'unsigned': False}, 'lastHeartbeatMessage': '', 'syncSourceHost': 'mongodb-k8s-1.mongodb-k8s-endpoints:27017', 'syncSourceId': 0, 'infoMessage': '', 'configVersion': 9, 'configTerm': 2}], 'ok': 1, '$clusterTime': {'clusterTime': {'$timestamp': '7402437806091403266'}, 'signature': {'hash': '7mb4H08Shw17S/jaK3uP53Kdvkg=', 'keyId': {'low': 5, 'high': 1723513332, 'unsigned': False}}}, 'operationTime': {'$timestamp': '7402437806091403266'}})'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.collection_9boo.countDocuments({"$or": [{"uid": 123}, {"uid": 3456}]}))\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=2)'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.collection_9boo.find({"$or": [{"uid": 123}, {"uid": 3456}]}).sort({uid: 1}).toArray())\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.89:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[{'_id': {'$oid': '66babdd1c7abb0199293e23d'}, 'uid': 123, 'label': 'Lorem', 'price': 2.3, 'currency': 'eur', 'exp_date': '2022-12-12'}, {'_id': {'$oid': '66babdd1c7abb0199293e23e'}, 'uid': 3456, 'label': 'Ipsum', 'price': 18, 'currency': 'usd', 'exp_date': '2023-01-13'}])'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.collection_9boo.countDocuments({"$or": [{"uid": 123}, {"uid": 3456}]}))\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.80:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=2)'
+[32mINFO    [0m integration.helpers:helpers.py:196 Running mongo command: 'mongosh --quiet --eval \'EJSON.stringify(db.collection_9boo.find({"$or": [{"uid": 123}, {"uid": 3456}]}).sort({uid: 1}).toArray())\' mongodb://operator:Bh3kWOYMeY1UHjNbYrCbZzzEzkVv9uhk@10.1.28.80:27017/admin?replicaSet=mongodb-k8s'
+[32mINFO    [0m integration.helpers:helpers.py:438 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:443 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:482 Checking pod mongodb-helper is ready...
+[32mINFO    [0m integration.helpers:helpers.py:236 Done: 'namespace(failed=False, succeeded=True, data=[{'_id': {'$oid': '66babdd1c7abb0199293e23d'}, 'uid': 123, 'label': 'Lorem', 'price': 2.3, 'currency': 'eur', 'exp_date': '2022-12-12'}, {'_id': {'$oid': '66babdd1c7abb0199293e23e'}, 'uid': 3456, 'label': 'Ipsum', 'price': 18, 'currency': 'usd', 'exp_date': '2023-01-13'}])'
+[32mINFO    [0m integration.test_charm:test_charm.py:550 2/2 secondaries fully synced with primary.
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  01:59:31Z
+
+App          Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+application           active      1  application             0  10.152.183.18   no       
+mongodb-k8s           active      3  mongodb-k8s             0  10.152.183.209  no       
+
+Unit            Workload  Agent  Address     Ports  Message
+application/0*  active    idle   10.1.28.82         
+mongodb-k8s/0*  active    idle   10.1.28.89         
+mongodb-k8s/1   active    idle   10.1.28.79         
+mongodb-k8s/2   active    idle   10.1.28.80         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-mongodb-k8s-0: 01:42:02 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 911, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-mongodb-k8s-0: 01:42:07 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 911, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-mongodb-k8s-3: 01:57:31 ERROR unit.mongodb-k8s/3.juju-log mongodb-k8s/3.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66babd8a481f7f11ddee37d7, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.000507262999917657>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
