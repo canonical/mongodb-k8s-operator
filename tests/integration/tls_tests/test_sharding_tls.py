@@ -7,8 +7,16 @@ import pytest
 from pytest_operator.plugin import OpsTest
 
 from ..helpers import destroy_cluster, wait_for_mongodb_units_blocked
-from ..tls_tests import helpers as tls_helpers
-from .helpers import deploy_cluster_components, integrate_cluster
+from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
+from .helpers import (
+    EXTERNAL_CERT_PATH,
+    INTERNAL_CERT_PATH,
+    check_certs_correctly_distributed,
+    check_tls,
+    get_file_content,
+    time_file_created,
+    time_process_started,
+)
 
 MONGOD_SERVICE = "mongod.service"
 MONGOS_SERVICE = "mongos.service"
@@ -30,7 +38,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
     await deploy_cluster_components(ops_test)
 
-    # deploy the s3 integrator charm
+    # deploy the self-signed-certificates charm
     await ops_test.model.deploy(CERTS_APP_NAME, channel="stable")
 
     await ops_test.model.wait_for_idle(
@@ -191,13 +199,13 @@ async def check_cluster_tls_disabled(ops_test: OpsTest) -> None:
     # check each replica set is running with TLS enabled
     for cluster_component in CLUSTER_COMPONENTS:
         for unit in ops_test.model.applications[cluster_component].units:
-            assert await tls_helpers.check_tls(
+            assert await check_tls(
                 ops_test, unit, enabled=False, app_name=cluster_component, mongos=False
             ), f"MongoDB TLS not disabled in unit {unit.name}"
 
     # check mongos is running with TLS enabled
     for unit in ops_test.model.applications[CONFIG_SERVER_APP_NAME].units:
-        assert await tls_helpers.check_tls(
+        assert await check_tls(
             ops_test, unit, enabled=False, app_name=CONFIG_SERVER_APP_NAME, mongos=True
         ), f"Mongos TLS not disabled in unit {unit.name}"
 
@@ -206,13 +214,13 @@ async def check_cluster_tls_enabled(ops_test: OpsTest) -> None:
     # check each replica set is running with TLS enabled
     for cluster_component in CLUSTER_COMPONENTS:
         for unit in ops_test.model.applications[cluster_component].units:
-            assert await tls_helpers.check_tls(
+            assert await check_tls(
                 ops_test, unit, enabled=True, app_name=cluster_component, mongos=False
             ), f"MongoDB TLS not enabled in unit {unit.name}"
 
     # check mongos is running with TLS enabled
     for unit in ops_test.model.applications[CONFIG_SERVER_APP_NAME].units:
-        assert await tls_helpers.check_tls(
+        assert await check_tls(
             ops_test, unit, enabled=True, app_name=CONFIG_SERVER_APP_NAME, mongos=True
         ), f"Mongos TLS not enabled in unit {unit.name}"
 
@@ -240,26 +248,26 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
     original_tls_info = {}
     for unit in ops_test.model.applications[app].units:
         original_tls_info[unit.name] = {}
-        original_tls_info[unit.name]["external_cert_contents"] = (
-            await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH)
+        original_tls_info[unit.name]["external_cert_contents"] = await get_file_content(
+            ops_test, unit.name, EXTERNAL_CERT_PATH
         )
-        original_tls_info[unit.name]["internal_cert_contents"] = (
-            await tls_helpers.get_file_content(ops_test, unit.name, tls_helpers.INTERNAL_CERT_PATH)
+        original_tls_info[unit.name]["internal_cert_contents"] = await get_file_content(
+            ops_test, unit.name, INTERNAL_CERT_PATH
         )
-        original_tls_info[unit.name]["external_cert"] = await tls_helpers.time_file_created(
-            ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH
+        original_tls_info[unit.name]["external_cert"] = await time_file_created(
+            ops_test, unit.name, EXTERNAL_CERT_PATH
         )
-        original_tls_info[unit.name]["internal_cert"] = await tls_helpers.time_file_created(
-            ops_test, unit.name, tls_helpers.INTERNAL_CERT_PATH
+        original_tls_info[unit.name]["internal_cert"] = await time_file_created(
+            ops_test, unit.name, INTERNAL_CERT_PATH
         )
-        original_tls_info[unit.name]["mongod_service"] = await tls_helpers.time_process_started(
+        original_tls_info[unit.name]["mongod_service"] = await time_process_started(
             ops_test, unit.name, MONGOD_SERVICE
         )
         if app == CONFIG_SERVER_APP_NAME:
-            original_tls_info[unit.name]["mongos_service"] = (
-                await tls_helpers.time_process_started(ops_test, unit.name, MONGOD_SERVICE)
+            original_tls_info[unit.name]["mongos_service"] = await time_process_started(
+                ops_test, unit.name, MONGOD_SERVICE
             )
-        await tls_helpers.check_certs_correctly_distributed(ops_test, unit, app_name=app)
+        await check_certs_correctly_distributed(ops_test, unit, app_name=app)
 
     # set external and internal key using auto-generated key for each unit
     for unit in ops_test.model.applications[app].units:
@@ -274,27 +282,17 @@ async def rotate_and_verify_certs(ops_test: OpsTest, app: str) -> None:
     # After updating both the external key and the internal key a new certificate request will be
     # made; then the certificates should be available and updated.
     for unit in ops_test.model.applications[app].units:
-        new_external_cert = await tls_helpers.get_file_content(
-            ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH
-        )
-        new_internal_cert = await tls_helpers.get_file_content(
-            ops_test, unit.name, tls_helpers.INTERNAL_CERT_PATH
-        )
-        new_external_cert_time = await tls_helpers.time_file_created(
-            ops_test, unit.name, tls_helpers.EXTERNAL_CERT_PATH
-        )
-        new_internal_cert_time = await tls_helpers.time_file_created(
-            ops_test, unit.name, tls_helpers.INTERNAL_CERT_PATH
-        )
-        new_mongod_service_time = await tls_helpers.time_process_started(
-            ops_test, unit.name, MONGOD_SERVICE
-        )
+        new_external_cert = await get_file_content(ops_test, unit.name, EXTERNAL_CERT_PATH)
+        new_internal_cert = await get_file_content(ops_test, unit.name, INTERNAL_CERT_PATH)
+        new_external_cert_time = await time_file_created(ops_test, unit.name, EXTERNAL_CERT_PATH)
+        new_internal_cert_time = await time_file_created(ops_test, unit.name, INTERNAL_CERT_PATH)
+        new_mongod_service_time = await time_process_started(ops_test, unit.name, MONGOD_SERVICE)
         if app == CONFIG_SERVER_APP_NAME:
-            new_mongos_service_time = await tls_helpers.time_process_started(
+            new_mongos_service_time = await time_process_started(
                 ops_test, unit.name, MONGOS_SERVICE
             )
 
-        await tls_helpers.check_certs_correctly_distributed(ops_test, unit, app_name=app)
+        await check_certs_correctly_distributed(ops_test, unit, app_name=app)
         assert (
             new_external_cert != original_tls_info[unit.name]["external_cert_contents"]
         ), "external cert not rotated"
