@@ -164,7 +164,7 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     """Verifies charm goes into active status when s3 config and creds options are correct."""
     db_app_name = await get_app_name(ops_test)
     choices = string.ascii_letters + string.digits
-    unique_path = "".join([secrets.choice(choices) for _ in range(8)])
+    unique_path = "".join([secrets.choice(choices) for _ in range(16)])
     configuration_parameters = {
         "bucket": "data-charms-testing",
         "path": f"mongodb-vm/test-{unique_path}",
