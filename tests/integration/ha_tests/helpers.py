@@ -329,7 +329,7 @@ async def get_replica_set_primary(
 ) -> Optional[Unit]:
     """Returns the primary unit name based no the replica set host."""
     with await get_direct_mongo_client(
-        ops_test, excluded, use_subprocess_to_get_password=use_subprocess_to_get_password
+        ops_test, excluded=excluded, use_subprocess_to_get_password=use_subprocess_to_get_password
     ) as client:
         data = client.admin.command("replSetGetStatus")
     unit_name = host_to_unit(primary_host(data))
