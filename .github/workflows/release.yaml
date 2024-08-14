@@ -31,8 +31,17 @@ jobs:
       contents: write  # Needed for Allure Report beta
 
   build:
-    name: Build charm
+    name: Build charm | ${{ matrix.path }}
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v19.0.0
+    strategy:
+      matrix:
+        path:
+          - .
+          - tests/integration/ha_tests/application_charm
+          - tests/integration/relation_tests/application-charm
+    with:
+      cache: true
+      path-to-charm-directory: ${{ matrix.path }}
 
   release:
       name: Release charm
