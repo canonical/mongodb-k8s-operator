@@ -1,83 +1,29 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-import json
 import logging
-import os
 import time
 
 import pytest
-from ops import Unit
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import (
-    check_or_scale_app,
-    get_app_name,
-    get_application_relation_data,
-    get_secret_content,
-    get_secret_id,
-)
+from ..helpers import check_or_scale_app, get_app_name
 from .helpers import (
+    EXTERNAL_CERT_PATH,
+    INTERNAL_CERT_PATH,
     METADATA,
+    check_certs_correctly_distributed,
     check_tls,
-    scp_file_preserve_ctime,
     time_file_created,
     time_process_started,
 )
 
 TLS_CERTIFICATES_APP_NAME = "self-signed-certificates"
 DATABASE_APP_NAME = "mongodb-k8s"
-TLS_RELATION_NAME = "certificates"
 TLS_TEST_DATA = "tests/integration/tls_tests/data"
-EXTERNAL_CERT_PATH = "/etc/mongod/external-ca.crt"
-INTERNAL_CERT_PATH = "/etc/mongod/internal-ca.crt"
 DB_SERVICE = "mongod.service"
 
 logger = logging.getLogger(__name__)
-
-
-@pytest.mark.group(1)
-async def check_certs_correctly_distributed(
-    ops_test: OpsTest, unit: Unit, app_name: str | None = None
-) -> None:
-    """Comparing expected vs distributed certificates.
-
-    Verifying certificates downloaded on the charm against the ones distributed by the TLS operator
-    """
-    app_name = app_name or await get_app_name(ops_test)
-    unit_secret_id = await get_secret_id(ops_test, unit.name)
-    unit_secret_content = await get_secret_content(ops_test, unit_secret_id)
-
-    # Get the values for certs from the relation, as provided by TLS Charm
-    certificates_raw_data = await get_application_relation_data(
-        ops_test, app_name, TLS_RELATION_NAME, "certificates"
-    )
-    certificates_data = json.loads(certificates_raw_data)
-
-    # compare the TLS resources stored on the disk of the unit with the ones from the TLS relation
-    for cert_type, cert_path in [("int", INTERNAL_CERT_PATH), ("ext", EXTERNAL_CERT_PATH)]:
-        unit_csr = unit_secret_content[f"{cert_type}-csr-secret"]
-        tls_item = [
-            data
-            for data in certificates_data
-            if data["certificate_signing_request"].rstrip() == unit_csr.rstrip()
-        ][0]
-
-        # Read the content of the cert file stored in the unit
-        cert_file_copy_path = await scp_file_preserve_ctime(ops_test, unit.name, cert_path)
-        with open(cert_file_copy_path, mode="r") as f:
-            cert_file_content = f.read()
-
-        # cleanup the file
-        os.remove(cert_file_copy_path)
-
-        # Get the external cert value from the relation
-        relation_cert = "\n".join(tls_item["chain"]).strip()
-
-        # confirm that they match
-        assert (
-            relation_cert == cert_file_content
-        ), f"Relation Content for {cert_type}-cert:\n{relation_cert}\nFile Content:\n{cert_file_content}\nMismatch."
 
 
 @pytest.mark.group(1)

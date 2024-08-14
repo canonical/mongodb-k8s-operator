@@ -370,7 +370,7 @@ class MongoDBCharm(CharmBase):
             self.app_peer_data["db_initialised"] = str(value)
         else:
             raise ValueError(
-                f"'db_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
+                f"'db_initialised' must be a boolean value. Provided: {value} is of type {type(value)}"
             )
 
     @property
@@ -693,9 +693,15 @@ class MongoDBCharm(CharmBase):
                 self.client_relations.update_app_relation_data()
 
             except NotReadyError:
+                self.status.set_and_share_status(
+                    WaitingStatus("waiting to reconfigure replica set")
+                )
                 logger.info("Deferring reconfigure: another member doing sync right now")
                 event.defer()
             except PyMongoError as e:
+                self.status.set_and_share_status(
+                    WaitingStatus("waiting to reconfigure replica set")
+                )
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
@@ -721,8 +727,17 @@ class MongoDBCharm(CharmBase):
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
-                self.status.set_and_share_status(WaitingStatus("Waiting for MongoDB to start"))
-                return
+                # edge case: mongod will fail to run if 1. they are running as shard and 2. they
+                # have already been added to the cluster with internal membership via TLS and 3.
+                # they remove support for TLS
+                if self.is_role(Config.Role.SHARD) and self.shard.is_shard_tls_missing():
+                    self.status.set_and_share_status(
+                        BlockedStatus("Shard requires TLS to be enabled.")
+                    )
+                    return
+                else:
+                    self.status.set_and_share_status(WaitingStatus("Waiting for MongoDB to start"))
+                    return
 
         # leader should periodically handle configuring the replica set. Incidents such as network
         # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
@@ -1191,6 +1206,9 @@ class MongoDBCharm(CharmBase):
         container.stop(Config.SERVICE_NAME)
 
         container.add_layer("mongod", self._mongod_layer, combine=True)
+        if self.is_role(Config.Role.CONFIG_SERVER):
+            container.add_layer("mongos", self._mongos_layer, combine=True)
+
         container.replan()
 
         self._connect_mongodb_exporter()
