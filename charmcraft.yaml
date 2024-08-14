@@ -4,6 +4,8 @@
 type: "charm"
 parts:
   charm:
+    build-snaps:
+      - rustup
     build-packages:
       - build-essential
       - libffi-dev
@@ -18,11 +20,13 @@ parts:
           echo 'ERROR: Use "tox run -e build-dev" instead of calling "charmcraft pack" directly' >&2
           exit 1
       fi
-
+    override-build: |
+      rustup default stable
+      craftctl default
 bases:
   - build-on:
-    - name: "ubuntu"
-      channel: "22.04"
+      - name: "ubuntu"
+        channel: "22.04"
     run-on:
-    - name: "ubuntu"
-      channel: "22.04"
+      - name: "ubuntu"
+        channel: "22.04"
