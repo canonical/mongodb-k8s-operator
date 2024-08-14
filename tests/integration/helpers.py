@@ -652,9 +652,15 @@ async def wait_for_mongodb_units_blocked(
 
     This is necessary because the MongoDB app can report a different status than the units.
     """
-    for attempt in Retrying(stop=stop_after_delay(timeout), wait=wait_fixed(1), reraise=True):
-        with attempt:
-            await check_all_units_blocked_with_status(ops_test, db_app_name, status)
+    hook_interval_key = "update-status-hook-interval"
+    try:
+        old_interval = (await ops_test.model.get_config())[hook_interval_key]
+        await ops_test.model.set_config({hook_interval_key: "1m"})
+        for attempt in Retrying(stop=stop_after_delay(timeout), wait=wait_fixed(1), reraise=True):
+            with attempt:
+                await check_all_units_blocked_with_status(ops_test, db_app_name, status)
+    finally:
+        await ops_test.model.set_config({hook_interval_key: old_interval})
 
 
 def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) -> bool:

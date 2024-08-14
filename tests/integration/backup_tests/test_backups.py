@@ -164,7 +164,7 @@ async def test_ready_correct_conf(ops_test: OpsTest) -> None:
     """Verifies charm goes into active status when s3 config and creds options are correct."""
     db_app_name = await get_app_name(ops_test)
     choices = string.ascii_letters + string.digits
-    unique_path = "".join([secrets.choice(choices) for _ in range(4)])
+    unique_path = "".join([secrets.choice(choices) for _ in range(16)])
     configuration_parameters = {
         "bucket": "data-charms-testing",
         "path": f"mongodb-vm/test-{unique_path}",
@@ -222,9 +222,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
     db_unit = await helpers.get_leader_unit(ops_test)
 
     # create first backup once ready
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
 
     action = await db_unit.run_action(action_name="create-backup")
     first_backup = await action.wait()
@@ -242,9 +240,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
 
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
 
     # create a backup as soon as possible. might not be immediately possible since only one backup
     # can happen at a time.
@@ -261,9 +257,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
     # backup can take a lot of time so this function returns once the command was successfully
     # sent to pbm. Therefore before checking, wait for Charmed MongoDB to finish creating the
     # backup
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
 
     # verify that backups was made in GCP bucket
     try:
@@ -282,9 +276,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
         "endpoint": "https://s3.amazonaws.com",
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
-    await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
-    )
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
 
     # verify that backups was made on the AWS bucket
     try:
@@ -298,10 +290,10 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
+async def test_restore(ops_test: OpsTest, add_writes_to_db) -> None:
     """Simple backup tests that verifies that writes are correctly restored."""
     # count total writes
-    number_writes = await ha_helpers.get_total_writes(ops_test)
+    number_writes = await ha_helpers.count_writes(ops_test)
     assert number_writes > 0, "no writes to backup"
 
     # create a backup in the AWS bucket
@@ -323,11 +315,8 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
 
     # add writes to be cleared after restoring the backup. Note these are written to the same
     # collection that was backed up.
-    application_unit = ops_test.model.applications[WRITE_APP].units[0]
-    start_writes_action = await application_unit.run_action("start-continuous-writes")
-    await start_writes_action.wait()
-    time.sleep(20)
-    new_number_of_writes = await ha_helpers.get_total_writes(ops_test)
+    await helpers.insert_unwanted_data(ops_test, app_name=db_app_name)
+    new_number_of_writes = await ha_helpers.count_writes(ops_test)
     assert new_number_of_writes > number_writes, "No writes to be cleared after restoring."
 
     # find most recent backup id and restore
@@ -344,7 +333,6 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
     )
 
-    number_writes_restored = number_writes  # initialize extra write count
     # verify all writes are present
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):
@@ -355,14 +343,10 @@ async def test_restore(ops_test: OpsTest, continuous_writes_to_db) -> None:
         assert number_writes == number_writes_restored, "writes not correctly restored"
 
 
-# TODO remove unstable mark once juju issue with secrets is resolved
-
-
 @pytest.mark.group(1)
-@pytest.mark.unstable
 @pytest.mark.parametrize("cloud_provider", ["AWS", "GCP"])
 async def test_restore_new_cluster(
-    ops_test: OpsTest, github_secrets, continuous_writes_to_db, cloud_provider
+    ops_test: OpsTest, github_secrets, add_writes_to_db, cloud_provider
 ):
     # configure test for the cloud provider
     db_app_name = await get_app_name(ops_test)
@@ -387,9 +371,7 @@ async def test_restore_new_cluster(
         ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
     )
 
-    # sleep to allow for writes to be made
-    time.sleep(30)
-    writes_in_old_cluster = await ha_helpers.get_total_writes(ops_test)
+    writes_in_old_cluster = await ha_helpers.count_writes(ops_test)
     assert writes_in_old_cluster > 0, "old cluster has no writes."
 
     # create a backup
@@ -449,8 +431,6 @@ async def test_restore_new_cluster(
     restore = await action.wait()
     assert restore.results["restore-status"] == "restore started", "restore not successful"
 
-    # initialize with old values
-    writes_in_new_cluster = writes_in_old_cluster
     # verify all writes are present
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):

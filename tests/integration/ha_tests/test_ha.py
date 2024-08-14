@@ -28,8 +28,8 @@ from .helpers import (
     find_record_in_collection,
     find_unit,
     get_application_name,
+    get_direct_mongo_client,
     get_highest_unit,
-    get_mongo_client,
     get_other_mongodb_direct_client,
     get_process_pid,
     get_replica_set_primary,
@@ -252,7 +252,7 @@ async def test_unique_cluster_dbs(ops_test: OpsTest, continuous_writes, cmd_mong
             collection_name="test_ubuntu_collection",
             query_field="release_name",
         )
-    with await get_mongo_client(ops_test) as client:
+    with await get_direct_mongo_client(ops_test) as client:
         cluster_2_entries = retrieve_entries(
             client,
             db_name="new-db",
@@ -291,7 +291,7 @@ async def test_kill_db_process(ops_test: OpsTest, continuous_writes):
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
-    with await get_mongo_client(ops_test, excluded=[primary.name]) as client:
+    with await get_direct_mongo_client(ops_test, excluded=[primary.name]) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
@@ -351,7 +351,7 @@ async def test_freeze_db_process(ops_test, continuous_writes):
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
-    with await get_mongo_client(ops_test, excluded=[primary.name]) as client:
+    with await get_direct_mongo_client(ops_test, excluded=[primary.name]) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
@@ -415,7 +415,7 @@ async def test_restart_db_process(ops_test, continuous_writes):
 
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
-    with await get_mongo_client(ops_test, excluded=[old_primary.name]) as client:
+    with await get_direct_mongo_client(ops_test, excluded=[old_primary.name]) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
@@ -489,7 +489,7 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
     # wait
     logger.info("Validating writes are continuing to DB")
     primary = await get_replica_set_primary(ops_test)
-    with await get_mongo_client(ops_test, excluded=[primary.name]) as client:
+    with await get_direct_mongo_client(ops_test, excluded=[primary.name]) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
@@ -560,7 +560,7 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes):
     # wait
     logger.info("Validating writes are continuing to DB")
     primary = await get_replica_set_primary(ops_test)
-    with await get_mongo_client(ops_test, excluded=[primary.name]) as client:
+    with await get_direct_mongo_client(ops_test, excluded=[primary.name]) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
         time.sleep(5)
         more_writes = client[TEST_DB][TEST_COLLECTION].count_documents({})
@@ -608,7 +608,7 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
     # verify new writes are continuing by counting the number of writes before and after a 5 second
     # wait
     logger.info("Validating writes are continuing to DB")
-    with await get_mongo_client(
+    with await get_direct_mongo_client(
         ops_test, excluded=[primary.name], use_subprocess_to_get_password=True
     ) as client:
         writes = client[TEST_DB][TEST_COLLECTION].count_documents({})

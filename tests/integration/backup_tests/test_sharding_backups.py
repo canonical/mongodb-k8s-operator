@@ -12,7 +12,7 @@ from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_delay, wait_fixed
 
 from ..backup_tests import helpers as backup_helpers
-from ..ha_tests.helpers import deploy_and_scale_application, get_mongo_client
+from ..ha_tests.helpers import deploy_and_scale_application, get_direct_mongo_client
 from ..helpers import (
     METADATA,
     MONGOS_PORT,
@@ -56,7 +56,9 @@ async def add_writes_to_shards(ops_test: OpsTest):
     await application_unit.run_action("stop-continuous-writes")
 
     # move continuous writes to shard-one
-    mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
+    mongos_client = await get_direct_mongo_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
     mongos_client.admin.command("movePrimary", SHARD_ONE_DB_NAME, to=SHARD_ONE_APP_NAME)
 
     # add writes to shard-two
@@ -380,8 +382,9 @@ async def add_and_verify_unwanted_writes(ops_test, old_cluster_writes: Dict) -> 
 
     # new writes added to cluster in `insert_unwanted_data` get sent to shard-one - add more
     # writes to shard-two
-    mongos_client = await get_mongo_client(ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True)
-
+    mongos_client = await get_direct_mongo_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
     writes_helpers.write_data_to_mongodb(
         mongos_client,
         db_name=SHARD_TWO_DB_NAME,
