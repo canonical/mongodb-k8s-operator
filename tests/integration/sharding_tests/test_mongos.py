@@ -37,7 +37,6 @@ async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm
     await ops_test.model.deploy(
         MONGOS_APP_NAME,
         channel="6/edge",
-        revision=3,
     )
 
     await ops_test.model.wait_for_idle(
@@ -45,7 +44,7 @@ async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm
         idle_period=20,
         raise_on_blocked=False,  # cluster components are blocked waiting for integration.
         timeout=TIMEOUT,
-        raise_on_error=False,
+        raise_on_error=False,  # Remove this once DPE-4996 is resovled
     )
 
 
@@ -87,7 +86,7 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
     num_users_after_integration = count_users(mongos_client)
 
     assert (
-        num_users_after_integration > num_users
+        num_users_after_integration == num_users + 1
     ), "Cluster did not create new users after integration."
 
     (username, password) = await get_username_password(
@@ -139,7 +138,7 @@ async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     num_users_after_removal = count_users(mongos_client)
 
     assert (
-        num_users > num_users_after_removal
+        num_users - 1 == num_users_after_removal
     ), "Cluster did not remove user after integration removal."
 
     with pytest.raises(OperationFailure) as pymongo_error:
