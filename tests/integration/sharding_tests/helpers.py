@@ -2,17 +2,11 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 from typing import List, Optional, Tuple
-from urllib.parse import quote_plus
 
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import (
-    METADATA,
-    get_application_relation_data,
-    get_password,
-    get_secret_content,
-)
+from ..helpers import METADATA, get_application_relation_data, get_secret_content
 
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
@@ -24,37 +18,6 @@ CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_
 TIMEOUT = 15 * 60
 MONGOS_PORT = 27018
 MONGOD_PORT = 27017
-
-
-async def generate_mongodb_client(
-    ops_test: OpsTest,
-    app_name: str,
-    mongos: bool,
-    username: str = "operator",
-    password: str = None,
-):
-    """Returns a MongoDB client for mongos/mongod."""
-
-    status = await ops_test.model.get_status()
-
-    hosts = [
-        status["applications"][app_name]["units"][unit.name]["address"]
-        for unit in ops_test.model.applications[app_name].units
-    ]
-    password = password or await get_password(ops_test, app_name=app_name)
-    username = username
-    port = MONGOS_PORT if mongos else MONGOD_PORT
-    hosts = [f"{host}:{port}" for host in hosts]
-    hosts = ",".join(hosts)
-    auth_source = ""
-    database = "admin"
-
-    return MongoClient(
-        f"mongodb://{username}:"
-        f"{quote_plus(password)}@"
-        f"{hosts}/{quote_plus(database)}?"
-        f"{auth_source}"
-    )
 
 
 def count_users(mongos_client: MongoClient) -> int:

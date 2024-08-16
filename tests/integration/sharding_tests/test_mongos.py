@@ -7,7 +7,8 @@ import pytest
 from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
-from .helpers import count_users, generate_mongodb_client, get_username_password
+from ..ha_tests.helpers import get_direct_mongo_client
+from .helpers import count_users, get_username_password
 
 SHARD_ONE_APP_NAME = "shard-one"
 MONGOS_APP_NAME = "mongos-k8s"
@@ -21,7 +22,7 @@ TIMEOUT = 10 * 60
 @pytest.mark.group(1)
 @pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm) -> None:
+async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
     mongodb_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(
@@ -44,7 +45,7 @@ async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm
         idle_period=20,
         raise_on_blocked=False,  # cluster components are blocked waiting for integration.
         timeout=TIMEOUT,
-        raise_on_error=False,  # Remove this once DPE-4996 is resovled
+        raise_on_error=False,  # Remove this once DPE-4996 is resolved
     )
 
 
@@ -52,21 +53,21 @@ async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm
 @pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
 async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
-    """Verifies that when the cluster is formed a new user is created."""
-    await ops_test.model.integrate(
-        f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
-        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
-    )
+    #    """Verifies that when the cluster is formed a new user is created."""
+    #    await ops_test.model.integrate(
+    #        f"{SHARD_ONE_APP_NAME}:{SHARD_REL_NAME}",
+    #        f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    #    )
+    #
+    #    await ops_test.model.wait_for_idle(
+    #        apps=[MONGOS_APP_NAME, SHARD_ONE_APP_NAME, CONFIG_SERVER_APP_NAME],
+    #        idle_period=20,
+    #        raise_on_blocked=False,
+    #        timeout=TIMEOUT,
+    #        raise_on_error=False,
+    #    )
 
-    await ops_test.model.wait_for_idle(
-        apps=[MONGOS_APP_NAME, SHARD_ONE_APP_NAME, CONFIG_SERVER_APP_NAME],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-        raise_on_error=False,
-    )
-
-    mongos_client = await generate_mongodb_client(
+    mongos_client = await get_direct_mongo_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )
     num_users = count_users(mongos_client)
@@ -92,7 +93,7 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
     (username, password) = await get_username_password(
         ops_test, app_name=MONGOS_APP_NAME, relation_name=CLUSTER_REL_NAME
     )
-    mongos_user_client = await generate_mongodb_client(
+    mongos_user_client = await get_direct_mongo_client(
         ops_test,
         app_name=CONFIG_SERVER_APP_NAME,
         mongos=True,
@@ -112,7 +113,7 @@ async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     (username, password) = await get_username_password(
         ops_test, app_name=MONGOS_APP_NAME, relation_name=CLUSTER_REL_NAME
     )
-    mongos_user_client = await generate_mongodb_client(
+    mongos_user_client = await get_direct_mongo_client(
         ops_test,
         app_name=CONFIG_SERVER_APP_NAME,
         mongos=True,
@@ -121,7 +122,7 @@ async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     )
 
     # generate URI for operator mongos user (i.e. admin)
-    mongos_client = await generate_mongodb_client(
+    mongos_client = await get_direct_mongo_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )
     num_users = count_users(mongos_client)

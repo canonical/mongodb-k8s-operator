@@ -376,10 +376,12 @@ async def fetch_replica_set_members(
 
 async def get_direct_mongo_client(
     ops_test: OpsTest,
-    unit: str = None,
+    unit: str | None = None,
     excluded: List[str] = [],
-    app_name: str = None,
-    use_subprocess_to_get_password=False,
+    app_name: str | None = None,
+    username: str = "operator",
+    password: str | None = None,
+    use_subprocess_to_get_password: bool = False,
     mongos: bool = False,
 ) -> MongoClient:
     """Returns a direct mongodb client potentially passing over some of the units."""
@@ -390,6 +392,8 @@ async def get_direct_mongo_client(
             [int(unit.split("/")[1])],
             use_subprocess_to_get_password=use_subprocess_to_get_password,
             port=port,
+            username=username,
+            password=password,
         )
         return MongoClient(url, directConnection=True)
 
@@ -403,6 +407,8 @@ async def get_direct_mongo_client(
                 use_subprocess_to_get_password=use_subprocess_to_get_password,
                 app_name=mongodb_name,
                 port=port,
+                username=username,
+                password=password,
             )
             return MongoClient(url, directConnection=True)
     assert False, "No fitting unit could be found"

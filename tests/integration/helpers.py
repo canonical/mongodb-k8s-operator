@@ -159,6 +159,8 @@ async def mongodb_uri(
     use_subprocess_to_get_password=False,
     port=MONGOD_PORT,
     app_name: str = APP_NAME,
+    username: str = "operator",
+    password: str | None = None,
 ) -> str:
     if unit_ids is None:
         unit_ids = range(0, len(ops_test.model.applications[app_name].units))
@@ -166,11 +168,19 @@ async def mongodb_uri(
     addresses = [await get_address_of_unit(ops_test, unit_id, app_name) for unit_id in unit_ids]
     hosts = [f"{host}:{port}" for host in addresses]
     hosts = ",".join(hosts)
-    if use_subprocess_to_get_password:
-        password = get_password_using_subprocess(ops_test, app_name=app_name)
-    else:
-        password = await get_password(ops_test, 0, app_name=app_name)
-    return f"mongodb://operator:{password}@{hosts}/admin"
+
+    # If password is chosen, always keep it, otherwise check on `use_subprocess_to_get_password`
+    match (password, use_subprocess_to_get_password):
+        case (None, True):
+            password = get_password_using_subprocess(
+                ops_test, username=username, app_name=app_name
+            )
+        case (None, False):
+            password = await get_password(ops_test, 0, username=username, app_name=app_name)
+        case _:
+            pass
+
+    return f"mongodb://{username}:{password}@{hosts}/admin"
 
 
 # useful, as sometimes, the mongo request returns nothing on the first try
