@@ -18,7 +18,6 @@ CONFIG_SERVER_REL_NAME = "config-server"
 TIMEOUT = 10 * 60
 
 
-@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
@@ -50,7 +49,6 @@ async def test_build_and_deploy(ops_test: OpsTest, mongos_host_application_charm
     )
 
 
-@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
@@ -106,7 +104,6 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
     mongos_user_client.admin.command("dbStats")
 
 
-@pytest.mark.runner(["self-hosted", "linux", "X64", "jammy", "large"])
 @pytest.mark.group(1)
 @pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
