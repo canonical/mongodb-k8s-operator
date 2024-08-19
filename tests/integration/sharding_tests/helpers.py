@@ -30,7 +30,7 @@ def count_users(mongos_client: MongoClient) -> int:
 async def get_related_username_password(
     ops_test: OpsTest, app_name: str, relation_name: str
 ) -> Tuple:
-    """Retrieves the username and password for an integrated application using app_name and relation_name"""
+    """Retrieves the credentials for an integrated application using app_name and relation_name."""
     secret_uri = await get_application_relation_data(
         ops_test, app_name, relation_name, "secret-user"
     )
