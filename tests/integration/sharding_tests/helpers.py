@@ -27,7 +27,9 @@ def count_users(mongos_client: MongoClient) -> int:
     return users_collection.count_documents({})
 
 
-async def get_username_password(ops_test: OpsTest, app_name: str, relation_name: str) -> Tuple:
+async def get_related_username_password(
+    ops_test: OpsTest, app_name: str, relation_name: str
+) -> Tuple:
     secret_uri = await get_application_relation_data(
         ops_test, app_name, relation_name, "secret-user"
     )

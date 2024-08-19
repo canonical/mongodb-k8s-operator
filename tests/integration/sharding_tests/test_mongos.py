@@ -8,7 +8,7 @@ from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
 from ..ha_tests.helpers import get_direct_mongo_client
-from .helpers import count_users, get_username_password
+from .helpers import count_users, get_related_username_password
 
 SHARD_ONE_APP_NAME = "shard-one"
 MONGOS_APP_NAME = "mongos-k8s"
@@ -90,7 +90,7 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
         num_users_after_integration == num_users + 1
     ), "Cluster did not create new users after integration."
 
-    (username, password) = await get_username_password(
+    (username, password) = await get_related_username_password(
         ops_test, app_name=MONGOS_APP_NAME, relation_name=CLUSTER_REL_NAME
     )
     mongos_user_client = await get_direct_mongo_client(
@@ -110,7 +110,7 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
 async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     """Verifies that when the cluster is formed a the user is removed."""
     # generate URI for new mongos user
-    (username, password) = await get_username_password(
+    (username, password) = await get_related_username_password(
         ops_test, app_name=MONGOS_APP_NAME, relation_name=CLUSTER_REL_NAME
     )
     mongos_user_client = await get_direct_mongo_client(
