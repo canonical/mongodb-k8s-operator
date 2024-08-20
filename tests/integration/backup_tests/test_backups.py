@@ -386,26 +386,26 @@ async def test_restore_new_cluster(
     old_password = action.results["password"]
 
     # TODO remove this workaround once issue with juju secrets is fixed
-    NEW_CLUSTER = get_new_cluster_name(cloud_provider)  # noqa: N806
+    new_cluster_app_name = get_new_cluster_name(cloud_provider)  # noqa: N806
 
     # deploy a new cluster with a different name
     db_charm = await ops_test.build_charm(".")
     resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
-        db_charm, num_units=3, resources=resources, application_name=NEW_CLUSTER
+        db_charm, num_units=3, resources=resources, application_name=new_cluster_app_name
     )
 
     await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[NEW_CLUSTER], status="active", idle_period=20),
+        ops_test.model.wait_for_idle(apps=[new_cluster_app_name], status="active", idle_period=20),
     )
 
-    leader_unit = await helpers.get_leader_unit(ops_test, db_app_name=NEW_CLUSTER)
+    leader_unit = await helpers.get_leader_unit(ops_test, db_app_name=new_cluster_app_name)
     action = await leader_unit.run_action("set-password", **{"password": old_password})
     action = await action.wait()
     assert action.status == "completed"
 
     # relate to s3 - s3 has the necessary configurations
-    await ops_test.model.integrate(S3_APP_NAME, NEW_CLUSTER)
+    await ops_test.model.integrate(S3_APP_NAME, new_cluster_app_name)
     await ops_test.model.block_until(
         lambda: is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
         timeout=TIMEOUT,
@@ -413,7 +413,7 @@ async def test_restore_new_cluster(
 
     # wait for new cluster to sync
     await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[NEW_CLUSTER], status="active", idle_period=20),
+        ops_test.model.wait_for_idle(apps=[new_cluster_app_name], status="active", idle_period=20),
     )
 
     # verify that the listed backups from the old cluster are not listed as failed.
@@ -435,7 +435,9 @@ async def test_restore_new_cluster(
     try:
         for attempt in Retrying(stop=stop_after_delay(4), wait=wait_fixed(20)):
             with attempt:
-                writes_in_new_cluster = await ha_helpers.count_writes(ops_test, NEW_CLUSTER)
+                writes_in_new_cluster = await ha_helpers.count_writes(
+                    ops_test, new_cluster_app_name
+                )
                 assert (
                     writes_in_new_cluster == writes_in_old_cluster
                 ), "new cluster writes do not match old cluster writes after restore"
@@ -444,7 +446,7 @@ async def test_restore_new_cluster(
             writes_in_new_cluster == writes_in_old_cluster
         ), "new cluster writes do not match old cluster writes after restore"
 
-    await destroy_cluster(ops_test, applications=[NEW_CLUSTER])
+    await destroy_cluster(ops_test, applications=[new_cluster_app_name])
 
 
 @pytest.mark.group(1)
