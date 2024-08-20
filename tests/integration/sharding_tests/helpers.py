@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
+from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import METADATA
+from ..helpers import METADATA, get_application_relation_data, get_secret_content
 
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
@@ -15,6 +16,28 @@ MONGODB_CHARM_NAME = "mongodb-k8s"
 SHARD_REL_NAME = "sharding"
 CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_NAME]
 TIMEOUT = 15 * 60
+MONGOS_PORT = 27018
+MONGOD_PORT = 27017
+
+
+def count_users(mongos_client: MongoClient) -> int:
+    """Returns the number of users using the cluster."""
+    admin_db = mongos_client["admin"]
+    users_collection = admin_db.system.users
+    return users_collection.count_documents({})
+
+
+async def get_related_username_password(
+    ops_test: OpsTest, app_name: str, relation_name: str
+) -> Tuple:
+    """Retrieves the credentials for an integrated application using app_name and relation_name."""
+    secret_uri = await get_application_relation_data(
+        ops_test, app_name, relation_name, "secret-user"
+    )
+    relation_user_data = await get_secret_content(ops_test, secret_uri)
+    username = relation_user_data.get("username")
+    password = relation_user_data.get("password")
+    return (username, password)
 
 
 async def deploy_cluster_components(

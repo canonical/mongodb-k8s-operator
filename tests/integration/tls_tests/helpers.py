@@ -78,7 +78,7 @@ async def run_tls_check(
     ops_test: OpsTest, unit: ops.model.Unit, app_name: str | None = None, mongos: bool = False
 ) -> int:
     """Returns the return code of the TLS check."""
-    app_name = app_name or get_app_name(ops_test)
+    app_name = app_name or await get_app_name(ops_test)
     port = "27017" if not mongos else "27018"
     hosts = [
         f"{parse_hostname(unit.name, app_name)}:{port}"
