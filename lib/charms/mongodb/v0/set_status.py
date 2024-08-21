@@ -4,7 +4,7 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-from typing import Tuple
+from typing import Tuple, Optional
 
 from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import CharmBase
@@ -222,6 +222,20 @@ class MongoDBStatusHandler(Object):
 
         # if all statuses are active report mongodb status over sharding status
         return mongodb_status
+
+    def get_invalid_integration_status(self) -> Optional[StatusBase]:
+        """Returns a status if an invalid integration is present."""
+        if not self.charm.cluster.is_valid_mongos_integration():
+            return BlockedStatus(
+                "Relation to mongos not supported, config role must be config-server"
+            )
+
+        if not self.charm.backups.is_valid_s3_integration():
+            return BlockedStatus(
+                "Relation to s3-integrator is not supported, config role must be config-server"
+            )
+
+        return self.charm.get_cluster_mismatched_revision_status()
 
 
 def build_unit_status(mongodb_config: MongoDBConfiguration, unit_host: str) -> StatusBase:

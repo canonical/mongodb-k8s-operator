@@ -58,6 +58,7 @@ from ops.model import (
     RelationDataContent,
     Unit,
     WaitingStatus,
+    StatusBase,
 )
 from ops.pebble import ChangeError, ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError
@@ -466,6 +467,12 @@ class MongoDBCharm(CharmBase):
     # END: properties
 
     # BEGIN: generic helper methods
+    def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
+        """Returns a Status if the cluster has mismatched revisions.
+
+        TODO implement this method as a part of sharding upgrades."""
+        return None
+
     def remote_mongos_config(self, hosts) -> MongosConfiguration:
         """Generates a MongosConfiguration object for mongos in the deployment of MongoDB."""
         # mongos that are part of the cluster have the same username and password, but different
@@ -720,6 +727,13 @@ class MongoDBCharm(CharmBase):
             self.unit_peer_data["unit_departed"] = ""
 
     def _on_update_status(self, event: UpdateStatusEvent):
+        # user-made mistakes might result in other incorrect statues. Prioritise informing users of
+        # their mistake.
+        invalid_integration_status = self.status.get_invalid_integration_status()
+        if invalid_integration_status:
+            self.status.set_and_share_status(invalid_integration_status)
+            return
+
         # no need to report on replica set status until initialised
         if not self.db_initialised:
             return
