@@ -1205,6 +1205,14 @@ class MongoDBCharm(CharmBase):
         container = self.unit.get_container(Config.CONTAINER_NAME)
         container.stop(Config.SERVICE_NAME)
 
+        # Ensure the permissions are right before restarting the service.
+        try:
+            self._set_data_dir_permissions(container, all_files=True)
+
+        except (PathError, ProtocolError, MissingSecretError) as e:
+            logger.error("Cannot initialize workload: %r", e)
+            raise
+
         container.add_layer("mongod", self._mongod_layer, combine=True)
         if self.is_role(Config.Role.CONFIG_SERVER):
             container.add_layer("mongos", self._mongos_layer, combine=True)
@@ -1525,20 +1533,32 @@ class MongoDBCharm(CharmBase):
                 pass
 
     @staticmethod
-    def _set_data_dir_permissions(container: Container) -> None:
+    def _set_data_dir_permissions(container: Container, all_files: bool = False) -> None:
         """Ensure the data directory for mongodb is writable for the "mongodb" user.
 
         Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
         is available, we fix permissions incorrectly with chown.
+        We want to check the directory and the files inside in case it got messed up.
         """
         for path in [Config.DATA_DIR, Config.LOG_DIR, Config.LogRotate.LOG_STATUS_DIR]:
             paths = container.list_files(path, itself=True)
-            assert len(paths) == 1, "list_files doesn't return only the directory itself"
             logger.debug(f"Data directory ownership: {paths[0].user}:{paths[0].group}")
+            assert len(paths) == 1, "list_files doesn't return only the directory itself"
+
             if paths[0].user != Config.UNIX_USER or paths[0].group != Config.UNIX_GROUP:
                 container.exec(
                     f"chown {Config.UNIX_USER}:{Config.UNIX_GROUP} -R {path}".split(" ")
                 )
+
+            if all_files:
+                files = container.list_files(path)
+                if any(
+                    file.user != Config.UNIX_USER or file.group != Config.UNIX_GROUP
+                    for file in files
+                ):
+                    container.exec(
+                        f"chown {Config.UNIX_USER}:{Config.UNIX_GROUP} -R {path}".split(" ")
+                    )
 
     # END: static methods
 
