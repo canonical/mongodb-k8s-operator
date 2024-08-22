@@ -22,7 +22,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 3
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
