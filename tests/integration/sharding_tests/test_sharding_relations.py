@@ -107,7 +107,7 @@ async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
     )
 
     await ops_test.model.wait_for_idle(
-        apps=[REPLICATION_APP_NAME],
+        apps=[CONFIG_SERVER_ONE_APP_NAME, SHARD_ONE_APP_NAME],
         idle_period=20,
         raise_on_blocked=False,
     )
@@ -163,6 +163,12 @@ async def test_replication_config_server_relation(ops_test: OpsTest):
     await ops_test.model.applications[REPLICATION_APP_NAME].remove_relation(
         f"{REPLICATION_APP_NAME}:{SHARD_REL_NAME}",
         f"{CONFIG_SERVER_ONE_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[REPLICATION_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
     )
 
 
@@ -221,7 +227,7 @@ async def test_replication_mongos_relation(ops_test: OpsTest) -> None:
     )
 
     await ops_test.model.wait_for_idle(
-        apps=[SHARD_ONE_APP_NAME],
+        apps=[REPLICATION_APP_NAME, MONGOS_APP_NAME],
         idle_period=20,
         raise_on_blocked=False,
     )
@@ -249,6 +255,12 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
     await ops_test.model.applications[SHARD_ONE_APP_NAME].remove_relation(
         f"{MONGOS_APP_NAME}:cluster",
         f"{SHARD_ONE_APP_NAME}:cluster",
+    )
+
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_ONE_APP_NAME, MONGOS_APP_NAME],
+        idle_period=20,
+        raise_on_blocked=False,
     )
 
 
