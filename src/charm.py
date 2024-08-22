@@ -56,9 +56,9 @@ from ops.model import (
     ModelError,
     Relation,
     RelationDataContent,
+    StatusBase,
     Unit,
     WaitingStatus,
-    StatusBase,
 )
 from ops.pebble import ChangeError, ExecError, Layer, PathError, ProtocolError
 from pymongo.errors import PyMongoError

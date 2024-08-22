@@ -2,8 +2,8 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 import pytest
-from pytest_operator.plugin import OpsTest
 from juju.errors import JujuAPIError
+from pytest_operator.plugin import OpsTest
 
 from ..helpers import METADATA, wait_for_mongodb_units_blocked
 

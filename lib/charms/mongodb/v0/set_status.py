@@ -4,7 +4,7 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
 from ops.charm import CharmBase
