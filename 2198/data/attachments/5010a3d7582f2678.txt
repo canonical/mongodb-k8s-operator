@@ -1,0 +1,84 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  02:19:46Z
+
+App              Version  Status       Scale  Charm          Channel      Rev  Address         Exposed  Message
+application               active           1  application                   0  10.152.183.158  no       
+mongodb-k8s               maintenance      3  mongodb-k8s                   0  10.152.183.71   no       backup started/running, backup id:'2024-08-22T02:19:41Z'
+new-mongodb-aws           active           3  mongodb-k8s                   0  10.152.183.144  no       Primary
+s3-integrator             active           1  s3-integrator  latest/edge   37  10.152.183.69   no       
+
+Unit                Workload     Agent  Address      Ports  Message
+application/0*      active       idle   10.1.72.210         
+mongodb-k8s/0*      maintenance  idle   10.1.72.205         backup started/running, backup id:'2024-08-22T02:19:41Z'
+mongodb-k8s/1       active       idle   10.1.72.208         
+mongodb-k8s/2       active       idle   10.1.72.207         
+new-mongodb-aws/0*  active       idle   10.1.72.217         Primary
+new-mongodb-aws/1   active       idle   10.1.72.218         
+new-mongodb-aws/2   active       idle   10.1.72.219         
+s3-integrator/0*    active       idle   10.1.72.209         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-mongodb-k8s-0: 01:33:53 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 926, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-mongodb-k8s-0: 01:33:58 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 926, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-mongodb-k8s-0: 01:34:04 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 926, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-mongodb-k8s-0: 01:34:04 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: Deferring on_start: Failed to create operator user.
+unit-new-mongodb-aws-0: 02:08:00 ERROR unit.new-mongodb-aws/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/./src/charm.py", line 1555, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 268, in _on_restore_action
+    if not self._restore_hook_checks(event):
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 328, in _restore_hook_checks
+    self._needs_provided_remap_arguments(backup_id)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 788, in _needs_provided_remap_arguments
+    backup_error_status = self.get_backup_error_status(backup_id)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 800, in get_backup_error_status
+    for backup in backups:
+TypeError: 'NoneType' object is not iterable
+unit-new-mongodb-gcp-2: 02:17:26 ERROR unit.new-mongodb-gcp/2.juju-log new-mongodb-gcp/2.is_unit_in_replica_set PyMongoError=Could not find user "operator" for db "admin", full error: {'ok': 0.0, 'errmsg': 'Could not find user "operator" for db "admin"', 'code': 11, 'codeName': 'UserNotFound', '$clusterTime': {'clusterTime': Timestamp(1724293046, 505), 'signature': {'hash': b"'?v\xae\x18J\x98\xccd\xcb\xcb\x8f\x94\xb7\xfe\xdb\xb8%.>", 'keyId': 7405780630677487622}}, 'operationTime': Timestamp(1724293046, 505)}
+unit-new-mongodb-gcp-1: 02:17:28 ERROR unit.new-mongodb-gcp/1.juju-log new-mongodb-gcp/1.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66c69fb676db0d64f0598c25, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-gcp-1.new-mongodb-gcp-endpoints', 27017) server_type: RSGhost, rtt: 0.001970545000403945>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
