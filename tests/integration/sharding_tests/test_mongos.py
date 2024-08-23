@@ -20,7 +20,6 @@ TIMEOUT = 10 * 60
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
@@ -50,7 +49,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
 async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
     """Verifies that when the cluster is formed a new user is created."""
@@ -105,7 +103,6 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
 async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     """Verifies that when the cluster is formed a the user is removed."""
