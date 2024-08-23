@@ -61,6 +61,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         application_name=SHARD_ONE_APP_NAME,
     )
 
+    # Will be enabled after DPE-5040 is done
     # await ops_test.model.deploy(
     #     MONGOS_APP_NAME,
     #     channel="6/edge",

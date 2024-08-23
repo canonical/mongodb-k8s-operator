@@ -469,7 +469,8 @@ class MongoDBCharm(CharmBase):
     def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
         """Returns a Status if the cluster has mismatched revisions.
 
-        TODO implement this method as a part of sharding upgrades."""
+        TODO implement this method as a part of sharding upgrades.
+        """
         return None
 
     def remote_mongos_config(self, hosts) -> MongoConfiguration:
