@@ -125,6 +125,12 @@ class Config:
         SECRET_KEYFILE_NAME = "keyfile"
         MAX_PASSWORD_LENGTH = 4096
 
+    class Substrate:
+        """Substrate related constants."""
+
+        VM = "vm"
+        K8S = "k8s"
+
     class Status:
         """Status related constants.
 

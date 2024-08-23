@@ -4,9 +4,9 @@
 # See LICENSE file for licensing details.
 import json
 import logging
-from typing import Tuple
+from typing import Optional, Tuple
 
-from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v1.mongodb import MongoConfiguration, MongoDBConnection
 from ops.charm import CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
@@ -22,7 +22,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 3
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
@@ -223,8 +223,22 @@ class MongoDBStatusHandler(Object):
         # if all statuses are active report mongodb status over sharding status
         return mongodb_status
 
+    def get_invalid_integration_status(self) -> Optional[StatusBase]:
+        """Returns a status if an invalid integration is present."""
+        if not self.charm.cluster.is_valid_mongos_integration():
+            return BlockedStatus(
+                "Relation to mongos not supported, config role must be config-server"
+            )
 
-def build_unit_status(mongodb_config: MongoDBConfiguration, unit_host: str) -> StatusBase:
+        if not self.charm.backups.is_valid_s3_integration():
+            return BlockedStatus(
+                "Relation to s3-integrator is not supported, config role must be config-server"
+            )
+
+        return self.charm.get_cluster_mismatched_revision_status()
+
+
+def build_unit_status(mongodb_config: MongoConfiguration, unit_host: str) -> StatusBase:
     """Generates the status of a unit based on its status reported by mongod."""
     try:
         with MongoDBConnection(mongodb_config) as mongo:

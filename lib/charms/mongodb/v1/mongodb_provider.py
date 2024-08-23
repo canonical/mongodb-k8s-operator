@@ -15,7 +15,7 @@ from typing import List, Optional, Set
 
 from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
 from charms.mongodb.v1.helpers import generate_password
-from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v1.mongodb import MongoConfiguration, MongoDBConnection
 from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import Relation
@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 9
+LIBPATCH = 10
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -282,7 +282,7 @@ class MongoDBProvider(Object):
         self.database_provides.update_relation_data(relation.id, {"password": password})
         return password
 
-    def _get_config(self, username: str, password: Optional[str]) -> MongoDBConfiguration:
+    def _get_config(self, username: str, password: Optional[str]) -> MongoConfiguration:
         """Construct the config object for future user creation."""
         relation = self._get_relation_from_username(username)
         if not password:
@@ -290,7 +290,7 @@ class MongoDBProvider(Object):
 
         database_name = self._get_database_from_relation(relation)
 
-        return MongoDBConfiguration(
+        return MongoConfiguration(
             replset=self.charm.app.name,
             database=database_name,
             username=username,
@@ -301,7 +301,7 @@ class MongoDBProvider(Object):
             tls_internal=False,
         )
 
-    def _set_relation(self, config: MongoDBConfiguration):
+    def _set_relation(self, config: MongoConfiguration):
         """Save all output fields into application relation."""
         relation = self._get_relation_from_username(config.username)
         if relation is None:
