@@ -42,8 +42,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-
-LIBPATCH = 8
+LIBPATCH = 9
 
 
 class ClusterProvider(Object):
@@ -206,9 +205,13 @@ class ClusterRequirer(Object):
     """Manage relations between the config server and mongos router on the mongos side."""
 
     def __init__(
-        self, charm: CharmBase, relation_name: str = Config.Relations.CLUSTER_RELATIONS_NAME
+        self,
+        charm: CharmBase,
+        relation_name: str = Config.Relations.CLUSTER_RELATIONS_NAME,
+        substrate: str = Config.Substrate.VM,
     ) -> None:
         """Constructor for ShardingProvider object."""
+        self.substrate = substrate
         self.relation_name = relation_name
         self.charm = charm
         self.database_requires = DatabaseRequires(
@@ -254,7 +257,10 @@ class ClusterRequirer(Object):
         logger.info("Database and user created for mongos application")
         self.charm.set_secret(Config.Relations.APP_SCOPE, Config.Secrets.USERNAME, event.username)
         self.charm.set_secret(Config.Relations.APP_SCOPE, Config.Secrets.PASSWORD, event.password)
-        self.charm.share_connection_info()
+
+        # K8s charm have a 1:Many client scheme and share connection info in a different manner.
+        if self.substrate == Config.Substrate.VM:
+            self.charm.share_connection_info()
 
     def _on_relation_changed(self, event) -> None:
         """Starts/restarts monogs with config server information."""
@@ -318,7 +324,10 @@ class ClusterRequirer(Object):
         logger.info("Database and user removed for mongos application")
         self.charm.remove_secret(Config.Relations.APP_SCOPE, Config.Secrets.USERNAME)
         self.charm.remove_secret(Config.Relations.APP_SCOPE, Config.Secrets.PASSWORD)
-        self.charm.remove_connection_info()
+
+        # K8s charm have a 1:Many client scheme and share connection info in a different manner.
+        if self.substrate == Config.Substrate.VM:
+            self.charm.remove_connection_info()
 
     # BEGIN: helper functions
     def pass_hook_checks(self, event):
@@ -361,8 +370,8 @@ class ClusterRequirer(Object):
         """Returns true if mongos service is running."""
         connection_uri = f"mongodb://{self.charm.get_mongos_host()}"
 
-        # when running internally, connections through Unix Domain sockets do not need port.
-        if self.charm.is_external_client:
+        # use the mongos port for k8s charms and external connections on VM
+        if self.charm.is_external_client or self.substrate == Config.K8S_SUBSTRATE:
             connection_uri = connection_uri + f":{Config.MONGOS_PORT}"
 
         with MongosConnection(None, connection_uri) as mongo:
@@ -373,7 +382,9 @@ class ClusterRequirer(Object):
         if self.charm.config_server_db == config_server_db:
             return False
 
-        self.charm.update_mongos_args(config_server_db)
+        if self.substrate == Config.Substrate.VM:
+            self.charm.update_mongos_args(config_server_db)
+
         return True
 
     def update_keyfile(self, key_file_contents: str) -> bool:
@@ -419,6 +430,13 @@ class ClusterRequirer(Object):
 
         # metadata.yaml prevents having multiple config servers
         return self.model.get_relation(self.relation_name).app.name
+
+    def get_config_server_uri(self) -> str:
+        """Returns the short form URI of the config server."""
+        return self.database_requires.fetch_relation_field(
+            self.model.get_relation(Config.Relations.CLUSTER_RELATIONS_NAME).id,
+            CONFIG_SERVER_DB_KEY,
+        )
 
     def is_ca_compatible(self) -> bool:
         """Returns true if both the mongos and the config server use the same CA."""
