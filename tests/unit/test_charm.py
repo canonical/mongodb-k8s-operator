@@ -496,7 +496,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    @patch("charms.mongodb.v1.mongodb.MongoClient")
+    @patch("charms.mongodb.v0.mongo.MongoClient")
     def test_reconfigure_get_members_failure(self, client, connection, defer):
         """Tests reconfigure does not execute when unable to get the replica set members.
 
@@ -938,7 +938,7 @@ class TestCharm(unittest.TestCase):
 
         password = self.harness.charm.get_secret("app", "monitor-password")
 
-        uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints/admin?replicaSet=mongodb-k8s"
+        uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints:27017/admin?replicaSet=mongodb-k8s"
 
         expected_config = {
             "override": "replace",
