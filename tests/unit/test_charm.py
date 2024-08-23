@@ -98,6 +98,8 @@ class TestCharm(unittest.TestCase):
                 },
             },
         }
+        # Mock storages
+        self.harness.charm.model._storages = {"mongodb": "valid", "mongodb-logs": "valid"}
         # Get the mongod container from the model
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
@@ -182,6 +184,22 @@ class TestCharm(unittest.TestCase):
             mock_container.add_layer.assert_not_called()
             mock_container.replan.assert_not_called()
             defer.assert_called()
+
+    @patch("ops.framework.EventBase.defer")
+    def test_pebble_ready_no_storage_yet(self, defer):
+        """Test to ensure that the pebble ready event is deferred until the storage is ready."""
+        # presets
+        mock_container = mock.Mock()
+        mock_container.return_value.can_connect.return_value = True
+        self.harness.charm.unit.get_container = mock_container
+
+        # Mock storages
+        self.harness.charm.model._storages = {"mongodb": None, "mongodb-logs": None}
+        # Emit the PebbleReadyEvent carrying the mock_container
+        self.harness.charm.on.mongod_pebble_ready.emit(mock_container)
+        mock_container.add_layer.assert_not_called()
+        mock_container.replan.assert_not_called()
+        defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -814,8 +832,11 @@ class TestCharm(unittest.TestCase):
         connect_exporter.assert_not_called()
 
     @patch("charm.MongoDBConnection")
+    @patch("charm.MongoDBCharm._pull_licenses")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    def test_connect_to_mongo_exporter_on_set_password(self, connect_exporter, connection):
+    def test_connect_to_mongo_exporter_on_set_password(
+        self, connect_exporter, pull_licenses, connection
+    ):
         """Test _connect_mongodb_exporter is called when the password is set for 'montior' user."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
@@ -927,6 +948,9 @@ class TestCharm(unittest.TestCase):
         self, connection, fix_data_dir, defer, pull_licenses
     ):
         """Tests the _connect_mongodb_exporter method has been called."""
+        # Mock storages
+        self.harness.charm.model._storages = {"mongodb": "valid", "mongodb-logs": "valid"}
+        # Get container
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         container.exec = mock.Mock()

@@ -526,6 +526,11 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
+        if any(not storage for storage in self.model.storages.values()):
+            logger.debug("Storages are not attached yet")
+            event.defer()
+            return
+
         try:
             # mongod needs keyFile and TLS certificates on filesystem
             self.push_tls_certificate_to_workload()
