@@ -16,7 +16,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Check libs
-        uses: canonical/charming-actions/check-libraries@2.4.0
+        uses: canonical/charming-actions/check-libraries@2.6.2
         with:
           # NOTE: CHARMHUB_TOKEN is only allowed in latest/edge, latest/candidate
           credentials: "${{ secrets.CHARMHUB_TOKEN }}"
@@ -32,14 +32,14 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v19.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v20.0.2
 
   release:
     name: Release charm
     needs:
       - ci-tests
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v19.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v20.0.2
     with:
       channel: 6/edge
       artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
