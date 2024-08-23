@@ -1,0 +1,82 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-08-23T02:06:40Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-08-23T02:06:40Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-08-23T02:06:40Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-08-23T02:06:40Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-08-23T02:06:40Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  02:11:43Z
+
+App              Version  Status       Scale  Charm          Channel      Rev  Address         Exposed  Message
+application               active           1  application                   0  10.152.183.243  no       
+mongodb-k8s               maintenance      3  mongodb-k8s                   0  10.152.183.84   no       backup started/running, backup id:'2024-08-23T02:11:38Z'
+new-mongodb-gcp           active           3  mongodb-k8s                   1  10.152.183.161  no       
+s3-integrator             active           1  s3-integrator  latest/edge   37  10.152.183.172  no       
+
+Unit                Workload     Agent  Address       Ports  Message
+application/0*      active       idle   10.1.212.210         
+mongodb-k8s/0*      maintenance  idle   10.1.212.204         backup started/running, backup id:'2024-08-23T02:11:38Z'
+mongodb-k8s/1       active       idle   10.1.212.208         
+mongodb-k8s/2       active       idle   10.1.212.207         
+new-mongodb-gcp/0*  active       idle   10.1.212.225         
+new-mongodb-gcp/1   active       idle   10.1.212.227         
+new-mongodb-gcp/2   active       idle   10.1.212.228         
+s3-integrator/0*    active       idle   10.1.212.209         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-new-mongodb-aws-1: 02:03:52 ERROR unit.new-mongodb-aws/1.juju-log new-mongodb-aws/1.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66c7ee07f7c712e6f1b9d016, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-1.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.0006053930001144181>]>
+controller-0: 02:05:00 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-aws": finding filesystem info for new-mongodb-aws-mongodb-logs-9f48c584: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-aws-mongodb-logs-9f48c584-new-mongodb-aws-0" not found
+unit-new-mongodb-gcp-0: 02:08:29 ERROR unit.new-mongodb-gcp/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/./src/charm.py", line 1555, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 268, in _on_restore_action
+    if not self._restore_hook_checks(event):
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 328, in _restore_hook_checks
+    self._needs_provided_remap_arguments(backup_id)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 788, in _needs_provided_remap_arguments
+    backup_error_status = self.get_backup_error_status(backup_id)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 800, in get_backup_error_status
+    for backup in backups:
+TypeError: 'NoneType' object is not iterable
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
