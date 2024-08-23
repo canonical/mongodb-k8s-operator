@@ -84,6 +84,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
 
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_only_one_config_server_relation(ops_test: OpsTest) -> None:
     """Verify that a shard can only be related to one config server."""
     await ops_test.model.integrate(
