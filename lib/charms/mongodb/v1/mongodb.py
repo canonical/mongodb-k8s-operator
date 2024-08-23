@@ -4,14 +4,11 @@
 # See LICENSE file for licensing details.
 
 import logging
-import re
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
-from urllib.parse import quote_plus
+from typing import Dict, Set
 
 from bson.json_util import dumps
-from pymongo import MongoClient
-from pymongo.errors import OperationFailure, PyMongoError
+from charms.mongodb.v0.mongo import MongoConfiguration, MongoConnection, NotReadyError
+from pymongo.errors import OperationFailure
 from tenacity import (
     RetryError,
     Retrying,
@@ -22,8 +19,6 @@ from tenacity import (
     wait_fixed,
 )
 
-from config import Config
-
 # The unique Charmhub library identifier, never change it
 LIBID = "49c69d9977574dd7942eb7b54f43355b"
 
@@ -32,7 +27,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
@@ -42,59 +37,7 @@ class FailedToMovePrimaryError(Exception):
     """Raised when attempt to move a primary fails."""
 
 
-@dataclass
-class MongoDBConfiguration:
-    """Class for MongoDB configuration.
-
-    — replset: name of replica set, needed for connection URI.
-    — database: database name.
-    — username: username.
-    — password: password.
-    — hosts: full list of hosts to connect to, needed for the URI.
-    - tls_external: indicator for use of internal TLS connection.
-    - tls_internal: indicator for use of external TLS connection.
-    """
-
-    replset: str
-    database: Optional[str]
-    username: str
-    password: str
-    hosts: Set[str]
-    roles: Set[str]
-    tls_external: bool
-    tls_internal: bool
-    standalone: bool = False
-
-    @property
-    def uri(self):
-        """Return URI concatenated from fields."""
-        hosts = ",".join(self.hosts)
-        # Auth DB should be specified while user connects to application DB.
-        auth_source = ""
-        if self.database != "admin":
-            auth_source = "&authSource=admin"
-
-        if self.standalone:
-            return (
-                f"mongodb://{quote_plus(self.username)}:"
-                f"{quote_plus(self.password)}@"
-                f"localhost:{Config.MONGODB_PORT}/?authSource=admin"
-            )
-
-        return (
-            f"mongodb://{quote_plus(self.username)}:"
-            f"{quote_plus(self.password)}@"
-            f"{hosts}/{quote_plus(self.database)}?"
-            f"replicaSet={quote_plus(self.replset)}"
-            f"{auth_source}"
-        )
-
-
-class NotReadyError(PyMongoError):
-    """Raised when not all replica set members healthy or finished initial sync."""
-
-
-class MongoDBConnection:
+class MongoDBConnection(MongoConnection):
     """In this class we create connection object to MongoDB.
 
     Real connection is created on the first call to MongoDB.
@@ -115,7 +58,7 @@ class MongoDBConnection:
             <error handling as needed>
     """
 
-    def __init__(self, config: MongoDBConfiguration, uri=None, direct=False):
+    def __init__(self, config: MongoConfiguration, uri=None, direct=False):
         """A MongoDB client interface.
 
         Args:
@@ -124,49 +67,7 @@ class MongoDBConnection:
             direct: force a direct connection to a specific host, avoiding
                     reading replica set configuration and reconnection.
         """
-        self.mongodb_config = config
-
-        if uri is None:
-            uri = config.uri
-
-        self.client = MongoClient(
-            uri,
-            directConnection=direct,
-            connect=False,
-            serverSelectionTimeoutMS=1000,
-            connectTimeoutMS=2000,
-        )
-        return
-
-    def __enter__(self):
-        """Return a reference to the new connection."""
-        return self
-
-    def __exit__(self, object_type, value, traceback):
-        """Disconnect from MongoDB client."""
-        self.client.close()
-        self.client = None
-
-    @property
-    def is_ready(self) -> bool:
-        """Is the MongoDB server ready for services requests.
-
-        Returns:
-            True if services is ready False otherwise. Retries over a period of 60 seconds times to
-            allow server time to start up.
-
-        Raises:
-            ConfigurationError, ConfigurationError, OperationFailure
-        """
-        try:
-            for attempt in Retrying(stop=stop_after_delay(60), wait=wait_fixed(3)):
-                with attempt:
-                    # The ping command is cheap and does not require auth.
-                    self.client.admin.command("ping")
-        except RetryError:
-            return False
-
-        return True
+        super().__init__(config, uri, direct)
 
     @retry(
         stop=stop_after_attempt(3),
@@ -181,8 +82,8 @@ class MongoDBConnection:
             ConfigurationError, ConfigurationError, OperationFailure
         """
         config = {
-            "_id": self.mongodb_config.replset,
-            "members": [{"_id": i, "host": h} for i, h in enumerate(self.mongodb_config.hosts)],
+            "_id": self.config.replset,
+            "members": [{"_id": i, "host": h} for i, h in enumerate(self.config.hosts)],
         }
         try:
             self.client.admin.command("replSetInitiate", config)
@@ -347,107 +248,6 @@ class MongoDBConnection:
 
         logger.debug("rs_config: %r", rs_config)
         self.client.admin.command("replSetReconfig", rs_config)
-
-    def create_user(self, config: MongoDBConfiguration):
-        """Create user.
-
-        Grant read and write privileges for specified database.
-        """
-        self.client.admin.command(
-            "createUser",
-            config.username,
-            pwd=config.password,
-            roles=self._get_roles(config),
-            mechanisms=["SCRAM-SHA-256"],
-        )
-
-    def update_user(self, config: MongoDBConfiguration):
-        """Update grants on database."""
-        self.client.admin.command(
-            "updateUser",
-            config.username,
-            roles=self._get_roles(config),
-        )
-
-    def set_user_password(self, username, password: str):
-        """Update the password."""
-        self.client.admin.command(
-            "updateUser",
-            username,
-            pwd=password,
-        )
-
-    def create_role(self, role_name: str, privileges: dict, roles: dict = []):
-        """Creates a new role.
-
-        Args:
-            role_name: name of the role to be added.
-            privileges: privileges to be associated with the role.
-            roles: List of roles from which this role inherits privileges.
-        """
-        try:
-            self.client.admin.command(
-                "createRole", role_name, privileges=[privileges], roles=roles
-            )
-        except OperationFailure as e:
-            if not e.code == 51002:  # Role already exists
-                logger.error("Cannot add role. error=%r", e)
-                raise e
-
-    @staticmethod
-    def _get_roles(config: MongoDBConfiguration) -> List[dict]:
-        """Generate roles List."""
-        supported_roles = {
-            "admin": [
-                {"role": "userAdminAnyDatabase", "db": "admin"},
-                {"role": "readWriteAnyDatabase", "db": "admin"},
-                {"role": "userAdmin", "db": "admin"},
-            ],
-            "monitor": [
-                {"role": "explainRole", "db": "admin"},
-                {"role": "clusterMonitor", "db": "admin"},
-                {"role": "read", "db": "local"},
-            ],
-            "backup": [
-                {"db": "admin", "role": "readWrite", "collection": ""},
-                {"db": "admin", "role": "backup"},
-                {"db": "admin", "role": "clusterMonitor"},
-                {"db": "admin", "role": "restore"},
-                {"db": "admin", "role": "pbmAnyAction"},
-            ],
-            "default": [
-                {"role": "readWrite", "db": config.database},
-            ],
-        }
-        return [role_dict for role in config.roles for role_dict in supported_roles[role]]
-
-    def drop_user(self, username: str):
-        """Drop user."""
-        self.client.admin.command("dropUser", username)
-
-    def get_users(self) -> Set[str]:
-        """Add a new member to replica set config inside MongoDB."""
-        users_info = self.client.admin.command("usersInfo")
-        return set(
-            [
-                user_obj["user"]
-                for user_obj in users_info["users"]
-                if re.match(r"^relation-\d+$", user_obj["user"])
-            ]
-        )
-
-    def get_databases(self) -> Set[str]:
-        """Return list of all non-default databases."""
-        system_dbs = ("admin", "local", "config")
-        databases = self.client.list_database_names()
-        return set([db for db in databases if db not in system_dbs])
-
-    def drop_database(self, database: str):
-        """Drop a non-default database."""
-        system_dbs = ("admin", "local", "config")
-        if database in system_dbs:
-            return
-        self.client.drop_database(database)
 
     def _is_primary(self, rs_status: Dict, hostname: str) -> bool:
         """Returns True if passed host is the replica set primary.

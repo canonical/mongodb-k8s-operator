@@ -1,15 +1,13 @@
-"""Code for interactions with MongoS."""
+"""Code for interactions with MongoDB."""
 
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
 import logging
-from dataclasses import dataclass
 from typing import List, Optional, Set, Tuple
-from urllib.parse import quote_plus
 
-from charms.mongodb.v1.mongodb import NotReadyError
-from pymongo import MongoClient, collection
+from charms.mongodb.v0.mongo import MongoConfiguration, MongoConnection, NotReadyError
+from pymongo import collection
 from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from config import Config
@@ -22,57 +20,12 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 6
+LIBPATCH = 7
 
 # path to store mongodb ketFile
 logger = logging.getLogger(__name__)
 
 SHARD_AWARE_STATE = 1
-
-
-@dataclass
-class MongosConfiguration:
-    """Class for mongos configuration.
-
-    — database: database name.
-    — username: username.
-    — password: password.
-    — hosts: full list of hosts to connect to, needed for the URI.
-    - port: integer for the port to connect to connect to mongodb.
-    - tls_external: indicator for use of internal TLS connection.
-    - tls_internal: indicator for use of external TLS connection.
-    """
-
-    database: Optional[str]
-    username: str
-    password: str
-    hosts: Set[str]
-    port: int
-    roles: Set[str]
-    tls_external: bool
-    tls_internal: bool
-
-    @property
-    def uri(self):
-        """Return URI concatenated from fields."""
-        self.complete_hosts = self.hosts
-
-        # mongos using Unix Domain Socket to communicate do not use port
-        if self.port:
-            self.complete_hosts = [f"{host}:{self.port}" for host in self.hosts]
-
-        complete_hosts = ",".join(self.complete_hosts)
-
-        # Auth DB should be specified while user connects to application DB.
-        auth_source = ""
-        if self.database != "admin":
-            auth_source = "authSource=admin"
-        return (
-            f"mongodb://{quote_plus(self.username)}:"
-            f"{quote_plus(self.password)}@"
-            f"{complete_hosts}/{quote_plus(self.database)}?"
-            f"{auth_source}"
-        )
 
 
 class NotEnoughSpaceError(Exception):
@@ -95,7 +48,7 @@ class BalancerNotEnabledError(Exception):
     """Raised when balancer process is not enabled."""
 
 
-class MongosConnection:
+class MongosConnection(MongoConnection):
     """In this class we create connection object to Mongos.
 
     Real connection is created on the first call to Mongos.
@@ -116,7 +69,7 @@ class MongosConnection:
             <error handling as needed>
     """
 
-    def __init__(self, config: MongosConfiguration, uri=None, direct=False):
+    def __init__(self, config: MongoConfiguration, uri=None, direct=False):
         """A MongoDB client interface.
 
         Args:
@@ -125,26 +78,7 @@ class MongosConnection:
             direct: force a direct connection to a specific host, avoiding
                     reading replica set configuration and reconnection.
         """
-        if uri is None:
-            uri = config.uri
-
-        self.client = MongoClient(
-            uri,
-            directConnection=direct,
-            connect=False,
-            serverSelectionTimeoutMS=1000,
-            connectTimeoutMS=2000,
-        )
-        return
-
-    def __enter__(self):
-        """Return a reference to the new connection."""
-        return self
-
-    def __exit__(self, object_type, value, traceback):
-        """Disconnect from MongoDB client."""
-        self.client.close()
-        self.client = None
+        super().__init__(config, uri, direct)
 
     def get_shard_members(self) -> Set[str]:
         """Gets shard members.

@@ -22,14 +22,13 @@ from charms.mongodb.v1.helpers import (
     get_mongos_args,
 )
 from charms.mongodb.v1.mongodb import (
-    MongoDBConfiguration,
+    MongoConfiguration,
     MongoDBConnection,
     NotReadyError,
 )
 from charms.mongodb.v1.mongodb_backups import MongoDBBackups
 from charms.mongodb.v1.mongodb_provider import MongoDBProvider
 from charms.mongodb.v1.mongodb_tls import MongoDBTLS
-from charms.mongodb.v1.mongos import MongosConfiguration
 from charms.mongodb.v1.shards_interface import ConfigServerRequirer, ShardingProvider
 from charms.mongodb.v1.users import (
     CHARM_USERS,
@@ -173,29 +172,29 @@ class MongoDBCharm(CharmBase):
             return self._peers.units
 
     @property
-    def mongodb_config(self) -> MongoDBConfiguration:
+    def mongodb_config(self) -> MongoConfiguration:
         """Create a configuration object with settings.
 
         Needed for correct handling interactions with MongoDB.
 
         Returns:
-            A MongoDBConfiguration object
+            A MongoConfiguration object
         """
         return self._get_mongodb_config_for_user(OperatorUser, self.app_hosts)
 
     @property
-    def mongos_config(self) -> MongoDBConfiguration:
-        """Generates a MongoDBConfiguration object for mongos in the deployment of MongoDB."""
+    def mongos_config(self) -> MongoConfiguration:
+        """Generates a MongoConfiguration object for mongos in the deployment of MongoDB."""
         return self._get_mongos_config_for_user(OperatorUser, set(self.app_hosts))
 
     @property
-    def monitor_config(self) -> MongoDBConfiguration:
-        """Generates a MongoDBConfiguration object for this deployment of MongoDB."""
+    def monitor_config(self) -> MongoConfiguration:
+        """Generates a MongoConfiguration object for this deployment of MongoDB."""
         return self._get_mongodb_config_for_user(MonitorUser, [self.unit_host(self.unit)])
 
     @property
-    def backup_config(self) -> MongoDBConfiguration:
-        """Generates a MongoDBConfiguration object for backup."""
+    def backup_config(self) -> MongoConfiguration:
+        """Generates a MongoConfiguration object for backup."""
         return self._get_mongodb_config_for_user(BackupUser, [self.unit_host(self.unit)])
 
     @property
@@ -473,14 +472,14 @@ class MongoDBCharm(CharmBase):
         TODO implement this method as a part of sharding upgrades."""
         return None
 
-    def remote_mongos_config(self, hosts) -> MongosConfiguration:
-        """Generates a MongosConfiguration object for mongos in the deployment of MongoDB."""
+    def remote_mongos_config(self, hosts) -> MongoConfiguration:
+        """Generates a MongoConfiguration object for mongos in the deployment of MongoDB."""
         # mongos that are part of the cluster have the same username and password, but different
         # hosts
         return self._get_mongos_config_for_user(OperatorUser, hosts)
 
-    def remote_mongodb_config(self, hosts, replset=None, standalone=None) -> MongoDBConfiguration:
-        """Generates a MongoDBConfiguration object for mongod in the deployment of MongoDB."""
+    def remote_mongodb_config(self, hosts, replset=None, standalone=None) -> MongoConfiguration:
+        """Generates a MongoConfiguration object for mongod in the deployment of MongoDB."""
         # mongos that are part of the cluster have the same username and password, but different
         # hosts
         return self._get_mongodb_config_for_user(
@@ -993,7 +992,7 @@ class MongoDBCharm(CharmBase):
 
     def _get_mongodb_config_for_user(
         self, user: MongoDBUser, hosts: List[str]
-    ) -> MongoDBConfiguration:
+    ) -> MongoConfiguration:
         external_ca, _ = self.tls.get_tls_files(internal=False)
         internal_ca, _ = self.tls.get_tls_files(internal=True)
         password = self.get_secret(APP_SCOPE, user.get_password_key_name())
@@ -1002,7 +1001,7 @@ class MongoDBCharm(CharmBase):
                 f"Password for '{APP_SCOPE}', '{user.get_username()}' couldn't be retrieved"
             )
         else:
-            return MongoDBConfiguration(
+            return MongoConfiguration(
                 replset=self.app.name,
                 database=user.get_database_name(),
                 username=user.get_username(),
@@ -1015,11 +1014,11 @@ class MongoDBCharm(CharmBase):
 
     def _get_mongos_config_for_user(
         self, user: MongoDBUser, hosts: Set[str]
-    ) -> MongosConfiguration:
+    ) -> MongoConfiguration:
         external_ca, _ = self.tls.get_tls_files(internal=False)
         internal_ca, _ = self.tls.get_tls_files(internal=True)
 
-        return MongosConfiguration(
+        return MongoConfiguration(
             database=user.get_database_name(),
             username=user.get_username(),
             password=self.get_secret(APP_SCOPE, user.get_password_key_name()),

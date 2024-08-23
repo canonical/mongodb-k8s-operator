@@ -10,7 +10,7 @@ import string
 import subprocess
 from typing import List
 
-from charms.mongodb.v1.mongodb import MongoDBConfiguration
+from charms.mongodb.v1.mongodb import MongoConfiguration
 from ops.model import ActiveStatus, MaintenanceStatus, StatusBase, WaitingStatus
 
 from config import Config
@@ -23,7 +23,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 7
+LIBPATCH = 8
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -73,7 +73,7 @@ def _get_audit_log_settings(snap_install: bool) -> List[str]:
 
 
 # noinspection GrazieInspection
-def get_create_user_cmd(config: MongoDBConfiguration, mongo_path=MONGO_SHELL) -> List[str]:
+def get_create_user_cmd(config: MongoConfiguration, mongo_path=MONGO_SHELL) -> List[str]:
     """Creates initial admin user for MongoDB.
 
     Initial admin user can be created only through localhost connection.
@@ -172,7 +172,7 @@ def get_mongos_args(
 
 
 def get_mongod_args(
-    config: MongoDBConfiguration,
+    config: MongoConfiguration,
     auth: bool = True,
     snap_install: bool = False,
     role: str = "replication",
