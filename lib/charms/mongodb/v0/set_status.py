@@ -6,7 +6,7 @@ import json
 import logging
 from typing import Optional, Tuple
 
-from charms.mongodb.v1.mongodb import MongoDBConfiguration, MongoDBConnection
+from charms.mongodb.v1.mongodb import MongoConfiguration, MongoDBConnection
 from ops.charm import CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
@@ -238,7 +238,7 @@ class MongoDBStatusHandler(Object):
         return self.charm.get_cluster_mismatched_revision_status()
 
 
-def build_unit_status(mongodb_config: MongoDBConfiguration, unit_host: str) -> StatusBase:
+def build_unit_status(mongodb_config: MongoConfiguration, unit_host: str) -> StatusBase:
     """Generates the status of a unit based on its status reported by mongod."""
     try:
         with MongoDBConnection(mongodb_config) as mongo:
