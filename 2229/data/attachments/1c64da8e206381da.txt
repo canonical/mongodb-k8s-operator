@@ -1,0 +1,34 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: Primary
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [idle] active: Primary
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  02:13:12Z
+
+App              Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application               active       1  application                   0  10.152.183.63   no       
+mongodb-k8s               waiting      3  mongodb-k8s                   0  10.152.183.148  no       installing agent
+new-mongodb-aws           active       3  mongodb-k8s                   0  10.152.183.77   no       Primary
+s3-integrator             active       1  s3-integrator  latest/edge   37  10.152.183.230  no       
+
+Unit                Workload     Agent  Address      Ports  Message
+application/0*      active       idle   10.1.62.146         
+mongodb-k8s/0       active       idle   10.1.62.141         
+mongodb-k8s/1*      maintenance  idle   10.1.62.140         backup started/running, backup id:'2024-08-25T02:13:08Z'
+mongodb-k8s/2       active       idle   10.1.62.144         
+new-mongodb-aws/0*  active       idle   10.1.62.151         Primary
+new-mongodb-aws/1   active       idle   10.1.62.155         
+new-mongodb-aws/2   active       idle   10.1.62.154         
+s3-integrator/0*    active       idle   10.1.62.145         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-new-mongodb-gcp-1: 02:10:54 ERROR unit.new-mongodb-gcp/1.juju-log new-mongodb-gcp/1.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ca92adf922375fd1bfe8ba, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-gcp-1.new-mongodb-gcp-endpoints', 27017) server_type: RSGhost, rtt: 0.0006210380001903104>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
