@@ -526,6 +526,9 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
+        # We need to check that the storages are attached before starting the services.
+        # pebble-ready is not guaranteed to run after storage-attached so this check allows
+        # to ensure that the storages are attached before the pebble-ready hook is run.
         if any(not storage for storage in self.model.storages.values()):
             logger.debug("Storages are not attached yet")
             event.defer()
