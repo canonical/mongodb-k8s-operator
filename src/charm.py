@@ -1507,7 +1507,7 @@ class MongoDBCharm(CharmBase):
         """Generates the relation departed key for a specified relation id."""
         return f"relation_{rel_id}_departed"
 
-    def is_relation_feasible(self, rel_interface) -> bool:
+    def is_relation_feasible(self, rel_interface: str) -> bool:
         """Returns true if the proposed relation is feasible.
 
         TODO add checks for version mismatch
