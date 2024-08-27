@@ -7,9 +7,8 @@ import pytest
 from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
-from tests.integration.helpers import METADATA
-
 from ..ha_tests.helpers import get_direct_mongo_client
+from ..helpers import METADATA
 from .helpers import count_users, get_related_username_password
 
 SHARD_ONE_APP_NAME = "shard-one"
