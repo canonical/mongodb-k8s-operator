@@ -721,8 +721,7 @@ class MongoDBCharm(CharmBase):
     def _on_update_status(self, event: UpdateStatusEvent):
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
         # their mistake.
-        invalid_integration_status = self.status.get_invalid_integration_status()
-        if invalid_integration_status:
+        if invalid_integration_status := self.status.get_invalid_integration_status():
             self.status.set_and_share_status(invalid_integration_status)
             return
 
