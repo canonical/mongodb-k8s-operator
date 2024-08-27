@@ -38,7 +38,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +159,10 @@ class MongoDBTLS(Object):
     def _on_tls_relation_broken(self, event: RelationBrokenEvent) -> None:
         """Disable TLS when TLS relation broken."""
         logger.debug("Disabling external and internal TLS for unit: %s", self.charm.unit.name)
+        if not self.charm.db_initialised:
+            logger.info("Deferring %s. db is not initialised.", str(type(event)))
+            event.defer()
+            return
         if self.charm.upgrade_in_progress:
             logger.warning(
                 "Disabling TLS is not supported during an upgrade. The charm may be in a broken, unrecoverable state."
@@ -185,6 +189,11 @@ class MongoDBTLS(Object):
             logger.debug(
                 "mongos requires config-server in order to start, do not restart with TLS until integrated to config-server"
             )
+            event.defer()
+            return
+
+        if not self.charm.db_initialised:
+            logger.info("Deferring %s. db is not initialised.", str(type(event)))
             event.defer()
             return
 
