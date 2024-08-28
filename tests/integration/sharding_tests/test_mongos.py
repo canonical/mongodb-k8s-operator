@@ -8,6 +8,7 @@ from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
 from ..ha_tests.helpers import get_direct_mongo_client
+from ..helpers import METADATA
 from .helpers import count_users, get_related_username_password
 
 SHARD_ONE_APP_NAME = "shard-one"
@@ -20,19 +21,24 @@ TIMEOUT = 10 * 60
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
     mongodb_charm = await ops_test.build_charm(".")
+    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         mongodb_charm,
+        resources=resources,
         num_units=1,
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
     )
     await ops_test.model.deploy(
-        mongodb_charm, num_units=1, config={"role": "shard"}, application_name=SHARD_ONE_APP_NAME
+        mongodb_charm,
+        resources=resources,
+        num_units=1,
+        config={"role": "shard"},
+        application_name=SHARD_ONE_APP_NAME,
     )
 
     await ops_test.model.deploy(
@@ -50,7 +56,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
 async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
     """Verifies that when the cluster is formed a new user is created."""
@@ -105,7 +110,6 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
-@pytest.mark.skip("Will be enabled after DPE-5040 is done")
 @pytest.mark.abort_on_fail
 async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     """Verifies that when the cluster is formed a the user is removed."""
