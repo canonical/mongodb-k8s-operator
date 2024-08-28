@@ -1,0 +1,54 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  application/0 [idle] active: received database credentials of the second database
+  application/1 [idle] active: received database credentials of the second database
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [executing] active: Primary
+  another-database/0 [idle] active: 
+  another-database/1 [idle] active: Primary
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [executing] active: Primary
+[32mINFO    [0m integration.helpers:helpers.py:206 Running mongo command: 'mongosh --quiet --eval \'db.runCommand({ replSetGetStatus : 1 });\' "mongodb://relation-2:5xyOmCbajUvxG6ssjP1HmsAG3nzipXdB@mongodb-k8s-0.mongodb-k8s-endpoints:27017,mongodb-k8s-1.mongodb-k8s-endpoints:27017/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:448 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:453 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:492 Checking pod mongodb-helper is ready...
+[1m[31mERROR   [0m integration.helpers:helpers.py:234 code 1; stdout ''; stderr: 'MongoServerError: Authentication failed.\ncommand terminated with exit code 1\n'
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  01:44:51Z
+
+App                  Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-application           active      1  application             1  10.152.183.27   no       received database credentials of the first database
+another-database              active      2  mongodb-k8s             1  10.152.183.201  no       
+application                   active      2  application             0  10.152.183.103  no       received database credentials of the second database
+mongodb-k8s                   active      2  mongodb-k8s             0  10.152.183.230  no       
+
+Unit                    Workload  Agent  Address      Ports  Message
+another-application/0*  active    idle   10.1.61.221         received database credentials of the first database
+another-database/0      active    idle   10.1.61.213         
+another-database/1*     active    idle   10.1.61.212         Primary
+application/0*          active    idle   10.1.61.206         received database credentials of the second database
+application/1           active    idle   10.1.61.207         received database credentials of the second database
+mongodb-k8s/0           active    idle   10.1.61.204         
+mongodb-k8s/1*          active    idle   10.1.61.205         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-mongodb-k8s-1: 01:34:35 ERROR unit.mongodb-k8s/1.juju-log database-peers:0: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/./src/charm.py", line 933, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-mongodb-k8s-1: 01:34:41 ERROR unit.mongodb-k8s/1.juju-log database-peers:0: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/./src/charm.py", line 933, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-mongodb-k8s-3: 01:39:33 ERROR unit.mongodb-k8s/3.juju-log mongodb-k8s/3.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ce7fd493694dd18a955762, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0008408720000261383>]>
+unit-mongodb-k8s-2: 01:40:29 ERROR unit.mongodb-k8s/2.juju-log mongodb-k8s/2.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66ce800c2ad016434be8466c, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0007046859999491062>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
