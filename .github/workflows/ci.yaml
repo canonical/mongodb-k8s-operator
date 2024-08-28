@@ -74,7 +74,7 @@ jobs:
             allure_report: true
           - snap_channel: 3.6/beta
             allure_report: false
-    name: Integration test charm | 3.4.4
+    name: Integration test charm | ${{ matrix.juju.agent || matrix.juju.snap_channel }}
     needs:
       - lint
       - unit-test
