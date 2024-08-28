@@ -55,6 +55,7 @@ from ops.model import (
     ModelError,
     Relation,
     RelationDataContent,
+    StatusBase,
     Unit,
     WaitingStatus,
 )
@@ -465,6 +466,13 @@ class MongoDBCharm(CharmBase):
     # END: properties
 
     # BEGIN: generic helper methods
+    def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
+        """Returns a Status if the cluster has mismatched revisions.
+
+        TODO implement this method as a part of sharding upgrades.
+        """
+        return None
+
     def remote_mongos_config(self, hosts) -> MongoConfiguration:
         """Generates a MongoConfiguration object for mongos in the deployment of MongoDB."""
         # mongos that are part of the cluster have the same username and password, but different
@@ -507,14 +515,6 @@ class MongoDBCharm(CharmBase):
         if pure_id1 and pure_id2:
             return pure_id1 == pure_id2
         return False
-
-    def is_relation_feasible(self, rel_interface) -> bool:
-        """Returns true if the proposed relation is feasible.
-
-        TODO implement this in a future PR as part of sharding
-        """
-        logger.debug("checking if provided relation %s is feasible", rel_interface)
-        return True
 
     # BEGIN: charm events
     def _on_mongod_pebble_ready(self, event) -> None:
@@ -727,6 +727,12 @@ class MongoDBCharm(CharmBase):
             self.unit_peer_data["unit_departed"] = ""
 
     def _on_update_status(self, event: UpdateStatusEvent):
+        # user-made mistakes might result in other incorrect statues. Prioritise informing users of
+        # their mistake.
+        if invalid_integration_status := self.status.get_invalid_integration_status():
+            self.status.set_and_share_status(invalid_integration_status)
+            return
+
         # no need to report on replica set status until initialised
         if not self.db_initialised:
             return
@@ -1507,6 +1513,46 @@ class MongoDBCharm(CharmBase):
     def _generate_relation_departed_key(rel_id: int) -> str:
         """Generates the relation departed key for a specified relation id."""
         return f"relation_{rel_id}_departed"
+
+    def is_relation_feasible(self, rel_interface: str) -> bool:
+        """Returns true if the proposed relation is feasible.
+
+        TODO add checks for version mismatch
+        """
+        if self.is_sharding_component() and rel_interface in Config.Relations.DB_RELATIONS:
+            self.status.set_and_share_status(
+                BlockedStatus(f"Sharding roles do not support {rel_interface} interface.")
+            )
+            logger.error(
+                "Charm is in sharding role: %s. Does not support %s interface.",
+                rel_interface,
+                self.role,
+            )
+            return False
+
+        if (
+            not self.is_sharding_component()
+            and rel_interface == Config.Relations.SHARDING_RELATIONS_NAME
+        ):
+            self.status.set_and_share_status(
+                BlockedStatus("sharding interface cannot be used by replicas")
+            )
+            logger.error(
+                "Charm is in sharding role: %s. Does not support %s interface.",
+                self.role,
+                rel_interface,
+            )
+            return False
+
+        if revision_mismatch_status := self.get_cluster_mismatched_revision_status():
+            self.status.set_and_share_status(revision_mismatch_status)
+            return False
+
+        return True
+
+    def is_sharding_component(self) -> bool:
+        """Returns true if charm is running as a sharded component."""
+        return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
 
     # END: helper functions
 

@@ -88,6 +88,7 @@ class Config:
         SHARDING_RELATIONS_NAME = "sharding"
         CONFIG_SERVER_RELATIONS_NAME = "config-server"
         CLUSTER_RELATIONS_NAME = "cluster"
+        DB_RELATIONS = [NAME]
         Scopes = Literal[APP_SCOPE, UNIT_SCOPE]
 
     class Role:
