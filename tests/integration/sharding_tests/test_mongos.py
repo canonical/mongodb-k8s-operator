@@ -35,7 +35,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
     await ops_test.model.deploy(
         mongodb_charm,
-        reousrces=resources,
+        resources=resources,
         num_units=1,
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
