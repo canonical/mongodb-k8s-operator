@@ -1,0 +1,21 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  01:37:21Z
+
+App                Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+config-server-one           active       1  mongodb-k8s             0  10.152.183.100  no       
+mongos-k8s                  active       1  mongos-k8s   6/edge     6  10.152.183.155  no       
+shard-one                   waiting      1  mongodb-k8s             1  10.152.183.147  no       installing agent
+
+Unit                  Workload  Agent  Address      Ports  Message
+config-server-one/0*  active    idle   10.1.80.138         
+mongos-k8s/0*         active    idle   10.1.80.142         
+shard-one/0*          waiting   idle   10.1.80.141         Waiting for secrets from config-server
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-config-server-one-0: 01:34:10 ERROR unit.config-server-one/0.juju-log config-server:4: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1724895250, 1), 'signature': {'hash': b'\\xa2p\\xf7M\\n\\x16\\xbf-\\xd0Y\\xc3$\\\\w,]\\x11\\x1b\\xbd]', 'keyId': 7408368511682084889}}, 'operationTime': Timestamp(1724895250, 1)}")
+unit-config-server-one-0: 01:34:10 ERROR unit.config-server-one/0.juju-log config-server:4: shard-one shard does not have the same auth as the config server.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
