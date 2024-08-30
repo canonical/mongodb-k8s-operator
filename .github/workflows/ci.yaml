@@ -70,8 +70,10 @@ jobs:
       fail-fast: false
       matrix:
         juju:
+          # This runs on all runs
           - agent: 3.5.3 # renovate: juju-agent-pin-minor
             allure_report: true
+          # This runs only on scheduled runs, DPW 21 specifics (scheduled + 3.6/X)
           - snap_channel: 3.6/beta
             allure_report: false
     name: Integration test charm | ${{ matrix.juju.agent || matrix.juju.snap_channel }}
