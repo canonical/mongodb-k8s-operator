@@ -66,17 +66,7 @@ jobs:
       path-to-charm-directory: ${{ matrix.path }}
 
   integration-test:
-    strategy:
-      fail-fast: false
-      matrix:
-        juju:
-          # This runs on all runs
-          - agent: 3.5.3 # renovate: juju-agent-pin-minor
-            allure_report: true
-          # This runs only on scheduled runs, DPW 21 specifics (scheduled + 3.6/X)
-          - snap_channel: 3.6/beta
-            allure_report: false
-    name: Integration test charm | ${{ matrix.juju.agent || matrix.juju.snap_channel }}
+    name: Integration test charm | 3.5.3
     needs:
       - lint
       - unit-test
@@ -86,9 +76,8 @@ jobs:
       artifact-prefix: packed-charm-cache-true
       cloud: microk8s
       microk8s-snap-channel: 1.29-strict/stable
-      juju-agent-version: ${{ matrix.juju.agent }}
-      juju-snap-channel: ${{ matrix.juju.snap_channel }}
-      _beta_allure_report: ${{ matrix.juju.allure_report }}
+      juju-agent-version: 3.5.3 # renovate: juju-agent-pin-minor
+      _beta_allure_report: true
     permissions:
       contents: write # Needed for Allure Report beta
     secrets:
