@@ -1,0 +1,70 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:648 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:599 Primary instance mongodb-k8s/0 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:604 Waiting until Mongodb detects primary instance mongodb-k8s/0 is not reachable
+[31m[1mERROR   [0m integration.helpers:helpers.py:528 get-password command returned non 0 exit code: b'Running operation 259 with 1 task\n  - task 260 on unit-mongodb-k8s-0\n\nWaiting for task 260...\nERROR timed out waiting for results from: unit mongodb-k8s/0\n'
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:610 Validating writes are continuing to DB
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/1, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/1, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/1, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/1, True
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  01:59:58Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database           active      1  mongodb-k8s             1  10.152.183.152  no       Primary
+application                active      1  application             0  10.152.183.135  no       
+mongodb-k8s                active      3  mongodb-k8s             0  10.152.183.54   no       
+
+Unit                 Workload  Agent  Address     Ports  Message
+another-database/0*  active    idle   10.1.33.92         Primary
+application/0*       active    idle   10.1.33.81         
+mongodb-k8s/0        active    idle   10.1.33.89         
+mongodb-k8s/1*       active    idle   10.1.33.79         Primary
+mongodb-k8s/2        active    idle   10.1.33.82         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-mongodb-k8s-2: 01:35:54 ERROR unit.mongodb-k8s/2.juju-log mongodb-k8s/2.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66d27379bc323090626e2d1b, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0007494850000284714>]>
+unit-mongodb-k8s-2: 01:36:45 ERROR unit.mongodb-k8s/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 1608, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 558, in _on_mongod_pebble_ready
+    container.replan()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/model.py", line 2278, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2131, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2228, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "mongod" (cannot start service: exited quickly with code 1)
+----- Logs from task 1 -----
+2024-08-31T01:36:45Z INFO Most recent service output:
+    {"t":{"$date":"2024-08-31T01:36:45.268Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"processUmask":{"default":63,"value":31}}}}
+    {"t":{"$date":"2024-08-31T01:36:45.268Z"},"s":"F",  "c":"CONTROL",  "id":20574,   "ctx":"-","msg":"Error during global initialization","attr":{"error":{"code":38,"codeName":"FileNotOpen","errmsg":"Can't initialize rotatable log file :: caused by :: Failed to open /var/log/mongodb/mongodb.log"}}}
+2024-08-31T01:36:45Z ERROR cannot start service: exited quickly with code 1
+-----
+unit-mongodb-k8s-2: 01:36:45 ERROR juju.worker.uniter.operation hook "mongod-pebble-ready" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-2: 01:36:45 ERROR juju.worker.uniter pebble poll failed for container "mongod": failed to send pebble-ready event: hook failed
+unit-mongodb-k8s-0: 01:56:27 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d1a754] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 01:56:34 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d1a754] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
