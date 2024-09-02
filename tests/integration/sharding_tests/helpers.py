@@ -5,9 +5,9 @@ from typing import List, Optional, Tuple
 
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from ..helpers import METADATA, get_application_relation_data, get_secret_content
-from tenacity import retry, stop_after_attempt, wait_fixed
 
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
