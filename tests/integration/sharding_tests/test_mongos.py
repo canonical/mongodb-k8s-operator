@@ -8,7 +8,7 @@ from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
 from ..ha_tests.helpers import get_direct_mongo_client
-from ..helpers import METADATA
+from ..helpers import METADATA, is_relation_joined
 from .helpers import count_users, get_related_username_password
 
 SHARD_ONE_APP_NAME = "shard-one"
@@ -84,9 +84,20 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
 
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, MONGOS_APP_NAME],
+        status="active",
         idle_period=20,
         timeout=TIMEOUT,
         raise_on_error=False,
+    )
+
+    await ops_test.model.block_until(
+        lambda: is_relation_joined(
+            ops_test,
+            CLUSTER_REL_NAME,
+            CONFIG_SERVER_REL_NAME,
+        )
+        is True,
+        timeout=600,
     )
 
     num_users_after_integration = count_users(mongos_client)
