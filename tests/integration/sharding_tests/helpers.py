@@ -5,6 +5,7 @@ from typing import List, Optional, Tuple
 
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 from ..helpers import METADATA, get_application_relation_data, get_secret_content
 
@@ -27,6 +28,7 @@ def count_users(mongos_client: MongoClient) -> int:
     return users_collection.count_documents({})
 
 
+@retry(stop=stop_after_attempt(10), wait=wait_fixed(15), reraise=True)
 async def get_related_username_password(
     ops_test: OpsTest, app_name: str, relation_name: str
 ) -> Tuple:
