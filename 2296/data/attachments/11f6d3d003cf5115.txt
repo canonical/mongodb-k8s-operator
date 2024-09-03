@@ -1,0 +1,98 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-09-03T02:05:00Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-09-03T02:05:00Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-09-03T02:05:00Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-09-03T02:05:00Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-09-03T02:05:00Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-09-03T02:05:00Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-09-03T02:05:00Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-09-03T02:05:00Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-09-03T02:05:00Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.4.4    unsupported  02:13:30Z
+
+App              Version  Status       Scale  Charm          Channel      Rev  Address         Exposed  Message
+application               active           1  application                   0  10.152.183.101  no       
+mongodb-k8s               maintenance      3  mongodb-k8s                   0  10.152.183.253  no       backup started/running, backup id:'2024-09-03T02:13:25Z'
+new-mongodb-aws           active           3  mongodb-k8s                   0  10.152.183.232  no       Primary
+s3-integrator             active           1  s3-integrator  latest/edge   41  10.152.183.54   no       
+
+Unit                Workload     Agent  Address      Ports  Message
+application/0*      active       idle   10.1.73.146         
+mongodb-k8s/0*      maintenance  idle   10.1.73.142         backup started/running, backup id:'2024-09-03T02:13:25Z'
+mongodb-k8s/1       active       idle   10.1.73.144         
+mongodb-k8s/2       active       idle   10.1.73.143         
+new-mongodb-aws/0*  active       idle   10.1.73.153         Primary
+new-mongodb-aws/1   active       idle   10.1.73.155         
+new-mongodb-aws/2   active       idle   10.1.73.154         
+s3-integrator/0*    active       idle   10.1.73.145         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-new-mongodb-aws-0: 02:02:44 ERROR unit.new-mongodb-aws/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/./src/charm.py", line 1608, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 268, in _on_restore_action
+    if not self._restore_hook_checks(event):
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 328, in _restore_hook_checks
+    self._needs_provided_remap_arguments(backup_id)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 788, in _needs_provided_remap_arguments
+    backup_error_status = self.get_backup_error_status(backup_id)
+  File "/var/lib/juju/agents/unit-new-mongodb-aws-0/charm/lib/charms/mongodb/v1/mongodb_backups.py", line 800, in get_backup_error_status
+    for backup in backups:
+TypeError: 'NoneType' object is not iterable
+unit-new-mongodb-gcp-1: 02:07:10 ERROR unit.new-mongodb-gcp/1.juju-log new-mongodb-gcp/1.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66d66f4d122456c00c955c4d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-gcp-1.new-mongodb-gcp-endpoints', 27017) server_type: RSGhost, rtt: 0.00044206599977769656>]>
+unit-new-mongodb-gcp-2: 02:07:12 ERROR unit.new-mongodb-gcp/2.juju-log new-mongodb-gcp/2.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66d66f4fff7e31f0be5a4718, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-gcp-2.new-mongodb-gcp-endpoints', 27017) server_type: RSGhost, rtt: 0.0005141169999660633>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
