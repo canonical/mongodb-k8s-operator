@@ -339,7 +339,7 @@ class MongoDBCharm(CharmBase):
     @property
     def db_initialised(self) -> bool:
         """Check if MongoDB is initialised."""
-        return "db_initialised" in self.app_peer_data
+        return json.loads(self.app_peer_data.get("db_initialised", "false"))
 
     def is_role_changed(self) -> bool:
         """Checks if application is running in provided role."""
@@ -367,7 +367,7 @@ class MongoDBCharm(CharmBase):
     def db_initialised(self, value):
         """Set the db_initialised flag."""
         if isinstance(value, bool):
-            self.app_peer_data["db_initialised"] = str(value)
+            self.app_peer_data["db_initialised"] = json.dumps(value)
         else:
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Provided: {value} is of type {type(value)}"
@@ -892,8 +892,10 @@ class MongoDBCharm(CharmBase):
             self._init_operator_user()
             self._init_backup_user()
             self._init_monitor_user()
-            logger.info("Reconcile relations")
-            self.client_relations.oversee_users(None, event)
+            # Bare replicas can create users or config-servers for related mongos apps
+            if not self.is_role(Config.Role.SHARD):
+                logger.info("Manage users")
+                self.client_relations.oversee_users(None, event)
             self.users_initialized = True
         except ExecError as e:
             logger.error("Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr)
