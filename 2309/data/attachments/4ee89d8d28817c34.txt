@@ -1,0 +1,106 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: Primary
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-09-05T01:47:14Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: Primary
+  config-server/1 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:56:21Z
+
+App            Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             waiting      1  application                   0  10.152.183.32   no       installing agent
+config-server           active       2  mongodb-k8s                   0  10.152.183.47   no       Primary
+s3-integrator           active       1  s3-integrator  latest/edge   41  10.152.183.63   no       
+shard-one               active       2  mongodb-k8s                   1  10.152.183.147  no       Primary
+shard-two               active       1  mongodb-k8s                   2  10.152.183.235  no       Primary
+
+Unit              Workload  Agent  Address      Ports  Message
+application/0*    waiting   idle   10.1.83.200         
+config-server/0*  active    idle   10.1.83.206         Primary
+config-server/1   active    idle   10.1.83.205         
+s3-integrator/0*  active    idle   10.1.83.215         
+shard-one/0       active    idle   10.1.83.211         Primary
+shard-one/1*      active    idle   10.1.83.212         
+shard-two/0*      active    idle   10.1.83.216         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-config-server-0: 01:35:20 ERROR unit.config-server/0.juju-log Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-0/charm/./src/charm.py", line 939, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/pebble.py", line 1773, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-config-server-0: 01:35:26 ERROR unit.config-server/0.juju-log Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-0/charm/./src/charm.py", line 939, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/pebble.py", line 1773, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-config-server-0: 01:36:35 ERROR unit.config-server/0.juju-log config-server:7: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of pitr: unable check PITR config status: get config: missed config"}\n', stderr=''
+unit-config-server-0: 01:36:40 ERROR unit.config-server/0.juju-log config-server:7: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of backups: get storage: storage undefined"}\n', stderr=''
+unit-config-server-0: 01:37:04 ERROR unit.config-server/0.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1725500224, 1), \'signature\': {\'hash\': b\'6\\xe6\\xb0\\x06\\x83FK\\xb9Fy\\\\\\x9c>\\xe3\\x8cA\\xcd\\xc1\\x9c\\xa4\', \'keyId\': 7410966627593748504}}, \'operationTime\': Timestamp(1725500224, 1)}')
+unit-config-server-0: 01:37:04 ERROR unit.config-server/0.juju-log config-server:6: Failed to add shard-one to cluster
+unit-config-server-0: 01:37:04 ERROR unit.config-server/0.juju-log config-server:6: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1725500224, 1), \'signature\': {\'hash\': b\'6\\xe6\\xb0\\x06\\x83FK\\xb9Fy\\\\\\x9c>\\xe3\\x8cA\\xcd\\xc1\\x9c\\xa4\', \'keyId\': 7410966627593748504}}, \'operationTime\': Timestamp(1725500224, 1)}')
+unit-config-server-0: 01:37:07 ERROR unit.config-server/0.juju-log config-server:7: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of cluster: connect to `shard-one` [shard-one/shard-one-0.shard-one-endpoints:27017,shard-one-1.shard-one-endpoints:27017]: ping: connection() error occurred during connection handshake: auth error: unable to authenticate using mechanism \\"SCRAM-SHA-256\\": (AuthenticationFailed) Authentication failed."}\n', stderr=''
+unit-config-server-0: 01:37:08 ERROR unit.config-server/0.juju-log config-server:6: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of cluster: connect to `shard-one` [shard-one/shard-one-0.shard-one-endpoints:27017,shard-one-1.shard-one-endpoints:27017]: ping: connection() error occurred during connection handshake: auth error: unable to authenticate using mechanism \\"SCRAM-SHA-256\\": (AuthenticationFailed) Authentication failed."}\n', stderr=''
+unit-shard-one-1: 01:40:19 ERROR unit.shard-one/1.juju-log Backup failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-1: 01:40:21 ERROR unit.shard-one/1.juju-log List-backups failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-1: 01:40:21 ERROR unit.shard-one/1.juju-log Restore failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
