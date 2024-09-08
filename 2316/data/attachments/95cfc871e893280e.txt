@@ -1,0 +1,31 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:648 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:599 Primary instance mongodb-k8s/0 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:604 Waiting until Mongodb detects primary instance mongodb-k8s/0 is not reachable
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:610 Validating writes are continuing to DB
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/1, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/1, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/1, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/1, True
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:59:12Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database           active      1  mongodb-k8s             1  10.152.183.252  no       Primary
+application                active      1  application             0  10.152.183.86   no       
+mongodb-k8s                active      3  mongodb-k8s             0  10.152.183.85   no       
+
+Unit                 Workload  Agent  Address       Ports  Message
+another-database/0*  active    idle   10.1.174.220         Primary
+application/0*       active    idle   10.1.174.209         
+mongodb-k8s/0        active    idle   10.1.174.207         
+mongodb-k8s/1*       active    idle   10.1.174.217         Primary
+mongodb-k8s/2        active    idle   10.1.174.210         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-mongodb-k8s-2: 01:36:39 ERROR unit.mongodb-k8s/2.juju-log mongodb-k8s/2.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66dcffa6a477974d8a8f7b75, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.002118037000059303>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
