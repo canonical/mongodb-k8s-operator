@@ -31,13 +31,13 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 13
+LIBPATCH = 14
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
 MONGOS_RELATIONS = "cluster"
 MONGOS_CLIENT_RELATIONS = "mongos_proxy"
-EXTERNAL_CONNECTIVITY_TAG = "external-node-connectivity"
+MANAGED_USERS_KEY = "managed-users-key"
 
 # We expect the MongoDB container to use the default ports
 
@@ -77,8 +77,8 @@ class MongoDBProvider(Object):
             self.database_provides.on.database_requested, self._on_relation_event
         )
 
-    def pass_hook_checks(self, event: EventBase) -> bool:
-        """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
+    def pass_sanity_hook_checks(self) -> bool:
+        """Runs reusable and event agnostic checks."""
         # We shouldn't try to create or update users if the database is not
         # initialised. We will create users as part of initialisation.
         if not self.charm.db_initialised:
@@ -91,6 +91,13 @@ class MongoDBProvider(Object):
             return False
 
         if not self.charm.unit.is_leader():
+            return False
+
+        return True
+
+    def pass_hook_checks(self, event: EventBase) -> bool:
+        """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
+        if not self.pass_sanity_hook_checks():
             return False
 
         if self.charm.upgrade_in_progress:
@@ -158,12 +165,36 @@ class MongoDBProvider(Object):
         When the function is executed in relation departed event, the departed
         relation is still on the list of all relations. Therefore, for proper
         work of the function, we need to exclude departed relation from the list.
+
+        Raises:
+            PyMongoError
         """
         with MongoConnection(self.charm.mongo_config) as mongo:
             database_users = mongo.get_users()
-            relation_users = self._get_users_from_relations(departed_relation_id)
 
-            for username in database_users - relation_users:
+        users_being_managed = database_users.intersection(self._get_relational_users_to_manage())
+        expected_current_users = self._get_users_from_relations(departed_relation_id)
+
+        self.remove_users(users_being_managed, expected_current_users)
+        self.add_users(users_being_managed, expected_current_users)
+        self.update_users(event, users_being_managed, expected_current_users)
+        self.auto_delete_dbs(departed_relation_id)
+
+    def remove_users(
+        self, users_being_managed: Set[str], expected_current_users: Set[str]
+    ) -> None:
+        """Removes users from Charmed MongoDB.
+
+        Note this only removes users that this application of Charmed MongoDB is responsible for
+        managing. It won't remove:
+        1. users created from other applications
+        2. users created from other mongos routers.
+
+        Raises:
+            PyMongoError
+        """
+        with MongoConnection(self.charm.mongo_config) as mongo:
+            for username in users_being_managed - expected_current_users:
                 logger.info("Remove relation user: %s", username)
                 if (
                     self.charm.is_role(Config.Role.MONGOS)
@@ -172,8 +203,16 @@ class MongoDBProvider(Object):
                     continue
 
                 mongo.drop_user(username)
+                self._remove_from_relational_users_to_manage(username)
 
-            for username in relation_users - database_users:
+    def add_users(self, users_being_managed: Set[str], expected_current_users: Set[str]) -> None:
+        """Adds users to Charmed MongoDB.
+
+        Raises:
+            PyMongoError
+        """
+        with MongoConnection(self.charm.mongo_config) as mongo:
+            for username in expected_current_users - users_being_managed:
                 config = self._get_config(username, None)
                 if config.database is None:
                     # We need to wait for the moment when the provider library
@@ -182,14 +221,32 @@ class MongoDBProvider(Object):
                 logger.info("Create relation user: %s on %s", config.username, config.database)
 
                 mongo.create_user(config)
+                self._add_to_relational_users_to_manage(username)
                 self._set_relation(config)
 
-            for username in relation_users.intersection(database_users):
+    def update_users(
+        self, event: EventBase, users_being_managed: Set[str], expected_current_users: Set[str]
+    ) -> None:
+        """Updates existing users in Charmed MongoDB.
+
+        Raises:
+            PyMongoError
+        """
+        with MongoConnection(self.charm.mongo_config) as mongo:
+            for username in expected_current_users.intersection(users_being_managed):
                 config = self._get_config(username, None)
                 logger.info("Update relation user: %s on %s", config.username, config.database)
                 mongo.update_user(config)
                 logger.info("Updating relation data according to diff")
                 self._diff(event)
+
+    def auto_delete_dbs(self, departed_relation_id):
+        """Delete's unused dbs if configured to do so.
+
+        Raises:
+            PyMongoError
+        """
+        with MongoConnection(self.charm.mongo_config) as mongo:
 
             if not self.charm.model.config["auto-delete"]:
                 return
@@ -241,7 +298,7 @@ class MongoDBProvider(Object):
 
     def update_app_relation_data(self) -> None:
         """Helper function to update application relation data."""
-        if not self.charm.db_initialised:
+        if not self.pass_sanity_hook_checks():
             return
 
         database_users = set()
@@ -283,7 +340,9 @@ class MongoDBProvider(Object):
         self.database_provides.update_relation_data(relation.id, {"password": password})
         return password
 
-    def _get_config(self, username: str, password: Optional[str]) -> MongoConfiguration:
+    def _get_config(
+        self, username: str, password: Optional[str], event=None
+    ) -> MongoConfiguration:
         """Construct the config object for future user creation."""
         relation = self._get_relation_from_username(username)
         if not password:
@@ -300,10 +359,11 @@ class MongoDBProvider(Object):
             "tls_external": False,
             "tls_internal": False,
         }
+
         if self.charm.is_role(Config.Role.MONGOS):
             mongo_args["port"] = Config.MONGOS_PORT
             if self.substrate == Config.Substrate.K8S:
-                mongo_args["port"] = self.charm.get_mongos_port()
+                mongo_args["hosts"] = self.charm.get_mongos_hosts_for_client()
         else:
             mongo_args["replset"] = self.charm.app.name
 
@@ -398,6 +458,35 @@ class MongoDBProvider(Object):
             return MONGOS_CLIENT_RELATIONS
         else:
             return REL_NAME
+
+    def _get_relational_users_to_manage(self) -> Set[str]:
+        """Returns a set of the users to manage.
+
+        Note json cannot serialise sets. Convert from list.
+        """
+        return set(json.loads(self.charm.app_peer_data.get(MANAGED_USERS_KEY, "[]")))
+
+    def _update_relational_users_to_manage(self, new_users: Set[str]) -> None:
+        """Updates the set of the users to manage.
+
+        Note json cannot serialise sets. Convert from list.
+        """
+        if not self.charm.unit.is_leader():
+            raise Exception("Cannot update relational data on non-leader unit")
+
+        self.charm.app_peer_data[MANAGED_USERS_KEY] = json.dumps(list(new_users))
+
+    def _remove_from_relational_users_to_manage(self, user_to_remove: str) -> None:
+        """Removes the provided user from the set of the users to manage."""
+        current_users = self._get_relational_users_to_manage()
+        updated_users = current_users - {user_to_remove}
+        self._update_relational_users_to_manage(updated_users)
+
+    def _add_to_relational_users_to_manage(self, user_to_add: str) -> None:
+        """Adds the provided user to the set of the users to manage."""
+        current_users = self._get_relational_users_to_manage()
+        current_users.add(user_to_add)
+        self._update_relational_users_to_manage(current_users)
 
     @staticmethod
     def _get_database_from_relation(relation: Relation) -> Optional[str]:
