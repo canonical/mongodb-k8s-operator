@@ -1,6 +1,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import json
 import unittest
 from unittest import mock
 from unittest.mock import patch
@@ -67,7 +68,7 @@ class TestMongoProvider(unittest.TestCase):
         """Tests the errors related to pymongo when overseeing users result in a defer."""
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         relation_id = self.harness.add_relation("database", "consumer")
 
         for exception, expected_raise in PYMONGO_EXCEPTIONS:
@@ -91,7 +92,7 @@ class TestMongoProvider(unittest.TestCase):
         """Verifies that when users are formatted incorrectly an assertion error is raised."""
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         relation_id = self.harness.add_relation("database", "consumer")
 
         # AssertionError is raised when unable to attain users from relation (due to name
@@ -107,7 +108,7 @@ class TestMongoProvider(unittest.TestCase):
                     self.harness.remove_relation_unit(relation_id, "consumer/0")
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     def test_oversee_users_get_users_failure(self, connection):
         """Verifies that when unable to retrieve users from mongod an exception is raised."""
         for dep_id in DEPARTED_IDS:
@@ -120,7 +121,7 @@ class TestMongoProvider(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     def test_oversee_users_drop_user_failure(self, connection, relation_users):
         """Verifies that when unable to drop users from mongod an exception is raised."""
         # presets, such that there is a need to drop users.
@@ -129,7 +130,9 @@ class TestMongoProvider(unittest.TestCase):
             "relation-user1",
             "relation-user2",
         }
-
+        self.harness.charm.app_peer_data["managed-users-key"] = json.dumps(
+            ["relation-user1", "relation-user2"]
+        )
         for dep_id in DEPARTED_IDS:
             for exception, expected_raise in PYMONGO_EXCEPTIONS:
                 connection.return_value.__enter__.return_value.drop_user.side_effect = exception
@@ -140,7 +143,7 @@ class TestMongoProvider(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     def test_oversee_users_get_config_failure(self, connection, relation_users):
         """Verifies that when users do not match necessary schema an AssertionError is raised."""
         # presets, such that the need to create user relations is triggered. Further presets
@@ -159,7 +162,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch("charm.MongoDBProvider._set_relation")
     @patch("charm.MongoDBProvider._get_config")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     @patch("charm.MongoDBProvider._diff")
     def test_oversee_users_no_config_database(
         self, diff, connection, relation_users, get_config, set_relation
@@ -182,7 +185,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch("charm.MongoDBProvider._set_relation")
     @patch("charm.MongoDBProvider._get_config")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     def test_oversee_users_create_user_failure(
         self, connection, relation_users, get_config, set_relation
     ):
@@ -203,7 +206,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_config")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     def test_oversee_users_set_relation_failure(self, connection, relation_users, get_config):
         """Verifies that when adding a user with an invalid name that an exception is raised."""
         # presets, such that the need to create user relations is triggered and user naming such
@@ -222,7 +225,7 @@ class TestMongoProvider(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     def test_oversee_users_update_get_config_failure(self, connection, relation_users):
         """Verifies that when updating a user with an invalid name that an exception is raised."""
         # presets, such that the need to update user relations is triggered and user naming such
@@ -240,12 +243,13 @@ class TestMongoProvider(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_config")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     def test_oversee_users_update_user_failure(self, connection, relation_users, get_config):
         """Verifies that when updating users fails an exception is raised."""
         # presets, such that the need to update user relations is triggered
         relation_users.return_value = {"relation-user1"}
         connection.return_value.__enter__.return_value.get_users.return_value = {"relation-user1"}
+        self.harness.charm.app_peer_data["managed-users-key"] = json.dumps(["relation-user1"])
 
         for dep_id in DEPARTED_IDS:
             for exception, expected_raise in PYMONGO_EXCEPTIONS:
@@ -259,7 +263,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_databases_from_relations")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     def test_oversee_users_no_auto_delete(
         self, connection, relation_users, databases_from_relations
     ):
@@ -276,7 +280,7 @@ class TestMongoProvider(unittest.TestCase):
 
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     def test_oversee_users_mongo_databases_failure(self, connection, relation_users):
         """Verifies failures in checking for databases with mongod result in raised exceptions."""
         self.harness.update_config({"auto-delete": True})
@@ -294,7 +298,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBProvider._get_databases_from_relations")
     @patch("charm.MongoDBProvider._get_users_from_relations")
-    @patch("charms.mongodb.v1.mongodb_provider.MongoDBConnection")
+    @patch("charms.mongodb.v1.mongodb_provider.MongoConnection")
     def test_oversee_users_drop_database_failure(
         self, connection, relation_users, databases_from_relations
     ):

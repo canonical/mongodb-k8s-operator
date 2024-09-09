@@ -595,7 +595,7 @@ class MongoDBCharm(CharmBase):
             return
 
         logger.error(
-            f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
+            f"cluster migration currently not supported, cannot change from {self.model.config['role']} to {self.role}"
         )
         raise ShardingMigrationError(
             f"Migration of sharding components not permitted, revert config role to {self.role}"
