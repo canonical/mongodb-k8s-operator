@@ -5,8 +5,7 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from tests.integration.ha_tests.helpers import find_unit
-
+from ..ha_tests.helpers import find_unit
 from ..helpers import (
     APP_NAME,
     METADATA,
