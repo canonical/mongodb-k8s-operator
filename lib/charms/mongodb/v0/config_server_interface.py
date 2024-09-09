@@ -11,10 +11,11 @@ from typing import Optional
 
 from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
+    DatabaseRequestedEvent,
     DatabaseRequires,
 )
 from charms.mongodb.v1.mongos import MongosConnection
-from ops.charm import CharmBase, EventBase, RelationBrokenEvent
+from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
 from ops.framework import Object
 from ops.model import (
     ActiveStatus,
@@ -42,7 +43,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 9
+LIBPATCH = 12
 
 
 class ClusterProvider(Object):
@@ -57,6 +58,9 @@ class ClusterProvider(Object):
         self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
 
         super().__init__(charm, self.relation_name)
+        self.framework.observe(
+            self.database_provides.on.database_requested, self._on_database_requested
+        )
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
         )
@@ -105,8 +109,14 @@ class ClusterProvider(Object):
 
         return True
 
-    def _on_relation_changed(self, event) -> None:
-        """Handles providing mongos with KeyFile and hosts."""
+    def _on_database_requested(self, event: DatabaseRequestedEvent | RelationChangedEvent) -> None:
+        """Handles the database requested event.
+
+        The first time secrets are written to relations should be on this event.
+
+        Note: If secrets are written for the first time on other events we risk
+        the chance of writing secrets in plain sight.
+        """
         if not self.pass_hook_checks(event):
             if not self.is_valid_mongos_integration():
                 self.charm.status.set_and_share_status(
@@ -116,12 +126,9 @@ class ClusterProvider(Object):
                 )
             logger.info("Skipping relation joined event: hook checks did not pass")
             return
-
         config_server_db = self.generate_config_server_db()
-
         # create user and set secrets for mongos relation
         self.charm.client_relations.oversee_users(None, None)
-
         relation_data = {
             KEYFILE_KEY: self.charm.get_secret(
                 Config.Relations.APP_SCOPE, Config.Secrets.SECRET_KEYFILE_NAME
@@ -135,8 +142,19 @@ class ClusterProvider(Object):
         )
         if int_tls_ca:
             relation_data[INT_TLS_CA_KEY] = int_tls_ca
-
         self.database_provides.update_relation_data(event.relation.id, relation_data)
+
+    def _on_relation_changed(self, event: RelationChangedEvent) -> None:
+        """Handles providing mongos with KeyFile and hosts."""
+        # First we need to ensure that the database requested event has run
+        # otherwise we risk the chance of writing secrets in plain sight.
+        if not self.database_provides.fetch_relation_field(event.relation.id, "database"):
+            logger.info("Database Requested has not run yet, skipping.")
+            event.defer()
+            return
+
+        # TODO : This workflow is a fix until we have time for a better and complete fix (DPE-5513)
+        self._on_database_requested(event)
 
     def _on_relation_broken(self, event) -> None:
         if self.charm.upgrade_in_progress:
@@ -328,6 +346,8 @@ class ClusterRequirer(Object):
         # K8s charm have a 1:Many client scheme and share connection info in a different manner.
         if self.substrate == Config.Substrate.VM:
             self.charm.remove_connection_info()
+        else:
+            self.db_initialised = False
 
     # BEGIN: helper functions
     def pass_hook_checks(self, event):
@@ -371,7 +391,7 @@ class ClusterRequirer(Object):
         connection_uri = f"mongodb://{self.charm.get_mongos_host()}"
 
         # use the mongos port for k8s charms and external connections on VM
-        if self.charm.is_external_client or self.substrate == Config.K8S_SUBSTRATE:
+        if self.substrate == Config.Substrate.K8S or self.charm.is_external_client:
             connection_uri = connection_uri + f":{Config.MONGOS_PORT}"
 
         with MongosConnection(None, connection_uri) as mongo:
