@@ -74,11 +74,6 @@ from tenacity import (
     wait_fixed,
 )
 
-from data_platform_helpers.version_check import (
-    CrossAppVersionChecker,
-    get_charm_revision,
-)
-
 from config import Config
 from exceptions import AdminUserCreationError, MissingSecretError, NotConfigServerError
 
