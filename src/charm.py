@@ -74,8 +74,13 @@ from tenacity import (
     wait_fixed,
 )
 
+from data_platform_helpers.version_check import (
+    CrossAppVersionChecker,
+    get_charm_revision,
+)
+
 from config import Config
-from exceptions import AdminUserCreationError, MissingSecretError
+from exceptions import AdminUserCreationError, MissingSecretError, NotConfigServerError
 
 logger = logging.getLogger(__name__)
 
@@ -1584,6 +1589,17 @@ class MongoDBCharm(CharmBase):
             return False
 
         return True
+
+    def is_cluster_on_same_revision(self) -> bool:
+        """Returns True if the cluster is using the same charm revision.
+
+        Note: This can only be determined by the config-server since shards are not integrated to
+        each other.
+        """
+        if not self.is_role(Config.Role.CONFIG_SERVER):
+            raise NotConfigServerError("This check can only be ran by the config-server.")
+
+        return self.version_checker.are_related_apps_valid()
 
     def is_sharding_component(self) -> bool:
         """Returns true if charm is running as a sharded component."""

@@ -30,3 +30,7 @@ class MissingSecretError(MongoSecretError):
 
 class SecretAlreadyExistsError(MongoSecretError):
     """A secret that we want to create already exists."""
+
+
+class NotConfigServerError(Exception):
+    """Raised when an operation is performed on a component that is not a config server."""
