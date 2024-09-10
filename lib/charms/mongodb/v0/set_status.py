@@ -7,14 +7,12 @@ import logging
 from typing import Optional, Tuple
 
 from charms.mongodb.v1.mongodb import MongoConfiguration, MongoDBConnection
+from data_platform_helpers.version_check import NoVersionError, get_charm_revision
 from ops.charm import CharmBase
 from ops.framework import Object
 from ops.model import ActiveStatus, BlockedStatus, StatusBase, WaitingStatus
 from pymongo.errors import AutoReconnect, OperationFailure, ServerSelectionTimeoutError
-from data_platform_helpers.version_check import (
-    NoVersionError,
-    get_charm_revision,
-)
+
 from config import Config
 
 # The unique Charmhub library identifier, never change it
@@ -91,7 +89,7 @@ class MongoDBStatusHandler(Object):
         "goal state" which processes data differently and the other via the ".status" property.
         Hence we have to be flexible to handle each.
         """
-        if not self.charm.get_cluster_mismatched_revision_status():
+        if not self.get_cluster_mismatched_revision_status():
             return False
 
         if "waiting" in status_type and self.charm.is_role(Config.Role.CONFIG_SERVER):
@@ -238,44 +236,46 @@ class MongoDBStatusHandler(Object):
                 "Relation to s3-integrator is not supported, config role must be config-server"
             )
 
-        return self.charm.get_cluster_mismatched_revision_status()
+        return self.get_cluster_mismatched_revision_status()
 
     def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
         """Returns a Status if the cluster has mismatched revisions."""
         # check for invalid versions in sharding integrations, i.e. a shard running on
         # revision  88 and a config-server running on revision 110
         current_charms_version = get_charm_revision(
-            self.unit, local_version=self.get_charm_internal_revision
+            self.charm.unit, local_version=self.charm.get_charm_internal_revision
         )
         local_identifier = (
-            "-locally built" if self.version_checker.is_local_charm(self.app.name) else ""
+            "-locally built"
+            if self.charm.version_checker.is_local_charm(self.charm.app.name)
+            else ""
         )
         try:
-            if self.version_checker.are_related_apps_valid():
+            if self.charm.version_checker.are_related_apps_valid():
                 return
         except NoVersionError as e:
             # relations to shards/config-server are expected to provide a version number. If they
             # do not, it is because they are from an earlier charm revision, i.e. pre-revison X.
             logger.debug(e)
-            if self.is_role(Config.Role.SHARD):
+            if self.charm.is_role(Config.Role.SHARD):
                 return BlockedStatus(
                     f"Charm revision ({current_charms_version}{local_identifier}) is not up-to date with config-server."
                 )
 
-        if self.is_role(Config.Role.SHARD):
-            config_server_revision = self.version_checker.get_version_of_related_app(
+        if self.charm.is_role(Config.Role.SHARD):
+            config_server_revision = self.charm.version_checker.get_version_of_related_app(
                 self.get_config_server_name()
             )
             remote_local_identifier = (
                 "-locally built"
-                if self.version_checker.is_local_charm(self.get_config_server_name())
+                if self.charm.version_checker.is_local_charm(self.get_config_server_name())
                 else ""
             )
             return BlockedStatus(
                 f"Charm revision ({current_charms_version}{local_identifier}) is not up-to date with config-server ({config_server_revision}{remote_local_identifier})."
             )
 
-        if self.is_role(Config.Role.CONFIG_SERVER):
+        if self.charm.is_role(Config.Role.CONFIG_SERVER):
             return WaitingStatus(
                 f"Waiting for shards to upgrade/downgrade to revision {current_charms_version}{local_identifier}."
             )
