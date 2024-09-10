@@ -38,6 +38,10 @@ from charms.mongodb.v1.users import (
     OperatorUser,
 )
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from data_platform_helpers.version_check import (
+    CrossAppVersionChecker,
+    get_charm_revision,
+)
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -55,7 +59,6 @@ from ops.model import (
     ModelError,
     Relation,
     RelationDataContent,
-    StatusBase,
     Unit,
     WaitingStatus,
 )
@@ -68,11 +71,6 @@ from tenacity import (
     retry,
     stop_after_attempt,
     wait_fixed,
-)
-
-from data_platform_helpers.version_check import (
-    CrossAppVersionChecker,
-    get_charm_revision,
 )
 
 from config import Config
@@ -603,7 +601,7 @@ class MongoDBCharm(CharmBase):
             return
 
         logger.error(
-            f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
+            f"cluster migration currently not supported, cannot change from {self.model.config['role']} to {self.role}"
         )
         raise ShardingMigrationError(
             f"Migration of sharding components not permitted, revert config role to {self.role}"
