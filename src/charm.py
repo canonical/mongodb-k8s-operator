@@ -70,8 +70,13 @@ from tenacity import (
     wait_fixed,
 )
 
+from data_platform_helpers.version_check import (
+    CrossAppVersionChecker,
+    get_charm_revision,
+)
+
 from config import Config
-from exceptions import AdminUserCreationError, MissingSecretError
+from exceptions import AdminUserCreationError, MissingSecretError, NotConfigServerError
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +142,15 @@ class MongoDBCharm(CharmBase):
         self.shard = ConfigServerRequirer(self)
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
+
+        self.version_checker = CrossAppVersionChecker(
+            self,
+            version=get_charm_revision(self.unit, local_version=self.get_charm_internal_revision),
+            relations_to_check=[
+                Config.Relations.SHARDING_RELATIONS_NAME,
+                Config.Relations.CONFIG_SERVER_RELATIONS_NAME,
+            ],
+        )
 
     # BEGIN: properties
 
@@ -463,16 +477,15 @@ class MongoDBCharm(CharmBase):
 
         return None
 
+    @property
+    def get_charm_internal_revision(self) -> str:
+        """Returns the contents of the get_charm_internal_revision file."""
+        with open(Config.CHARM_INTERNAL_VERSION_FILE, "r") as f:
+            return f.read().strip()
+
     # END: properties
 
     # BEGIN: generic helper methods
-    def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
-        """Returns a Status if the cluster has mismatched revisions.
-
-        TODO implement this method as a part of sharding upgrades.
-        """
-        return None
-
     def remote_mongos_config(self, hosts) -> MongoConfiguration:
         """Generates a MongoConfiguration object for mongos in the deployment of MongoDB."""
         # mongos that are part of the cluster have the same username and password, but different
@@ -1544,11 +1557,22 @@ class MongoDBCharm(CharmBase):
             )
             return False
 
-        if revision_mismatch_status := self.get_cluster_mismatched_revision_status():
+        if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
             self.status.set_and_share_status(revision_mismatch_status)
             return False
 
         return True
+
+    def is_cluster_on_same_revision(self) -> bool:
+        """Returns True if the cluster is using the same charm revision.
+
+        Note: This can only be determined by the config-server since shards are not integrated to
+        each other.
+        """
+        if not self.is_role(Config.Role.CONFIG_SERVER):
+            raise NotConfigServerError("This check can only be ran by the config-server.")
+
+        return self.version_checker.are_related_apps_valid()
 
     def is_sharding_component(self) -> bool:
         """Returns true if charm is running as a sharded component."""
