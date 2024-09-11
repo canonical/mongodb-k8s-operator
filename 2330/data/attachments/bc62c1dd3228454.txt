@@ -1,0 +1,42 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:37:35Z
+
+App                Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application                 active       1  application                   0  10.152.183.114  no       
+config-server-one           active       1  mongodb-k8s                   1  10.152.183.31   no       
+config-server-two           active       1  mongodb-k8s                   2  10.152.183.145  no       
+replication                 blocked      1  mongodb-k8s                   0  10.152.183.111  no       sharding interface cannot be used by replicas
+s3-integrator               blocked      1  s3-integrator  latest/edge   41  10.152.183.97   no       Missing parameters: ['access-key', 'secret-key']
+shard                       blocked      1  mongodb-k8s                   3  10.152.183.17   no       Relation to s3-integrator is not supported, config role must be config-server
+
+Unit                  Workload  Agent      Address      Ports  Message
+application/0*        active    idle       10.1.136.8          
+config-server-one/0*  active    idle       10.1.136.14         
+config-server-two/0*  active    idle       10.1.136.17         
+replication/0*        blocked   idle       10.1.136.11         sharding interface cannot be used by replicas
+s3-integrator/0*      blocked   executing  10.1.136.20         Missing parameters: ['access-key', 'secret-key']
+shard/0*              blocked   executing  10.1.136.21         Relation to s3-integrator is not supported, config role must be config-server
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-config-server-one-0: 01:35:49 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-config-server-one-0: 01:35:49 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-shard-0: 01:35:49 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-shard-0: 01:35:49 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-shard-0: 01:36:22 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-0: 01:36:22 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-one-0: 01:36:22 ERROR unit.config-server-one/0.juju-log database:7: Charm is in sharding role: database. Does not support config-server interface.
+unit-config-server-one-0: 01:36:22 ERROR unit.config-server-one/0.juju-log database:7: Charm is in sharding role: database. Does not support config-server interface.
+unit-shard-0: 01:36:23 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-one-0: 01:36:23 ERROR unit.config-server-one/0.juju-log database:7: Charm is in sharding role: database. Does not support config-server interface.
+unit-shard-0: 01:36:25 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-config-server-one-0: 01:36:25 ERROR unit.config-server-one/0.juju-log database:7: Charm is in sharding role: database. Does not support config-server interface.
+unit-replication-0: 01:36:48 ERROR unit.replication/0.juju-log sharding:8: Charm is in sharding role: replication. Does not support sharding interface.
+unit-config-server-one-0: 01:36:48 ERROR unit.config-server-one/0.juju-log config-server:8: Failed to add shard replication to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1726018608, 2), \'signature\': {\'hash\': b\'\\x83\\x8d\\x86\\xd2\\xc5+\\x14\\xea\\x19\\x06\\xad\\x7f"\\xb0\\xe8j\\\\[\\xbb\\x0c\', \'keyId\': 7413193035560779801}}, \'operationTime\': Timestamp(1726018608, 2)}')
+unit-config-server-one-0: 01:36:48 ERROR unit.config-server-one/0.juju-log config-server:8: replication shard does not have the same auth as the config server.
+unit-replication-0: 01:36:48 ERROR unit.replication/0.juju-log sharding:8: Charm is in sharding role: replication. Does not support sharding interface.
+unit-replication-0: 01:36:49 ERROR unit.replication/0.juju-log sharding:8: Charm is in sharding role: replication. Does not support sharding interface.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
