@@ -3,6 +3,8 @@
 # See LICENSE file for licensing details.
 import json
 
+from pymongo import MongoClient
+from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 from tenacity import (
     RetryError,
@@ -13,7 +15,9 @@ from tenacity import (
     wait_fixed,
 )
 
-from ..helpers import get_application_relation_data
+from ..helpers import get_address_of_unit, get_application_relation_data
+
+AUTH_FAILED_CODE = 18
 
 
 async def verify_application_data(
@@ -68,3 +72,24 @@ async def get_connection_string(
 
     first_relation_user_data = await get_secret_data(ops_test, secret_uri)
     return first_relation_user_data.get("uris")
+
+
+async def assert_created_user_can_connect(
+    ops_test: OpsTest, db_app_name: str, username: str, password: str, database: str
+):
+    """Verifies that the provided username can connect to the DB with the given password."""
+    # hosts = [unit.public_address for unit in ops_test.model.applications[database_name].units]
+    # hosts = ",".join(hosts)
+    host = await get_address_of_unit(ops_test, unit_id=0, app_name=db_app_name)
+
+    connection_string = f"mongodb://{username}:{password}@{host}/{database}"
+    client = MongoClient(connection_string, directConnection=True)
+    try:
+        client.admin.command("ping")
+    except OperationFailure as e:
+        if e.code == AUTH_FAILED_CODE:
+            assert False, "user does not have access to MongoDB"
+
+        raise
+
+    return True

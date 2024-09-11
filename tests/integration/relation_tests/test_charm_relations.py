@@ -15,6 +15,7 @@ from tenacity import RetryError
 from ..ha_tests.helpers import get_replica_set_primary as replica_set_primary
 from ..helpers import check_or_scale_app, get_app_name, is_relation_joined, run_mongo_op
 from .helpers import (
+    assert_created_user_can_connect,
     get_application_relation_data,
     get_connection_string,
     verify_application_data,
@@ -36,6 +37,8 @@ ANOTHER_DATABASE_APP_NAME = "another-database"
 APP_NAMES = [APPLICATION_APP_NAME, DATABASE_APP_NAME, ANOTHER_DATABASE_APP_NAME]
 TEST_APP_CHARM_PATH = "./tests/integration/relation_tests/application-charm"
 REQUIRED_UNITS = 2
+USER_CREATED_FROM_APP1 = "test_user_1"
+PW_CREATED_FROM_APP1 = "test_user_pass_1"
 
 
 @pytest.mark.group(1)
@@ -303,7 +306,7 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
         ops_test, APPLICATION_APP_NAME, FIRST_DATABASE_RELATION_NAME, "database"
     )
 
-    cmd = f'db.createUser({{user: "newTestUser", pwd: "Test123", roles: [{{role: "readWrite", db: "{database}"}}]}})'
+    cmd = f'db.createUser({{user: "{USER_CREATED_FROM_APP1}", pwd: "{PW_CREATED_FROM_APP1}", roles: [{{role: "readWrite", db: "{database}"}}]}})'
     result = await run_mongo_op(
         ops_test,
         cmd,
@@ -319,11 +322,19 @@ async def test_user_with_extra_roles(ops_test: OpsTest):
         f'"{connection_string}"',
         stringify=True,
     )
-    assert result.data["users"][0]["_id"] == "application_first_database.newTestUser"
+    assert result.data["users"][0]["_id"] == f"application_first_database.{USER_CREATED_FROM_APP1}"
 
-    cmd = 'db = db.getSiblingDB("new_database"); EJSON.stringify(db.test_collection.insertOne({"test": "one"}));'
-    result = await run_mongo_op(ops_test, cmd, f'"{connection_string}"', stringify=False)
-    assert result.data["acknowledged"] is True
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
+    await assert_created_user_can_connect(
+        ops_test,
+        username=USER_CREATED_FROM_APP1,
+        password=PW_CREATED_FROM_APP1,
+        db_app_name=db_app_name,
+        database="application_first_database",
+    )
 
 
 @pytest.mark.group(1)
@@ -495,3 +506,16 @@ async def test_removed_relation_no_longer_has_access(ops_test: OpsTest):
     assert (
         removed_access
     ), "application: {APPLICATION_APP_NAME} still has access to mongodb after relation removal."
+
+    # mongodb should not clean up users it does not manage.
+    db_app_name = (
+        await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
+        or DATABASE_APP_NAME
+    )
+    await assert_created_user_can_connect(
+        ops_test,
+        username=USER_CREATED_FROM_APP1,
+        password=PW_CREATED_FROM_APP1,
+        db_app_name=db_app_name,
+        database="application_first_database",
+    )
