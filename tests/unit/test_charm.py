@@ -35,8 +35,9 @@ logger = logging.getLogger(__name__)
 
 
 class TestCharm(unittest.TestCase):
+    @patch("charm.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
-    def setUp(self):
+    def setUp(self, *unused):
         self.maxDiff = None
         self.harness = Harness(MongoDBCharm)
         mongo_resource = {
