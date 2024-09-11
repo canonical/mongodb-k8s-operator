@@ -1,5 +1,6 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import unittest
 from unittest import mock
 from unittest.mock import patch
@@ -277,7 +278,7 @@ class TestMongoBackups(unittest.TestCase):
         service.return_value = "pbm"
 
         _set_config_options.side_effect = SetPBMConfigError
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
 
         # triggering s3 event with correct fields
         mock_s3_info = mock.Mock()
@@ -305,7 +306,7 @@ class TestMongoBackups(unittest.TestCase):
         """Test charm defers when more time is needed to sync pbm."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         service.return_value = "pbm"
         pbm_status.return_value = ActiveStatus()
         resync.side_effect = SetPBMConfigError
@@ -333,7 +334,7 @@ class TestMongoBackups(unittest.TestCase):
         """Test charm defers when more time is needed to sync pbm credentials."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         service.return_value = "pbm"
         resync.side_effect = ResyncError
 
@@ -364,7 +365,7 @@ class TestMongoBackups(unittest.TestCase):
         """Test charm defers when more time is needed to sync pbm."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         service.return_value = "pbm"
 
         resync.side_effect = PBMBusyError
@@ -397,7 +398,7 @@ class TestMongoBackups(unittest.TestCase):
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         service.return_value = "pbm"
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         resync.side_effect = ExecError(
             command=["/usr/bin/pbm status"], exit_code=1, stdout="status code: 403", stderr=""
         )

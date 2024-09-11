@@ -117,7 +117,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.secret_remove, self._on_secret_remove)
         self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
-        self.client_relations = MongoDBProvider(self)
+        self.client_relations = MongoDBProvider(self, substrate=Config.SUBSTRATE)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
 
@@ -170,6 +170,11 @@ class MongoDBCharm(CharmBase):
             return []
         else:
             return self._peers.units
+
+    @property
+    def mongo_config(self) -> MongoConfiguration:
+        """Returns a MongoConfiguration object for shared libs with agnostic mongo commands."""
+        return self.mongodb_config
 
     @property
     def mongodb_config(self) -> MongoConfiguration:
@@ -339,7 +344,7 @@ class MongoDBCharm(CharmBase):
     @property
     def db_initialised(self) -> bool:
         """Check if MongoDB is initialised."""
-        return "db_initialised" in self.app_peer_data
+        return json.loads(self.app_peer_data.get("db_initialised", "false"))
 
     def is_role_changed(self) -> bool:
         """Checks if application is running in provided role."""
@@ -367,7 +372,7 @@ class MongoDBCharm(CharmBase):
     def db_initialised(self, value):
         """Set the db_initialised flag."""
         if isinstance(value, bool):
-            self.app_peer_data["db_initialised"] = str(value)
+            self.app_peer_data["db_initialised"] = json.dumps(value)
         else:
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Provided: {value} is of type {type(value)}"
@@ -381,13 +386,13 @@ class MongoDBCharm(CharmBase):
     @property
     def replica_set_initialised(self) -> bool:
         """Check if the MongoDB replica set is initialised."""
-        return "replica_set_initialised" in self.app_peer_data
+        return json.loads(self.app_peer_data.get("replica_set_initialised", "false"))
 
     @replica_set_initialised.setter
     def replica_set_initialised(self, value):
         """Set the replica_set_initialised flag."""
         if isinstance(value, bool):
-            self.app_peer_data["replica_set_initialised"] = str(value)
+            self.app_peer_data["replica_set_initialised"] = json.dumps(value)
         else:
             raise ValueError(
                 f"'replica_set_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
@@ -396,13 +401,13 @@ class MongoDBCharm(CharmBase):
     @property
     def users_initialized(self) -> bool:
         """Check if MongoDB users are created."""
-        return "users_initialized" in self.app_peer_data
+        return json.loads(self.app_peer_data.get("users_initialized", "false"))
 
     @users_initialized.setter
     def users_initialized(self, value):
         """Set the users_initialized flag."""
         if isinstance(value, bool):
-            self.app_peer_data["users_initialized"] = str(value)
+            self.app_peer_data["users_initialized"] = json.dumps(value)
         else:
             raise ValueError(
                 f"'users_initialized' must be a boolean value. Proivded: {value} is of type {type(value)}"
@@ -590,7 +595,7 @@ class MongoDBCharm(CharmBase):
             return
 
         logger.error(
-            f"cluster migration currently not supported, cannot change from { self.model.config['role']} to {self.role}"
+            f"cluster migration currently not supported, cannot change from {self.model.config['role']} to {self.role}"
         )
         raise ShardingMigrationError(
             f"Migration of sharding components not permitted, revert config role to {self.role}"
@@ -892,8 +897,10 @@ class MongoDBCharm(CharmBase):
             self._init_operator_user()
             self._init_backup_user()
             self._init_monitor_user()
-            logger.info("Reconcile relations")
-            self.client_relations.oversee_users(None, event)
+            # Bare replicas can create users or config-servers for related mongos apps
+            if not self.is_role(Config.Role.SHARD):
+                logger.info("Manage users")
+                self.client_relations.oversee_users(None, event)
             self.users_initialized = True
         except ExecError as e:
             logger.error("Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr)
