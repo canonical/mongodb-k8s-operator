@@ -8,7 +8,6 @@ from pytest_operator.plugin import OpsTest
 from ..ha_tests.helpers import find_unit
 from ..helpers import (
     APP_NAME,
-    METADATA,
     check_or_scale_app,
     get_app_name,
     get_password,
@@ -27,15 +26,13 @@ async def test_build_and_deploy(ops_test: OpsTest):
         return
 
     app_name = APP_NAME
-    new_charm = await ops_test.build_charm(".")
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
 
     await ops_test.model.deploy(
-        new_charm,
-        resources=resources,
+        app_name,
         application_name=app_name,
         num_units=3,
         series="jammy",
+        channel="6/edge",
     )
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, idle_period=120
