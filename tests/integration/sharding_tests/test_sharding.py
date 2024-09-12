@@ -53,6 +53,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         num_units=2,
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
+        trust=True,
     )
     await ops_test.model.deploy(
         my_charm,
@@ -60,6 +61,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
+        trust=True,
     )
     await ops_test.model.deploy(
         my_charm,
@@ -67,6 +69,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_TWO_APP_NAME,
+        trust=True,
     )
     await ops_test.model.deploy(
         my_charm,
@@ -74,6 +77,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_THREE_APP_NAME,
+        trust=True,
     )
 
     # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)

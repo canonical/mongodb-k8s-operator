@@ -76,6 +76,7 @@ from tenacity import (
 
 from config import Config
 from exceptions import AdminUserCreationError, MissingSecretError
+from k8s_upgrade import MongoDBUpgrade
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +143,13 @@ class MongoDBCharm(CharmBase):
             relation_name=Config.Relations.LOGGING,
             container_name=Config.CONTAINER_NAME,
         )
+        self.status = MongoDBStatusHandler(self)
+        self.secrets = SecretCache(self)
+
+        self.shard = ConfigServerRequirer(self)
+        self.config_server = ShardingProvider(self)
+        self.cluster = ClusterProvider(self)
+        self.upgrade = MongoDBUpgrade(self)
 
         self.version_checker = CrossAppVersionChecker(
             self,
@@ -1049,7 +1057,11 @@ class MongoDBCharm(CharmBase):
         self.app_peer_data[f"{user.get_username()}-user-created"] = "True"
 
     def _get_mongodb_config_for_user(
-        self, user: MongoDBUser, hosts: List[str]
+        self,
+        user: MongoDBUser,
+        hosts: List[str],
+        replset: str | None = None,
+        standalone: bool = False,
     ) -> MongoConfiguration:
         external_ca, _ = self.tls.get_tls_files(internal=False)
         internal_ca, _ = self.tls.get_tls_files(internal=True)
@@ -1060,7 +1072,7 @@ class MongoDBCharm(CharmBase):
             )
         else:
             return MongoConfiguration(
-                replset=self.app.name,
+                replset=replset or self.app.name,
                 database=user.get_database_name(),
                 username=user.get_username(),
                 password=password,  # type: ignore
@@ -1068,6 +1080,7 @@ class MongoDBCharm(CharmBase):
                 roles=set(user.get_roles()),
                 tls_external=external_ca is not None,
                 tls_internal=internal_ca is not None,
+                standalone=standalone,
             )
 
     def _get_mongos_config_for_user(

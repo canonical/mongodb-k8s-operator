@@ -311,6 +311,7 @@ async def deploy_cluster_backup_test(
         num_units=2,
         config={"role": "config-server"},
         application_name=config_server_name,
+        trust=True,
     )
     await ops_test.model.deploy(
         my_charm,
@@ -318,6 +319,7 @@ async def deploy_cluster_backup_test(
         num_units=2,
         config={"role": "shard"},
         application_name=shard_one_name,
+        trust=True,
     )
     await ops_test.model.deploy(
         my_charm,
@@ -325,6 +327,7 @@ async def deploy_cluster_backup_test(
         num_units=1,
         config={"role": "shard"},
         application_name=shard_two_name,
+        trust=True,
     )
 
     # deploy the s3 integrator charm

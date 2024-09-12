@@ -184,6 +184,7 @@ async def deploy_and_scale_mongodb(
             resources=resources,
             num_units=num_units,
             series="jammy",
+            trust=True,
         )
 
         # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)

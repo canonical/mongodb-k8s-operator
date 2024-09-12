@@ -116,6 +116,11 @@ class Config:
         SECRET_CSR_LABEL = "csr-secret"
         SECRET_CHAIN_LABEL = "chain-secret"
 
+    class Upgrade:
+        """Upgrade related constants."""
+
+        FEATURE_VERSION_6 = "6.0"
+
     class Secrets:
         """Secrets related constants."""
 
