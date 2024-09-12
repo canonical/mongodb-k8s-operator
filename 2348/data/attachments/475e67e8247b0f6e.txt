@@ -1,0 +1,249 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/1, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/1, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:648 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:599 Primary instance mongodb-k8s/1 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:604 Waiting until Mongodb detects primary instance mongodb-k8s/1 is not reachable
+[31m[1mERROR   [0m integration.helpers:helpers.py:528 get-password command returned non 0 exit code: b'Running operation 259 with 1 task\n  - task 260 on unit-mongodb-k8s-1\n\nWaiting for task 260...\nERROR timed out waiting for results from: unit mongodb-k8s/1\n'
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:610 Validating writes are continuing to DB
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m pytest_operator.plugin:plugin.py:834 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:02:47Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database           active      1  mongodb-k8s             1  10.152.183.48   no       Primary
+application                active      1  application             0  10.152.183.196  no       
+mongodb-k8s                active      3  mongodb-k8s             0  10.152.183.215  no       
+
+Unit                 Workload  Agent  Address       Ports  Message
+another-database/0*  active    idle   10.1.227.156         Primary
+application/0*       active    idle   10.1.227.145         
+mongodb-k8s/0        active    idle   10.1.227.143         
+mongodb-k8s/1        active    idle   10.1.227.153         Primary
+mongodb-k8s/2*       active    idle   10.1.227.146         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:840 Juju error logs:
+
+unit-mongodb-k8s-1: 01:35:24 ERROR unit.mongodb-k8s/1.juju-log database-peers:0: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/./src/charm.py", line 946, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/ops/pebble.py", line 1773, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-mongodb-k8s-1: 01:35:30 ERROR unit.mongodb-k8s/1.juju-log database-peers:0: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/./src/charm.py", line 946, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/ops/pebble.py", line 1773, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', "db.createUser({  user: 'operator',  pwd: passwordPrompt(),  roles:[    {'role': 'userAdminAnyDatabase', 'db': 'admin'},     {'role': 'readWriteAnyDatabase', 'db': 'admin'},     {'role': 'clusterAdmin', 'db': 'admin'},   ],  mechanisms: ['SCRAM-SHA-256'],  passwordDigestor: 'server',})"], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-mongodb-k8s-2: 01:37:19 ERROR unit.mongodb-k8s/2.juju-log mongodb-k8s/2.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66e245ced551add98cdd5aec, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.002512455000044156>]>
+unit-mongodb-k8s-2: 01:38:23 ERROR unit.mongodb-k8s/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 1615, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 563, in _on_mongod_pebble_ready
+    container.replan()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/model.py", line 2278, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2131, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2228, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "mongod" (cannot start service: exited quickly with code 1)
+----- Logs from task 1 -----
+2024-09-12T01:38:23Z INFO Most recent service output:
+    {"t":{"$date":"2024-09-12T01:38:23.640Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"processUmask":{"default":63,"value":31}}}}
+    {"t":{"$date":"2024-09-12T01:38:23.640Z"},"s":"F",  "c":"CONTROL",  "id":20574,   "ctx":"-","msg":"Error during global initialization","attr":{"error":{"code":2,"codeName":"BadValue","errmsg":"Could not open a file for writing at the given auditPath: /var/log/mongodb/audit.log"}}}
+2024-09-12T01:38:23Z ERROR cannot start service: exited quickly with code 1
+-----
+unit-mongodb-k8s-2: 01:38:23 ERROR juju.worker.uniter.operation hook "mongod-pebble-ready" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-2: 01:38:23 ERROR juju.worker.uniter pebble poll failed for container "mongod": failed to send pebble-ready event: hook failed
+unit-mongodb-k8s-2: 01:38:25 ERROR unit.mongodb-k8s/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 1615, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 868, in _on_secret_changed
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 1362, in _connect_mongodb_exporter
+    container.replan()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/model.py", line 2278, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2131, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2228, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "mongod" (cannot start service: exited quickly with code 1)
+----- Logs from task 1 -----
+2024-09-12T01:38:25Z INFO Most recent service output:
+    {"t":{"$date":"2024-09-12T01:38:25.516Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"processUmask":{"default":63,"value":31}}}}
+    {"t":{"$date":"2024-09-12T01:38:25.516Z"},"s":"F",  "c":"CONTROL",  "id":20574,   "ctx":"-","msg":"Error during global initialization","attr":{"error":{"code":2,"codeName":"BadValue","errmsg":"Could not open a file for writing at the given auditPath: /var/log/mongodb/audit.log"}}}
+2024-09-12T01:38:25Z ERROR cannot start service: exited quickly with code 1
+-----
+unit-mongodb-k8s-2: 01:38:25 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-2: 01:39:26 ERROR unit.mongodb-k8s/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 1615, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 869, in _on_secret_changed
+    self._connect_pbm_agent()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 1398, in _connect_pbm_agent
+    for attempt in Retrying(
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/tenacity/__init__.py", line 443, in __iter__
+    do = self.iter(retry_state=retry_state)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/tenacity/__init__.py", line 376, in iter
+    result = action(retry_state)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/tenacity/__init__.py", line 418, in exc_check
+    raise retry_exc.reraise()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/tenacity/__init__.py", line 185, in reraise
+    raise self.last_attempt.result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 451, in result
+    return self.__get_result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 403, in __get_result
+    raise self._exception
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 1404, in _connect_pbm_agent
+    container.replan()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/model.py", line 2278, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2131, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2228, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "mongod" (cannot start service: exited quickly with code 1)
+----- Logs from task 1 -----
+2024-09-12T01:39:26Z INFO Most recent service output:
+    {"t":{"$date":"2024-09-12T01:39:26.897Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"processUmask":{"default":63,"value":31}}}}
+    {"t":{"$date":"2024-09-12T01:39:26.897Z"},"s":"F",  "c":"CONTROL",  "id":20574,   "ctx":"-","msg":"Error during global initialization","attr":{"error":{"code":2,"codeName":"BadValue","errmsg":"Could not open a file for writing at the given auditPath: /var/log/mongodb/audit.log"}}}
+2024-09-12T01:39:26Z ERROR cannot start service: exited quickly with code 1
+-----
+unit-mongodb-k8s-2: 01:39:27 ERROR juju.worker.uniter.operation hook "secret-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-2: 01:39:39 ERROR unit.mongodb-k8s/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 1615, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 563, in _on_mongod_pebble_ready
+    container.replan()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/model.py", line 2278, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2131, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2228, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "mongod" (cannot start service: exited quickly with code 1)
+----- Logs from task 1 -----
+2024-09-12T01:39:39Z INFO Most recent service output:
+    {"t":{"$date":"2024-09-12T01:39:39.828Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"processUmask":{"default":63,"value":31}}}}
+    {"t":{"$date":"2024-09-12T01:39:39.829Z"},"s":"F",  "c":"CONTROL",  "id":20574,   "ctx":"-","msg":"Error during global initialization","attr":{"error":{"code":38,"codeName":"FileNotOpen","errmsg":"Can't initialize rotatable log file :: caused by :: Failed to open /var/log/mongodb/mongodb.log"}}}
+2024-09-12T01:39:39Z ERROR cannot start service: exited quickly with code 1
+-----
+unit-mongodb-k8s-2: 01:39:40 ERROR juju.worker.uniter.operation hook "mongod-pebble-ready" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-2: 01:39:40 ERROR juju.worker.uniter pebble poll failed for container "mongod": failed to send pebble-ready event: hook failed
+unit-mongodb-k8s-2: 01:39:41 ERROR unit.mongodb-k8s/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 1615, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/./src/charm.py", line 563, in _on_mongod_pebble_ready
+    container.replan()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/model.py", line 2278, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2131, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-2/charm/venv/ops/pebble.py", line 2228, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "mongod" (cannot start service: exited quickly with code 1)
+----- Logs from task 1 -----
+2024-09-12T01:39:41Z INFO Most recent service output:
+    {"t":{"$date":"2024-09-12T01:39:41.743Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"processUmask":{"default":63,"value":31}}}}
+    {"t":{"$date":"2024-09-12T01:39:41.743Z"},"s":"F",  "c":"CONTROL",  "id":20574,   "ctx":"-","msg":"Error during global initialization","attr":{"error":{"code":2,"codeName":"BadValue","errmsg":"Could not open a file for writing at the given auditPath: /var/log/mongodb/audit.log"}}}
+2024-09-12T01:39:41Z ERROR cannot start service: exited quickly with code 1
+-----
+unit-mongodb-k8s-2: 01:39:42 ERROR juju.worker.uniter.operation hook "mongod-pebble-ready" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-2: 01:39:42 ERROR juju.worker.uniter pebble poll failed for container "mongod": failed to send pebble-ready event: hook failed
+unit-mongodb-k8s-3: 01:42:45 ERROR unit.mongodb-k8s/3.juju-log mongodb-k8s/3.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66e24714a8a34c0ce53c6bb8, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.002015299999925446>]>
+unit-mongodb-k8s-4: 01:42:51 ERROR unit.mongodb-k8s/4.juju-log mongodb-k8s/4.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66e2471a40ef8a341b7d4f25, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-4.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0004914380000400342>]>
+unit-mongodb-k8s-1: 01:59:09 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [408b2b] "unit-mongodb-k8s-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-1: 01:59:16 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [408b2b] "unit-mongodb-k8s-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:904 Forgetting main...
