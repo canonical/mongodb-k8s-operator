@@ -23,8 +23,6 @@ from tenacity import stop_after_attempt, wait_fixed, wait_none
 
 from charm import MongoDBCharm, NotReadyError
 
-from .helpers import patch_network_get
-
 PYMONGO_EXCEPTIONS = [
     (ConnectionFailure("error message"), ConnectionFailure),
     (ConfigurationError("error message"), ConfigurationError),
@@ -36,7 +34,6 @@ logger = logging.getLogger(__name__)
 
 
 class TestCharm(unittest.TestCase):
-    @patch_network_get(private_address="1.1.1.1")
     def setUp(self):
         self.maxDiff = None
         self.harness = Harness(MongoDBCharm)
@@ -1044,7 +1041,6 @@ class TestCharm(unittest.TestCase):
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
 
-    @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBBackups.get_pbm_status")
     def test_set_backup_password_pbm_busy(self, pbm_status, has_backup_service):
