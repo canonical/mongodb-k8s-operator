@@ -17,7 +17,6 @@ from ..ha_tests.helpers import (
     remove_instance_isolation,
     wait_until_unit_in_status,
 )
-from ..ha_tests.test_ha import chaos_mesh, continuous_writes
 from ..helpers import check_or_scale_app, get_app_name, get_password, set_password
 from .helpers import assert_successful_run_upgrade_sequence
 
