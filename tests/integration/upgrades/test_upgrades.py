@@ -10,6 +10,7 @@ from pytest_operator.plugin import OpsTest
 from ..backup_tests import helpers as backup_helpers
 from ..ha_tests.helpers import (
     count_writes,
+    find_unit,
     deploy_and_scale_application,
     isolate_instance_from_cluster,
     relate_mongodb_and_application,
@@ -17,8 +18,13 @@ from ..ha_tests.helpers import (
     wait_until_unit_in_status,
 )
 from ..ha_tests.test_ha import chaos_mesh, continuous_writes
-from ..helpers import check_or_scale_app, get_app_name
+from ..helpers import check_or_scale_app, get_app_name, get_password, set_password
 from .helpers import assert_successful_run_upgrade_sequence
+
+
+import pytest
+from pytest_operator.plugin import OpsTest
+
 
 logger = logging.getLogger(__name__)
 
@@ -109,3 +115,22 @@ async def test_preflight_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
     await ops_test.model.wait_for_idle(
         apps=[db_app_name], status="active", timeout=1000, idle_period=30
     )
+
+
+@pytest.mark.skip("Missing upgrade code for now")
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_upgrade_password_change_fail(ops_test: OpsTest):
+    app_name = await get_app_name(ops_test)
+    leader_id = await find_unit(ops_test, leader=True, app_name=app_name)
+
+    current_password = await get_password(ops_test, leader_id, app_name=app_name)
+    new_charm = await ops_test.build_charm(".")
+    await ops_test.model.applications[app_name].refresh(path=new_charm)
+    results = await set_password(ops_test, leader_id, password="0xdeadbeef", app_name=app_name)
+
+    assert results == "Cannot set passwords while an upgrade is in progress."
+
+    after_action_password = await get_password(ops_test, leader_id, app_name=app_name)
+
+    assert current_password == after_action_password

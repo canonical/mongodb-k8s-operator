@@ -1,5 +1,6 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import logging
 import re
 import unittest
@@ -330,9 +331,8 @@ class TestCharm(unittest.TestCase):
         mock_container.return_value.can_connect.return_value = True
         mock_container.return_value.exists.return_value = True
         self.harness.charm.unit.get_container = mock_container
-
-        self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
-        self.harness.charm.app_peer_data["users_initialized"] = "True"
+        self.harness.charm.app_peer_data["replica_set_initialised"] = json.dumps(True)
+        self.harness.charm.app_peer_data["users_initialized"] = json.dumps(True)
 
         self.harness.charm.on.start.emit()
 
@@ -525,7 +525,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         rel = self.harness.charm.model.get_relation("database-peers")
 
         for exception, _ in PYMONGO_EXCEPTIONS:
@@ -560,7 +560,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "mongodb-k8s-0.mongodb-k8s-endpoints",
             "mongodb-k8s-1.mongodb-k8s-endpoints",
@@ -596,7 +596,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "mongodb-k8s-0.mongodb-k8s-endpoints"
         }
@@ -620,7 +620,7 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         connection.return_value.__enter__.return_value.get_replset_members.return_value = {
             "mongodb-k8s-0.mongodb-k8s-endpoints"
         }
@@ -665,7 +665,7 @@ class TestCharm(unittest.TestCase):
 
         oversee_users.side_effect = PyMongoError()
 
-        self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
+        self.harness.charm.app_peer_data["replica_set_initialised"] = json.dumps(True)
         self.harness.charm.on.start.emit()
         self.assertEqual("operator-user-created" in self.harness.charm.app_peer_data, True)
         defer.assert_called()
@@ -960,7 +960,7 @@ class TestCharm(unittest.TestCase):
         container.make_dir("/etc/logrotate.d", make_parents=True)
 
         self.harness.set_can_connect(container, True)
-        self.harness.charm.app_peer_data["db_initialised"] = "True"
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         self.harness.charm.on.mongod_pebble_ready.emit(container)
 
         password = self.harness.charm.get_secret("app", "monitor-password")
@@ -1025,7 +1025,7 @@ class TestCharm(unittest.TestCase):
         """Tests what backup user was created."""
         self.harness.charm._initialise_users.retry.wait = wait_none()
         container = self.harness.model.unit.get_container("mongod")
-        self.harness.charm.app_peer_data["replica_set_initialised"] = "True"
+        self.harness.charm.app_peer_data["replica_set_initialised"] = json.dumps(True)
         self.harness.set_can_connect(container, True)
         self.harness.charm.on.start.emit()
         password = self.harness.charm.get_secret("app", "backup-password")

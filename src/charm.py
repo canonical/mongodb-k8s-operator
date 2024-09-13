@@ -47,6 +47,7 @@ from ops.charm import (
     CharmBase,
     ConfigChangedEvent,
     RelationDepartedEvent,
+    RelationEvent,
     StartEvent,
     UpdateStatusEvent,
 )
@@ -96,6 +97,7 @@ class MongoDBCharm(CharmBase):
         super().__init__(*args)
 
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(
@@ -120,7 +122,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.secret_remove, self._on_secret_remove)
         self.framework.observe(self.on.secret_changed, self._on_secret_changed)
 
-        self.client_relations = MongoDBProvider(self)
+        self.client_relations = MongoDBProvider(self, substrate=Config.SUBSTRATE)
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
 
@@ -182,6 +184,11 @@ class MongoDBCharm(CharmBase):
             return []
         else:
             return self._peers.units
+
+    @property
+    def mongo_config(self) -> MongoConfiguration:
+        """Returns a MongoConfiguration object for shared libs with agnostic mongo commands."""
+        return self.mongodb_config
 
     @property
     def mongodb_config(self) -> MongoConfiguration:
@@ -351,7 +358,7 @@ class MongoDBCharm(CharmBase):
     @property
     def db_initialised(self) -> bool:
         """Check if MongoDB is initialised."""
-        return "db_initialised" in self.app_peer_data
+        return json.loads(self.app_peer_data.get("db_initialised", "false"))
 
     def is_role_changed(self) -> bool:
         """Checks if application is running in provided role."""
@@ -379,7 +386,7 @@ class MongoDBCharm(CharmBase):
     def db_initialised(self, value):
         """Set the db_initialised flag."""
         if isinstance(value, bool):
-            self.app_peer_data["db_initialised"] = str(value)
+            self.app_peer_data["db_initialised"] = json.dumps(value)
         else:
             raise ValueError(
                 f"'db_initialised' must be a boolean value. Provided: {value} is of type {type(value)}"
@@ -393,13 +400,13 @@ class MongoDBCharm(CharmBase):
     @property
     def replica_set_initialised(self) -> bool:
         """Check if the MongoDB replica set is initialised."""
-        return "replica_set_initialised" in self.app_peer_data
+        return json.loads(self.app_peer_data.get("replica_set_initialised", "false"))
 
     @replica_set_initialised.setter
     def replica_set_initialised(self, value):
         """Set the replica_set_initialised flag."""
         if isinstance(value, bool):
-            self.app_peer_data["replica_set_initialised"] = str(value)
+            self.app_peer_data["replica_set_initialised"] = json.dumps(value)
         else:
             raise ValueError(
                 f"'replica_set_initialised' must be a boolean value. Proivded: {value} is of type {type(value)}"
@@ -408,13 +415,13 @@ class MongoDBCharm(CharmBase):
     @property
     def users_initialized(self) -> bool:
         """Check if MongoDB users are created."""
-        return "users_initialized" in self.app_peer_data
+        return json.loads(self.app_peer_data.get("users_initialized", "false"))
 
     @users_initialized.setter
     def users_initialized(self, value):
         """Set the users_initialized flag."""
         if isinstance(value, bool):
-            self.app_peer_data["users_initialized"] = str(value)
+            self.app_peer_data["users_initialized"] = json.dumps(value)
         else:
             raise ValueError(
                 f"'users_initialized' must be a boolean value. Proivded: {value} is of type {type(value)}"
@@ -665,16 +672,23 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-    def _relation_changes_handler(self, event) -> None:
+    def _relation_changes_handler(self, event: RelationEvent) -> None:
         """Handles different relation events and updates MongoDB replica set."""
         self._connect_mongodb_exporter()
         self._connect_pbm_agent()
 
-        if type(event) is RelationDepartedEvent:
+        if isinstance(event, RelationDepartedEvent):
             if event.departing_unit.name == self.unit.name:
                 self.unit_peer_data.setdefault("unit_departed", "True")
 
         if not self.unit.is_leader():
+            return
+
+        if self.upgrade_in_progress:
+            logger.warning(
+                "Adding replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
+            event.defer()
             return
 
         # Admin password and keyFile should be created before running MongoDB.
@@ -684,6 +698,14 @@ class MongoDBCharm(CharmBase):
         if not self.db_initialised:
             return
 
+        self._reconcile_mongo_hosts_and_users(event)
+
+    def _reconcile_mongo_hosts_and_users(self, event: RelationEvent) -> None:
+        """Auxiliary function to reconcile mongo data for relation events.
+
+        Args:
+            event: The relation event
+        """
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 replset_members = mongo.get_replset_members()
@@ -903,8 +925,10 @@ class MongoDBCharm(CharmBase):
             self._init_operator_user()
             self._init_backup_user()
             self._init_monitor_user()
-            logger.info("Reconcile relations")
-            self.client_relations.oversee_users(None, event)
+            # Bare replicas can create users or config-servers for related mongos apps
+            if not self.is_role(Config.Role.SHARD):
+                logger.info("Manage users")
+                self.client_relations.oversee_users(None, event)
             self.users_initialized = True
         except ExecError as e:
             logger.error("Deferring on_start: exit code: %i, stderr: %s", e.exit_code, e.stderr)

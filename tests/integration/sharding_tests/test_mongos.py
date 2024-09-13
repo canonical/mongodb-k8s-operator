@@ -94,7 +94,7 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
         lambda: is_relation_joined(
             ops_test,
             CLUSTER_REL_NAME,
-            CONFIG_SERVER_REL_NAME,
+            CLUSTER_REL_NAME,
         )
         is True,
         timeout=600,
