@@ -11,13 +11,13 @@ if [ -z "${chaos_mesh_ns}" ]; then
 fi
 
 deploy_chaos_mesh() {
-    if [ "$(helm repo list | grep -c 'chaos-mesh')" != "1" ]; then
-        echo "adding chaos-mesh helm repo"
-        helm repo add chaos-mesh https://charts.chaos-mesh.org
+    if [ "$(microk8s.helm repo list | grep -c 'chaos-mesh')" != "1" ]; then
+        echo "adding chaos-mesh microk8s.helm repo"
+        microk8s.helm repo add chaos-mesh https://charts.chaos-mesh.org
     fi
 
     echo "installing chaos-mesh"
-    helm install chaos-mesh chaos-mesh/chaos-mesh --namespace="${chaos_mesh_ns}" --set chaosDaemon.runtime=containerd --set chaosDaemon.socketPath=/var/snap/microk8s/common/run/containerd.sock --set dashboard.create=false --version "${chaos_mesh_version}" --set clusterScoped=false --set controllerManager.targetNamespace="${chaos_mesh_ns}"
+    microk8s.helm install chaos-mesh chaos-mesh/chaos-mesh --namespace="${chaos_mesh_ns}" --set chaosDaemon.runtime=containerd --set chaosDaemon.socketPath=/var/snap/microk8s/common/run/containerd.sock --set dashboard.create=false --version "${chaos_mesh_version}" --set clusterScoped=false --set controllerManager.targetNamespace="${chaos_mesh_ns}"
     sleep 10
 }
 
