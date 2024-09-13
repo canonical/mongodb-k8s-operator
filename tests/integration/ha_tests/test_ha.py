@@ -7,7 +7,6 @@ import time
 from datetime import datetime, timezone
 
 import pytest
-import pytest_asyncio
 from pytest_operator.plugin import OpsTest
 
 from ..helpers import APP_NAME, check_or_scale_app

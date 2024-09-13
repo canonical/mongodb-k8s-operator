@@ -10,8 +10,8 @@ from pytest_operator.plugin import OpsTest
 from ..backup_tests import helpers as backup_helpers
 from ..ha_tests.helpers import (
     count_writes,
-    find_unit,
     deploy_and_scale_application,
+    find_unit,
     isolate_instance_from_cluster,
     relate_mongodb_and_application,
     remove_instance_isolation,
@@ -19,11 +19,6 @@ from ..ha_tests.helpers import (
 )
 from ..helpers import check_or_scale_app, get_app_name, get_password, set_password
 from .helpers import assert_successful_run_upgrade_sequence
-
-
-import pytest
-from pytest_operator.plugin import OpsTest
-
 
 logger = logging.getLogger(__name__)
 
