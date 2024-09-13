@@ -66,6 +66,7 @@ async def count_shard_writes(
     connection_string = await mongodb_uri(ops_test, app_name=config_server_name, port=MONGOS_PORT)
 
     client = MongoClient(connection_string)
+    print(connection_string)
     db = client[db_name]
     test_collection = db[collection_name]
     count = test_collection.count_documents({})
