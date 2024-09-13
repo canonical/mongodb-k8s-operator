@@ -159,7 +159,7 @@ WRITE_APP = "application"
 MONGODB_CHARM_NAME = "mongodb-k8s"
 
 
-@pytest.mark.skip("skip until upgrades work has been released to charmhub")
+# @pytest.mark.skip("skip until upgrades work has been released to charmhub")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest):
@@ -182,7 +182,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
     await relate_mongodb_and_application(ops_test, db_app_name, WRITE_APP)
 
 
-@pytest.mark.skip("skip until upgrades work has been released to charmhub")
+# @pytest.mark.skip("skip until upgrades work has been released to charmhub")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_successful_upgrade(ops_test: OpsTest, continuous_writes) -> None:
@@ -201,7 +201,7 @@ async def test_successful_upgrade(ops_test: OpsTest, continuous_writes) -> None:
     assert total_expected_writes == actual_writes, "missed writes during upgrade procedure."
 
 
-@pytest.mark.skip("skip until upgrades work has been released to charmhub")
+# @pytest.mark.skip("skip until upgrades work has been released to charmhub")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_preflight_check(ops_test: OpsTest) -> None:
@@ -214,7 +214,7 @@ async def test_preflight_check(ops_test: OpsTest) -> None:
     assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
 
-@pytest.mark.skip("skip until upgrades work has been released to charmhub")
+# @pytest.mark.skip("skip until upgrades work has been released to charmhub")
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_preflight_check_failure(ops_test: OpsTest, chaos_mesh) -> None:

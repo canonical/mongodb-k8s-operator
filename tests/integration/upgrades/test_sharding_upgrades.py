@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+# Copyright 2024 Canonical Ltd.
+# See LICENSE file for licensing details.
+
+import logging
+
+import pytest
+from pytest_operator.plugin import OpsTest
+
+from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
+from ..ha_tests.helpers import get_direct_mongo_client, deploy_and_scale_application
+from ..helpers import mongodb_uri, MONGOS_PORT
+from .helpers import assert_successful_run_upgrade_sequence
+from ..sharding_tests import writes_helpers
+
+SHARD_ONE_DB_NAME = "shard_one_db"
+SHARD_ONE_COLL_NAME = "shard_one_test_collection"
+SHARD_TWO_DB_NAME = "shard_two_db"
+SHARD_TWO_COLL_NAME = "shard_two_test_collection"
+SHARD_ONE_APP_NAME = "shard-one"
+SHARD_TWO_APP_NAME = "shard-two"
+CONFIG_SERVER_APP_NAME = "config-server"
+CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_NAME]
+SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
+WRITE_APP = "application"
+TIMEOUT = 15 * 60
+
+
+@pytest.fixture()
+async def add_writes_to_shards(ops_test: OpsTest):
+    """Adds writes to each shard before test starts and clears writes at the end of the test."""
+    application_unit = ops_test.model.applications[WRITE_APP].units[0]
+
+    start_writes_action = await application_unit.run_action(
+        "start-continuous-writes",
+        **{"db-name": SHARD_ONE_DB_NAME, "coll-name": SHARD_ONE_COLL_NAME}
+    )
+    await start_writes_action.wait()
+
+    start_writes_action = await application_unit.run_action(
+        "start-continuous-writes",
+        **{"db-name": SHARD_TWO_DB_NAME, "coll-name": SHARD_TWO_COLL_NAME}
+    )
+    await start_writes_action.wait()
+
+    # move continuous writes so they are present on each shard
+    mongos_client = await get_direct_mongo_client(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
+    )
+    print(vars(mongos_client))
+    mongos_client.admin.command("movePrimary", SHARD_ONE_DB_NAME, to=SHARD_ONE_APP_NAME)
+    mongos_client.admin.command("movePrimary", SHARD_TWO_DB_NAME, to=SHARD_TWO_APP_NAME)
+
+    yield
+    # clear_writes_action = await application_unit.run_action(
+    #     "clear-continuous-writes",
+    #     **{"db-name": SHARD_ONE_DB_NAME, "coll-name": SHARD_ONE_COLL_NAME}
+    # )
+    # await clear_writes_action.wait()
+
+    # clear_writes_action = await application_unit.run_action(
+    #     "clear-continuous-writes",
+    #     **{"db-name": SHARD_TWO_DB_NAME, "coll-name": SHARD_TWO_APP_NAME}
+    # )
+    # await clear_writes_action.wait()
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_build_and_deploy(ops_test: OpsTest) -> None:
+    """Build deploy, and integrate, a sharded cluster."""
+    await deploy_and_scale_application(ops_test)
+
+    await deploy_cluster_components(ops_test)
+
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        raise_on_blocked=False,
+        raise_on_error=False,
+    )
+
+    await integrate_cluster(ops_test)
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        idle_period=20,
+        timeout=TIMEOUT,
+    )
+
+    # configure write app to use mongos uri
+    mongos_uri = await mongodb_uri(ops_test, app_name=CONFIG_SERVER_APP_NAME, port=MONGOS_PORT)
+    await ops_test.model.applications[WRITE_APP].set_config({"mongos-uri": mongos_uri})
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
+    """Verify that the sharded cluster can be safely upgraded without losing writes."""
+    # new_charm = await ops_test.build_charm(".")
+
+    #     for sharding_component in CLUSTER_COMPONENTS:
+    #         await assert_successful_run_upgrade_sequence(
+    #             ops_test, sharding_component, new_charm=new_charm
+    #         )
+
+    #     # todo stop writes
+
+    #     # count writes to the cluster
+
+    application_unit = ops_test.model.applications[WRITE_APP].units[0]
+    stop_writes_action = await application_unit.run_action(
+        "stop-continuous-writes",
+        **{"db-name": SHARD_ONE_DB_NAME, "coll-name": SHARD_ONE_COLL_NAME}
+    )
+    await stop_writes_action.wait()
+    shard_one_expected_writes = int(stop_writes_action.results["writes"])
+
+    stop_writes_action = await application_unit.run_action(
+        "stop-continuous-writes",
+        **{"db-name": SHARD_TWO_DB_NAME, "coll-name": SHARD_TWO_COLL_NAME}
+    )
+    await stop_writes_action.wait()
+    shard_two_total_expected_writes = int(stop_writes_action.results["writes"])
+
+    cluster_writes = await writes_helpers.get_cluster_writes_count(
+        ops_test,
+        shard_app_names=SHARD_APPS,
+        db_names=[SHARD_ONE_DB_NAME, SHARD_TWO_DB_NAME],
+        config_server_name=CONFIG_SERVER_APP_NAME,
+    )
+
+    print(cluster_writes)
+    assert (
+        cluster_writes[SHARD_ONE_APP_NAME] == shard_one_expected_writes
+    ), "missed writes during upgrade procedure."
+    assert (
+        cluster_writes[SHARD_TWO_APP_NAME] == shard_two_total_expected_writes
+    ), "missed writes during upgrade procedure."
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_pre_upgrade_check_failure(ops_test: OpsTest) -> None:
+    """Verify that the pre-upgrade check fails if there is a problem with one of the shards."""
