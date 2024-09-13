@@ -50,11 +50,7 @@ import pytest
 import pytest_asyncio
 from pytest_operator.plugin import OpsTest
 
-from .helpers import (
-    deploy_chaos_mesh,
-    destroy_chaos_mesh,
-    get_application_name,
-)
+from .helpers import deploy_chaos_mesh, destroy_chaos_mesh, get_application_name
 
 
 @pytest_asyncio.fixture
