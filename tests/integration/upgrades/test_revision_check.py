@@ -23,7 +23,6 @@ CLUSTER_COMPONENTS = [
 ]
 
 
-@pytest.mark.skip()
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
@@ -59,6 +58,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(apps=CLUSTER_COMPONENTS, idle_period=20)
 
 
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_local_config_server_reports_remote_shard(ops_test: OpsTest) -> None:
     """Tests that the local config server reports remote shard."""
     await ops_test.model.integrate(
@@ -81,6 +82,8 @@ async def test_local_config_server_reports_remote_shard(ops_test: OpsTest) -> No
     ), "Config server does not correctly report mismatch in revision"
 
 
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_local_shard_reports_remote_config_server(ops_test: OpsTest) -> None:
     """Tests that the local shard reports remote config-server."""
     await ops_test.model.integrate(
