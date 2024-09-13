@@ -687,9 +687,9 @@ class MongoDBCharm(CharmBase):
         if not self.db_initialised:
             return
 
-        self._reconcile_mongo_data(event)
+        self._reconcile_mongo_hosts_and_users(event)
 
-    def _reconcile_mongo_data(self, event: RelationEvent) -> None:
+    def _reconcile_mongo_hosts_and_users(self, event: RelationEvent) -> None:
         """Auxiliary function to reconcile mongo data for relation events.
 
         Args:
