@@ -20,6 +20,11 @@ parts:
     override-build: |
       rustup default stable
       craftctl default
+  files:
+    plugin: dump
+    source: .
+    prime:
+      - charm_internal_version
 bases:
   - build-on:
       - name: "ubuntu"

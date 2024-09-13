@@ -22,6 +22,7 @@ class Config:
     MONGOD_CONF_DIR = "/etc/mongod"
     MONGODB_LOG_FILENAME = "mongodb.log"
 
+    CHARM_INTERNAL_VERSION_FILE = "charm_internal_version"
     LICENSE_PATH = "/licenses/LICENSE"
     CONTAINER_NAME = "mongod"
     SERVICE_NAME = "mongod"

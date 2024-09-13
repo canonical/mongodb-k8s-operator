@@ -36,8 +36,9 @@ logger = logging.getLogger(__name__)
 
 
 class TestCharm(unittest.TestCase):
+    @patch("charm.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
-    def setUp(self):
+    def setUp(self, *unused):
         self.maxDiff = None
         self.harness = Harness(MongoDBCharm)
         mongo_resource = {
@@ -583,9 +584,11 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.remove_replset_member.assert_called()
             defer.assert_called()
 
+    @patch("charms.mongodb.v0.set_status.get_charm_revision")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    def test_reconfigure_peer_not_ready(self, connection, defer):
+    def test_reconfigure_peer_not_ready(self, connection, defer, *unused):
         """Tests reconfigure does not proceed when the adding member is not ready.
 
         Verifies in relation joined events, that when the adding member is not ready that the event
