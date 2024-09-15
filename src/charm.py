@@ -38,11 +38,16 @@ from charms.mongodb.v1.users import (
     OperatorUser,
 )
 from charms.prometheus_k8s.v0.prometheus_scrape import MetricsEndpointProvider
+from data_platform_helpers.version_check import (
+    CrossAppVersionChecker,
+    get_charm_revision,
+)
 from ops.charm import (
     ActionEvent,
     CharmBase,
     ConfigChangedEvent,
     RelationDepartedEvent,
+    RelationEvent,
     StartEvent,
     UpdateStatusEvent,
 )
@@ -55,7 +60,6 @@ from ops.model import (
     ModelError,
     Relation,
     RelationDataContent,
-    StatusBase,
     Unit,
     WaitingStatus,
 )
@@ -93,6 +97,7 @@ class MongoDBCharm(CharmBase):
         super().__init__(*args)
 
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
+        self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(
@@ -137,6 +142,15 @@ class MongoDBCharm(CharmBase):
         self.shard = ConfigServerRequirer(self)
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
+
+        self.version_checker = CrossAppVersionChecker(
+            self,
+            version=get_charm_revision(self.unit, local_version=self.get_charm_internal_revision),
+            relations_to_check=[
+                Config.Relations.SHARDING_RELATIONS_NAME,
+                Config.Relations.CONFIG_SERVER_RELATIONS_NAME,
+            ],
+        )
 
     # BEGIN: properties
 
@@ -468,16 +482,15 @@ class MongoDBCharm(CharmBase):
 
         return None
 
+    @property
+    def get_charm_internal_revision(self) -> str:
+        """Returns the contents of the get_charm_internal_revision file."""
+        with open(Config.CHARM_INTERNAL_VERSION_FILE, "r") as f:
+            return f.read().strip()
+
     # END: properties
 
     # BEGIN: generic helper methods
-    def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
-        """Returns a Status if the cluster has mismatched revisions.
-
-        TODO implement this method as a part of sharding upgrades.
-        """
-        return None
-
     def remote_mongos_config(self, hosts) -> MongoConfiguration:
         """Generates a MongoConfiguration object for mongos in the deployment of MongoDB."""
         # mongos that are part of the cluster have the same username and password, but different
@@ -659,16 +672,23 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-    def _relation_changes_handler(self, event) -> None:
+    def _relation_changes_handler(self, event: RelationEvent) -> None:
         """Handles different relation events and updates MongoDB replica set."""
         self._connect_mongodb_exporter()
         self._connect_pbm_agent()
 
-        if type(event) is RelationDepartedEvent:
+        if isinstance(event, RelationDepartedEvent):
             if event.departing_unit.name == self.unit.name:
                 self.unit_peer_data.setdefault("unit_departed", "True")
 
         if not self.unit.is_leader():
+            return
+
+        if self.upgrade_in_progress:
+            logger.warning(
+                "Adding replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
+            event.defer()
             return
 
         # Admin password and keyFile should be created before running MongoDB.
@@ -678,6 +698,14 @@ class MongoDBCharm(CharmBase):
         if not self.db_initialised:
             return
 
+        self._reconcile_mongo_hosts_and_users(event)
+
+    def _reconcile_mongo_hosts_and_users(self, event: RelationEvent) -> None:
+        """Auxiliary function to reconcile mongo data for relation events.
+
+        Args:
+            event: The relation event
+        """
         with MongoDBConnection(self.mongodb_config) as mongo:
             try:
                 replset_members = mongo.get_replset_members()
@@ -1551,7 +1579,7 @@ class MongoDBCharm(CharmBase):
             )
             return False
 
-        if revision_mismatch_status := self.get_cluster_mismatched_revision_status():
+        if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
             self.status.set_and_share_status(revision_mismatch_status)
             return False
 

@@ -29,7 +29,8 @@ RELATION_NAME = "s3-credentials"
 
 
 class TestMongoBackups(unittest.TestCase):
-    def setUp(self):
+    @patch("charm.get_charm_revision")
+    def setUp(self, *unused):
         self.harness = Harness(MongoDBCharm)
         self.harness.begin()
         self.harness.add_relation("database-peers", "database-peers")

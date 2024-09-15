@@ -23,7 +23,8 @@ DEPARTED_IDS = [None, 0]
 
 
 class TestMongoProvider(unittest.TestCase):
-    def setUp(self):
+    @patch("charm.get_charm_revision")
+    def setUp(self, *unused):
         self.harness = Harness(MongoDBCharm)
         mongo_resource = {
             "registrypath": "mongo:4.4",
@@ -58,9 +59,12 @@ class TestMongoProvider(unittest.TestCase):
         oversee_users.assert_not_called()
         defer.assert_not_called()
 
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charms.mongodb.v0.set_status.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
-    def test_relation_event_oversee_users_mongo_failure(self, oversee_users, defer):
+    def test_relation_event_oversee_users_mongo_failure(self, oversee_users, defer, *unused):
         """Tests the errors related to pymongo when overseeing users result in a defer."""
         # presets
         self.harness.set_leader(True)
@@ -81,9 +85,11 @@ class TestMongoProvider(unittest.TestCase):
             defer.assert_called()
 
     # oversee_users raises AssertionError when unable to attain users from relation
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charms.mongodb.v0.set_status.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
-    def test_relation_event_oversee_users_fails_to_get_relation(self, oversee_users, defer):
+    def test_relation_event_oversee_users_fails_to_get_relation(self, oversee_users, *unused):
         """Verifies that when users are formatted incorrectly an assertion error is raised."""
         # presets
         self.harness.set_leader(True)
