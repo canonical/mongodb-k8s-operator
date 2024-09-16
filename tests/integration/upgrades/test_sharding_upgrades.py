@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-
-import logging
-
 import pytest
 from pytest_operator.plugin import OpsTest
 
@@ -144,7 +141,7 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
-    """Verify that the pre-upgrade check suceeds in the happy path."""
+    """Verify that the pre-upgrade check succeeds in the happy path."""
     for sharding_component in CLUSTER_COMPONENTS:
         leader_unit = await backup_helpers.get_leader_unit(ops_test, sharding_component)
         action = await leader_unit.run_action("pre-upgrade-check")

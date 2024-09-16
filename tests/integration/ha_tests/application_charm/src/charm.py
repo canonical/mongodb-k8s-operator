@@ -127,7 +127,6 @@ class ContinuousWritesApplication(CharmBase):
 
     def _stop_continuous_writes(self, db_name: str, coll_name: str) -> Optional[int]:
         """Stop continuous writes to the MongoDB cluster and return the last written value."""
-
         if not self._database_config:
             return None
 
