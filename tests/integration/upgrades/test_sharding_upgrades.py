@@ -8,9 +8,15 @@ import pytest
 from pytest_operator.plugin import OpsTest
 
 from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
-from ..ha_tests.helpers import get_direct_mongo_client, deploy_and_scale_application
+from ..ha_tests.helpers import (
+    get_direct_mongo_client,
+    deploy_and_scale_application,
+    isolate_instance_from_cluster,
+    remove_instance_isolation,
+    wait_until_unit_in_status,
+)
 from ..helpers import mongodb_uri, MONGOS_PORT
-from .helpers import assert_successful_run_upgrade_sequence
+from .helpers import assert_successful_run_upgrade_sequence, backup_helpers
 from ..sharding_tests import writes_helpers
 
 SHARD_ONE_DB_NAME = "shard_one_db"
@@ -139,9 +145,38 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
     """Verify that the pre-upgrade check suceeds in the happy path."""
+    for sharding_component in CLUSTER_COMPONENTS:
+        leader_unit = await backup_helpers.get_leader_unit(ops_test, sharding_component)
+        action = await leader_unit.run_action("pre-upgrade-check")
+        await action.wait()
+        assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_pre_upgrade_check_failure(ops_test: OpsTest) -> None:
+async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
     """Verify that the pre-upgrade check fails if there is a problem with one of the shards."""
+    leader_unit = await backup_helpers.get_leader_unit(ops_test, SHARD_TWO_APP_NAME)
+
+    non_leader_unit = None
+    for unit in ops_test.model.applications[SHARD_TWO_APP_NAME].units:
+        if unit != leader_unit:
+            non_leader_unit = unit
+            break
+
+    isolate_instance_from_cluster(ops_test, non_leader_unit.name)
+    await wait_until_unit_in_status(
+        ops_test, non_leader_unit, leader_unit, "(not reachable/healthy)"
+    )
+
+    for sharding_component in CLUSTER_COMPONENTS:
+        leader_unit = await backup_helpers.get_leader_unit(ops_test, sharding_component)
+        action = await leader_unit.run_action("pre-upgrade-check")
+        await action.wait()
+        assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+
+    # restore network after test
+    remove_instance_isolation(ops_test)
+    await ops_test.model.wait_for_idle(
+        apps=[SHARD_TWO_APP_NAME], status="active", timeout=1000, idle_period=30
+    )

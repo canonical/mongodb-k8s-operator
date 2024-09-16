@@ -24,6 +24,8 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 logger = logging.getLogger(__name__)
 
 DATABASE_NAME = "continuous_writes_database"
+COLLECTION_NAME = "test_collection"
+COLLECTION_NAME = "continuous_writes_database"
 PEER = "application-peers"
 PROC_PID_KEY = "proc-pid"
 LAST_WRITTEN_FILE = "last_written_value"
@@ -176,8 +178,8 @@ class ContinuousWritesApplication(CharmBase):
         if not self._database_config:
             return
 
-        db_name = event.params.get("db-name")
-        coll_name = event.params.get("coll-name")
+        db_name = event.params.get("db-name") or DATABASE_NAME
+        coll_name = event.params.get("coll-name") or COLLECTION_NAME
 
         self._stop_continuous_writes(db_name, coll_name)
 
@@ -199,8 +201,8 @@ class ContinuousWritesApplication(CharmBase):
         if not self._database_config:
             return
 
-        db_name = event.params.get("db-name")
-        coll_name = event.params.get("coll-name")
+        db_name = event.params.get("db-name") or DATABASE_NAME
+        coll_name = event.params.get("coll-name") or COLLECTION_NAME
         self._start_continuous_writes(1, db_name, coll_name)
 
     def _on_stop_continuous_writes_action(self, event: ActionEvent) -> None:
@@ -208,8 +210,8 @@ class ContinuousWritesApplication(CharmBase):
         if not self._database_config:
             return event.set_results({"writes": -1})
 
-        db_name = event.params.get("db-name")
-        coll_name = event.params.get("coll-name")
+        db_name = event.params.get("db-name") or DATABASE_NAME
+        coll_name = event.params.get("coll-name") or COLLECTION_NAME
         writes = self._stop_continuous_writes(db_name, coll_name)
         event.set_results({"writes": writes or -1})
 
