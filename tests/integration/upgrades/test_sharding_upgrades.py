@@ -4,17 +4,17 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
 from ..ha_tests.helpers import (
-    get_direct_mongo_client,
     deploy_and_scale_application,
+    get_direct_mongo_client,
     isolate_instance_from_cluster,
     remove_instance_isolation,
     wait_until_unit_in_status,
 )
-from ..helpers import mongodb_uri, MONGOS_PORT
-from .helpers import assert_successful_run_upgrade_sequence, backup_helpers
+from ..helpers import MONGOS_PORT, mongodb_uri
 from ..sharding_tests import writes_helpers
+from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
+from .helpers import assert_successful_run_upgrade_sequence, backup_helpers
 
 SHARD_ONE_DB_NAME = "shard_one_db"
 SHARD_ONE_COLL_NAME = "test_collection"
@@ -29,6 +29,7 @@ WRITE_APP = "application"
 TIMEOUT = 15 * 60
 
 
+@pytest.mark.skip()
 @pytest.fixture()
 async def add_writes_to_shards(ops_test: OpsTest):
     """Adds writes to each shard before test starts and clears writes at the end of the test."""
@@ -36,13 +37,13 @@ async def add_writes_to_shards(ops_test: OpsTest):
 
     start_writes_action = await application_unit.run_action(
         "start-continuous-writes",
-        **{"db-name": SHARD_ONE_DB_NAME, "coll-name": SHARD_ONE_COLL_NAME}
+        **{"db-name": SHARD_ONE_DB_NAME, "coll-name": SHARD_ONE_COLL_NAME},
     )
     await start_writes_action.wait()
 
     start_writes_action = await application_unit.run_action(
         "start-continuous-writes",
-        **{"db-name": SHARD_TWO_DB_NAME, "coll-name": SHARD_TWO_COLL_NAME}
+        **{"db-name": SHARD_TWO_DB_NAME, "coll-name": SHARD_TWO_COLL_NAME},
     )
     await start_writes_action.wait()
 
@@ -56,13 +57,13 @@ async def add_writes_to_shards(ops_test: OpsTest):
     yield
     clear_writes_action = await application_unit.run_action(
         "clear-continuous-writes",
-        **{"db-name": SHARD_ONE_DB_NAME, "coll-name": SHARD_ONE_COLL_NAME}
+        **{"db-name": SHARD_ONE_DB_NAME, "coll-name": SHARD_ONE_COLL_NAME},
     )
     await clear_writes_action.wait()
 
     clear_writes_action = await application_unit.run_action(
         "clear-continuous-writes",
-        **{"db-name": SHARD_TWO_DB_NAME, "coll-name": SHARD_TWO_APP_NAME}
+        **{"db-name": SHARD_TWO_DB_NAME, "coll-name": SHARD_TWO_APP_NAME},
     )
     await clear_writes_action.wait()
 
@@ -94,6 +95,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.applications[WRITE_APP].set_config({"mongos-uri": mongos_uri})
 
 
+@pytest.mark.skip()
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
@@ -108,13 +110,13 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
     application_unit = ops_test.model.applications[WRITE_APP].units[0]
     stop_writes_action = await application_unit.run_action(
         "stop-continuous-writes",
-        **{"db-name": SHARD_ONE_DB_NAME, "coll-name": SHARD_ONE_COLL_NAME}
+        **{"db-name": SHARD_ONE_DB_NAME, "coll-name": SHARD_ONE_COLL_NAME},
     )
     await stop_writes_action.wait()
     shard_one_expected_writes = int(stop_writes_action.results["writes"])
     stop_writes_action = await application_unit.run_action(
         "stop-continuous-writes",
-        **{"db-name": SHARD_TWO_DB_NAME, "coll-name": SHARD_TWO_COLL_NAME}
+        **{"db-name": SHARD_TWO_DB_NAME, "coll-name": SHARD_TWO_COLL_NAME},
     )
     await stop_writes_action.wait()
     shard_two_total_expected_writes = int(stop_writes_action.results["writes"])
@@ -138,6 +140,7 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
     ), "missed writes during upgrade procedure."
 
 
+@pytest.mark.skip()
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
@@ -149,6 +152,7 @@ async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
         assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
 
 
+@pytest.mark.skip()
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:

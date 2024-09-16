@@ -2,9 +2,9 @@
 # See LICENSE file for licensing details.
 
 """This file is meant to run in the background continuously writing entries to MongoDB."""
+import signal
 import sys
 
-import signal
 from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from pymongo.write_concern import WriteConcern
