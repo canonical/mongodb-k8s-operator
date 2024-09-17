@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 DATABASE_NAME = "continuous_writes_database"
 COLLECTION_NAME = "test_collection"
-COLLECTION_NAME = "continuous_writes_database"
 PEER = "application-peers"
 PROC_PID_KEY = "proc-pid"
 LAST_WRITTEN_FILE = "last_written_value"
