@@ -3,10 +3,8 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import json
 from functools import cached_property
 from logging import getLogger
-from time import time
 from typing import Optional
 
 import lightkube
@@ -20,6 +18,7 @@ from charms.mongodb.v0.upgrade_helpers import (
     GenericMongoDBUpgrade,
     PeerRelationNotReady,
     PrecheckFailed,
+    unit_number,
 )
 from lightkube.core.exceptions import ApiError
 from ops import ActiveStatus, StatusBase
@@ -98,24 +97,27 @@ class KubernetesUpgrade(AbstractUpgrade):
         )
 
     @property
-    def upgrade_resumed(self) -> bool:
-        """Whether user has resumed upgrade with Juju action.
+    def _partition(self) -> int:
+        """Specifies which units should upgrade.
 
-        Reset to `False` after each `juju refresh`
+        Unit numbers >= partition should upgrade
+        Unit numbers < partition should not upgrade
 
-        NOTE : This is copy pasted code from VM but should be changed for k8s upgrades.
+        https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#partitions
+
+        For Kubernetes, unit numbers are guaranteed to be sequential
         """
-        return json.loads(self._app_databag.get("upgrade-resumed", "false"))
+        return partition.get(app_name=self._app_name)
 
-    @upgrade_resumed.setter
-    def upgrade_resumed(self, value: bool):
-        """NOTE : This is copy pasted code from VM but should be changed for k8s upgrades."""
-        # Trigger peer relation_changed event even if value does not change
-        # (Needed when leader sets value to False during `ops.UpgradeCharmEvent`)
-        self._app_databag["-unused-timestamp-upgrade-resume-last-updated"] = str(time.time())
+    @_partition.setter
+    def _partition(self, value: int) -> None:
+        """Sets the partition number."""
+        partition.set(app_name=self._app_name, value=value)
 
-        self._app_databag["upgrade-resumed"] = json.dumps(value)
-        logger.debug(f"Set upgrade-resumed to {value=}")
+    @property
+    def upgrade_resumed(self) -> bool:
+        """Whether user has resumed upgrade with Juju action."""
+        return self._partition < unit_number(self._sorted_units[0])
 
     @cached_property  # Cache lightkube API call for duration of charm execution
     @override
