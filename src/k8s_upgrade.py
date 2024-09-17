@@ -41,6 +41,36 @@ class DeployedWithoutTrust(Exception):
         )
 
 
+class _Partition:
+    """StatefulSet partition getter/setter."""
+
+    # Note: I realize this isn't very Pythonic (it'd be nicer to use a property). Because of how
+    # ops is structured, we don't have access to the app name when we initialize this class. We
+    # need to only initialize this class once so that there is a single cache. Therefore, the app
+    # name needs to be passed as argument to the methods (instead of as an argument to __init__)—
+    # so we can't use a property.
+
+    def __init__(self):
+        # Cache lightkube API call for duration of charm execution
+        self._cache: dict[str, int] = {}
+
+    def get(self, *, app_name: str) -> int:
+        return self._cache.setdefault(
+            app_name,
+            lightkube.Client()
+            .get(res=lightkube.resources.apps_v1.StatefulSet, name=app_name)
+            .spec.updateStrategy.rollingUpdate.partition,
+        )
+
+    def set(self, *, app_name: str, value: int) -> None:
+        lightkube.Client().patch(
+            res=lightkube.resources.apps_v1.StatefulSet,
+            name=app_name,
+            obj={"spec": {"updateStrategy": {"rollingUpdate": {"partition": value}}}},
+        )
+        self._cache[app_name] = value
+
+
 class KubernetesUpgrade(AbstractUpgrade):
     """Code for Kubernetes Upgrade.
 
@@ -49,9 +79,7 @@ class KubernetesUpgrade(AbstractUpgrade):
 
     def __init__(self, charm: CharmBase, *args, **kwargs):
         try:
-            lightkube.Client().get(
-                res=lightkube.resources.apps_v1.StatefulSet, name=charm.app.name
-            )
+            partition.get(app_name=charm.app.name)
         except ApiError as err:
             if err.status.code == 403:
                 raise DeployedWithoutTrust(app_name=charm.app.name)
@@ -181,3 +209,6 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             return KubernetesUpgrade(self.charm)
         except PeerRelationNotReady:
             return None
+
+
+partition = _Partition()
