@@ -45,3 +45,19 @@ set-tls-private-key:
 
 pre-upgrade-check:
   description: Check if charm is ready to upgrade
+
+resume-upgrade:
+  description: Upgrade remaining units (after you manually verified that upgraded units are healthy).
+  params:
+    force:
+      type: boolean
+      default: false
+      description: |
+        Potential of *data loss* and *downtime*
+        
+        Force upgrade of next unit.
+        
+        Use to
+        - force incompatible upgrade and/or
+        - continue upgrade if 1+ upgraded units have non-active status
+  required: []

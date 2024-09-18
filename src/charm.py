@@ -14,6 +14,7 @@ from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.mongodb.v0.config_server_interface import ClusterProvider
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.set_status import MongoDBStatusHandler
+from charms.mongodb.v0.upgrade_helpers import UnitState, unit_number
 from charms.mongodb.v1.helpers import (
     generate_keyfile,
     generate_password,
@@ -74,6 +75,7 @@ from tenacity import (
     wait_fixed,
 )
 
+import k8s_upgrade
 from config import Config
 from exceptions import AdminUserCreationError, MissingSecretError
 from k8s_upgrade import MongoDBUpgrade
@@ -781,6 +783,14 @@ class MongoDBCharm(CharmBase):
                     raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
             logger.debug(f"{self.unit.name} releasing on_stop")
             self.unit_peer_data["unit_departed"] = ""
+        current_unit_number = unit_number(self.unit)
+        if k8s_upgrade.partition.get(app_name=self.app.name) < current_unit_number:
+            k8s_upgrade.partition.set(app_name=self.app.name, value=current_unit_number)
+            logger.debug(f"Partition set to {unit_number} during stop event")
+        if not self.upgrade._upgrade:
+            logger.debug("Peer relation missing during stop event")
+            return
+        self.upgrade._upgrade.unit_state = UnitState.RESTARTING
 
     def _on_update_status(self, event: UpdateStatusEvent):
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of

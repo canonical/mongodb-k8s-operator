@@ -5,7 +5,7 @@
 
 from functools import cached_property
 from logging import getLogger
-from typing import Optional
+from typing import List, Optional
 
 import lightkube
 import lightkube.models.apps_v1
@@ -14,16 +14,26 @@ import lightkube.resources.core_v1
 from charms.mongodb.v0.upgrade_helpers import (
     PEER_RELATION_ENDPOINT_NAME,
     PRECHECK_ACTION_NAME,
+    RESUME_ACTION_NAME,
+    ROLLBACK_INSTRUCTIONS,
     AbstractUpgrade,
+    FailedToElectNewPrimaryError,
     GenericMongoDBUpgrade,
     PeerRelationNotReady,
     PrecheckFailed,
+    UnitState,
     unit_number,
 )
+from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
 from lightkube.core.exceptions import ApiError
-from ops import ActiveStatus, StatusBase
+from ops import ActiveStatus, RelationChangedEvent, StatusBase
 from ops.charm import ActionEvent, CharmBase
+from ops.framework import EventBase, EventSource
+from ops.model import BlockedStatus, Unit
 from overrides import override
+from tenacity import RetryError
+
+from config import Config
 
 logger = getLogger()
 
@@ -163,22 +173,249 @@ class KubernetesUpgrade(AbstractUpgrade):
     def _unit_workload_version(self, value: str):
         self._unit_databag["workload_version"] = value
 
-    def reconcile_partition(self, *, action_event: ActionEvent | None = None) -> None:
-        """Handle Juju action to confirm first upgraded unit is healthy and resume upgrade."""
-        pass
+    def _determine_partition(
+        self, units: List[Unit], action_event: ActionEvent | None, force: bool
+    ) -> int:
+        if not self.in_progress:
+            return 0
+        logger.debug(f"{self._peer_relation.data=}")
+        for upgrade_order_index, unit in enumerate(units):
+            # Note: upgrade_order_index != unit number
+            state = self._peer_relation.data[unit].get("state")
+            if state:
+                state = UnitState(state)
+            if (
+                not force and state is not UnitState.HEALTHY
+            ) or self._unit_workload_container_versions[
+                unit.name
+            ] != self._app_workload_container_version:
+                if not action_event and upgrade_order_index == 1:
+                    # User confirmation needed to resume upgrade (i.e. upgrade second unit)
+                    return unit_number(units[0])
+                return unit_number(unit)
+        return 0
+
+    def reconcile_partition(
+        self, *, action_event: ActionEvent | None = None
+    ) -> None:  # noqa: C901
+        """If ready, lower partition to upgrade next unit.
+
+        If upgrade is not in progress, set partition to 0. (If a unit receives a stop event, it may
+        raise the partition even if an upgrade is not in progress.)
+
+        Automatically upgrades next unit if all upgraded units are healthy—except if only one unit
+        has upgraded (need manual user confirmation [via Juju action] to upgrade next unit)
+
+        Handle Juju action to:
+        - confirm first upgraded unit is healthy and resume upgrade
+        - force upgrade of next unit if 1 or more upgraded units are unhealthy
+        """
+        force = bool(action_event and action_event.params["force"] is True)
+
+        units = self._sorted_units
+
+        # According to the MongoDB documentation, before upgrading the primary, we must ensure a
+        # safe primary re-election.
+        try:
+            if self._unit.name == self._charm.primary:
+                logger.debug("Stepping down current primary, before upgrading service...")
+                self._charm.upgrade.step_down_primary_and_wait_reelection()
+        except FailedToElectNewPrimaryError:
+            logger.error("Failed to reelect primary before upgrading unit.")
+            return
+
+        partition_ = self._determine_partition(
+            units,
+            action_event,
+            force,
+        )
+        logger.debug(f"{self._partition=}, {partition_=}")
+        # Only lower the partition—do not raise it.
+        # If this method is called during the action event and then called during another event a
+        # few seconds later, `determine_partition()` could return a lower number during the action
+        # and then a higher number a few seconds later.
+        # This can cause the unit to hang.
+        # Example: If partition is lowered to 1, unit 1 begins to upgrade, and partition is set to
+        # 2 right away, the unit/Juju agent will hang
+        # Details: https://chat.charmhub.io/charmhub/pl/on8rd538ufn4idgod139skkbfr
+        # This does not address the situation where another unit > 1 restarts and sets the
+        # partition during the `stop` event, but that is unlikely to occur in the small time window
+        # that causes the unit to hang.
+        if partition_ < self._partition:
+            self._partition = partition_
+            logger.debug(
+                f"Lowered partition to {partition_} {action_event=} {force=} {self.in_progress=}"
+            )
+        if action_event:
+            assert len(units) >= 2
+            if self._partition > unit_number(units[1]):
+                message = "Highest number unit is unhealthy. Upgrade will not resume."
+                logger.debug(f"Resume upgrade event failed: {message}")
+                action_event.fail(message)
+                return
+            if force:
+                # If a unit was unhealthy and the upgrade was forced, only the next unit will
+                # upgrade. As long as 1 or more units are unhealthy, the upgrade will need to be
+                # forced for each unit.
+
+                # Include "Attempting to" because (on Kubernetes) we only control the partition,
+                # not which units upgrade. Kubernetes may not upgrade a unit even if the partition
+                # allows it (e.g. if the charm container of a higher unit is not ready). This is
+                # also applicable `if not force`, but is unlikely to happen since all units are
+                # healthy `if not force`.
+                message = f"Attempting to upgrade unit {self._partition}."
+            else:
+                message = f"Upgrade resumed. Unit {self._partition} is upgrading next."
+            action_event.set_results({"result": message})
+            logger.debug(f"Resume upgrade event succeeded: {message}")
+
+        self._charm.upgrade.post_app_upgrade_event.emit()
+
+
+class _PostUpgradeCheckMongoDB(EventBase):
+    """Run post upgrade check on MongoDB to verify that the cluster is healhty."""
+
+    def __init__(self, handle):
+        super().__init__(handle)
 
 
 class MongoDBUpgrade(GenericMongoDBUpgrade):
     """Handlers for upgrade events."""
 
+    post_app_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
+    post_cluster_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
+
     def __init__(self, charm: CharmBase):
         self.charm = charm
         super().__init__(charm, PEER_RELATION_ENDPOINT_NAME)
 
+    @override
     def _observe_events(self, charm: CharmBase) -> None:
         self.framework.observe(
-            charm.on["pre-upgrade-check"].action, self._on_pre_upgrade_check_action
+            charm.on[PRECHECK_ACTION_NAME].action, self._on_pre_upgrade_check_action
         )
+        self.framework.observe(
+            charm.on[PEER_RELATION_ENDPOINT_NAME].relation_created,
+            self._on_upgrade_peer_relation_created,
+        )
+        self.framework.observe(
+            charm.on[PEER_RELATION_ENDPOINT_NAME].relation_changed, self._reconcile_upgrade
+        )
+        self.framework.observe(charm.on[RESUME_ACTION_NAME].action, self._on_resume_upgrade_action)
+        self.framework.observe(self.post_app_upgrade_event, self.run_post_app_upgrade_task)
+        self.framework.observe(self.post_cluster_upgrade_event, self.run_post_cluster_upgrade_task)
+
+    def _reconcile_upgrade(self, event: RelationChangedEvent) -> None:
+        """Handle upgrade events."""
+        if not self._upgrade:
+            logger.debug("Peer relation not available")
+            return
+        if not self._upgrade.versions_set:
+            logger.debug("Peer relation not ready")
+            return
+        if self.charm.unit.is_leader() and not self._upgrade.in_progress:
+            # Run before checking `self._upgrade.is_compatible` in case incompatible upgrade was
+            # forced & completed on all units.
+            self._upgrade.set_versions_in_app_databag()
+        if self._upgrade.unit_state is UnitState.RESTARTING:  # Kubernetes only
+            if not self._upgrade.is_compatible:
+                logger.info(
+                    "Upgrade incompatible. If you accept potential *data loss* and *downtime*, you can continue with `resume-upgrade force=true`"
+                )
+                self.unit.status = BlockedStatus(
+                    "Rollback to previous revision with `juju refresh`"
+                )
+                self.set_status(event=event, unit=False)
+                return
+        if self.charm.unit.is_leader():
+            self._set_upgrade_status()
+            self._upgrade.reconcile_partition()
+
+        self._set_upgrade_status()
+
+    def _set_upgrade_status(self):
+        if self.charm.unit.is_leader():
+            self.charm.app.status = self._upgrade.app_status or ActiveStatus()
+        # Set/clear upgrade unit status if no other unit status - upgrade status for units should
+        # have the lowest priority.
+        if isinstance(self.charm.unit.status, ActiveStatus) or (
+            isinstance(self.charm.unit.status, BlockedStatus)
+            and self.charm.unit.status.message.startswith(
+                "Rollback with `juju refresh`. Pre-upgrade check failed:"
+            )
+        ):
+            self.charm.status.set_and_share_status(
+                self._upgrade.get_unit_juju_status() or ActiveStatus()
+            )
+
+    def _on_upgrade_peer_relation_created(self, _) -> None:
+        if self.charm.unit.is_leader():
+            self._upgrade.set_versions_in_app_databag()
+
+    def _on_resume_upgrade_action(self, event: ActionEvent) -> None:
+        if not self.charm.unit.is_leader():
+            message = f"Must run action on leader unit. (e.g. `juju run {self.app.name}/leader {RESUME_ACTION_NAME}`)"
+            logger.debug(f"Resume upgrade event failed: {message}")
+            event.fail(message)
+            return
+        if not self._upgrade or not self._upgrade.in_progress:
+            message = "No upgrade in progress"
+            logger.debug(f"Resume upgrade event failed: {message}")
+            event.fail(message)
+            return
+        self._upgrade.reconcile_partition(action_event=event)
+
+    def run_post_app_upgrade_task(self, event: EventBase):
+        """Runs the post upgrade check to verify that the cluster is healthy.
+
+        By deferring before setting unit state to HEALTHY, the user will either:
+            1. have to wait for the unit to resolve itself.
+            2. have to run the force-upgrade action (to upgrade the next unit).
+        """
+        logger.debug("Running post upgrade checks to verify cluster is not broken after upgrade")
+        self.run_post_upgrade_checks(event, finished_whole_cluster=False)
+
+        if self._upgrade.unit_state != UnitState.HEALTHY:
+            return
+
+        logger.debug("Cluster is healthy after upgrading unit %s", self.charm.unit.name)
+
+        # Leader of config-server must wait for all shards to be upgraded before finalising the
+        # upgrade.
+        if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return
+
+        self.charm.upgrade.post_cluster_upgrade_event.emit()
+        pass
+
+    def run_post_cluster_upgrade_task(self, event: EventBase) -> None:
+        """Waits for entire cluster to be upgraded before enabling the balancer."""
+        # Leader of config-server must wait for all shards to be upgraded before finalising the
+        # upgrade.
+        if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            return
+
+        if not self.charm.is_cluster_on_same_revision():
+            logger.debug("Waiting to finalise upgrade, one or more shards need upgrade.")
+            event.defer()
+            return
+
+        logger.debug(
+            "Entire cluster has been upgraded, checking health of the cluster and enabling balancer."
+        )
+        self.run_post_upgrade_checks(event, finished_whole_cluster=True)
+
+        try:
+            with MongosConnection(self.charm.mongos_config) as mongos:
+                mongos.start_and_wait_for_balancer()
+        except BalancerNotEnabledError:
+            logger.debug(
+                "Need more time to enable the balancer after finishing the upgrade. Deferring event."
+            )
+            event.defer()
+            return
+
+        self.set_mongos_feature_compatibilty_version(Config.Upgrade.FEATURE_VERSION_6)
 
     def _on_pre_upgrade_check_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
@@ -211,6 +448,36 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             return KubernetesUpgrade(self.charm)
         except PeerRelationNotReady:
             return None
+
+    def run_post_upgrade_checks(self, event, finished_whole_cluster: bool) -> None:
+        """Runs post-upgrade checks for after a shard/config-server/replset/cluster upgrade."""
+        upgrade_type = "unit %s." if not finished_whole_cluster else "sharded cluster"
+        try:
+            self.wait_for_cluster_healthy()
+        except RetryError:
+            logger.error(
+                "Cluster is not healthy after upgrading %s. Will retry next juju event.",
+                upgrade_type,
+            )
+            logger.info(ROLLBACK_INSTRUCTIONS)
+            self.charm.status.set_and_share_status(Config.Status.UNHEALTHY_UPGRADE)
+            event.defer()
+            return
+
+        if not self.is_cluster_able_to_read_write():
+            logger.error(
+                "Cluster is not healthy after upgrading %s, writes not propagated throughout cluster. Deferring post upgrade check.",
+                upgrade_type,
+            )
+            logger.info(ROLLBACK_INSTRUCTIONS)
+            self.charm.status.set_and_share_status(Config.Status.UNHEALTHY_UPGRADE)
+            event.defer()
+            return
+
+        if self.charm.unit.status == Config.Status.UNHEALTHY_UPGRADE:
+            self.charm.status.set_and_share_status(ActiveStatus())
+
+        self._upgrade.unit_state = UnitState.HEALTHY
 
 
 partition = _Partition()
