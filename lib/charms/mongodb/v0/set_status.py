@@ -105,7 +105,6 @@ class MongoDBStatusHandler(Object):
         goal_state = self.charm.model._backend._run(
             "goal-state", return_output=True, use_json=True
         )
-        logger.error(f"{goal_state = }")
         for unit_name, unit_state in goal_state["units"].items():
             if unit_name == unit_to_ignore:
                 continue

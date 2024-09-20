@@ -690,7 +690,6 @@ class MongoDBCharm(CharmBase):
 
     def __start_checks(self) -> bool:
         """Runs the checks that are mandatory before trying to create anything mongodb related."""
-
         container = self.unit.get_container(Config.CONTAINER_NAME)
 
         if not self._configure_container(container):
