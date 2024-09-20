@@ -5,6 +5,7 @@ import unittest
 from unittest import mock
 from unittest.mock import patch
 
+import pytest
 from charms.mongodb.v1.helpers import current_pbm_op
 from charms.mongodb.v1.mongodb_backups import (
     PBMBusyError,
@@ -28,6 +29,12 @@ from charm import MongoDBCharm
 from .helpers import patch_network_get
 
 RELATION_NAME = "s3-credentials"
+
+
+@pytest.fixture(autouse=True)
+def patch_upgrades(monkeypatch):
+    monkeypatch.setattr("charm.k8s_upgrade._Partition.get", lambda *args, **kwargs: 0)
+    monkeypatch.setattr("charm.k8s_upgrade._Partition.set", lambda *args, **kwargs: None)
 
 
 class TestMongoBackups(unittest.TestCase):

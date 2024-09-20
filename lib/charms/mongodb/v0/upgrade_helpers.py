@@ -1158,11 +1158,14 @@ class GenericMongoDBUpgrade(Object, abc.ABC):
         # unhealthy. In order to check if this unit has resolved its issue, we ignore the status
         # that was set in a previous check of cluster health. Otherwise, we are stuck in an
         # infinite check of cluster health due to never being able to reset an unhealthy status.
-        if not self.charm.status.is_current_unit_ready(
+        is_current_unit_ready = self.charm.status.is_current_unit_ready(
             ignore_unhealthy_upgrade=True
-        ) or not self.charm.status.are_all_units_ready_for_upgrade(
+        )
+        are_all_units_ready = self.charm.status.are_all_units_ready_for_upgrade(
             unit_to_ignore=self.charm.unit.name
-        ):
+        )
+        logger.error(f"{is_current_unit_ready = } {are_all_units_ready = }")
+        if not is_current_unit_ready or not are_all_units_ready:
             logger.error(
                 "Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade."
             )

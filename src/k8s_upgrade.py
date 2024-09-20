@@ -17,7 +17,6 @@ from charms.mongodb.v0.upgrade_helpers import (
     RESUME_ACTION_NAME,
     ROLLBACK_INSTRUCTIONS,
     AbstractUpgrade,
-    FailedToElectNewPrimaryError,
     GenericMongoDBUpgrade,
     PeerRelationNotReady,
     PrecheckFailed,
@@ -26,7 +25,7 @@ from charms.mongodb.v0.upgrade_helpers import (
 )
 from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
 from lightkube.core.exceptions import ApiError
-from ops import ActiveStatus, RelationChangedEvent, StatusBase
+from ops import ActiveStatus, StatusBase
 from ops.charm import ActionEvent, CharmBase
 from ops.framework import EventBase, EventSource
 from ops.model import BlockedStatus, Unit
@@ -83,7 +82,7 @@ class _Partition:
 class KubernetesUpgrade(AbstractUpgrade):
     """Code for Kubernetes Upgrade.
 
-    This is a rough draft just to check that pre upgrade checks are still working.
+    This is the implementation of Kubernetes Upgrade methods.
     """
 
     def __init__(self, charm: CharmBase, *args, **kwargs):
@@ -123,6 +122,13 @@ class KubernetesUpgrade(AbstractUpgrade):
     def _partition(self, value: int) -> None:
         """Sets the partition number."""
         partition.set(app_name=self._app_name, value=value)
+
+    def save_revision(self):
+        """Sets the revisions in the databag."""
+        self._unit_workload_version = self._current_versions["workload"]
+        logger.debug(
+            f'Saved {self._current_versions["workload"]=} in unit databag after first install'
+        )
 
     @property
     def upgrade_resumed(self) -> bool:
@@ -166,12 +172,12 @@ class KubernetesUpgrade(AbstractUpgrade):
 
     @property
     def _unit_workload_version(self) -> Optional[str]:
-        """Installed OpenSearch version for this unit."""
-        return self._unit_databag.get("workload_version")
+        """Installed mongodb version for this unit."""
+        return self._unit_databag.get("workload")
 
     @_unit_workload_version.setter
     def _unit_workload_version(self, value: str):
-        self._unit_databag["workload_version"] = value
+        self._unit_databag["workload"] = value
 
     def _determine_partition(
         self, units: List[Unit], action_event: ActionEvent | None, force: bool
@@ -213,16 +219,6 @@ class KubernetesUpgrade(AbstractUpgrade):
         force = bool(action_event and action_event.params["force"] is True)
 
         units = self._sorted_units
-
-        # According to the MongoDB documentation, before upgrading the primary, we must ensure a
-        # safe primary re-election.
-        try:
-            if self._unit.name == self._charm.primary:
-                logger.debug("Stepping down current primary, before upgrading service...")
-                self._charm.upgrade.step_down_primary_and_wait_reelection()
-        except FailedToElectNewPrimaryError:
-            logger.error("Failed to reelect primary before upgrading unit.")
-            return
 
         partition_ = self._determine_partition(
             units,
@@ -269,8 +265,6 @@ class KubernetesUpgrade(AbstractUpgrade):
             action_event.set_results({"result": message})
             logger.debug(f"Resume upgrade event succeeded: {message}")
 
-        self._charm.upgrade.post_app_upgrade_event.emit()
-
 
 class _PostUpgradeCheckMongoDB(EventBase):
     """Run post upgrade check on MongoDB to verify that the cluster is healhty."""
@@ -305,7 +299,11 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         self.framework.observe(self.post_app_upgrade_event, self.run_post_app_upgrade_task)
         self.framework.observe(self.post_cluster_upgrade_event, self.run_post_cluster_upgrade_task)
 
-    def _reconcile_upgrade(self, event: RelationChangedEvent) -> None:
+    def _on_upgrade(self):
+        if self.charm.unit.is_leader():
+            self.charm.version_checker.set_version_across_all_relations()
+
+    def _reconcile_upgrade(self, event: EventBase) -> None:
         """Handle upgrade events."""
         if not self._upgrade:
             logger.debug("Peer relation not available")
@@ -317,19 +315,20 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             # Run before checking `self._upgrade.is_compatible` in case incompatible upgrade was
             # forced & completed on all units.
             self._upgrade.set_versions_in_app_databag()
+
         if self._upgrade.unit_state is UnitState.RESTARTING:  # Kubernetes only
             if not self._upgrade.is_compatible:
                 logger.info(
                     "Upgrade incompatible. If you accept potential *data loss* and *downtime*, you can continue with `resume-upgrade force=true`"
                 )
-                self.unit.status = BlockedStatus(
-                    "Rollback to previous revision with `juju refresh`"
-                )
-                self.set_status(event=event, unit=False)
+                self.charm.status.set_and_share_status(Config.Status.UNHEALTHY_UPGRADE)
                 return
+        if not self._upgrade.unit_state:
+            self._upgrade.unit_state = UnitState.HEALTHY
         if self.charm.unit.is_leader():
-            self._set_upgrade_status()
             self._upgrade.reconcile_partition()
+        if self._upgrade.unit_state is UnitState.RESTARTING:
+            self.post_app_upgrade_event.emit()
 
         self._set_upgrade_status()
 
@@ -349,6 +348,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             )
 
     def _on_upgrade_peer_relation_created(self, _) -> None:
+        self._upgrade.save_revision()
         if self.charm.unit.is_leader():
             self._upgrade.set_versions_in_app_databag()
 
@@ -451,7 +451,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
     def run_post_upgrade_checks(self, event, finished_whole_cluster: bool) -> None:
         """Runs post-upgrade checks for after a shard/config-server/replset/cluster upgrade."""
-        upgrade_type = "unit %s." if not finished_whole_cluster else "sharded cluster"
+        upgrade_type = "unit" if not finished_whole_cluster else "sharded cluster"
         try:
             self.wait_for_cluster_healthy()
         except RetryError:

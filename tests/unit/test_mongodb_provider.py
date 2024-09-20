@@ -6,6 +6,7 @@ import unittest
 from unittest import mock
 from unittest.mock import patch
 
+import pytest
 from ops.charm import RelationEvent
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
@@ -22,6 +23,12 @@ PYMONGO_EXCEPTIONS = [
 PEER_ADDR = {"private-address": "127.4.5.6"}
 RELATION_EVENTS = ["joined", "changed", "departed"]
 DEPARTED_IDS = [None, 0]
+
+
+@pytest.fixture(autouse=True)
+def patch_upgrades(monkeypatch):
+    monkeypatch.setattr("charm.k8s_upgrade._Partition.get", lambda *args, **kwargs: 0)
+    monkeypatch.setattr("charm.k8s_upgrade._Partition.set", lambda *args, **kwargs: None)
 
 
 class TestMongoProvider(unittest.TestCase):
