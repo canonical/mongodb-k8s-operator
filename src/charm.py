@@ -658,6 +658,8 @@ class MongoDBCharm(CharmBase):
         if not self._configure_container(container):
             event.defer()
 
+        self.upgrade._reconcile_upgrade(event)
+
     def is_db_service_ready(self) -> bool:
         """Checks if the MongoDB service is ready to accept connections."""
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
