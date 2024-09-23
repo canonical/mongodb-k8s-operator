@@ -236,7 +236,7 @@ class MongoDBStatusHandler(Object):
                 "Relation to s3-integrator is not supported, config role must be config-server"
             )
 
-        return self.charm.get_cluster_mismatched_revision_status()
+        return self.get_cluster_mismatched_revision_status()
 
     def get_cluster_mismatched_revision_status(self) -> Optional[StatusBase]:
         """Returns a Status if the cluster has mismatched revisions."""
