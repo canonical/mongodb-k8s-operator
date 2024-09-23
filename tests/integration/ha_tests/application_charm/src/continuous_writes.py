@@ -9,8 +9,8 @@ from pymongo import MongoClient
 from pymongo.errors import PyMongoError
 from pymongo.write_concern import WriteConcern
 
-DEFAULT_DB_NAME = "new-db"
-DEFAULT_COLL_NAME = "test_collection"
+DEFAULT_DB_NAME = "continuous_writes_database"
+DEFAULT_COLL_NAME = "continuous_writes_collection"
 
 run = True
 

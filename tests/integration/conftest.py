@@ -13,7 +13,7 @@ from .ha_tests.helpers import (
 )
 
 TEST_DB = "continuous_writes_database"
-TEST_COLL = "test_collection"
+TEST_COLL = "continuous_writes_collection"
 
 
 @pytest_asyncio.fixture
