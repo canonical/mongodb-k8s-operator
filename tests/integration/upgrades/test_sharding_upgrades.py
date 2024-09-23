@@ -29,7 +29,6 @@ WRITE_APP = "application"
 TIMEOUT = 15 * 60
 
 
-@pytest.mark.skip()
 @pytest.fixture()
 async def add_writes_to_shards(ops_test: OpsTest):
     """Adds writes to each shard before test starts and clears writes at the end of the test."""
