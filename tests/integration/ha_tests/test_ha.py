@@ -7,7 +7,6 @@ import time
 from datetime import datetime, timezone
 
 import pytest
-import pytest_asyncio
 from pytest_operator.plugin import OpsTest
 
 from ..helpers import APP_NAME, check_or_scale_app
@@ -22,8 +21,6 @@ from .helpers import (
     count_primaries,
     deploy_and_scale_application,
     deploy_and_scale_mongodb,
-    deploy_chaos_mesh,
-    destroy_chaos_mesh,
     fetch_replica_set_members,
     find_record_in_collection,
     find_unit,
@@ -53,34 +50,6 @@ logger = logging.getLogger(__name__)
 
 RESTART_DELAY = 60 * 3
 MEDIAN_REELECTION_TIME = 12
-
-
-@pytest_asyncio.fixture
-async def continuous_writes(ops_test: OpsTest) -> None:
-    """Starts continuous writes to the MongoDB cluster and clear the writes at the end."""
-    application_name = await get_application_name(ops_test, "application")
-
-    application_unit = ops_test.model.applications[application_name].units[0]
-
-    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
-    await clear_writes_action.wait()
-
-    start_writes_action = await application_unit.run_action("start-continuous-writes")
-    await start_writes_action.wait()
-
-    yield
-
-    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
-    await clear_writes_action.wait()
-
-
-@pytest.fixture(scope="module")
-def chaos_mesh(ops_test: OpsTest) -> None:
-    deploy_chaos_mesh(ops_test.model.info.name)
-
-    yield
-
-    destroy_chaos_mesh(ops_test.model.info.name)
 
 
 @pytest.mark.group(1)
