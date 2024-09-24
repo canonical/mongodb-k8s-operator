@@ -866,7 +866,7 @@ class MongoDBCharm(CharmBase):
         try:
             if self.unit.name == self.primary:
                 logger.debug("Stepping down current primary, before upgrading service...")
-                self._charm.upgrade.step_down_primary_and_wait_reelection()
+                self.upgrade.step_down_primary_and_wait_reelection()
         except FailedToElectNewPrimaryError:
             logger.error("Failed to reelect primary before upgrading unit.")
             return
