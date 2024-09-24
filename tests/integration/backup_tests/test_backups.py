@@ -58,20 +58,32 @@ async def add_writes_to_db(ops_test: OpsTest):
     """Adds writes to DB before test starts and clears writes at the end of the test."""
     application_unit = ops_test.model.applications[WRITE_APP].units[0]
 
-    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
+    clear_writes_action = await application_unit.run_action(
+        "clear-continuous-writes",
+        **{"db-name": ha_helpers.TEST_DB, "coll-name": ha_helpers.TEST_COLLECTION},
+    )
     await clear_writes_action.wait()
 
-    start_writes_action = await application_unit.run_action("start-continuous-writes")
+    start_writes_action = await application_unit.run_action(
+        "start-continuous-writes"
+        ** {"db-name": ha_helpers.TEST_DB, "coll-name": ha_helpers.TEST_COLLECTION},
+    )
     await start_writes_action.wait()
 
     time.sleep(20)
 
-    stop_writes_action = await application_unit.run_action("stop-continuous-writes")
+    stop_writes_action = await application_unit.run_action(
+        "stop-continuous-writes",
+        **{"db-name": ha_helpers.TEST_DB, "coll-name": ha_helpers.TEST_COLLECTION},
+    )
     await stop_writes_action.wait()
 
     yield
 
-    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
+    clear_writes_action = await application_unit.run_action(
+        "clear-continuous-writes",
+        **{"db-name": ha_helpers.TEST_DB, "coll-name": ha_helpers.TEST_COLLECTION},
+    )
     await clear_writes_action.wait()
 
 
