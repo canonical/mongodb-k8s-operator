@@ -354,7 +354,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
     def _on_resume_upgrade_action(self, event: ActionEvent) -> None:
         if not self.charm.unit.is_leader():
-            message = f"Must run action on leader unit. (e.g. `juju run {self.app.name}/leader {RESUME_ACTION_NAME}`)"
+            message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {RESUME_ACTION_NAME}`)"
             logger.debug(f"Resume upgrade event failed: {message}")
             event.fail(message)
             return
