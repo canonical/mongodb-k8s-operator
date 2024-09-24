@@ -1714,6 +1714,17 @@ class MongoDBCharm(CharmBase):
         """Returns true if charm is running as a sharded component."""
         return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
 
+    def is_cluster_on_same_revision(self) -> bool:
+        """Returns True if the cluster is using the same charm revision.
+
+        Note: This can only be determined by the config-server since shards are not integrated to
+        each other.
+        """
+        if not self.is_role(Config.Role.CONFIG_SERVER):
+            raise NotConfigServerError("This check can only be ran by the config-server.")
+
+        return self.version_checker.are_related_apps_valid()
+
     # END: helper functions
 
     # BEGIN: static methods
