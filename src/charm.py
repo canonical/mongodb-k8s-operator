@@ -611,11 +611,12 @@ class MongoDBCharm(CharmBase):
             new_layers["mongos"] = self._mongos_layer
 
         # Add Pebble config layers missing or modified
-        for service, definition in new_layers.items():
-            if current_layers.services.get(service) != definition:
-                modified = True
-                logger.debug(f"Adding layer {service}.")
-                container.add_layer(service, definition, combine=True)
+        for layer_name, definition in new_layers.items():
+            for service_name, service in definition.services.items():
+                if current_layers.services.get(service_name) != service:
+                    modified = True
+                    logger.debug(f"Adding layer {service_name}.")
+                    container.add_layer(layer_name, definition, combine=True)
 
         # We'll always have a logrotate configuration at this point.
         container.exec(["chmod", "644", "/etc/logrotate.d/mongodb"])
