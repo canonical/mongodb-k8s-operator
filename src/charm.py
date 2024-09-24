@@ -442,8 +442,10 @@ class MongoDBCharm(CharmBase):
 
     @property
     def upgrade_in_progress(self):
-        """TODO: implement this as part of upgrades."""
-        return False
+        """Whether upgrades is in progress."""
+        if not self.upgrade._upgrade:
+            return False
+        return self.upgrade._upgrade.in_progress
 
     @property
     def replica_set_initialised(self) -> bool:
@@ -657,6 +659,7 @@ class MongoDBCharm(CharmBase):
         # Just run the configure layers steps on the container and defer if it fails.
         if not self._configure_container(container):
             event.defer()
+            return
 
         self.upgrade._reconcile_upgrade(event)
 
