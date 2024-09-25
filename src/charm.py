@@ -82,7 +82,7 @@ from tenacity import (
 
 import k8s_upgrade
 from config import Config
-from exceptions import AdminUserCreationError, MissingSecretError
+from exceptions import AdminUserCreationError, MissingSecretError, NotConfigServerError
 from k8s_upgrade import MongoDBUpgrade
 
 logger = logging.getLogger(__name__)
