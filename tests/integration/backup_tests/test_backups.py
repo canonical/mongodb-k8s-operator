@@ -65,8 +65,8 @@ async def add_writes_to_db(ops_test: OpsTest):
     await clear_writes_action.wait()
 
     start_writes_action = await application_unit.run_action(
-        "start-continuous-writes"
-        ** {"db-name": ha_helpers.TEST_DB, "coll-name": ha_helpers.TEST_COLLECTION},
+        "start-continuous-writes",
+        **{"db-name": ha_helpers.TEST_DB, "coll-name": ha_helpers.TEST_COLLECTION},
     )
     await start_writes_action.wait()
 
