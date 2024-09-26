@@ -50,7 +50,12 @@ class DeployedWithoutTrust(Exception):
 
 
 class _Partition:
-    """StatefulSet partition getter/setter."""
+    """StatefulSet partition getter/setter.
+
+    This very basic class allows the leader unit to interact with the
+    StatefulSet in order to change the partition.
+    This allows to have a rolling Update of the units.
+    """
 
     # Note: I realize this isn't very Pythonic (it'd be nicer to use a property). Because of how
     # ops is structured, we don't have access to the app name when we initialize this class. We
@@ -114,7 +119,7 @@ class KubernetesUpgrade(AbstractUpgrade):
 
         https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#partitions
 
-        For Kubernetes, unit numbers are guaranteed to be sequential
+        For Kubernetes, unit numbers are guaranteed to be sequential.
         """
         return partition.get(app_name=self._app_name)
 
@@ -182,6 +187,14 @@ class KubernetesUpgrade(AbstractUpgrade):
     def _determine_partition(
         self, units: List[Unit], action_event: ActionEvent | None, force: bool
     ) -> int:
+        """Determine the new partition to use.
+
+        We get the current state of each unit, and according to `action_event`,
+        `force` and the state, we decide the new value of the partition.
+        A specific case:
+         * If we don't have action event and the upgrade_order_index is 1, we
+         return because it means we're waiting for the resume-upgrade/force-upgrade event to run.
+        """
         if not self.in_progress:
             return 0
         logger.debug(f"{self._peer_relation.data=}")
@@ -300,10 +313,11 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         self.framework.observe(self.post_app_upgrade_event, self.run_post_app_upgrade_task)
         self.framework.observe(self.post_cluster_upgrade_event, self.run_post_cluster_upgrade_task)
 
-    def _on_upgrade(self):
+    def _on_upgrade(self, event: EventBase):
+        """Sets the version in all relations and save the revision anyway."""
+        self._upgrade.save_revision()
         if self.charm.unit.is_leader():
             self.charm.version_checker.set_version_across_all_relations()
-        self._upgrade.save_revision()
 
     def _reconcile_upgrade(self, event: EventBase) -> None:
         """Handle upgrade events."""
@@ -350,6 +364,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             )
 
     def _on_upgrade_peer_relation_created(self, _) -> None:
+        """First time the relation is created, we save the revisions."""
         self._upgrade.save_revision()
         if self.charm.unit.is_leader():
             self._upgrade.set_versions_in_app_databag()
