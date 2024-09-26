@@ -292,6 +292,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             charm.on[PEER_RELATION_ENDPOINT_NAME].relation_created,
             self._on_upgrade_peer_relation_created,
         )
+        self.framework.observe(charm.on.upgrade_charm, self._on_upgrade)
         self.framework.observe(
             charm.on[PEER_RELATION_ENDPOINT_NAME].relation_changed, self._reconcile_upgrade
         )
@@ -302,6 +303,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     def _on_upgrade(self):
         if self.charm.unit.is_leader():
             self.charm.version_checker.set_version_across_all_relations()
+        self._upgrade.save_revision()
 
     def _reconcile_upgrade(self, event: EventBase) -> None:
         """Handle upgrade events."""
