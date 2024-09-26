@@ -1,0 +1,34 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: Primary
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [idle] active: Primary
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:18:54Z
+
+App            Version  Status       Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             active           1  application                   0  10.152.183.100  no       
+mongodb-k8s             maintenance      3  mongodb-k8s                   0  10.152.183.157  no       backup started/running, backup id:'2024-09-26T02:18:51Z'
+s3-integrator           active           1  s3-integrator  latest/edge   55  10.152.183.207  no       
+
+Unit              Workload     Agent  Address      Ports  Message
+application/0*    active       idle   10.1.42.210         
+mongodb-k8s/0     active       idle   10.1.42.208         
+mongodb-k8s/1*    maintenance  idle   10.1.42.206         backup started/running, backup id:'2024-09-26T02:18:51Z'
+mongodb-k8s/2     active       idle   10.1.42.207         
+s3-integrator/0*  active       idle   10.1.42.209         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-new-mongodb-aws-0: 02:02:15 ERROR unit.new-mongodb-aws/0.juju-log new-mongodb-aws/0.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66f4c0a660c542cd84a440c7, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-0.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.0005291209999995772>]>
+unit-new-mongodb-aws-1: 02:02:16 ERROR unit.new-mongodb-aws/1.juju-log new-mongodb-aws/1.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66f4c0a7207b59eb50dec31d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-1.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.0004802000000836415>]>
+controller-0: 02:03:30 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-aws": finding filesystem info for new-mongodb-aws-mongodb-074f821d: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-aws-mongodb-074f821d-new-mongodb-aws-1" not found
+unit-new-mongodb-gcp-0: 02:16:26 ERROR unit.new-mongodb-gcp/0.juju-log new-mongodb-gcp/0.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66f4c3f926ce9f1d80cf53d8, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-gcp-0.new-mongodb-gcp-endpoints', 27017) server_type: RSGhost, rtt: 0.0004918009999528294>]>
+controller-0: 02:17:41 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-gcp": finding filesystem info for new-mongodb-gcp-mongodb-5969789b: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-gcp-mongodb-5969789b-new-mongodb-gcp-2" not found
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
