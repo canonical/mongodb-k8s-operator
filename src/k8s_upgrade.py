@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""K8S Upgrade code // rough draft only for pre upgrade checks."""
+"""Kubernetes Upgrade Code.
+
+This code is slightly different from the code which was written originally.
+It is required to deploy the application with `--trust` for this code to work
+as it has to interact with the Kubernetes StatefulSet.
+The main differences are:
+ * Add the handling of workload version + version sharing on the cluster in the
+ upgrade handler + relation created handler.
+ * Add the two post upgrade events that check the cluster health and run it if
+ we are in state `RESTARTING`.
+"""
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
