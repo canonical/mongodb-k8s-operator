@@ -15,7 +15,7 @@ The main differences are:
 
 from functools import cached_property
 from logging import getLogger
-from typing import List
+from typing import TYPE_CHECKING, List
 
 import lightkube
 import lightkube.models.apps_v1
@@ -36,13 +36,16 @@ from charms.mongodb.v0.upgrade_helpers import (
 from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
 from lightkube.core.exceptions import ApiError
 from ops import ActiveStatus, StatusBase
-from ops.charm import ActionEvent, CharmBase
+from ops.charm import ActionEvent
 from ops.framework import EventBase, EventSource
 from ops.model import BlockedStatus, Unit
 from overrides import override
 from tenacity import RetryError
 
 from config import Config
+
+if TYPE_CHECKING:
+    from charm import MongoDBCharm
 
 logger = getLogger()
 
@@ -100,7 +103,7 @@ class KubernetesUpgrade(AbstractUpgrade):
     This is the implementation of Kubernetes Upgrade methods.
     """
 
-    def __init__(self, charm: CharmBase, *args, **kwargs):
+    def __init__(self, charm: "MongoDBCharm", *args, **kwargs):
         try:
             partition.get(app_name=charm.app.name)
         except ApiError as err:
@@ -286,12 +289,12 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     post_app_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
     post_cluster_upgrade_event = EventSource(_PostUpgradeCheckMongoDB)
 
-    def __init__(self, charm: CharmBase):
+    def __init__(self, charm: "MongoDBCharm"):
         self.charm = charm
         super().__init__(charm, PEER_RELATION_ENDPOINT_NAME)
 
     @override
-    def _observe_events(self, charm: CharmBase) -> None:
+    def _observe_events(self, charm: "MongoDBCharm") -> None:
         self.framework.observe(
             charm.on[PRECHECK_ACTION_NAME].action, self._on_pre_upgrade_check_action
         )
@@ -332,7 +335,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
                 )
                 self.charm.status.set_and_share_status(Config.Status.UNHEALTHY_UPGRADE)
                 return
-        if not self._upgrade.unit_state:
+        if not self._upgrade.unit_state and self.charm.is_db_service_ready():
             self._upgrade.unit_state = UnitState.HEALTHY
         if self.charm.unit.is_leader():
             self._upgrade.reconcile_partition()

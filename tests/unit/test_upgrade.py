@@ -61,6 +61,7 @@ class TestUpgrades(unittest.TestCase):
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm.upgrade_in_progress", new_callable=PropertyMock)
+    @patch("charm.MongoDBCharm.is_db_service_ready")
     def test_on_relation_handler(self, handler, mock_upgrade, defer, *unused):
         relation: Relation = self.harness.charm.model.get_relation("database-peers")
         mock_upgrade.return_value = True
@@ -69,8 +70,8 @@ class TestUpgrades(unittest.TestCase):
 
     @patch("charm.MongoDBCharm.upgrade_in_progress", new_callable=PropertyMock)
     def test_pass_pre_set_password_check_fails(self, mock_upgrade):
-        def mock_shard_role(*args):
-            return args != ("shard",)
+        def mock_shard_role(role_name: str):
+            return role_name != "shard"
 
         mock_pbm_status = Mock(return_value=ActiveStatus())
         self.harness.charm.is_role = mock_shard_role
@@ -121,7 +122,7 @@ class TestUpgrades(unittest.TestCase):
 
         status = self.harness.charm.upgrade._upgrade._get_unit_healthy_status()
         assert isinstance(status, ActiveStatus)
-        assert ("(outdated)" in status.message) == outdated_in_status
+        assert ("(restart pending)" in status.message) == outdated_in_status
 
     @parameterized.expand(
         [
