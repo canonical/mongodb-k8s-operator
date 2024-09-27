@@ -15,7 +15,7 @@ The main differences are:
 
 from functools import cached_property
 from logging import getLogger
-from typing import List, Optional
+from typing import List
 
 import lightkube
 import lightkube.models.apps_v1
@@ -114,10 +114,10 @@ class KubernetesUpgrade(AbstractUpgrade):
         version = self._unit_workload_container_versions[self._unit.name]
         if version == self._app_workload_container_version:
             return ActiveStatus(
-                f'MongoDB {self._unit_workload_version} running; Img rev {version}; Charmed operator {self._current_versions["charm"]}'
+                f'MongoDB {self._current_versions["workload"]} running;  Charmed operator {self._current_versions["charm"]}'
             )
         return ActiveStatus(
-            f'MongoDB {self._unit_workload_version} running; Img rev {version} (outdated); Charmed operator {self._current_versions["charm"]}'
+            f'MongoDB {self._current_versions["workload"]} running (restart pending); Charmed operator {self._current_versions["charm"]}'
         )
 
     @property
@@ -137,13 +137,6 @@ class KubernetesUpgrade(AbstractUpgrade):
     def _partition(self, value: int) -> None:
         """Sets the partition number."""
         partition.set(app_name=self._app_name, value=value)
-
-    def save_revision(self):
-        """Sets the revisions in the databag."""
-        self._unit_workload_version = self._current_versions["workload"]
-        logger.debug(
-            f'Saved {self._current_versions["workload"]=} in unit databag after first install'
-        )
 
     @property
     def upgrade_resumed(self) -> bool:
@@ -184,15 +177,6 @@ class KubernetesUpgrade(AbstractUpgrade):
             res=lightkube.resources.apps_v1.StatefulSet, name=self._app_name
         )
         return stateful_set.status.updateRevision
-
-    @property
-    def _unit_workload_version(self) -> Optional[str]:
-        """Installed mongodb version for this unit."""
-        return self._unit_databag.get("workload")
-
-    @_unit_workload_version.setter
-    def _unit_workload_version(self, value: str):
-        self._unit_databag["workload"] = value
 
     def _determine_partition(
         self, units: List[Unit], action_event: ActionEvent | None, force: bool
@@ -325,7 +309,6 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
     def _on_upgrade(self, event: EventBase):
         """Sets the version in all relations and save the revision anyway."""
-        self._upgrade.save_revision()
         if self.charm.unit.is_leader():
             self.charm.version_checker.set_version_across_all_relations()
 
@@ -375,7 +358,6 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
     def _on_upgrade_peer_relation_created(self, _) -> None:
         """First time the relation is created, we save the revisions."""
-        self._upgrade.save_revision()
         if self.charm.unit.is_leader():
             self._upgrade.set_versions_in_app_databag()
 

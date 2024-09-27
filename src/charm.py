@@ -734,8 +734,8 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
-        if self.unit.is_leader() and not self.upgrade_in_progress:
-            self.upgrade._upgrade.set_versions_in_app_databag()
+        # if self.unit.is_leader() and not self.upgrade_in_progress:
+        #    self.upgrade._upgrade.set_versions_in_app_databag()
 
         if not self.__start_checks():
             event.defer()
@@ -865,6 +865,8 @@ class MongoDBCharm(CharmBase):
             logger.debug("Peer relation missing during stop event")
             return
 
+        self.upgrade._upgrade.unit_state = UnitState.RESTARTING
+
         # According to the MongoDB documentation, before upgrading the primary, we must ensure a
         # safe primary re-election.
         try:
@@ -874,8 +876,6 @@ class MongoDBCharm(CharmBase):
         except FailedToElectNewPrimaryError:
             logger.error("Failed to reelect primary before upgrading unit.")
             return
-
-        self.upgrade._upgrade.unit_state = UnitState.RESTARTING
 
     def _on_update_status(self, event: UpdateStatusEvent):
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
