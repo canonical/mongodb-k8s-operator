@@ -396,6 +396,7 @@ async def get_direct_mongo_client(
             username=username,
             password=password,
         )
+        logger.info(f"URI is {url}")
         return MongoClient(url, directConnection=True)
 
     mongodb_name = app_name or await get_application_name(ops_test, APP_NAME)
