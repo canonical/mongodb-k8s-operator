@@ -35,7 +35,7 @@ from charms.mongodb.v0.upgrade_helpers import (
 )
 from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
 from lightkube.core.exceptions import ApiError
-from ops import ActiveStatus, StatusBase
+from ops import ActiveStatus, MaintenanceStatus, StatusBase
 from ops.charm import ActionEvent
 from ops.framework import EventBase, EventSource
 from ops.model import BlockedStatus, Unit
@@ -302,7 +302,6 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             charm.on[PEER_RELATION_ENDPOINT_NAME].relation_created,
             self._on_upgrade_peer_relation_created,
         )
-        self.framework.observe(charm.on.upgrade_charm, self._on_upgrade)
         self.framework.observe(
             charm.on[PEER_RELATION_ENDPOINT_NAME].relation_changed, self._reconcile_upgrade
         )
@@ -310,12 +309,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         self.framework.observe(self.post_app_upgrade_event, self.run_post_app_upgrade_task)
         self.framework.observe(self.post_cluster_upgrade_event, self.run_post_cluster_upgrade_task)
 
-    def _on_upgrade(self, event: EventBase):
-        """Sets the version in all relations and save the revision anyway."""
-        if self.charm.unit.is_leader():
-            self.charm.version_checker.set_version_across_all_relations()
-
-    def _reconcile_upgrade(self, event: EventBase) -> None:
+    def _reconcile_upgrade(self, _) -> None:
         """Handle upgrade events."""
         if not self._upgrade:
             logger.debug("Peer relation not available")
@@ -343,8 +337,6 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             self._upgrade.unit_state = UnitState.HEALTHY
         if self.charm.unit.is_leader():
             self._upgrade.reconcile_partition()
-        if self._upgrade.unit_state is UnitState.RESTARTING:
-            self.post_app_upgrade_event.emit()
 
         self._set_upgrade_status()
 
@@ -353,7 +345,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             self.charm.app.status = self._upgrade.app_status or ActiveStatus()
         # Set/clear upgrade unit status if no other unit status - upgrade status for units should
         # have the lowest priority.
-        if isinstance(self.charm.unit.status, ActiveStatus) or (
+        if isinstance(self.charm.unit.status, (ActiveStatus, MaintenanceStatus)) or (
             isinstance(self.charm.unit.status, BlockedStatus)
             and self.charm.unit.status.message.startswith(
                 "Rollback with `juju refresh`. Pre-upgrade check failed:"

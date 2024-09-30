@@ -56,6 +56,7 @@ from ops.charm import (
     RelationEvent,
     StartEvent,
     UpdateStatusEvent,
+    UpgradeCharmEvent,
 )
 from ops.main import main
 from ops.model import (
@@ -111,6 +112,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
+        self.framework.observe(self.on.upgrade_charm, self._on_upgrade)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(
             self.on[Config.Relations.PEERS].relation_joined, self._relation_changes_handler
@@ -653,6 +655,23 @@ class MongoDBCharm(CharmBase):
         return True
 
     # BEGIN: charm events
+    def _on_upgrade(self, event: UpgradeCharmEvent):
+        """Sets the version in all relations and save the revision anyway."""
+        if self.unit.is_leader():
+            self.version_checker.set_version_across_all_relations()
+
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+
+        # Just run the configure layers steps on the container and defer if it fails.
+        if not self._configure_container(container):
+            event.defer()
+            return
+
+        self.upgrade._reconcile_upgrade(event)
+
+        # Emit the post app upgrade event
+        self.upgrade.post_app_upgrade_event.emit()
+
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
@@ -1756,6 +1775,9 @@ class MongoDBCharm(CharmBase):
         Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
         is available, we fix permissions incorrectly with chown.
         """
+        # Ensure the log status dir exists
+        container.make_dir(Config.LogRotate.LOG_STATUS_DIR, make_parents=True)
+
         for path in [Config.DATA_DIR, Config.LOG_DIR, Config.LogRotate.LOG_STATUS_DIR]:
             paths = container.list_files(path, itself=True)
             assert len(paths) == 1, "list_files doesn't return only the directory itself"
