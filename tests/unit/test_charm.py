@@ -83,7 +83,7 @@ class TestCharm(unittest.TestCase):
                     "command": "sh -c 'logrotate /etc/logrotate.d/mongodb; sleep 1'",
                     "user": "mongodb",
                     "group": "mongodb",
-                    "backoff-delay": "1m",
+                    "backoff-delay": "1m0s",
                     "backoff-factor": 1,
                 },
                 "mongod": {
