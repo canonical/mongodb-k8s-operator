@@ -753,9 +753,6 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
-        # if self.unit.is_leader() and not self.upgrade_in_progress:
-        #    self.upgrade._upgrade.set_versions_in_app_databag()
-
         if not self.__start_checks():
             event.defer()
             return
