@@ -1,0 +1,400 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:43:41Z
+
+App                   Version  Status   Scale  Charm        Channel      Rev  Address        Exposed  Message
+local-config-server            waiting      1  mongodb-k8s                 0  10.152.183.32  no       installing agent
+local-shard                    error        1  mongodb-k8s                 1  10.152.183.56  no       hook failed: "sharding-relation-changed"
+remote-config-server           waiting      1  mongodb-k8s  latest/edge   55  10.152.183.88  no       installing agent
+remote-shard                   error        1  mongodb-k8s  latest/edge   55  10.152.183.87  no       hook failed: "update-status"
+
+Unit                     Workload  Agent  Address       Ports  Message
+local-config-server/0*   waiting   idle   10.1.202.208         Waiting for shards to upgrade/downgrade to revision 1991e9e-locally built.
+local-shard/0*           error     idle   10.1.202.211         hook failed: "sharding-relation-changed"
+remote-config-server/0*  waiting   idle   10.1.202.205         Waiting for shards to upgrade/downgrade to revision 55.
+remote-shard/0*          error     idle   10.1.202.204         hook failed: "update-status"
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-remote-shard-0: 01:37:08 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:37:08 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:37:09 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:37:10 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:37:12 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:37:13 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:37:13 ERROR unit.remote-shard/0.juju-log database-peers:0: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:37:14 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:37:15 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:37:15 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:37:17 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:37:17 ERROR unit.remote-config-server/0.juju-log database-peers:1: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:17 ERROR unit.remote-shard/0.juju-log sharding:4: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:17 ERROR unit.remote-shard/0.juju-log sharding:4: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:18 ERROR unit.remote-shard/0.juju-log sharding:4: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:19 ERROR unit.remote-shard/0.juju-log sharding:4: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:20 ERROR unit.remote-shard/0.juju-log sharding:4: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:41 ERROR unit.remote-config-server/0.juju-log config-server:5: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:42 ERROR unit.remote-config-server/0.juju-log config-server:5: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-local-shard-0: 01:38:42 ERROR unit.local-shard/0.juju-log sharding:5: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/main.py", line 45, in main
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 543, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 134, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 857, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 947, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1582, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-local-shard-0: 01:38:43 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-remote-config-server-0: 01:38:43 ERROR unit.remote-config-server/0.juju-log config-server:5: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:44 ERROR unit.remote-config-server/0.juju-log config-server:5: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-local-shard-0: 01:38:48 ERROR unit.local-shard/0.juju-log sharding:5: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/main.py", line 45, in main
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 543, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 134, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 857, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 947, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1582, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-local-shard-0: 01:38:48 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-local-shard-0: 01:38:59 ERROR unit.local-shard/0.juju-log sharding:5: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/main.py", line 45, in main
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 543, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 134, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 857, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 947, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1582, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-local-shard-0: 01:38:59 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-local-shard-0: 01:39:20 ERROR unit.local-shard/0.juju-log sharding:5: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/main.py", line 45, in main
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 543, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 134, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 857, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 947, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1582, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-local-shard-0: 01:39:20 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-remote-shard-0: 01:39:38 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:38 ERROR unit.remote-shard/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 765, in _on_update_status
+    if invalid_integration_status := self.status.get_invalid_integration_status():
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 239, in get_invalid_integration_status
+    return self.get_cluster_mismatched_revision_status()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-remote-shard-0: 01:39:38 ERROR juju.worker.uniter.operation hook "update-status" (via hook dispatching script: dispatch) failed: exit status 1
+unit-remote-shard-0: 01:39:44 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:44 ERROR unit.remote-shard/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 765, in _on_update_status
+    if invalid_integration_status := self.status.get_invalid_integration_status():
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 239, in get_invalid_integration_status
+    return self.get_cluster_mismatched_revision_status()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-remote-shard-0: 01:39:44 ERROR juju.worker.uniter.operation hook "update-status" (via hook dispatching script: dispatch) failed: exit status 1
+unit-remote-config-server-0: 01:39:46 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:55 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:55 ERROR unit.remote-shard/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 765, in _on_update_status
+    if invalid_integration_status := self.status.get_invalid_integration_status():
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 239, in get_invalid_integration_status
+    return self.get_cluster_mismatched_revision_status()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-remote-shard-0: 01:39:55 ERROR juju.worker.uniter.operation hook "update-status" (via hook dispatching script: dispatch) failed: exit status 1
+unit-local-shard-0: 01:40:01 ERROR unit.local-shard/0.juju-log sharding:5: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/main.py", line 45, in main
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 543, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 134, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 857, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 947, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1582, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-local-shard-0: 01:40:01 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-remote-shard-0: 01:40:16 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:40:16 ERROR unit.remote-shard/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 765, in _on_update_status
+    if invalid_integration_status := self.status.get_invalid_integration_status():
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 239, in get_invalid_integration_status
+    return self.get_cluster_mismatched_revision_status()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-remote-shard-0: 01:40:16 ERROR juju.worker.uniter.operation hook "update-status" (via hook dispatching script: dispatch) failed: exit status 1
+unit-remote-config-server-0: 01:40:54 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:40:56 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:40:56 ERROR unit.remote-shard/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 765, in _on_update_status
+    if invalid_integration_status := self.status.get_invalid_integration_status():
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 239, in get_invalid_integration_status
+    return self.get_cluster_mismatched_revision_status()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-remote-shard-0: 01:40:56 ERROR juju.worker.uniter.operation hook "update-status" (via hook dispatching script: dispatch) failed: exit status 1
+unit-local-shard-0: 01:41:25 ERROR unit.local-shard/0.juju-log sharding:5: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/main.py", line 45, in main
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 543, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/_main.py", line 134, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 857, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/venv/ops/framework.py", line 947, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 698, in _on_relation_changed
+    if not self.pass_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 746, in pass_hook_checks
+    if not self.pass_sanity_hook_checks(event):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 785, in pass_sanity_hook_checks
+    if not self.charm.is_relation_feasible(self.relation_name):
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/./src/charm.py", line 1582, in is_relation_feasible
+    if revision_mismatch_status := self.status.get_cluster_mismatched_revision_status():
+  File "/var/lib/juju/agents/unit-local-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-local-shard-0: 01:41:26 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-remote-config-server-0: 01:41:46 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:42:14 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:42:14 ERROR unit.remote-shard/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 1643, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 553, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/main.py", line 139, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 853, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/venv/ops/framework.py", line 943, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/./src/charm.py", line 765, in _on_update_status
+    if invalid_integration_status := self.status.get_invalid_integration_status():
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 239, in get_invalid_integration_status
+    return self.get_cluster_mismatched_revision_status()
+  File "/var/lib/juju/agents/unit-remote-shard-0/charm/lib/charms/mongodb/v0/set_status.py", line 267, in get_cluster_mismatched_revision_status
+    self.get_config_server_name()
+AttributeError: 'MongoDBStatusHandler' object has no attribute 'get_config_server_name'
+unit-remote-shard-0: 01:42:14 ERROR juju.worker.uniter.operation hook "update-status" (via hook dispatching script: dispatch) failed: exit status 1
+unit-remote-config-server-0: 01:42:53 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

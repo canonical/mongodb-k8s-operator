@@ -1,0 +1,30 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:340 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:648 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:568 Primary instance mongodb-k8s/0 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:573 Waiting until Mongodb detects primary instance mongodb-k8s/0 is not reachable
+[1m[31mERROR   [0m integration.helpers:helpers.py:528 get-password command returned non 0 exit code: b'Running operation 259 with 1 task\n  - task 260 on unit-mongodb-k8s-0\n\nWaiting for task 260...\nERROR timed out waiting for results from: unit mongodb-k8s/0\n'
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:01:44Z
+
+App               Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database           active       1  mongodb-k8s             1  10.152.183.188  no       Primary
+application                active       1  application             0  10.152.183.34   no       
+mongodb-k8s                waiting      3  mongodb-k8s             0  10.152.183.115  no       waiting for container
+
+Unit                 Workload  Agent      Address      Ports  Message
+another-database/0*  active    idle       10.1.22.156         Primary
+application/0*       active    idle       10.1.22.145         
+mongodb-k8s/0        active    executing  10.1.22.153         (get-password) Primary
+mongodb-k8s/1        active    idle       10.1.22.143         Primary
+mongodb-k8s/2*       active    idle       10.1.22.146         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-2: 01:39:07 ERROR unit.mongodb-k8s/2.juju-log mongodb-k8s/2.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66fb52ba444512fe9430195d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0008222139999816136>]>
+unit-mongodb-k8s-3: 01:43:41 ERROR unit.mongodb-k8s/3.juju-log mongodb-k8s/3.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 66fb53cbf927c8dede7ae4d0, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.001152323000042088>]>
+unit-mongodb-k8s-0: 02:01:29 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [3cd43d] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 02:01:37 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [3cd43d] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
