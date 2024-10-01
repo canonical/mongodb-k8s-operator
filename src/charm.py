@@ -338,7 +338,7 @@ class MongoDBCharm(CharmBase):
                     "command": f"sh -c 'logrotate {Config.LogRotate.RENDERED_TEMPLATE}; sleep 1'",
                     "startup": "enabled",
                     "override": "replace",
-                    "backoff-delay": "1m",
+                    "backoff-delay": "1m0s",
                     "backoff-factor": 1,
                     "user": Config.UNIX_USER,
                     "group": Config.UNIX_GROUP,
