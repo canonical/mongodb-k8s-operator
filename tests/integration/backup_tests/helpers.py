@@ -5,7 +5,12 @@ import ops
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
 
-from ..ha_tests.helpers import get_direct_mongo_client, get_replica_set_primary
+from ..ha_tests.helpers import (
+    TEST_COLLECTION,
+    TEST_DB,
+    get_direct_mongo_client,
+    get_replica_set_primary,
+)
 
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 10 * 60
@@ -107,8 +112,8 @@ async def insert_unwanted_data(ops_test: OpsTest, app_name: str) -> None:
     """Inserts the data into the MongoDB cluster via primary replica."""
     primary_unit = await get_replica_set_primary(ops_test, application_name=app_name)
     with await get_direct_mongo_client(ops_test, unit=primary_unit.name) as client:
-        db = client["continuous_writes_database"]
-        test_collection = db["test_collection"]
+        db = client[TEST_DB]
+        test_collection = db[TEST_COLLECTION]
         test_collection.insert_one({"unwanted_data": "bad data 1"})
         test_collection.insert_one({"unwanted_data": "bad data 2"})
         test_collection.insert_one({"unwanted_data": "bad data 3"})

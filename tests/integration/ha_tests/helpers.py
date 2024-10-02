@@ -49,7 +49,7 @@ MONGODB_LOG_PATH = "/var/log/mongodb/mongodb.log"
 APPLICATION_DEFAULT_APP_NAME = "application"
 TIMEOUT = 15 * 60
 TEST_DB = "continuous_writes_database"
-TEST_COLLECTION = "test_collection"
+TEST_COLLECTION = "continuous_writes_collection"
 ANOTHER_DATABASE_APP_NAME = "another-database"
 EXCLUDED_APPS = [ANOTHER_DATABASE_APP_NAME]
 

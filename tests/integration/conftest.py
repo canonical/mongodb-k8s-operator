@@ -12,6 +12,9 @@ from .ha_tests.helpers import (
     get_application_name,
 )
 
+TEST_DB = "continuous_writes_database"
+TEST_COLL = "continuous_writes_collection"
+
 
 @pytest_asyncio.fixture
 async def continuous_writes(ops_test: OpsTest) -> None:
@@ -20,15 +23,21 @@ async def continuous_writes(ops_test: OpsTest) -> None:
 
     application_unit = ops_test.model.applications[application_name].units[0]
 
-    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
+    clear_writes_action = await application_unit.run_action(
+        "clear-continuous-writes", **{"db-name": TEST_DB, "coll-name": TEST_COLL}
+    )
     await clear_writes_action.wait()
 
-    start_writes_action = await application_unit.run_action("start-continuous-writes")
+    start_writes_action = await application_unit.run_action(
+        "start-continuous-writes", **{"db-name": TEST_DB, "coll-name": TEST_COLL}
+    )
     await start_writes_action.wait()
 
     yield
 
-    clear_writes_action = await application_unit.run_action("clear-continuous-writes")
+    clear_writes_action = await application_unit.run_action(
+        "clear-continuous-writes", **{"db-name": TEST_DB, "coll-name": TEST_COLL}
+    )
     await clear_writes_action.wait()
 
 

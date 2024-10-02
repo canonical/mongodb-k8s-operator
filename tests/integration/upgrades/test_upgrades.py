@@ -3,6 +3,7 @@
 # See LICENSE file for licensing details.
 
 import logging
+from pathlib import Path
 
 import pytest
 from pytest_operator.plugin import OpsTest
@@ -53,7 +54,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_successful_upgrade(ops_test: OpsTest, continuous_writes) -> None:
-    new_charm = await ops_test.build_charm(".")
+    new_charm: Path = await ops_test.build_charm(".")
     db_app_name = await get_app_name(ops_test)
     await assert_successful_run_upgrade_sequence(ops_test, db_app_name, new_charm=new_charm)
 
