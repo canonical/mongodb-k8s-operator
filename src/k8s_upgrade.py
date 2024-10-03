@@ -329,11 +329,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
                 )
                 self.charm.status.set_and_share_status(Config.Status.UNHEALTHY_UPGRADE)
                 return
-        if (
-            not self._upgrade.unit_state
-            and self.charm.db_initialised
-            and self.charm.is_db_service_ready()
-        ):
+        if self.charm.db_initialised and self.charm.is_db_service_ready():
             self._upgrade.unit_state = UnitState.HEALTHY
         if self.charm.unit.is_leader():
             self._upgrade.reconcile_partition()

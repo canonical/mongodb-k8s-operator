@@ -669,9 +669,9 @@ class MongoDBCharm(CharmBase):
 
         self.status.set_and_share_status(ActiveStatus())
         self.upgrade._reconcile_upgrade(event)
-
-        # Emit the post app upgrade event
-        self.upgrade.post_app_upgrade_event.emit()
+        if self.upgrade._upgrade.is_compatible:
+            # Emit the post app upgrade event
+            self.upgrade.post_app_upgrade_event.emit()
 
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
