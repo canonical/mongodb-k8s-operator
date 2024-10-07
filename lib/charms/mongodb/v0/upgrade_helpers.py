@@ -783,7 +783,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 2
+LIBPATCH = 3
 
 logger = logging.getLogger(__name__)
 
@@ -792,8 +792,8 @@ WRITE_KEY = "write_value"
 ROLLBACK_INSTRUCTIONS = "To rollback, `juju refresh` to the previous revision"
 
 PEER_RELATION_ENDPOINT_NAME = "upgrade-version-a"
-RESUME_ACTION_NAME = "resume-upgrade"
-PRECHECK_ACTION_NAME = "pre-upgrade-check"
+RESUME_ACTION_NAME = "resume-refresh"
+PRECHECK_ACTION_NAME = "pre-refresh-check"
 
 
 # BEGIN: Helper functions
@@ -821,7 +821,7 @@ class PrecheckFailed(StatusException):
         self.message = message
         super().__init__(
             BlockedStatus(
-                f"Rollback with `juju refresh`. Pre-upgrade check failed: {self.message}"
+                f"Rollback with `juju refresh`. Pre-refresh check failed: {self.message}"
             )
         )
 
@@ -929,7 +929,7 @@ class AbstractUpgrade(abc.ABC):
                 )
                 return False
             logger.debug(
-                f"Versions before upgrade compatible with versions after upgrade {previous_version_strs=} {self._current_versions=}"
+                f"Versions before refresh compatible with versions after refresh {previous_version_strs=} {self._current_versions=}"
             )
             return True
         except KeyError as exception:
@@ -977,9 +977,11 @@ class AbstractUpgrade(abc.ABC):
                     f"Verify highest unit is healthy & run `{RESUME_ACTION_NAME}` action. "
                 )
             return BlockedStatus(
-                f"Upgrading. {resume_string}To rollback, `juju refresh` to last revision"
+                f"Refreshing. {resume_string}To rollback, `juju refresh` to last revision"
             )
-        return MaintenanceStatus("Upgrading. To rollback, `juju refresh` to the previous revision")
+        return MaintenanceStatus(
+            "Refreshing. To rollback, `juju refresh` to the previous revision"
+        )
 
     @property
     def versions_set(self) -> bool:
@@ -1061,7 +1063,7 @@ class AbstractUpgrade(abc.ABC):
         need to be modified).
         See https://chat.canonical.com/canonical/pl/cmf6uhm1rp8b7k8gkjkdsj4mya
         """
-        logger.debug("Running pre-upgrade checks")
+        logger.debug("Running pre-refresh checks")
 
         # TODO if shard is getting upgraded but BOTH have same revision, then fail
         try:
@@ -1087,7 +1089,7 @@ class AbstractUpgrade(abc.ABC):
 
         if self._charm.is_role(Config.Role.CONFIG_SERVER):
             if not self._charm.upgrade.are_pre_upgrade_operations_config_server_successful():
-                raise PrecheckFailed("Pre-upgrade operations on config-server failed.")
+                raise PrecheckFailed("Pre-refresh operations on config-server failed.")
 
 
 # END: Useful classes
@@ -1124,7 +1126,7 @@ class GenericMongoDBUpgrade(Object, abc.ABC):
             unit_with_lowest_id = self._upgrade._sorted_units[-1]
             if mongod.primary() == self.charm.unit_host(unit_with_lowest_id):
                 logger.debug(
-                    "Not moving Primary before upgrade, primary is already on the last unit to upgrade."
+                    "Not moving Primary before refresh, primary is already on the last unit to refresh."
                 )
                 return
 
@@ -1151,28 +1153,27 @@ class GenericMongoDBUpgrade(Object, abc.ABC):
             self.charm.mongodb_config, "localhost", direct=True
         ) as direct_mongo:
             if not direct_mongo.is_ready:
-                logger.error("Cannot proceed with upgrade. Service mongod is not running")
+                logger.error("Cannot proceed with refresh. Service mongod is not running")
                 return False
 
         # It is possible that in a previous run of post-upgrade-check, that the unit was set to
         # unhealthy. In order to check if this unit has resolved its issue, we ignore the status
         # that was set in a previous check of cluster health. Otherwise, we are stuck in an
         # infinite check of cluster health due to never being able to reset an unhealthy status.
-
         if not self.charm.status.is_current_unit_ready(
             ignore_unhealthy_upgrade=True
         ) or not self.charm.status.are_all_units_ready_for_upgrade(
             unit_to_ignore=self.charm.unit.name
         ):
             logger.error(
-                "Cannot proceed with upgrade. Status of charm units do not show active / waiting for upgrade."
+                "Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh."
             )
             return False
 
         if self.charm.is_role(Config.Role.CONFIG_SERVER):
             if not self.charm.status.are_shards_status_ready_for_upgrade():
                 logger.error(
-                    "Cannot proceed with upgrade. Status of shard units do not show active / waiting for upgrade."
+                    "Cannot proceed with refresh. Status of shard units do not show active / waiting for refresh."
                 )
                 return False
 
@@ -1180,7 +1181,7 @@ class GenericMongoDBUpgrade(Object, abc.ABC):
             return self.are_nodes_healthy()
         except (PyMongoError, OperationFailure, ServerSelectionTimeoutError) as e:
             logger.error(
-                "Cannot proceed with upgrade. Failed to check cluster health, error: %s", e
+                "Cannot proceed with refresh. Failed to check cluster health, error: %s", e
             )
             return False
 
@@ -1192,12 +1193,12 @@ class GenericMongoDBUpgrade(Object, abc.ABC):
         mongos_config = self.get_cluster_mongos()
         if not self.are_shards_healthy(mongos_config):
             logger.debug(
-                "One or more individual shards are not healthy - do not proceed with upgrade."
+                "One or more individual shards are not healthy - do not proceed with refresh."
             )
             return False
 
         if not self.are_replicas_in_sharded_cluster_healthy(mongos_config):
-            logger.debug("One or more nodes are not healthy - do not proceed with upgrade.")
+            logger.debug("One or more nodes are not healthy - do not proceed with refresh.")
             return False
 
         return True
@@ -1216,11 +1217,11 @@ class GenericMongoDBUpgrade(Object, abc.ABC):
         """Returns True if all shards in the cluster are healthy."""
         with MongosConnection(mongos_config) as mongos:
             if mongos.is_any_draining():
-                logger.debug("Cluster is draining a shard, do not proceed with upgrade.")
+                logger.debug("Cluster is draining a shard, do not proceed with refresh.")
                 return False
 
             if not mongos.are_all_shards_aware():
-                logger.debug("Not all shards are shard aware, do not proceed with upgrade.")
+                logger.debug("Not all shards are shard aware, do not proceed with refresh.")
                 return False
 
             # Config-Server has access to all the related shard applications.
@@ -1229,7 +1230,7 @@ class GenericMongoDBUpgrade(Object, abc.ABC):
                 cluster_shards = mongos.get_shard_members()
                 if len(relation_shards - cluster_shards):
                     logger.debug(
-                        "Not all shards have been added/drained, do not proceed with upgrade."
+                        "Not all shards have been added/drained, do not proceed with refresh."
                     )
                     return False
 
@@ -1443,11 +1444,11 @@ class GenericMongoDBUpgrade(Object, abc.ABC):
         # again automatically on refresh (just in case the user forgot to). Disabling the balancer
         # can negatively impact the cluster, so we only disable it once the upgrade sequence has
         # begun.
-        if self._upgrade.in_progress:
+        if self._upgrade and self._upgrade.in_progress:
             try:
                 self.turn_off_and_wait_for_balancer()
             except BalancerStillRunningError:
-                logger.debug("Balancer is still running. Please try the pre-upgrade check later.")
+                logger.debug("Balancer is still running. Please try the pre-refresh check later.")
                 return False
 
         return True
