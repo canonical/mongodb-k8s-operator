@@ -689,7 +689,9 @@ class MongoDBCharm(CharmBase):
         container = self.unit.get_container(Config.CONTAINER_NAME)
 
         # Just run the configure layers steps on the container and defer if it fails.
-        if not self._configure_container(container):
+        try:
+            self._configure_container(container)
+        except ContainerNotReadyError:
             event.defer()
             return
 
@@ -729,9 +731,10 @@ class MongoDBCharm(CharmBase):
         """Runs the checks that are mandatory before trying to create anything mongodb related."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
 
-        if not self._configure_container(container):
-            logger.debug("Failed to replan the container")
-            return False
+        try:
+            self._configure_container(container)
+        except ContainerNotReadyError:
+            return
 
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
