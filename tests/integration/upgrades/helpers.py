@@ -43,3 +43,17 @@ async def assert_successful_run_upgrade_sequence(
     await ops_test.model.wait_for_idle(
         apps=[app_name], status="active", timeout=1000, idle_period=30
     )
+
+
+async def get_workload_version(ops_test: OpsTest, unit_name: str) -> str:
+    """Get the workload version of the deployed router charm."""
+    return_code, output, _ = await ops_test.juju(
+        "ssh",
+        unit_name,
+        "sudo",
+        "cat",
+        f"/var/lib/juju/agents/unit-{unit_name.replace('/', '-')}/charm/workload_version",
+    )
+
+    assert return_code == 0
+    return output.strip()
