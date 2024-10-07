@@ -83,7 +83,12 @@ from tenacity import (
 
 import k8s_upgrade
 from config import Config
-from exceptions import AdminUserCreationError, MissingSecretError, NotConfigServerError
+from exceptions import (
+    AdminUserCreationError,
+    ContainerNotReadyError,
+    MissingSecretError,
+    NotConfigServerError,
+)
 from k8s_upgrade import MongoDBUpgrade
 
 logger = logging.getLogger(__name__)
@@ -443,8 +448,8 @@ class MongoDBCharm(CharmBase):
             )
 
     @property
-    def upgrade_in_progress(self):
-        """Whether upgrades is in progress."""
+    def upgrade_in_progress(self) -> bool:
+        """Returns true if upgrade is in progress."""
         if not self.upgrade._upgrade:
             return False
         return self.upgrade._upgrade.in_progress
@@ -625,21 +630,21 @@ class MongoDBCharm(CharmBase):
 
         return modified
 
-    def _configure_container(self, container: Container) -> bool:
+    def _configure_container(self, container: Container):
         """Configure MongoDB pebble layer specification."""
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
-            return False
+            raise ContainerNotReadyError
 
         # We need to check that the storages are attached before starting the services.
         # pebble-ready is not guaranteed to run after storage-attached so this check allows
         # to ensure that the storages are attached before the pebble-ready hook is run.
         if any(not storage for storage in self.model.storages.values()):
             logger.debug("Storages are not attached yet")
-            return False
+            raise ContainerNotReadyError
 
         if not self.__filesystem_handler(container):
-            return False
+            raise ContainerNotReadyError
 
         if self.__configure_layers(container):
             container.replan()
@@ -650,27 +655,33 @@ class MongoDBCharm(CharmBase):
             self._connect_pbm_agent()
         except MissingSecretError as e:
             logger.error("Cannot connect mongodb exporter: %r", e)
-            return False
-
-        return True
+            raise ContainerNotReadyError
 
     # BEGIN: charm events
     def _on_upgrade(self, event: UpgradeCharmEvent):
-        """Sets the version in all relations and save the revision anyway."""
+        """Upgrade event handler.
+
+        During an upgrade event, it will set the version in all relations,
+        replan the container and process the upgrade statuses. If the upgrade
+        is compatible, it will end up emitting a post upgrade event that
+        verifies the health of the cluster.
+        """
         if self.unit.is_leader():
             self.version_checker.set_version_across_all_relations()
 
         container = self.unit.get_container(Config.CONTAINER_NAME)
 
         # Just run the configure layers steps on the container and defer if it fails.
-        if not self._configure_container(container):
+        try:
+            self._configure_container(container)
+        except ContainerNotReadyError:
             event.defer()
             return
 
         self.status.set_and_share_status(ActiveStatus())
         self.upgrade._reconcile_upgrade(event)
         if self.upgrade._upgrade.is_compatible:
-            # Emit the post app upgrade event
+            # Post upgrade event verifies the success of the upgrade.
             self.upgrade.post_app_upgrade_event.emit()
 
     def _on_mongod_pebble_ready(self, event) -> None:

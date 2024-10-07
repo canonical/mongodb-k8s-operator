@@ -34,3 +34,7 @@ class SecretAlreadyExistsError(MongoSecretError):
 
 class NotConfigServerError(Exception):
     """Raised when an operation is performed on a component that is not a config server."""
+
+
+class ContainerNotReadyError(Exception):
+    """Raised when the container is not ready for a replan of services."""

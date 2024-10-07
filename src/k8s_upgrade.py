@@ -376,10 +376,15 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             1. have to wait for the unit to resolve itself.
             2. have to run the force-upgrade action (to upgrade the next unit).
         """
-        logger.debug("Running post refresh checks to verify cluster is not broken after refresh.")
+        logger.debug(
+            "Running post refresh checks to verify the deployment is not broken after refresh."
+        )
         self.run_post_upgrade_checks(event, finished_whole_cluster=False)
 
         if self._upgrade.unit_state != UnitState.HEALTHY:
+            logger.info(
+                f"Unit state is not healhy but {self._upgrade.unit_state}, not continuing post-refresh checks."
+            )
             return
 
         logger.debug("Cluster is healthy after refreshing unit %s", self.charm.unit.name)
@@ -387,10 +392,10 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         # Leader of config-server must wait for all shards to be upgraded before finalising the
         # upgrade.
         if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
+            logger.debug("Post refresh check is completed.")
             return
 
         self.charm.upgrade.post_cluster_upgrade_event.emit()
-        pass
 
     def run_post_cluster_upgrade_task(self, event: EventBase) -> None:
         """Waits for entire cluster to be upgraded before enabling the balancer."""
@@ -422,6 +427,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         self.set_mongos_feature_compatibilty_version(Config.Upgrade.FEATURE_VERSION_6)
 
     def _on_pre_upgrade_check_action(self, event: ActionEvent) -> None:
+        """Runs the pre-refresh checks to ensure that the deployment is ready for refresh."""
         if not self.charm.unit.is_leader():
             message = f"Must run action on leader unit. (e.g. `juju run {self.charm.app.name}/leader {PRECHECK_ACTION_NAME}`)"
             logger.debug(f"Pre-refresh check failed: {message}")
