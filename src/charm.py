@@ -86,6 +86,7 @@ from config import Config
 from exceptions import (
     AdminUserCreationError,
     ContainerNotReadyError,
+    FailedToUpdateFilesystem,
     MissingSecretError,
     NotConfigServerError,
 )
@@ -591,7 +592,7 @@ class MongoDBCharm(CharmBase):
             return pure_id1 == pure_id2
         return False
 
-    def __filesystem_handler(self, container: Container) -> bool:
+    def __filesystem_handler(self, container: Container):
         """Pushes files on the container and handle permissions."""
         try:
             # mongod needs keyFile and TLS certificates on filesystem
@@ -602,11 +603,9 @@ class MongoDBCharm(CharmBase):
 
         except (PathError, ProtocolError, MissingSecretError) as e:
             logger.error("Cannot initialize workload: %r", e)
-            return False
+            raise FailedToUpdateFilesystem
 
-        return True
-
-    def __configure_layers(self, container: Container) -> bool:
+    def __configure_layers(self, container: Container):
         """Configure the layers of the container."""
         modified = False
         current_layers = container.get_plan()
@@ -628,7 +627,8 @@ class MongoDBCharm(CharmBase):
         # We'll always have a logrotate configuration at this point.
         container.exec(["chmod", "644", "/etc/logrotate.d/mongodb"])
 
-        return modified
+        if modified:
+            container.replan()
 
     def _configure_container(self, container: Container):
         """Configure MongoDB pebble layer specification."""
@@ -643,11 +643,12 @@ class MongoDBCharm(CharmBase):
             logger.debug("Storages are not attached yet")
             raise ContainerNotReadyError
 
-        if not self.__filesystem_handler(container):
-            raise ContainerNotReadyError
+        try:
+            self.__filesystem_handler(container)
+        except FailedToElectNewPrimaryError as err:
+            raise ContainerNotReadyError from err
 
-        if self.__configure_layers(container):
-            container.replan()
+        self.__configure_layers(container)
 
         # when a network cuts and the pod restarts - reconnect to the exporter
         try:

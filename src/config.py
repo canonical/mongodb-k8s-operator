@@ -148,6 +148,9 @@ class Config:
 
         # TODO Future PR add more status messages here as constants
         UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
+        INCOMPATIBLE_UPGRADE = BlockedStatus(
+            "Refresh incompatible. Rollback to previous revision with `juju refresh`"
+        )
 
     @staticmethod
     def get_license_path(license_name: str) -> str:

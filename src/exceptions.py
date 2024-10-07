@@ -38,3 +38,7 @@ class NotConfigServerError(Exception):
 
 class ContainerNotReadyError(Exception):
     """Raised when the container is not ready for a replan of services."""
+
+
+class FailedToUpdateFilesystem(Exception):
+    """Raised when the container is not ready for a replan of services."""

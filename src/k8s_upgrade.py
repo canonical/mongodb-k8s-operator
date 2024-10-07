@@ -327,7 +327,8 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
                 logger.info(
                     f"Refresh incompatible. If you accept potential *data loss* and *downtime*, you can continue with `{RESUME_ACTION_NAME} force=true`"
                 )
-                self.charm.status.set_and_share_status(Config.Status.UNHEALTHY_UPGRADE)
+                self.charm.status.set_and_share_status(Config.Status.INCOMPATIBLE_UPGRADE)
+
                 return
         if self.charm.db_initialised and self.charm.is_db_service_ready():
             self._upgrade.unit_state = UnitState.HEALTHY

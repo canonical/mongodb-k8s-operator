@@ -76,7 +76,7 @@ async def test_rollback(ops_test: OpsTest, local_charm, faulty_upgrade_charm) ->
         wait=tenacity.wait_fixed(10),
     ):
         with attempt:
-            assert "Unhealthy after" in get_juju_status(
+            assert "Refresh incompatible" in get_juju_status(
                 ops_test.model.name, APP_NAME
             ), "Not indicating charm incompatible"
 
