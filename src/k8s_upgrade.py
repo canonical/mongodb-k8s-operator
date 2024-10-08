@@ -309,7 +309,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         self.framework.observe(self.post_app_upgrade_event, self.run_post_app_upgrade_task)
         self.framework.observe(self.post_cluster_upgrade_event, self.run_post_cluster_upgrade_task)
 
-    def _reconcile_upgrade(self, _) -> None:
+    def _reconcile_upgrade(self, _, during_upgrade: bool = False) -> None:
         """Handle upgrade events."""
         if not self._upgrade:
             logger.debug("Peer relation not available")
@@ -329,11 +329,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
                 )
                 self.charm.status.set_and_share_status(Config.Status.INCOMPATIBLE_UPGRADE)
                 return
-        if (
-            not self._upgrade.in_progress
-            and self.charm.db_initialised
-            and self.charm.is_db_service_ready()
-        ):
+        if not during_upgrade and self.charm.db_initialised and self.charm.is_db_service_ready():
             self._upgrade.unit_state = UnitState.HEALTHY
             self.charm.status.set_and_share_status(ActiveStatus())
         if self.charm.unit.is_leader():
