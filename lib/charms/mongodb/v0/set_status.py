@@ -23,7 +23,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 6
 
 AUTH_FAILED_CODE = 18
 UNAUTHORISED_CODE = 13
@@ -264,11 +264,11 @@ class MongoDBStatusHandler(Object):
 
         if self.charm.is_role(Config.Role.SHARD):
             config_server_revision = self.charm.version_checker.get_version_of_related_app(
-                self.get_config_server_name()
+                self.charm.get_config_server_name()
             )
             remote_local_identifier = (
                 "-locally built"
-                if self.charm.version_checker.is_local_charm(self.get_config_server_name())
+                if self.charm.version_checker.is_local_charm(self.charm.get_config_server_name())
                 else ""
             )
             return BlockedStatus(

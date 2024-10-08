@@ -8,7 +8,7 @@ import os
 import secrets
 import string
 import subprocess
-from typing import List
+from typing import List, Mapping
 
 from charms.mongodb.v1.mongodb import MongoConfiguration
 from ops.model import ActiveStatus, MaintenanceStatus, StatusBase, WaitingStatus
@@ -23,7 +23,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 8
+LIBPATCH = 12
 
 # path to store mongodb ketFile
 KEY_FILE = "keyFile"
@@ -89,7 +89,7 @@ def get_create_user_cmd(config: MongoConfiguration, mongo_path=MONGO_SHELL) -> L
         "mongodb://localhost/admin",
         "--quiet",
         "--eval",
-        "db.createUser({"
+        '"db.createUser({'
         f"  user: '{config.username}',"
         "  pwd: passwordPrompt(),"
         "  roles:["
@@ -99,7 +99,7 @@ def get_create_user_cmd(config: MongoConfiguration, mongo_path=MONGO_SHELL) -> L
         "  ],"
         "  mechanisms: ['SCRAM-SHA-256'],"
         "  passwordDigestor: 'server',"
-        "})",
+        '})"',
     ]
 
 
@@ -118,7 +118,7 @@ def get_mongos_args(
     binding_ips = (
         "--bind_ip_all"
         if external_connectivity
-        else f"--bind_ip {MONGODB_COMMON_DIR}/var/mongodb-27018.sock"
+        else f"--bind_ip {MONGODB_COMMON_DIR}/var/mongodb-27018.sock  --filePermissions 0766"
     )
 
     # mongos running on the config server communicates through localhost
@@ -320,3 +320,25 @@ def add_args_to_env(var: str, args: str):
 
     with open(Config.ENV_VAR_PATH, "w") as service_file:
         service_file.writelines(env_vars)
+
+
+def safe_exec(
+    command: list[str] | str,
+    env: Mapping[str, str] | None = None,
+    working_dir: str | None = None,
+) -> str:
+    """Execs a command on the workload in a safe way."""
+    try:
+        output = subprocess.check_output(
+            command,
+            stderr=subprocess.PIPE,
+            universal_newlines=True,
+            shell=isinstance(command, str),
+            env=env,
+            cwd=working_dir,
+        )
+        logger.debug(f"{output=}")
+        return output
+    except subprocess.CalledProcessError as err:
+        logger.error(f"cmd failed - {err.cmd}, {err.stdout}, {err.stderr}")
+        raise

@@ -43,7 +43,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 12
+LIBPATCH = 13
 
 
 class ClusterProvider(Object):
@@ -318,7 +318,8 @@ class ClusterRequirer(Object):
             return
 
         self.charm.status.set_and_share_status(ActiveStatus())
-        self.charm.mongos_intialised = True
+        if self.charm.unit.is_leader():
+            self.charm.mongos_initialised = True
 
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         # Only relation_deparated events can check if scaling down

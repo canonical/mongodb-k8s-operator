@@ -58,7 +58,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 9
+LIBPATCH = 11
 
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
@@ -557,7 +557,7 @@ class ConfigServerRequirer(Object):
         super().__init__(charm, self.relation_name)
 
         self.framework.observe(
-            charm.on[self.relation_name].relation_joined, self._on_relation_joined
+            charm.on[self.relation_name].relation_created, self.relation_created
         )
         self.framework.observe(
             charm.on[self.relation_name].relation_changed, self._on_relation_changed
@@ -687,7 +687,7 @@ class ConfigServerRequirer(Object):
         # after updating the password of the backup user, restart pbm with correct password
         self.charm._connect_pbm_agent()
 
-    def _on_relation_joined(self, event: RelationJoinedEvent):
+    def relation_created(self, event: RelationJoinedEvent):
         """Sets status and flags in relation data relevant to sharding."""
         # if re-using an old shard, re-set flags.
         self.charm.unit_peer_data["drained"] = json.dumps(False)
@@ -711,7 +711,7 @@ class ConfigServerRequirer(Object):
 
         self.update_member_auth(event, (key_file_enabled, tls_enabled))
 
-        if tls_enabled and self.charm.tls.waiting_for_certs():
+        if tls_enabled and self.charm.tls.waiting_for_both_certs():
             logger.info("Waiting for requested certs, before restarting and adding to cluster.")
             event.defer()
             return

@@ -31,7 +31,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 1
+LIBPATCH = 2
 
 ADMIN_AUTH_SOURCE = "authSource=admin"
 SYSTEM_DBS = ("admin", "local", "config")
@@ -40,6 +40,7 @@ REGULAR_ROLES = {
         {"role": "userAdminAnyDatabase", "db": "admin"},
         {"role": "readWriteAnyDatabase", "db": "admin"},
         {"role": "userAdmin", "db": "admin"},
+        {"role": "enableSharding", "db": "admin"},
     ],
     "monitor": [
         {"role": "explainRole", "db": "admin"},
@@ -127,7 +128,12 @@ class MongoConfiguration:
 
 def supported_roles(config: MongoConfiguration):
     """Return the supported roles for the given configuration."""
-    return REGULAR_ROLES | {"default": [{"db": config.database, "role": "readWrite"}]}
+    return REGULAR_ROLES | {
+        "default": [
+            {"db": config.database, "role": "readWrite"},
+            {"db": config.database, "role": "enableSharding"},
+        ]
+    }
 
 
 class MongoConnection:
