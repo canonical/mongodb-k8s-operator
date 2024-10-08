@@ -528,7 +528,7 @@ def get_password_using_subprocess(
         logger.error("get-password command returned non 0 exit code: %s", result.stderr)
         raise Exception(f"get-password command returned non 0 exit code: {result.stderr}")
     try:
-        password = result.stdout.decode("utf-8").split("password:")[-1].strip()
+        password = result.stdout.decode("utf-8").splitlines()[0].split("password:")[-1].strip()
     except Exception as e:
         logger.error("Failed to get password: %s", e)
         raise Exception(f"Failed to get password: {e}")
