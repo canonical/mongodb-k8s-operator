@@ -328,10 +328,14 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
                     f"Refresh incompatible. If you accept potential *data loss* and *downtime*, you can continue with `{RESUME_ACTION_NAME} force=true`"
                 )
                 self.charm.status.set_and_share_status(Config.Status.INCOMPATIBLE_UPGRADE)
-
                 return
-        if self.charm.db_initialised and self.charm.is_db_service_ready():
+        if (
+            not self._upgrade.in_progress
+            and self.charm.db_initialised
+            and self.charm.is_db_service_ready()
+        ):
             self._upgrade.unit_state = UnitState.HEALTHY
+            self.charm.status.set_and_share_status(ActiveStatus())
         if self.charm.unit.is_leader():
             self._upgrade.reconcile_partition()
 
@@ -389,6 +393,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             return
 
         logger.debug("Cluster is healthy after refreshing unit %s", self.charm.unit.name)
+        self.charm.status.set_and_share_status(ActiveStatus())
 
         # Leader of config-server must wait for all shards to be upgraded before finalising the
         # upgrade.
@@ -441,6 +446,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             return
         try:
             self._upgrade.pre_upgrade_check()
+            self.charm.status.process_statuses()
         except PrecheckFailed as exception:
             message = (
                 f"Charm is *not* ready for refresh. Pre-refresh check failed: {exception.message}"
