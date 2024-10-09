@@ -143,19 +143,19 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
-    """Verify that the pre-upgrade check succeeds in the happy path."""
+    """Verify that the pre-refresh check succeeds in the happy path."""
     for sharding_component in CLUSTER_COMPONENTS:
         leader_unit = await backup_helpers.get_leader_unit(ops_test, sharding_component)
-        action = await leader_unit.run_action("pre-upgrade-check")
+        action = await leader_unit.run_action("pre-refresh-check")
         await action.wait()
-        assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+        assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
 
 @pytest.mark.skip()
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
-    """Verify that the pre-upgrade check fails if there is a problem with one of the shards."""
+    """Verify that the pre-refresh check fails if there is a problem with one of the shards."""
     leader_unit = await backup_helpers.get_leader_unit(ops_test, SHARD_TWO_APP_NAME)
 
     non_leader_unit = None
@@ -171,9 +171,9 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
 
     for sharding_component in CLUSTER_COMPONENTS:
         leader_unit = await backup_helpers.get_leader_unit(ops_test, sharding_component)
-        action = await leader_unit.run_action("pre-upgrade-check")
+        action = await leader_unit.run_action("pre-refresh-check")
         await action.wait()
-        assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+        assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
     # restore network after test
     remove_instance_isolation(ops_test)

@@ -875,6 +875,13 @@ class MongoDBCharm(CharmBase):
                 event.defer()
 
     def _on_stop(self, event) -> None:
+        current_unit_number = unit_number(self.unit)
+        # Raise partition to prevent other units from restarting if an upgrade is in progress.
+        # If an upgrade is not in progress, the leader unit will reset the partition to 0.
+        if k8s_upgrade.partition.get(app_name=self.app.name) < current_unit_number:
+            k8s_upgrade.partition.set(app_name=self.app.name, value=current_unit_number)
+            logger.debug(f"Partition set to {current_unit_number} during stop event")
+
         if self.unit_departed:
             logger.debug(f"{self.unit.name} blocking on_stop")
             is_in_replica_set = True
@@ -888,12 +895,6 @@ class MongoDBCharm(CharmBase):
             logger.debug("{self.unit.name} releasing on_stop")
             self.unit_departed = False
 
-        current_unit_number = unit_number(self.unit)
-        # Raise partition to prevent other units from restarting if an upgrade is in progress.
-        # If an upgrade is not in progress, the leader unit will reset the partition to 0.
-        if k8s_upgrade.partition.get(app_name=self.app.name) < current_unit_number:
-            k8s_upgrade.partition.set(app_name=self.app.name, value=current_unit_number)
-            logger.debug(f"Partition set to {current_unit_number} during stop event")
         if not self.upgrade._upgrade:
             logger.debug("Peer relation missing during stop event")
             return

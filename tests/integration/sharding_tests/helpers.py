@@ -65,6 +65,7 @@ async def deploy_cluster_components(
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
         channel=channel,
+        series="jammy",
         trust=True,
     )
     await ops_test.model.deploy(
@@ -74,6 +75,7 @@ async def deploy_cluster_components(
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
         channel=channel,
+        series="jammy",
         trust=True,
     )
     await ops_test.model.deploy(
@@ -83,6 +85,7 @@ async def deploy_cluster_components(
         config={"role": "shard"},
         application_name=SHARD_TWO_APP_NAME,
         channel=channel,
+        series="jammy",
         trust=True,
     )
 
