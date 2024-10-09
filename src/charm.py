@@ -680,7 +680,7 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        self.status.set_and_share_status(ActiveStatus())
+        self.status.set_and_share_status(Config.Status.WAITING_POST_UPGRADE_STATUS)
         self.upgrade._reconcile_upgrade(event, during_upgrade=True)
         if self.upgrade._upgrade.is_compatible:
             # Post upgrade event verifies the success of the upgrade.
