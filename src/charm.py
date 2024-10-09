@@ -592,7 +592,7 @@ class MongoDBCharm(CharmBase):
             return pure_id1 == pure_id2
         return False
 
-    def __filesystem_handler(self, container: Container):
+    def __filesystem_handler(self, container: Container) -> None:
         """Pushes files on the container and handle permissions."""
         try:
             # mongod needs keyFile and TLS certificates on filesystem
@@ -605,7 +605,7 @@ class MongoDBCharm(CharmBase):
             logger.error("Cannot initialize workload: %r", e)
             raise FailedToUpdateFilesystem
 
-    def __configure_layers(self, container: Container):
+    def __configure_layers(self, container: Container) -> None:
         """Configure the layers of the container."""
         modified = False
         current_layers = container.get_plan()
@@ -630,7 +630,7 @@ class MongoDBCharm(CharmBase):
         if modified:
             container.replan()
 
-    def _configure_container(self, container: Container):
+    def _configure_container(self, container: Container) -> None:
         """Configure MongoDB pebble layer specification."""
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
@@ -729,7 +729,7 @@ class MongoDBCharm(CharmBase):
             f"Migration of sharding components not permitted, revert config role to {self.role}"
         )
 
-    def __start_checks(self) -> bool:
+    def __can_charm_start(self) -> bool:
         """Runs the checks that are mandatory before trying to create anything mongodb related."""
         container = self.unit.get_container(Config.CONTAINER_NAME)
 
@@ -770,7 +770,7 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
-        if not self.__start_checks():
+        if not self.__can_charm_start():
             event.defer()
             return
 

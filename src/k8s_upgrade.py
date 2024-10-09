@@ -389,7 +389,6 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             )
             return
 
-        logger.debug("Cluster is healthy after refreshing unit %s", self.charm.unit.name)
         self.charm.status.set_and_share_status(ActiveStatus())
 
         # Leader of config-server must wait for all shards to be upgraded before finalising the
@@ -443,7 +442,6 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             return
         try:
             self._upgrade.pre_upgrade_check()
-            self.charm.status.process_statuses()
         except PrecheckFailed as exception:
             message = (
                 f"Charm is *not* ready for refresh. Pre-refresh check failed: {exception.message}"
