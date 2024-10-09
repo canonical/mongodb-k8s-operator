@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 from dateutil.parser import parse
+from more_itertools import one
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, retry, stop_after_attempt, stop_after_delay, wait_fixed
 
@@ -500,11 +501,6 @@ def is_pod_ready(namespace, pod_name):
     return False
 
 
-@retry(
-    stop=stop_after_attempt(5),
-    wait=wait_fixed(30),
-    reraise=True,
-)
 def get_password_using_subprocess(
     ops_test: OpsTest, username="operator", app_name=APP_NAME
 ) -> str:
@@ -522,13 +518,26 @@ def get_password_using_subprocess(
             result.stderr,
         )
         raise Exception(f"Failed to get password: {result.stderr}")
-    cmd = ["juju", "run", f"{app_name}/leader", "get-password", f"username={username}"]
+    cmd = [
+        "juju",
+        "run",
+        f"{app_name}/leader",
+        "get-password",
+        f"username={username}",
+        "--format",
+        "json",
+    ]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
         logger.error("get-password command returned non 0 exit code: %s", result.stderr)
         raise Exception(f"get-password command returned non 0 exit code: {result.stderr}")
     try:
-        password = result.stdout.decode("utf-8").split("password:")[-1].strip()
+        data = one(json.loads(result.stdout).values())
+        if data["status"] == "failed":
+            raise Exception(data["message"])
+        elif not data["results"].get("password"):
+            raise Exception(f"No password in result: {data}")
+        password = data["results"]["password"]
     except Exception as e:
         logger.error("Failed to get password: %s", e)
         raise Exception(f"Failed to get password: {e}")

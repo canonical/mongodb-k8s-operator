@@ -128,13 +128,6 @@ async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     (username, password) = await get_related_username_password(
         ops_test, app_name=MONGOS_APP_NAME, relation_name=CLUSTER_REL_NAME
     )
-    mongos_user_client = await get_direct_mongo_client(
-        ops_test,
-        app_name=CONFIG_SERVER_APP_NAME,
-        mongos=True,
-        username=username,
-        password=password,
-    )
 
     # generate URI for operator mongos user (i.e. admin)
     mongos_client = await get_direct_mongo_client(
@@ -156,6 +149,14 @@ async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     assert (
         num_users - 1 == num_users_after_removal
     ), "Cluster did not remove user after integration removal."
+
+    mongos_user_client = await get_direct_mongo_client(
+        ops_test,
+        app_name=CONFIG_SERVER_APP_NAME,
+        mongos=True,
+        username=username,
+        password=password,
+    )
 
     with pytest.raises(OperationFailure) as pymongo_error:
         mongos_user_client.admin.command("dbStats")

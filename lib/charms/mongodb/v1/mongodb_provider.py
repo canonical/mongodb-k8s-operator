@@ -31,7 +31,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 14
+LIBPATCH = 13
 
 logger = logging.getLogger(__name__)
 REL_NAME = "database"
@@ -47,6 +47,10 @@ A tuple for storing the diff between two data mappings.
 added — keys that were added
 changed — keys that still exist but have new values
 deleted — key that were deleted."""
+
+
+class FailedToGetHostsError(Exception):
+    """Raised when charm fails to retrieve hosts."""
 
 
 class MongoDBProvider(Object):
@@ -145,7 +149,11 @@ class MongoDBProvider(Object):
 
         try:
             self.oversee_users(departed_relation_id, event)
-        except PyMongoError as e:
+        except (PyMongoError, FailedToGetHostsError) as e:
+            # Failed to get hosts error is unique to mongos-k8s charm. In other charms we do not
+            # foresee issues to retrieve hosts. However in external mongos-k8s, the leader can
+            # attempt to retrieve hosts while non-leader units are still enabling node port
+            # resulting in an exception.
             logger.error("Deferring _on_relation_event since: error=%r", e)
             event.defer()
             return

@@ -99,5 +99,5 @@ async def test_local_shard_reports_remote_config_server(ops_test: OpsTest) -> No
 
     shard_unit = ops_test.model.applications[LOCAL_SHARD_APP_NAME].units[0]
     assert (
-        "is not up-to date with config-server." in shard_unit.workload_status_message
+        "is not up-to date with config-server" in shard_unit.workload_status_message
     ), "Shard does not correctly report mismatch in revision"
