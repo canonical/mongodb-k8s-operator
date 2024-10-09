@@ -320,6 +320,7 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         if self.charm.unit.is_leader() and not self._upgrade.in_progress:
             # Run before checking `self._upgrade.is_compatible` in case incompatible upgrade was
             # forced & completed on all units.
+            self.charm.version_checker.set_version_across_all_relations()
             self._upgrade.set_versions_in_app_databag()
 
         if self._upgrade.unit_state is UnitState.RESTARTING:  # Kubernetes only
