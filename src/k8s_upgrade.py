@@ -174,8 +174,7 @@ class KubernetesUpgrade(AbstractUpgrade):
     @cached_property
     @override
     def _app_workload_container_version(self) -> str:
-        """Rock revision for current charm code."""
-        """App's Kubernetes controller revision hash"""
+        """App's Kubernetes controller revision hash."""
         stateful_set = lightkube.Client().get(
             res=lightkube.resources.apps_v1.StatefulSet, name=self._app_name
         )

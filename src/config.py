@@ -5,7 +5,7 @@
 
 from typing import List, Literal
 
-from ops.model import BlockedStatus, MaintenanceStatus
+from ops.model import BlockedStatus, WaitingStatus
 
 
 class Config:
@@ -151,7 +151,7 @@ class Config:
         INCOMPATIBLE_UPGRADE = BlockedStatus(
             "Refresh incompatible. Rollback to previous revision with `juju refresh`"
         )
-        WAITING_POST_UPGRADE_STATUS = MaintenanceStatus("Waiting for post upgrade checks")
+        WAITING_POST_UPGRADE_STATUS = WaitingStatus("Waiting for post upgrade checks")
 
     @staticmethod
     def get_license_path(license_name: str) -> str:

@@ -677,6 +677,7 @@ class MongoDBCharm(CharmBase):
             self._configure_container(container)
         except ContainerNotReadyError:
             self.status.set_and_share_status(Config.Status.UNHEALTHY_UPGRADE)
+            self.upgrade._reconcile_upgrade(event, during_upgrade=True)
             event.defer()
             return
 
