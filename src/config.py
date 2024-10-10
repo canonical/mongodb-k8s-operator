@@ -73,7 +73,7 @@ class Config:
         LOG_SLOTS = ["charmed-mongodb:logs"]
         URI_PARAM_NAME = "monitor-uri"
         SERVICE_NAME = "mongodb-exporter"
-        JOBS = [{"static_configs": [{"targets": [f"*:{MONGODB_EXPORTER_PORT}"]}]}]
+        JOBS = [{"static_configs": [{"targets": [f"*:{MONGODB_EXPORTER_PORT}"], "labels": []}]}]
         APP_SCOPE = "app"
         UNIT_SCOPE = "unit"
 

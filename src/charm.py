@@ -6,7 +6,7 @@ import json
 import logging
 import re
 import time
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 import jinja2
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
@@ -126,8 +126,14 @@ class MongoDBCharm(CharmBase):
         self.tls = MongoDBTLS(self, Config.Relations.PEERS, Config.SUBSTRATE)
         self.backups = MongoDBBackups(self)
 
+        self.status = MongoDBStatusHandler(self)
+        self.secrets = SecretCache(self)
+
+        self.shard = ConfigServerRequirer(self)
+        self.config_server = ShardingProvider(self)
+        self.cluster = ClusterProvider(self)
         self.metrics_endpoint = MetricsEndpointProvider(
-            self, refresh_event=self.on.start, jobs=Config.Monitoring.JOBS
+            self, refresh_event=[self.on.start, self.on.update_status], jobs=self.monitoring_jobs
         )
         self.grafana_dashboards = GrafanaDashboardProvider(self)
         self.loki_push = LogProxyConsumer(
@@ -136,12 +142,6 @@ class MongoDBCharm(CharmBase):
             relation_name=Config.Relations.LOGGING,
             container_name=Config.CONTAINER_NAME,
         )
-        self.status = MongoDBStatusHandler(self)
-        self.secrets = SecretCache(self)
-
-        self.shard = ConfigServerRequirer(self)
-        self.config_server = ShardingProvider(self)
-        self.cluster = ClusterProvider(self)
 
         self.version_checker = CrossAppVersionChecker(
             self,
@@ -153,6 +153,20 @@ class MongoDBCharm(CharmBase):
         )
 
     # BEGIN: properties
+
+    @property
+    def monitoring_jobs(self) -> list[dict[str, Any]]:
+        """Defines the labels and targets for metrics."""
+        return [
+            {
+                "static_configs": [
+                    {
+                        "targets": [f"*:{Config.Monitoring.MONGODB_EXPORTER_PORT}"],
+                        "labels": {"cluster": self.get_config_server_name() or self.app.name},
+                    }
+                ]
+            }
+        ]
 
     @property
     def app_hosts(self) -> List[str]:
