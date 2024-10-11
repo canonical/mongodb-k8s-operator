@@ -151,7 +151,9 @@ async def test_upgrade_cluster(ops_test: OpsTest, righty_upgrade_charm, add_writ
             ops_test, sharding_component, new_charm=righty_upgrade_charm
         )
 
-    await ops_test.model.wait_for_idle(apps=CLUSTER_COMPONENTS, status="active", idle_period=30)
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS, status="active", idle_period=30, timeout=TIMEOUT
+    )
 
     application_unit = ops_test.model.applications[WRITE_APP].units[0]
     stop_writes_action = await application_unit.run_action(
