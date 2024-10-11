@@ -41,7 +41,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +60,10 @@ PBM_STATUS_CMD = ["status", "-o", "json"]
 MONGODB_SNAP_DATA_DIR = "/var/snap/charmed-mongodb/current"
 BACKUP_RESTORE_MAX_ATTEMPTS = 10
 BACKUP_RESTORE_ATTEMPT_COOLDOWN = 15
+
+INVALID_INTEGRATION_STATUS = BlockedStatus(
+    "Relation to s3-integrator is not supported, config role must be config-server"
+)
 
 
 _StrOrBytes = Union[str, bytes]
@@ -136,11 +140,7 @@ class MongoDBBackups(Object):
             logger.debug(
                 "Shard does not support s3 relations, please relate s3-integrator to config-server only."
             )
-            self.charm.status.set_and_share_status(
-                BlockedStatus(
-                    "Relation to s3-integrator is not supported, config role must be config-server"
-                )
-            )
+            self.charm.status.set_and_share_status(INVALID_INTEGRATION_STATUS)
 
     def _on_s3_credential_changed(self, event: CredentialsChangedEvent):
         """Sets pbm credentials, resyncs if necessary and reports config errors."""
@@ -154,7 +154,11 @@ class MongoDBBackups(Object):
             event.defer()
             return
 
-        if not self._pass_sanity_checks(event, action):
+        if not self.is_valid_s3_integration():
+            logger.debug(
+                "Shard does not support s3 relations, please relate s3-integrator to config-server only."
+            )
+            self.charm.status.set_and_share_status(INVALID_INTEGRATION_STATUS)
             return
 
         if not self.charm.db_initialised:
