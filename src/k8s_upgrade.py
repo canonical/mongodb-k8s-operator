@@ -416,7 +416,6 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
         # upgrade.
         if not self.charm.unit.is_leader() or not self.charm.is_role(Config.Role.CONFIG_SERVER):
             logger.debug("Post refresh check is completed.")
-            self.charm.status.process_statuses()
             return
 
         self.charm.upgrade.post_cluster_upgrade_event.emit()
