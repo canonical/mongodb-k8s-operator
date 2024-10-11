@@ -17,9 +17,10 @@ async def assert_successful_run_upgrade_sequence(
 ) -> None:
     """Runs the upgrade sequence on a given app."""
     leader_unit = await backup_helpers.get_leader_unit(ops_test, app_name)
-    # action = await leader_unit.run_action("pre-refresh-check")
-    # await action.wait()
-    # assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
+    action = await leader_unit.run_action("pre-refresh-check")
+    await action.wait()
+    assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
+
     logger.info(f"Upgrading {app_name}")
 
     await ops_test.model.applications[app_name].refresh(path=new_charm)
@@ -39,9 +40,7 @@ async def assert_successful_run_upgrade_sequence(
     await action.wait()
     assert action.status == "completed", "resume-refresh failed, expected to succeed."
 
-    await ops_test.model.wait_for_idle(
-        apps=[app_name], status="active", timeout=1000, idle_period=30
-    )
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=30)
 
 
 async def get_workload_version(ops_test: OpsTest, unit_name: str) -> str:

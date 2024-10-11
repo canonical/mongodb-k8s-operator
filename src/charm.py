@@ -645,7 +645,7 @@ class MongoDBCharm(CharmBase):
 
         try:
             self.__filesystem_handler(container)
-        except FailedToElectNewPrimaryError as err:
+        except FailedToUpdateFilesystem as err:
             raise ContainerNotReadyError from err
 
         self.__configure_layers(container)
@@ -875,31 +875,32 @@ class MongoDBCharm(CharmBase):
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
-    def _on_stop(self, event) -> None:
+    def __handle_partition_on_stop(self) -> None:
+        """Raise partition to prevent other units from restarting if an upgrade is in progress.
+
+        If an upgrade is not in progress, the leader unit will reset the partition to 0.
+        """
         current_unit_number = unit_number(self.unit)
-        # Raise partition to prevent other units from restarting if an upgrade is in progress.
-        # If an upgrade is not in progress, the leader unit will reset the partition to 0.
         if k8s_upgrade.partition.get(app_name=self.app.name) < current_unit_number:
             k8s_upgrade.partition.set(app_name=self.app.name, value=current_unit_number)
             logger.debug(f"Partition set to {current_unit_number} during stop event")
 
-        if self.unit_departed:
-            logger.debug(f"{self.unit.name} blocking on_stop")
-            is_in_replica_set = True
-            timeout = UNIT_REMOVAL_TIMEOUT
-            while is_in_replica_set and timeout > 0:
-                is_in_replica_set = self.is_unit_in_replica_set()
-                time.sleep(1)
-                timeout -= 1
-                if timeout < 0:
-                    raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
-            logger.debug("{self.unit.name} releasing on_stop")
-            self.unit_departed = False
+    def __handle_relation_departed_on_stop(self):
+        """Leave replicaset."""
+        logger.debug(f"{self.unit.name} blocking on_stop")
+        is_in_replica_set = True
+        timeout = UNIT_REMOVAL_TIMEOUT
+        while is_in_replica_set and timeout > 0:
+            is_in_replica_set = self.is_unit_in_replica_set()
+            time.sleep(1)
+            timeout -= 1
+            if timeout < 0:
+                raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
+        logger.debug("{self.unit.name} releasing on_stop")
+        self.unit_departed = False
 
-        if not self.upgrade._upgrade:
-            logger.debug("Peer relation missing during stop event")
-            return
-
+    def __handle_upgrade_on_stop(self):
+        """Sets the unit state to RESTARTING and step down from replicaset."""
         self.upgrade._upgrade.unit_state = UnitState.RESTARTING
 
         # According to the MongoDB documentation, before upgrading the primary, we must ensure a
@@ -911,6 +912,15 @@ class MongoDBCharm(CharmBase):
         except FailedToElectNewPrimaryError:
             logger.error("Failed to reelect primary before upgrading unit.")
             return
+
+    def _on_stop(self, event) -> None:
+        self.__handle_partition_on_stop()
+        if self.unit_departed:
+            self.__handle_relation_departed_on_stop()
+        if not self.upgrade._upgrade:
+            logger.debug("Peer relation missing during stop event")
+            return
+        self.__handle_upgrade_on_stop()
 
     def _on_update_status(self, event: UpdateStatusEvent):
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
