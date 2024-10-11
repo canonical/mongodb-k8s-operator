@@ -1,0 +1,38 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:42:56Z
+
+App                Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application                 active       1  application                   0  10.152.183.247  no       
+config-server-one           active       1  mongodb-k8s                   1  10.152.183.139  no       
+config-server-two           blocked      1  mongodb-k8s                   2  10.152.183.155  no       missing relation to shard(s)
+replication                 blocked      1  mongodb-k8s                   0  10.152.183.57   no       sharding interface cannot be used by replicas
+s3-integrator               blocked      1  s3-integrator  latest/edge   65  10.152.183.228  no       Missing parameters: ['access-key', 'secret-key']
+shard                       blocked      1  mongodb-k8s                   3  10.152.183.192  no       Relation to s3-integrator is not supported, config role must be config-server
+
+Unit                  Workload  Agent      Address       Ports  Message
+application/0*        active    idle       10.1.248.136         
+config-server-one/0*  active    idle       10.1.248.142         
+config-server-two/0*  blocked   idle       10.1.248.145         missing relation to shard(s)
+replication/0*        blocked   idle       10.1.248.139         sharding interface cannot be used by replicas
+s3-integrator/0*      blocked   executing  10.1.248.148         Missing parameters: ['access-key', 'secret-key']
+shard/0*              blocked   executing  10.1.248.149         Relation to s3-integrator is not supported, config role must be config-server
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-shard-0: 01:40:15 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-shard-0: 01:40:15 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-config-server-one-0: 01:40:15 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-config-server-one-0: 01:40:15 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-shard-0: 01:40:48 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-0: 01:40:48 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-0: 01:40:49 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-0: 01:41:45 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-replication-0: 01:42:08 ERROR unit.replication/0.juju-log sharding:8: Charm is in sharding role: replication. Does not support sharding interface.
+unit-config-server-one-0: 01:42:09 ERROR unit.config-server-one/0.juju-log config-server:8: Failed to add shard replication to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1728610929, 1), 'signature': {'hash': b'\\xa6pc\\x14L\\xca\\x81\\x1aWV\\x88W\\x1d\\x8f\\x9f-\\x97\\x99 2', 'keyId': 7424326638764032025}}, 'operationTime': Timestamp(1728610929, 1)}")
+unit-config-server-one-0: 01:42:09 ERROR unit.config-server-one/0.juju-log config-server:8: replication shard does not have the same auth as the config server.
+unit-replication-0: 01:42:09 ERROR unit.replication/0.juju-log sharding:8: Charm is in sharding role: replication. Does not support sharding interface.
+unit-replication-0: 01:42:11 ERROR unit.replication/0.juju-log sharding:8: Charm is in sharding role: replication. Does not support sharding interface.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
