@@ -152,22 +152,7 @@ class MongoDBCharm(CharmBase):
         self.shard = ConfigServerRequirer(self)
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
-        self.metrics_endpoint = MetricsEndpointProvider(
-            self, refresh_event=[self.on.start, self.on.update_status], jobs=self.monitoring_jobs
-        )
-        self.grafana_dashboards = GrafanaDashboardProvider(self)
-        self.loki_push = LogProxyConsumer(
-            self,
-            log_files=Config.get_logs_files_paths(),
-            relation_name=Config.Relations.LOGGING,
-            container_name=Config.CONTAINER_NAME,
-        )
-        self.status = MongoDBStatusHandler(self)
-        self.secrets = SecretCache(self)
 
-        self.shard = ConfigServerRequirer(self)
-        self.config_server = ShardingProvider(self)
-        self.cluster = ClusterProvider(self)
         self.upgrade = MongoDBUpgrade(self)
 
         self.version_checker = CrossAppVersionChecker(
@@ -177,6 +162,17 @@ class MongoDBCharm(CharmBase):
                 Config.Relations.SHARDING_RELATIONS_NAME,
                 Config.Relations.CONFIG_SERVER_RELATIONS_NAME,
             ],
+        )
+
+        self.metrics_endpoint = MetricsEndpointProvider(
+            self, refresh_event=[self.on.start, self.on.update_status], jobs=self.monitoring_jobs
+        )
+        self.grafana_dashboards = GrafanaDashboardProvider(self)
+        self.loki_push = LogProxyConsumer(
+            self,
+            log_files=Config.get_logs_files_paths(),
+            relation_name=Config.Relations.LOGGING,
+            container_name=Config.CONTAINER_NAME,
         )
 
     # BEGIN: properties
