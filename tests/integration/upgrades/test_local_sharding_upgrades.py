@@ -51,7 +51,7 @@ async def add_writes_to_shards(ops_test: OpsTest):
     )
     await start_writes_action.wait()
 
-    # # move continuous writes so they are present on each shard
+    # move continuous writes so they are present on each shard
     mongos_client = await get_direct_mongo_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )

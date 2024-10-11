@@ -881,8 +881,16 @@ class MongoDBCharm(CharmBase):
             k8s_upgrade.partition.set(app_name=self.app.name, value=current_unit_number)
             logger.debug(f"Partition set to {current_unit_number} during stop event")
 
-    def __handle_relation_departed_on_stop(self):
-        """Leave replicaset."""
+    def __handle_relation_departed_on_stop(self) -> None:
+        """Leaves replicaset.
+
+        If the unit has not already left the replica set, this function
+        attempts to block operations until the unit is removed. Note that with
+        how Juju currently operates, we only have 30 seconds until SIGTERM
+        command, so we are by no means guaranteed to have removed the replica
+        before the pod is removed. However the leader will reconfigure the
+        replica set if this is the case on `update status`.
+        """
         logger.debug(f"{self.unit.name} blocking on_stop")
         is_in_replica_set = True
         timeout = UNIT_REMOVAL_TIMEOUT
@@ -895,8 +903,15 @@ class MongoDBCharm(CharmBase):
         logger.debug("{self.unit.name} releasing on_stop")
         self.unit_departed = False
 
-    def __handle_upgrade_on_stop(self):
-        """Sets the unit state to RESTARTING and step down from replicaset."""
+    def __handle_upgrade_on_stop(self) -> None:
+        """Sets the unit state to RESTARTING and step down from replicaset.
+
+        Note that with how Juju currently operates, we only have at most 30
+        seconds until SIGTERM command, so we are by no means guaranteed to have
+        stepped down before the pod is removed.
+        Upon restart, the upgrade will still resume because all hooks run the
+        `_reconcile_upgrade` handler.
+        """
         self.upgrade._upgrade.unit_state = UnitState.RESTARTING
 
         # According to the MongoDB documentation, before upgrading the primary, we must ensure a
