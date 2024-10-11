@@ -4,6 +4,7 @@
 import shutil
 import zipfile
 from collections.abc import AsyncGenerator
+from logging import getLogger
 from pathlib import Path
 
 import pytest
@@ -29,6 +30,8 @@ SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 WRITE_APP = "application"
 
 TIMEOUT = 15 * 60
+
+logger = getLogger()
 
 
 @pytest.fixture()
@@ -181,6 +184,8 @@ async def test_upgrade_cluster(ops_test: OpsTest, righty_upgrade_charm, add_writ
     assert (
         actual_shard_two_writes == shard_two_total_expected_writes
     ), "missed writes during upgrade procedure."
+    logger.error(f"{actual_shard_one_writes = }, {actual_shard_two_writes = }")
+
     for sharding_component in CLUSTER_COMPONENTS:
         for unit in ops_test.model.applications[sharding_component].units:
             workload_version = await get_workload_version(ops_test, unit.name)

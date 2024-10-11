@@ -929,8 +929,6 @@ class MongoDBCharm(CharmBase):
         if not self.db_initialised:
             return
 
-        self.upgrade._reconcile_upgrade(event)
-
         # Cannot check more advanced MongoDB statuses if mongod hasn't started.
         with MongoDBConnection(self.mongodb_config, "localhost", direct=True) as direct_mongo:
             if not direct_mongo.is_ready:
@@ -945,6 +943,12 @@ class MongoDBCharm(CharmBase):
                 else:
                     self.status.set_and_share_status(WaitingStatus("Waiting for MongoDB to start"))
                     return
+
+        self.upgrade._reconcile_upgrade(event)
+        if self.upgrade_in_progress:
+            self.status.set_and_share_status(self.status.process_statuses())
+            # Useless to reun relation changes handler if upgrade is in progress and will delay.
+            return
 
         # leader should periodically handle configuring the replica set. Incidents such as network
         # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
