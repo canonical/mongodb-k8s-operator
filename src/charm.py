@@ -659,7 +659,7 @@ class MongoDBCharm(CharmBase):
             raise ContainerNotReadyError
 
     # BEGIN: charm events
-    def _on_upgrade(self, event: UpgradeCharmEvent):
+    def _on_upgrade(self, event: UpgradeCharmEvent) -> None:
         """Upgrade event handler.
 
         During an upgrade event, it will set the version in all relations,
