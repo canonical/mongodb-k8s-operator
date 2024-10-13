@@ -1,0 +1,38 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:41:59Z
+
+App                Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application                 active       1  application                   0  10.152.183.125  no       
+config-server-one           active       1  mongodb-k8s                   1  10.152.183.27   no       
+config-server-two           active       1  mongodb-k8s                   2  10.152.183.198  no       
+replication                 blocked      1  mongodb-k8s                   0  10.152.183.238  no       sharding interface cannot be used by replicas
+s3-integrator               blocked      1  s3-integrator  latest/edge   65  10.152.183.106  no       Missing parameters: ['access-key', 'secret-key']
+shard                       blocked      1  mongodb-k8s                   3  10.152.183.87   no       Relation to s3-integrator is not supported, config role must be config-server
+
+Unit                  Workload  Agent      Address       Ports  Message
+application/0*        active    idle       10.1.134.136         
+config-server-one/0*  active    idle       10.1.134.142         
+config-server-two/0*  active    idle       10.1.134.145         
+replication/0*        blocked   idle       10.1.134.139         sharding interface cannot be used by replicas
+s3-integrator/0*      blocked   executing  10.1.134.148         Missing parameters: ['access-key', 'secret-key']
+shard/0*              blocked   executing  10.1.134.149         Relation to s3-integrator is not supported, config role must be config-server
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-one-0: 01:39:10 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-shard-0: 01:39:10 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-config-server-one-0: 01:39:10 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "f84e156f-0bef-499a-84d2-dfb65b356945:r#5#shard": settings f84e156f-0bef-499a-84d2-dfb65b356945:r#5#shard not found (not found)
+unit-shard-0: 01:39:10 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-shard-0: 01:39:43 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-0: 01:39:43 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-0: 01:39:44 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-shard-0: 01:40:48 ERROR unit.shard/0.juju-log database:6: Charm is in sharding role: database. Does not support shard interface.
+unit-replication-0: 01:41:11 ERROR unit.replication/0.juju-log sharding:8: Charm is in sharding role: replication. Does not support sharding interface.
+unit-config-server-one-0: 01:41:12 ERROR unit.config-server-one/0.juju-log config-server:8: Failed to add shard replication to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1728783672, 1), 'signature': {'hash': b'\\xb6\\x07\\xed\\x1f|\\xf9\\xd9\\xf6~\\xf6\\x11\\xd0<(j\\xe3\\x80\\x14\\xe0\\x1c', 'keyId': 7425068547119775769}}, 'operationTime': Timestamp(1728783672, 1)}")
+unit-config-server-one-0: 01:41:12 ERROR unit.config-server-one/0.juju-log config-server:8: replication shard does not have the same auth as the config server.
+unit-replication-0: 01:41:12 ERROR unit.replication/0.juju-log sharding:8: Charm is in sharding role: replication. Does not support sharding interface.
+unit-replication-0: 01:41:14 ERROR unit.replication/0.juju-log sharding:8: Charm is in sharding role: replication. Does not support sharding interface.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
