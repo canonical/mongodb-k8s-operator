@@ -588,7 +588,7 @@ class MongoDBCharm(CharmBase):
             return pure_id1 == pure_id2
         return False
 
-    def __filesystem_handler(self, container: Container) -> None:
+    def _filesystem_handler(self, container: Container) -> None:
         """Pushes files on the container and handle permissions."""
         try:
             # mongod needs keyFile and TLS certificates on filesystem
@@ -601,7 +601,7 @@ class MongoDBCharm(CharmBase):
             logger.error("Cannot initialize workload: %r", e)
             raise FailedToUpdateFilesystem
 
-    def __configure_layers(self, container: Container) -> None:
+    def _configure_layers(self, container: Container) -> None:
         """Configure the layers of the container."""
         modified = False
         current_layers = container.get_plan()
@@ -640,11 +640,11 @@ class MongoDBCharm(CharmBase):
             raise ContainerNotReadyError
 
         try:
-            self.__filesystem_handler(container)
+            self._filesystem_handler(container)
         except FailedToUpdateFilesystem as err:
             raise ContainerNotReadyError from err
 
-        self.__configure_layers(container)
+        self._configure_layers(container)
 
         # when a network cuts and the pod restarts - reconnect to the exporter
         try:
