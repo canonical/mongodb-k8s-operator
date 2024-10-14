@@ -27,14 +27,12 @@ from charms.mongodb.v0.upgrade_helpers import (
     RESUME_ACTION_NAME,
     ROLLBACK_INSTRUCTIONS,
     AbstractUpgrade,
-    FailedToElectNewPrimaryError,
     GenericMongoDBUpgrade,
     PeerRelationNotReady,
     PrecheckFailed,
     UnitState,
     unit_number,
 )
-from charms.mongodb.v1.mongodb import MongoDBConnection
 from charms.mongodb.v1.mongos import BalancerNotEnabledError, MongosConnection
 from lightkube.core.exceptions import ApiError
 from ops import ActiveStatus, StatusBase
@@ -42,7 +40,7 @@ from ops.charm import ActionEvent
 from ops.framework import EventBase, EventSource
 from ops.model import BlockedStatus, Unit
 from overrides import override
-from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
+from tenacity import RetryError
 
 from config import Config
 
@@ -375,24 +373,6 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
             event.fail(message)
             return
         self._upgrade.reconcile_partition(action_event=event)
-
-    def step_down_primary_and_wait_reelection(self) -> None:
-        """Steps down the current primary and waits for a new one to be elected."""
-        if len(self.charm.mongodb_config.hosts) < 2:
-            logger.warning(
-                "No secondaries to become primary - upgrading primary without electing a new one, expect downtime."
-            )
-            return
-
-        old_primary = self.charm.primary
-        with MongoDBConnection(self.charm.mongodb_config) as mongod:
-            mongod.step_down_primary()
-
-        for attempt in Retrying(stop=stop_after_attempt(15), wait=wait_fixed(1), reraise=True):
-            with attempt:
-                new_primary = self.charm.primary
-                if new_primary == old_primary:
-                    raise FailedToElectNewPrimaryError()
 
     def run_post_app_upgrade_task(self, event: EventBase):
         """Runs the post upgrade check to verify that the cluster is healthy.
