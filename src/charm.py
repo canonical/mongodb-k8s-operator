@@ -744,7 +744,8 @@ class MongoDBCharm(CharmBase):
                 self._add_units_from_replica_set(event, mongo, mongodb_hosts - replset_members)
 
                 # app relations should be made aware of the new set of hosts
-                self.client_relations.update_app_relation_data()
+                if not self.is_role(Config.Role.SHARD):
+                    self.client_relations.update_app_relation_data()
 
             except NotReadyError:
                 self.status.set_and_share_status(
@@ -1574,8 +1575,8 @@ class MongoDBCharm(CharmBase):
             )
             logger.error(
                 "Charm is in sharding role: %s. Does not support %s interface.",
-                rel_interface,
                 self.role,
+                rel_interface,
             )
             return False
 
