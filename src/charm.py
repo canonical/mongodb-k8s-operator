@@ -1800,14 +1800,11 @@ class MongoDBCharm(CharmBase):
         ]
 
         for license_name in licenses:
-            try:
-                # Lazy copy, only if the file wasn't already pulled.
-                filename = Path(f"LICENSE_{license_name}")
-                if not filename.is_file():
-                    license_file = container.pull(path=Config.get_license_path(license_name))
-                    filename.write_text(str(license_file.read()))
-            except FileExistsError:
-                pass
+            # Lazy copy, only if the file wasn't already pulled.
+            filename = Path(f"LICENSE_{license_name}")
+            if not filename.is_file():
+                license_file = container.pull(path=Config.get_license_path(license_name))
+                filename.write_text(str(license_file.read()))
 
     @staticmethod
     def _set_data_dir_permissions(container: Container) -> None:
