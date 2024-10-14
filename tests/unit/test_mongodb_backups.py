@@ -33,8 +33,8 @@ RELATION_NAME = "s3-credentials"
 
 @pytest.fixture(autouse=True)
 def patch_upgrades(monkeypatch):
-    monkeypatch.setattr("charm.k8s_upgrade._Partition.get", lambda *args, **kwargs: 0)
-    monkeypatch.setattr("charm.k8s_upgrade._Partition.set", lambda *args, **kwargs: None)
+    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.get", lambda *args, **kwargs: 0)
+    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.set", lambda *args, **kwargs: None)
 
 
 class TestMongoBackups(unittest.TestCase):

@@ -81,7 +81,6 @@ from tenacity import (
     wait_fixed,
 )
 
-import k8s_upgrade
 from config import Config
 from exceptions import (
     AdminUserCreationError,
@@ -90,7 +89,8 @@ from exceptions import (
     MissingSecretError,
     NotConfigServerError,
 )
-from k8s_upgrade import MongoDBUpgrade
+from upgrades import kubernetes_upgrades
+from upgrades.mongodb_upgrades import MongoDBUpgrade
 
 logger = logging.getLogger(__name__)
 
@@ -877,8 +877,8 @@ class MongoDBCharm(CharmBase):
         If an upgrade is not in progress, the leader unit will reset the partition to 0.
         """
         current_unit_number = unit_number(self.unit)
-        if k8s_upgrade.partition.get(app_name=self.app.name) < current_unit_number:
-            k8s_upgrade.partition.set(app_name=self.app.name, value=current_unit_number)
+        if kubernetes_upgrades.partition.get(app_name=self.app.name) < current_unit_number:
+            kubernetes_upgrades.partition.set(app_name=self.app.name, value=current_unit_number)
             logger.debug(f"Partition set to {current_unit_number} during stop event")
 
     def __handle_relation_departed_on_stop(self) -> None:

@@ -15,7 +15,7 @@ from tenacity import Future, RetryError
 
 from charm import MongoDBCharm
 from config import Config
-from k8s_upgrade import DeployedWithoutTrust, KubernetesUpgrade
+from upgrades.kubernetes_upgrades import DeployedWithoutTrust, KubernetesUpgrade
 
 from .helpers import patch_network_get
 
@@ -23,8 +23,8 @@ from .helpers import patch_network_get
 @pytest.fixture(autouse=True)
 def patch_upgrades(monkeypatch):
     monkeypatch.setattr("charms.mongodb.v0.upgrade_helpers.AbstractUpgrade.in_progress", False)
-    monkeypatch.setattr("charm.k8s_upgrade._Partition.get", lambda *args, **kwargs: 0)
-    monkeypatch.setattr("charm.k8s_upgrade._Partition.set", lambda *args, **kwargs: None)
+    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.get", lambda *args, **kwargs: 0)
+    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.set", lambda *args, **kwargs: None)
 
 
 class TestUpgrades(unittest.TestCase):
@@ -87,7 +87,7 @@ class TestUpgrades(unittest.TestCase):
         )
 
     @parameterized.expand([[403, DeployedWithoutTrust], [500, ApiError]])
-    @patch("charm.k8s_upgrade._Partition.get")
+    @patch("charm.kubernetes_upgrades._Partition.get")
     def test_lightkube_errors(self, status_code, expected_error, patch_get):
         # We need a valid API error due to error handling in lightkube
         api_error = ApiError(
@@ -107,11 +107,11 @@ class TestUpgrades(unittest.TestCase):
         ]
     )
     @patch(
-        "charm.k8s_upgrade.KubernetesUpgrade._app_workload_container_version",
+        "charm.kubernetes_upgrades.KubernetesUpgrade._app_workload_container_version",
         new_callable=PropertyMock,
     )
     @patch(
-        "charm.k8s_upgrade.KubernetesUpgrade._unit_workload_container_versions",
+        "charm.kubernetes_upgrades.KubernetesUpgrade._unit_workload_container_versions",
         new_callable=PropertyMock,
     )
     def test__get_unit_healthy_status(
@@ -134,8 +134,8 @@ class TestUpgrades(unittest.TestCase):
         ]
     )
     @patch("ops.EventBase.defer")
-    @patch("charm.k8s_upgrade.MongoDBUpgrade.wait_for_cluster_healthy")
-    @patch("charm.k8s_upgrade.MongoDBUpgrade.is_cluster_able_to_read_write")
+    @patch("charm.MongoDBUpgrade.wait_for_cluster_healthy")
+    @patch("charm.MongoDBUpgrade.is_cluster_able_to_read_write")
     def test_run_post_upgrade_checks(
         self,
         cluster_healthy_return,

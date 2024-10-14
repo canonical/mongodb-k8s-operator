@@ -38,8 +38,8 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(autouse=True)
 def patch_upgrades(monkeypatch):
     monkeypatch.setattr("charms.mongodb.v0.upgrade_helpers.AbstractUpgrade.in_progress", False)
-    monkeypatch.setattr("charm.k8s_upgrade._Partition.get", lambda *args, **kwargs: 0)
-    monkeypatch.setattr("charm.k8s_upgrade._Partition.set", lambda *args, **kwargs: None)
+    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.get", lambda *args, **kwargs: 0)
+    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.set", lambda *args, **kwargs: None)
 
 
 class TestCharm(unittest.TestCase):

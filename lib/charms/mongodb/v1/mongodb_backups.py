@@ -800,7 +800,7 @@ class MongoDBBackups(Object):
         """Get the error status for a provided backup."""
         pbm_status = self.charm.run_pbm_command(["status", "--out=json"])
         pbm_status = json.loads(pbm_status)
-        backups = pbm_status["backups"].get("snapshot", [])
+        backups = pbm_status["backups"].get("snapshot") or []
         for backup in backups:
             if backup_id == backup["name"]:
                 return backup.get("error", "")
