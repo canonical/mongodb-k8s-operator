@@ -41,7 +41,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 5
+LIBPATCH = 6
 
 logger = logging.getLogger(__name__)
 
@@ -800,7 +800,7 @@ class MongoDBBackups(Object):
         """Get the error status for a provided backup."""
         pbm_status = self.charm.run_pbm_command(["status", "--out=json"])
         pbm_status = json.loads(pbm_status)
-        backups = pbm_status["backups"].get("snapshot", [])
+        backups = pbm_status["backups"].get("snapshot") or []
         for backup in backups:
             if backup_id == backup["name"]:
                 return backup.get("error", "")
