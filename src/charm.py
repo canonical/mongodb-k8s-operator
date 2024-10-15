@@ -5,6 +5,7 @@
 import json
 import logging
 import re
+import time
 from typing import Any, Dict, List, Optional, Set
 
 import jinja2
@@ -41,6 +42,9 @@ from data_platform_helpers.version_check import (
     CrossAppVersionChecker,
     get_charm_revision,
 )
+from lightkube import Client
+from lightkube.resources.apps_v1 import StatefulSet
+from lightkube.types import PatchType
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -88,9 +92,8 @@ APP_SCOPE = Config.Relations.APP_SCOPE
 UNIT_SCOPE = Config.Relations.UNIT_SCOPE
 Scopes = Config.Relations.Scopes
 
-ONE_HOUR = 3600
-HALF_MINUTE = 30
 ONE_MINUTE = 60
+ONE_YEAR = 31540000
 USER_CREATING_MAX_ATTEMPTS = 5
 USER_CREATION_COOLDOWN = 30
 REPLICA_SET_INIT_CHECK_TIMEOUT = 10
@@ -101,10 +104,10 @@ class MongoDBCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
+        self.framework.observe(self.on.stop, self._on_stop)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(
             self.on[Config.Relations.PEERS].relation_joined, self._relation_changes_handler
@@ -559,6 +562,7 @@ class MongoDBCharm(CharmBase):
         return False
 
     # BEGIN: charm events
+
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
         # Get a reference the container attribute
@@ -656,6 +660,19 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
+        # Patch the stateful set to have an increased termination period to prevent data loss on
+        # removed shards. As Juju gives us a termination period of 30 seconds:
+        # https://bugs.launchpad.net/juju/+bug/2035102
+
+        # It doesn't matter if we patch the stateful set before or after the charm has started.
+        # The usual start hooks emitted by juju will have already been emitted, so we can expect
+        # two rounds of restarts on one or more units (some units that get initialised late will
+        # only have one round of restarts). The second round of start hooks will be emitted
+        # **only after the replica set has been initialized**, we have 0 control over that.
+
+        if self.unit.is_leader() and self.get_current_termination_period() != ONE_YEAR:
+            self.update_termination_grace_period(ONE_YEAR)
+
         container = self.unit.get_container(Config.CONTAINER_NAME)
         if not container.can_connect():
             logger.debug("mongod container is not ready yet.")
@@ -765,9 +782,35 @@ class MongoDBCharm(CharmBase):
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
+    def get_current_termination_period(self) -> int:
+        """Returns the current termination period for the stateful set of this juju application."""
+        client = Client()
+        statefulset = client.get(StatefulSet, name=self.app.name, namespace=self.model.name)
+        return statefulset.spec.template.spec.terminationGracePeriodSeconds
+
     def update_termination_grace_period(self, seconds: int) -> None:
-        """Patch the termination grace period for the stateful set."""
-        pass
+        """Patch the termination grace period for the stateful set of this juju application."""
+        # updating the termination grace period is only useful for shards, whose sudden removal
+        # can result in data-loss
+        if not self.is_role(Config.Role.SHARD):
+            return
+
+        client = Client()
+        patch_data = {
+            "spec": {
+                "template": {
+                    "spec": {"terminationGracePeriodSeconds": ONE_YEAR},
+                    "metadata": {"annotations": {"force-update": str(int(time.time()))}},
+                }
+            }
+        }
+        client.patch(
+            StatefulSet,
+            name=self.app.name,
+            namespace=self.model.name,
+            obj=patch_data,
+            patch_type=PatchType.MERGE,
+        )
 
     def mongodb_storage_detaching(self, event) -> None:
         """Before storage detaches, allow removing unit to remove itself from the set.
@@ -775,10 +818,6 @@ class MongoDBCharm(CharmBase):
         If the removing unit is primary also allow it to step down and elect another unit as
         primary while it still has access to its storage.
         """
-        # self.update_termination_grace_period(ONE_HOUR)
-        # if time_left < ONE_MINUTE:
-        # time_left = (datetime.now() - start_time).seconds < 3600
-
         if self.upgrade_in_progress:
             # We cannot defer and prevent a user from removing a unit, log a warning instead.
             logger.warning(
@@ -806,9 +845,6 @@ class MongoDBCharm(CharmBase):
                 self.shard.wait_for_draining(mongos_hosts)
                 logger.info("Shard successfully drained storage.")
 
-            self.update_termination_grace_period(HALF_MINUTE)
-            return
-
         try:
             # retries over a period of 10 minutes in an attempt to resolve race conditions it is
             # not possible to defer in storage detached.
@@ -830,7 +866,23 @@ class MongoDBCharm(CharmBase):
         except PyMongoError as e:
             logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
-        self.update_termination_grace_period(HALF_MINUTE)
+    def _on_stop(self, _) -> None:
+        """Handle on_stop event.
+
+        On stop can occur after a user has refreshed, after a unit has been removed, or when a pod
+        is getting restarted.
+        """
+        # I can add this functionality to mongodb lib - i.e. a function wait_for_new_primary, but
+        # this is just a POC
+        waiting = 0
+        while (
+            self.unit.name == self.primary and len(self.peers_units) > 1 and waiting < ONE_MINUTE
+        ):
+            logger.debug("Stepping down current primary, before stopping.")
+            with MongoDBConnection(self.mongodb_config) as mongo:
+                mongo.step_down_primary()
+            time.sleep(1)
+            waiting += 1
 
     def _on_update_status(self, event: UpdateStatusEvent):
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
@@ -865,6 +917,17 @@ class MongoDBCharm(CharmBase):
             self._relation_changes_handler(event)
 
         self.status.set_and_share_status(self.status.process_statuses())
+
+        # We must ensure that juju does not overwrite our termination period, so we should update
+        # it as needed. However, updating the termination period can result in an onslaught of
+        # events, including the upgrade event. To prevent this from messing with upgrades do not
+        # update the termination period when an upgrade is occurring.
+        if (
+            self.unit.is_leader()
+            and self.get_current_termination_period() != ONE_YEAR
+            and not self.upgrade_in_progress
+        ):
+            self.update_termination_grace_period(ONE_YEAR)
 
     # END: charm events
 
