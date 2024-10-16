@@ -1,0 +1,322 @@
+[32mINFO    [0m juju.model:model.py:2098 Deploying ch:amd64/jammy/self-signed-certificates-155
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: Primary
+  shard-one/2 [idle] active: 
+  shard-two/0 [idle] active: Primary
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: 
+  shard-one/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-one/0 [idle] blocked: Shard requires TLS to be enabled.
+  shard-one/1 [idle] blocked: Shard requires TLS to be enabled.
+  shard-one/2 [idle] blocked: Shard requires TLS to be enabled.
+  shard-two/0 [idle] active: Primary
+  config-server/0 [idle] blocked: shards shard-one are unreachable.
+  config-server/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-one/0 [idle] blocked: Shard requires TLS to be enabled.
+  shard-one/1 [idle] blocked: Shard requires TLS to be enabled.
+  shard-one/2 [idle] blocked: Shard requires TLS to be enabled.
+  config-server/0 [idle] active: 
+  config-server/1 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-one/0 [executing] blocked: Shard requires TLS to be enabled.
+  shard-one/1 [idle] blocked: Shard requires TLS to be enabled.
+  shard-one/2 [idle] blocked: Shard requires TLS to be enabled.
+  config-server/0 [idle] active: 
+  config-server/1 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-one/0 [executing] maintenance: enabling TLS
+  shard-one/1 [executing] maintenance: enabling TLS
+  shard-one/2 [idle] active: 
+  config-server/0 [executing] active: 
+  config-server/1 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: 
+  shard-one/2 [idle] active: 
+  config-server/0 [idle] active: 
+  config-server/1 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] blocked: shards shard-one are unreachable.
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: 
+  shard-one/2 [idle] active: 
+  shard-two/0 [idle] active: Primary
+  config-server/0 [idle] active: 
+  config-server/1 [executing] active: Primary
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:13:44Z
+
+App                                Version  Status       Scale  Charm                     Channel        Rev  Address         Exposed  Message
+config-server                               maintenance      2  mongodb-k8s                                3  10.152.183.152  no       disabling TLS
+self-signed-certificates                    active           1  self-signed-certificates  latest/stable  155  10.152.183.253  no       
+self-signed-certificates-separate           active           1  self-signed-certificates  latest/stable  155  10.152.183.54   no       
+shard-one                                   active           3  mongodb-k8s                                4  10.152.183.174  no       
+shard-two                                   error            1  mongodb-k8s                                5  10.152.183.58   no       hook failed: "update-status"
+
+Unit                                  Workload     Agent      Address       Ports  Message
+config-server/0*                      maintenance  executing  10.1.121.225         disabling TLS
+config-server/1                       active       executing  10.1.121.226         
+self-signed-certificates-separate/0*  active       idle       10.1.121.239         
+self-signed-certificates/0*           active       idle       10.1.121.218         
+shard-one/0*                          active       idle       10.1.121.233         
+shard-one/1                           active       idle       10.1.121.235         
+shard-one/2                           active       idle       10.1.121.234         
+shard-two/0*                          error        idle       10.1.121.238         hook failed: "update-status"
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-0: 01:39:57 ERROR unit.config-server/0.juju-log config-server:3: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729042796, 4), \'signature\': {\'hash\': b\'\\xe3\\x8f\\x1a\\xb5\\x99\\xda\\xe3O\\x98\\xc4|\\xf3\\xdc\\x0f\\xac{\\xc41\\xb6H\', \'keyId\': 7426181699563683846}}, \'operationTime\': Timestamp(1729042796, 4)}')
+unit-config-server-0: 01:39:57 ERROR unit.config-server/0.juju-log config-server:3: Failed to add shard-one to cluster
+unit-config-server-0: 01:39:57 ERROR unit.config-server/0.juju-log config-server:3: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729042796, 4), \'signature\': {\'hash\': b\'\\xe3\\x8f\\x1a\\xb5\\x99\\xda\\xe3O\\x98\\xc4|\\xf3\\xdc\\x0f\\xac{\\xc41\\xb6H\', \'keyId\': 7426181699563683846}}, \'operationTime\': Timestamp(1729042796, 4)}')
+unit-shard-one-2: 01:47:39 ERROR unit.shard-one/2.juju-log certificates:5: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-1: 01:47:39 ERROR unit.shard-one/1.juju-log certificates:5: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-0: 01:47:39 ERROR unit.shard-one/0.juju-log certificates:5: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-two-0: 01:47:40 ERROR unit.shard-two/0.juju-log certificates:6: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-config-server-1: 01:47:40 ERROR unit.config-server/1.juju-log certificates:7: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-0: 01:47:40 ERROR unit.shard-one/0.juju-log certificates:5: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-1: 01:47:40 ERROR unit.shard-one/1.juju-log certificates:5: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-2: 01:47:40 ERROR unit.shard-one/2.juju-log certificates:5: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-0: 01:47:40 ERROR unit.config-server/0.juju-log certificates:7: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-two-0: 01:47:40 ERROR unit.shard-two/0.juju-log certificates:6: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-1: 01:47:40 ERROR unit.config-server/1.juju-log certificates:7: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-0: 01:47:41 ERROR unit.config-server/0.juju-log certificates:7: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-1: 01:47:54 ERROR unit.config-server/1.juju-log certificates:7: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-1: 01:47:54 ERROR unit.config-server/1.juju-log certificates:7: This operation (update_relation_data()) can only be performed by the leader unit
+unit-shard-one-1: 01:48:03 ERROR unit.shard-one/1.juju-log certificates:5: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/synchronous/pool.py", line 538, in command
+    return command(
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/synchronous/network.py", line 208, in command
+    reply = receive_message(conn, request_id)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/synchronous/network.py", line 320, in receive_message
+    length, _, response_to, op_code = _UNPACK_HEADER(_receive_data_on_socket(conn, 16, deadline))
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/synchronous/network.py", line 404, in _receive_data_on_socket
+    raise OSError("connection closed")
+OSError: connection closed
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1658, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 45, in main
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/_main.py", line 543, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/_main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/_main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/_main.py", line 134, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 857, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 947, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/tls_certificates_interface/v3/tls_certificates.py", line 1924, in _on_relation_changed
+    self.on.certificate_available.emit(
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 857, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 947, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/mongodb_tls.py", line 249, in _on_certificate_available
+    self.charm.restart_charm_services()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1278, in restart_charm_services
+    self._connect_pbm_agent()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1422, in _connect_pbm_agent
+    self.has_config_server() and self.shard._is_added_to_cluster()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 1097, in _is_added_to_cluster
+    cluster_shards = self.get_shard_members()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 1146, in get_shard_members
+    return mongo.get_shard_members()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/mongos.py", line 92, in get_shard_members
+    shard_list = self.client.admin.command("listShards")
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/synchronous/database.py", line 930, in command
+    return self._command(
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/synchronous/database.py", line 770, in _command
+    return conn.command(
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/synchronous/helpers.py", line 45, in inner
+    return func(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/synchronous/pool.py", line 566, in command
+    self._raise_connection_failure(error)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/synchronous/pool.py", line 763, in _raise_connection_failure
+    _raise_connection_failure(self.address, error, timeout_details=details)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/pymongo/synchronous/pool.py", line 208, in _raise_connection_failure
+    raise AutoReconnect(msg) from error
+pymongo.errors.AutoReconnect: config-server-0.config-server-endpoints:27018: connection closed (configured timeouts: connectTimeoutMS: 2000.0ms)
+unit-shard-one-1: 01:48:03 ERROR juju.worker.uniter.operation hook "certificates-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-config-server-1: 01:48:09 ERROR unit.config-server/1.juju-log This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-1: 01:48:09 ERROR unit.config-server/1.juju-log This operation (update_relation_data()) can only be performed by the leader unit
+unit-shard-one-0: 01:48:53 ERROR unit.shard-one/0.juju-log Unable to access primary due to: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 670f1b83e59797e10362ed41, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0009451939999962633>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006888609998441098>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0007075729999996838>]>
+unit-shard-one-0: 01:48:56 ERROR unit.shard-one/0.juju-log Unable to access primary due to: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 670f1b871bccd4a4d0e647a9, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0013221389999671374>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0008548430000701046>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.001363257000093654>]>
+unit-shard-one-0: 01:50:15 ERROR unit.shard-one/0.juju-log certificates:5: An unknown certificate is available -- ignoring.
+unit-shard-one-0: 01:50:15 ERROR unit.shard-one/0.juju-log certificates:5: An unknown certificate is available -- ignoring.
+unit-shard-one-1: 01:50:17 ERROR unit.shard-one/1.juju-log certificates:5: An unknown certificate is available -- ignoring.
+unit-shard-one-1: 01:50:17 ERROR unit.shard-one/1.juju-log certificates:5: An unknown certificate is available -- ignoring.
+unit-shard-one-2: 01:50:39 ERROR unit.shard-one/2.juju-log certificates:5: An unknown certificate is available -- ignoring.
+unit-shard-one-2: 01:50:39 ERROR unit.shard-one/2.juju-log certificates:5: An unknown certificate is available -- ignoring.
+unit-shard-one-1: 01:50:44 ERROR unit.shard-one/1.juju-log certificates:5: An unknown certificate is available -- ignoring.
+unit-shard-one-1: 01:50:44 ERROR unit.shard-one/1.juju-log certificates:5: An unknown certificate is available -- ignoring.
+unit-shard-one-0: 01:50:44 ERROR unit.shard-one/0.juju-log certificates:5: An unknown certificate is available -- ignoring.
+unit-shard-one-0: 01:50:44 ERROR unit.shard-one/0.juju-log certificates:5: An unknown certificate is available -- ignoring.
+unit-shard-two-0: 01:52:44 ERROR unit.shard-two/0.juju-log certificates:6: An unknown certificate is available -- ignoring.
+unit-shard-two-0: 01:52:44 ERROR unit.shard-two/0.juju-log certificates:6: An unknown certificate is available -- ignoring.
+unit-config-server-0: 01:54:25 ERROR unit.config-server/0.juju-log certificates:7: An unknown certificate is available -- ignoring.
+unit-config-server-0: 01:54:25 ERROR unit.config-server/0.juju-log certificates:7: An unknown certificate is available -- ignoring.
+unit-config-server-1: 01:54:27 ERROR unit.config-server/1.juju-log certificates:7: An unknown certificate is available -- ignoring.
+unit-config-server-1: 01:54:27 ERROR unit.config-server/1.juju-log certificates:7: An unknown certificate is available -- ignoring.
+unit-config-server-1: 01:54:30 ERROR unit.config-server/1.juju-log certificates:7: An unknown certificate is available -- ignoring.
+unit-config-server-1: 01:54:30 ERROR unit.config-server/1.juju-log certificates:7: An unknown certificate is available -- ignoring.
+unit-config-server-1: 01:54:30 ERROR unit.config-server/1.juju-log certificates:7: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-1: 01:54:30 ERROR unit.config-server/1.juju-log certificates:7: This operation (update_relation_data()) can only be performed by the leader unit
+unit-config-server-0: 01:54:47 ERROR unit.config-server/0.juju-log certificates:7: An unknown certificate is available -- ignoring.
+unit-config-server-0: 01:54:47 ERROR unit.config-server/0.juju-log certificates:7: An unknown certificate is available -- ignoring.
+unit-config-server-1: 01:56:35 ERROR unit.config-server/1.juju-log certificates:7: This operation (delete_relation_data()) can only be performed by the leader unit
+unit-config-server-1: 01:56:35 ERROR unit.config-server/1.juju-log certificates:7: This operation (delete_relation_data()) can only be performed by the leader unit
+unit-shard-two-0: 01:56:47 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "704931b8-5091-465f-8819-f6f45f6a4932:r#6#self-signed-certificates": settings 704931b8-5091-465f-8819-f6f45f6a4932:r#6#self-signed-certificates not found (not found)
+unit-shard-one-0: 01:56:52 ERROR unit.shard-one/0.juju-log Unable to access primary due to: shard-one-0.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),shard-one-2.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),shard-one-1.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms), Timeout: 1.0s, Topology Description: <TopologyDescription id: 670f1d63e314e17dd38b359e, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('shard-one-0.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('shard-one-1.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('shard-one-2.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>
+unit-shard-one-0: 01:56:55 ERROR unit.shard-one/0.juju-log Unable to access primary due to: shard-one-1.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),shard-one-0.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),shard-one-2.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms), Timeout: 1.0s, Topology Description: <TopologyDescription id: 670f1d6653b6f61f87228532, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('shard-one-0.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('shard-one-1.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('shard-one-2.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>
+unit-config-server-0: 01:56:55 ERROR unit.config-server/0.juju-log config-server:3: Deferring _on_relation_event for shards interface since: error=ServerSelectionTimeoutError("config-server-0.config-server-endpoints:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms),config-server-1.config-server-endpoints:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms), Timeout: 1.0s, Topology Description: <TopologyDescription id: 670f1d66c8122b0d6f547683, topology_type: Unknown, servers: [<ServerDescription ('config-server-0.config-server-endpoints', 27018) server_type: Unknown, rtt: None, error=AutoReconnect('config-server-0.config-server-endpoints:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('config-server-1.config-server-endpoints', 27018) server_type: Unknown, rtt: None, error=AutoReconnect('config-server-1.config-server-endpoints:27018: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>")
+unit-shard-one-2: 01:57:16 ERROR unit.shard-one/2.juju-log database-peers:1: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/model.py", line 3319, in _run
+    result = subprocess.run(args, **kwargs)  # type: ignore
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '('/var/lib/juju/tools/unit-shard-one-2/secret-get', '--label', 'shard-one.unit', '--refresh', '--format=json')' returned non-zero exit status 1.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/model.py", line 3691, in secret_get
+    result = self._run('secret-get', *args, return_output=True, use_json=True)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/model.py", line 3321, in _run
+    raise ModelError(e.stderr) from e
+ops.model.ModelError: ERROR secret "secret:cs7hmesm9eac74sdqn80" not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1658, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 45, in main
+    return _main.main(charm_class=charm_class, use_juju_for_storage=use_juju_for_storage)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/_main.py", line 543, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/_main.py", line 529, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/_main.py", line 518, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name, self._juju_context)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/_main.py", line 134, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 347, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 857, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 947, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 691, in _relation_changes_handler
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1395, in _connect_mongodb_exporter
+    new_service_config = self._monitor_layer.services.get("mongodb_exporter", {})
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 285, in _monitor_layer
+    "environment": {"MONGODB_URI": self.monitor_config.uri},
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 226, in monitor_config
+    return self._get_mongodb_config_for_user(MonitorUser, [self.unit_host(self.unit)])
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1054, in _get_mongodb_config_for_user
+    external_ca, _ = self.tls.get_tls_files(internal=False)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/mongodb_tls.py", line 371, in get_tls_files
+    if not self.is_tls_enabled(internal):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/mongodb_tls.py", line 78, in is_tls_enabled
+    return self.get_tls_secret(internal, Config.TLS.SECRET_CERT_LABEL) is not None
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v1/mongodb_tls.py", line 398, in get_tls_secret
+    return self.charm.get_secret(UNIT_SCOPE, label_name)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1231, in get_secret
+    value = secret.get_content().get(key)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/mongodb_secrets.py", line 98, in get_content
+    self._secret_content = self.meta.get_content(refresh=True)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/model.py", line 1462, in get_content
+    self._content = self._backend.secret_get(id=self.id, label=self.label, refresh=refresh)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/model.py", line 3694, in secret_get
+    raise SecretNotFoundError() from e
+ops.model.SecretNotFoundError
+unit-shard-one-2: 01:57:16 ERROR juju.worker.uniter.operation hook "database-peers-relation-departed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-1: 01:57:26 ERROR unit.shard-one/1.juju-log shard-one/1.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 670f1d85aa8d2fd2974bdaea, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSGhost, rtt: 0.0007558900001640723>]>
+unit-config-server-1: 01:57:27 ERROR unit.config-server/1.juju-log config-server/1.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 670f1d86a603a6366df56446, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('config-server-1.config-server-endpoints', 27017) server_type: RSGhost, rtt: 0.0037328550001802796>]>
+unit-shard-one-2: 01:57:31 ERROR unit.shard-one/2.juju-log shard-one/2.is_unit_in_replica_set PyMongoError=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 670f1d8a8614b152fae30137, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSGhost, rtt: 0.0006111170000622224>]>
+controller-0: 01:58:33 ERROR juju.worker.caasapplicationprovisioner.runner exited "shard-one": finding filesystem info for shard-one-mongodb-a3fba011: unable to get persistent volume claim: k8s: persistentvolumeclaims "shard-one-mongodb-a3fba011-shard-one-2" not found
+controller-0: 01:58:38 ERROR juju.worker.caasapplicationprovisioner.runner exited "config-server": finding filesystem info for config-server-mongodb-logs-6a05278f: unable to get persistent volume claim: k8s: persistentvolumeclaims "config-server-mongodb-logs-6a05278f-config-server-0" not found
+unit-shard-two-0: 02:00:51 ERROR unit.shard-two/0.juju-log certificates:12: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-0: 02:00:51 ERROR unit.shard-one/0.juju-log certificates:11: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-1: 02:00:51 ERROR unit.shard-one/1.juju-log certificates:11: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-config-server-0: 02:00:51 ERROR unit.config-server/0.juju-log certificates:13: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-2: 02:00:51 ERROR unit.shard-one/2.juju-log certificates:11: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-two-0: 02:00:51 ERROR unit.shard-two/0.juju-log certificates:12: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-1: 02:00:51 ERROR unit.config-server/1.juju-log certificates:13: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-0: 02:00:52 ERROR unit.shard-one/0.juju-log certificates:11: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-1: 02:00:52 ERROR unit.shard-one/1.juju-log certificates:11: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-0: 02:00:52 ERROR unit.config-server/0.juju-log certificates:13: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-1: 02:00:52 ERROR unit.config-server/1.juju-log certificates:13: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-2: 02:00:52 ERROR unit.shard-one/2.juju-log certificates:11: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-0: 02:02:26 ERROR unit.config-server/0.juju-log config-server:14: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find user "O=config-server,x500UniqueIdentifier=e6873898-05a0-45e2-8816-8b0c8b9abbf4,CN=config-server" for db "$external", full error: {\'ok\': 0.0, \'errmsg\': \'Could not find user "O=config-server,x500UniqueIdentifier=e6873898-05a0-45e2-8816-8b0c8b9abbf4,CN=config-server" for db "$external"\', \'code\': 11, \'codeName\': \'UserNotFound\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729044146, 1), \'signature\': {\'hash\': b\'\\xe7\\xa0w\\x07\\xb4\\xd2+\\x9a\\xa5\\xbezoo\\xb9\\xa3S\\x9c\\xdb\\x15h\', \'keyId\': 7426187356035612698}}, \'operationTime\': Timestamp(1729044146, 1)}')
+unit-config-server-0: 02:02:26 ERROR unit.config-server/0.juju-log config-server:14: Failed to add shard-one to cluster
+unit-config-server-0: 02:02:26 ERROR unit.config-server/0.juju-log config-server:14: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find user "O=config-server,x500UniqueIdentifier=e6873898-05a0-45e2-8816-8b0c8b9abbf4,CN=config-server" for db "$external", full error: {\'ok\': 0.0, \'errmsg\': \'Could not find user "O=config-server,x500UniqueIdentifier=e6873898-05a0-45e2-8816-8b0c8b9abbf4,CN=config-server" for db "$external"\', \'code\': 11, \'codeName\': \'UserNotFound\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729044146, 1), \'signature\': {\'hash\': b\'\\xe7\\xa0w\\x07\\xb4\\xd2+\\x9a\\xa5\\xbezoo\\xb9\\xa3S\\x9c\\xdb\\x15h\', \'keyId\': 7426187356035612698}}, \'operationTime\': Timestamp(1729044146, 1)}')
+unit-config-server-0: 02:02:43 ERROR unit.config-server/0.juju-log config-server:14: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729044163, 2), \'signature\': {\'hash\': b"\\x8d\'\\xfd\\x07\\x83\\x9f\\xc3c7\\x05\\x86\\xc2\\xba_\\xbdJ\\xf0\\xdd\\xb0\\xcc", \'keyId\': 7426187356035612698}}, \'operationTime\': Timestamp(1729044163, 1)}')
+unit-config-server-0: 02:02:43 ERROR unit.config-server/0.juju-log config-server:14: Failed to add shard-one to cluster
+unit-config-server-0: 02:02:43 ERROR unit.config-server/0.juju-log config-server:14: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729044163, 2), \'signature\': {\'hash\': b"\\x8d\'\\xfd\\x07\\x83\\x9f\\xc3c7\\x05\\x86\\xc2\\xba_\\xbdJ\\xf0\\xdd\\xb0\\xcc", \'keyId\': 7426187356035612698}}, \'operationTime\': Timestamp(1729044163, 1)}')
+unit-shard-one-1: 02:02:45 ERROR unit.shard-one/1.juju-log certificates:11: An unknown certificate is available -- ignoring.
+unit-shard-one-1: 02:02:45 ERROR unit.shard-one/1.juju-log certificates:11: An unknown certificate is available -- ignoring.
+unit-shard-one-2: 02:02:47 ERROR unit.shard-one/2.juju-log certificates:11: An unknown certificate is available -- ignoring.
+unit-shard-one-2: 02:02:48 ERROR unit.shard-one/2.juju-log certificates:11: An unknown certificate is available -- ignoring.
+unit-shard-one-0: 02:02:48 ERROR unit.shard-one/0.juju-log certificates:11: An unknown certificate is available -- ignoring.
+unit-shard-one-0: 02:02:48 ERROR unit.shard-one/0.juju-log certificates:11: An unknown certificate is available -- ignoring.
+unit-config-server-0: 02:03:00 ERROR unit.config-server/0.juju-log config-server:14: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729044180, 2), \'signature\': {\'hash\': b\'\\xa6\\xc7Pl\\xcd\\xd7\\xe5\\xf3\\x98q{W\\xec\\x07\\xd1\\xe9\\xeb\\xd7\\xc5K\', \'keyId\': 7426187356035612698}}, \'operationTime\': Timestamp(1729044180, 1)}')
+unit-config-server-0: 02:03:01 ERROR unit.config-server/0.juju-log config-server:14: Failed to add shard-one to cluster
+unit-config-server-0: 02:03:01 ERROR unit.config-server/0.juju-log config-server:14: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729044180, 2), \'signature\': {\'hash\': b\'\\xa6\\xc7Pl\\xcd\\xd7\\xe5\\xf3\\x98q{W\\xec\\x07\\xd1\\xe9\\xeb\\xd7\\xc5K\', \'keyId\': 7426187356035612698}}, \'operationTime\': Timestamp(1729044180, 1)}')
+unit-shard-one-0: 02:03:03 ERROR unit.shard-one/0.juju-log Failed changing the password: Not primary while writing to admin.system.version, full error: {'topologyVersion': {'processId': ObjectId('670f1eca46357775e27dd83b'), 'counter': 10}, 'ok': 0.0, 'errmsg': 'Not primary while writing to admin.system.version', 'code': 189, 'codeName': 'PrimarySteppedDown', 'lastCommittedOpTime': Timestamp(1729044182, 9), '$clusterTime': {'clusterTime': Timestamp(1729044182, 9), 'signature': {'hash': b'\xcd\x16\xdb\xe6\x19\xc3&\x8b\xa74\xce^\xfe\x8a\xf2\x06\xfc\x9b\xac\x15', 'keyId': 7426187356035612698}}, 'operationTime': Timestamp(1729044182, 9)}
+unit-shard-one-0: 02:03:07 ERROR unit.shard-one/0.juju-log Failed changing the password: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 670f1eda0a67cebf35cfc1ba, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006959779998396698>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('670f1eca46357775e27dd83b'), 'counter': 10}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 11288, 'lastCommittedOpTime': Timestamp(1729044182, 9), '$clusterTime': {'clusterTime': Timestamp(1729044182, 9), 'signature': {'hash': b'\\xcd\\x16\\xdb\\xe6\\x19\\xc3&\\x8b\\xa74\\xce^\\xfe\\x8a\\xf2\\x06\\xfc\\x9b\\xac\\x15', 'keyId': 7426187356035612698}}, 'operationTime': Timestamp(1729044182, 9)}")>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('670f1ece77dd10b59e29715f'), 'counter': 6}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 11283, 'lastCommittedOpTime': Timestamp(1729044182, 9), '$clusterTime': {'clusterTime': Timestamp(1729044182, 9), 'signature': {'hash': b'\\xcd\\x16\\xdb\\xe6\\x19\\xc3&\\x8b\\xa74\\xce^\\xfe\\x8a\\xf2\\x06\\xfc\\x9b\\xac\\x15', 'keyId': 7426187356035612698}}, 'operationTime': Timestamp(1729044182, 9)}")>]>
+unit-shard-one-0: 02:03:11 ERROR unit.shard-one/0.juju-log Failed changing the password: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 670f1ede0a67cebf35cfc1bb, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0010681069998099701>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0012393409997457638>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0010320999999748892>]>
+unit-config-server-0: 02:03:15 ERROR unit.config-server/0.juju-log config-server:15: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find user "O=config-server,x500UniqueIdentifier=e6873898-05a0-45e2-8816-8b0c8b9abbf4,CN=config-server" for db "$external", full error: {\'ok\': 0.0, \'errmsg\': \'Could not find user "O=config-server,x500UniqueIdentifier=e6873898-05a0-45e2-8816-8b0c8b9abbf4,CN=config-server" for db "$external"\', \'code\': 11, \'codeName\': \'UserNotFound\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729044195, 1), \'signature\': {\'hash\': b\'Z6\\x11\\xc3\\x8cN\\xfcq\\xbcv\\xf2r?\\xa7\\x06\\xbb&\\xb7\\x8cT\', \'keyId\': 7426187356035612698}}, \'operationTime\': Timestamp(1729044195, 1)}')
+unit-config-server-0: 02:03:15 ERROR unit.config-server/0.juju-log config-server:15: Failed to add shard-two to cluster
+unit-config-server-0: 02:03:15 ERROR unit.config-server/0.juju-log config-server:15: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find user "O=config-server,x500UniqueIdentifier=e6873898-05a0-45e2-8816-8b0c8b9abbf4,CN=config-server" for db "$external", full error: {\'ok\': 0.0, \'errmsg\': \'Could not find user "O=config-server,x500UniqueIdentifier=e6873898-05a0-45e2-8816-8b0c8b9abbf4,CN=config-server" for db "$external"\', \'code\': 11, \'codeName\': \'UserNotFound\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729044195, 1), \'signature\': {\'hash\': b\'Z6\\x11\\xc3\\x8cN\\xfcq\\xbcv\\xf2r?\\xa7\\x06\\xbb&\\xb7\\x8cT\', \'keyId\': 7426187356035612698}}, \'operationTime\': Timestamp(1729044195, 1)}')
+unit-shard-two-0: 02:03:26 ERROR unit.shard-two/0.juju-log certificates:12: An unknown certificate is available -- ignoring.
+unit-shard-two-0: 02:03:26 ERROR unit.shard-two/0.juju-log certificates:12: An unknown certificate is available -- ignoring.
+unit-shard-one-0: 02:09:44 ERROR unit.shard-one/0.juju-log certificates:16: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-0: 02:09:44 ERROR unit.shard-one/0.juju-log certificates:16: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-1: 02:09:52 ERROR unit.shard-one/1.juju-log certificates:16: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-2: 02:09:52 ERROR unit.shard-one/2.juju-log certificates:16: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-shard-one-1: 02:09:53 ERROR unit.shard-one/1.juju-log certificates:16: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-shard-one-2: 02:09:53 ERROR unit.shard-one/2.juju-log certificates:16: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-config-server-1: 02:13:30 ERROR unit.config-server/1.juju-log certificates:13: This operation (delete_relation_data()) can only be performed by the leader unit
+unit-config-server-1: 02:13:30 ERROR unit.config-server/1.juju-log certificates:13: This operation (delete_relation_data()) can only be performed by the leader unit
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

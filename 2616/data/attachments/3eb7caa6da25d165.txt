@@ -1,0 +1,49 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:47:51Z
+
+App                   Version  Status       Scale  Charm        Channel      Rev  Address         Exposed  Message
+local-config-server            waiting          1  mongodb-k8s                 0  10.152.183.209  no       installing agent
+local-shard                    blocked          1  mongodb-k8s                 1  10.152.183.134  no       Charm revision (f02e1fe-locally built) is not up-to date with config-server (58).
+remote-config-server           waiting          1  mongodb-k8s  latest/edge   58  10.152.183.229  no       installing agent
+remote-shard                   maintenance      1  mongodb-k8s  latest/edge   58  10.152.183.86   no       Adding shard to config-server
+
+Unit                     Workload     Agent  Address       Ports  Message
+local-config-server/0*   waiting      idle   10.1.202.144         Waiting for shards to upgrade/downgrade to revision f02e1fe-locally built.
+local-shard/0*           blocked      idle   10.1.202.147         Charm revision (f02e1fe-locally built) is not up-to date with config-server (58).
+remote-config-server/0*  unknown      idle   10.1.202.141         
+remote-shard/0*          maintenance  idle   10.1.202.140         Adding shard to config-server
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-remote-shard-0: 01:42:10 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:42:12 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:42:14 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:42:15 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:42:15 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:42:16 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:42:16 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:42:17 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:42:17 ERROR unit.remote-shard/0.juju-log database-peers:0: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:42:18 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:42:19 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:42:20 ERROR unit.remote-config-server/0.juju-log database-peers:1: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-local-config-server-0: 01:45:09 ERROR unit.local-config-server/0.juju-log Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles:[    {\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'clusterAdmin\', \'db\': \'admin\'},   ],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-local-config-server-0/charm/./src/charm.py", line 989, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-local-config-server-0/charm/venv/ops/pebble.py", line 1786, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles:[    {\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'clusterAdmin\', \'db\': \'admin\'},   ],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-remote-config-server-0: 01:46:36 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:47:23 ERROR unit.remote-shard/0.juju-log sharding:4: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:47:24 ERROR unit.remote-shard/0.juju-log sharding:4: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:47:25 ERROR unit.remote-shard/0.juju-log sharding:4: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:47:26 ERROR unit.remote-shard/0.juju-log sharding:4: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:47:27 ERROR unit.remote-shard/0.juju-log sharding:4: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:47:48 ERROR unit.remote-config-server/0.juju-log config-server:5: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:47:49 ERROR unit.remote-config-server/0.juju-log config-server:5: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:47:50 ERROR unit.remote-config-server/0.juju-log config-server:5: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
