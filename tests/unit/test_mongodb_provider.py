@@ -39,9 +39,12 @@ class TestMongoProvider(unittest.TestCase):
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
 
+    @patch("charms.mongodb.v0.set_status.get_charm_revision")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
-    def test_relation_event_db_not_initialised(self, oversee_users, defer):
+    def test_relation_event_db_not_initialised(self, oversee_users, defer, *unused):
         """Tests no database relations are handled until the database is initialised.
 
         Users should not be "overseen" until the database has been initialised, no matter the
