@@ -115,6 +115,10 @@ class MongoDBCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
+        self.framework.observe(
+            self.on.data_platform_k8s_webhook_mutator_pebble_ready,
+            self._on_data_platform_k8s_webhook_mutator_pebble_ready,
+        )
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
@@ -600,6 +604,48 @@ class MongoDBCharm(CharmBase):
         except (PathError, ProtocolError, MissingSecretError) as e:
             logger.error("Cannot initialize workload: %r", e)
             raise FailedToUpdateFilesystem
+
+    # BEGIN: charm events
+    def _on_mongod_pebble_ready(self, event) -> None:
+        """Configure MongoDB pebble layer specification."""
+        # Get a reference the container attribute
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+        if not container.can_connect():
+            logger.debug("mongod container is not ready yet.")
+            event.defer()
+            return
+
+        # We need to check that the storages are attached before starting the services.
+        # pebble-ready is not guaranteed to run after storage-attached so this check allows
+        # to ensure that the storages are attached before the pebble-ready hook is run.
+        if any(not storage for storage in self.model.storages.values()):
+            logger.debug("Storages are not attached yet")
+            event.defer()
+            return
+
+    # BEGIN: charm events
+    def _on_data_platform_k8s_webhook_mutator_pebble_ready(self, event) -> None:
+        # todo use lightkube register the mutating webhook with lightkube (maybe in on start)?
+
+        pass
+
+    def _on_mongod_pebble_ready(self, event) -> None:
+        """Configure MongoDB pebble layer specification."""
+        # Get a reference the container attribute
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+        if not container.can_connect():
+            logger.debug("mongod container is not ready yet.")
+            event.defer()
+            return
+
+        # We need to check that the storages are attached before starting the services.
+        # pebble-ready is not guaranteed to run after storage-attached so this check allows
+        # to ensure that the storages are attached before the pebble-ready hook is run.
+        if any(not storage for storage in self.model.storages.values()):
+            logger.debug("Storages are not attached yet")
+            event.defer()
+            return
+
 
     def _configure_layers(self, container: Container) -> None:
         """Configure the layers of the container."""
