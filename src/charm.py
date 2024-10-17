@@ -78,11 +78,7 @@ from tenacity import (
 )
 
 from config import Config
-from exceptions import (
-    AdminUserCreationError,
-    EarlyRemovalOfConfigServerError,
-    MissingSecretError,
-)
+from exceptions import AdminUserCreationError, MissingSecretError
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +103,6 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
-        self.framework.observe(self.on.stop, self._on_stop)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(
             self.on[Config.Relations.PEERS].relation_joined, self._relation_changes_handler
@@ -126,7 +121,7 @@ class MongoDBCharm(CharmBase):
 
         self.framework.observe(self.on.get_password_action, self._on_get_password)
         self.framework.observe(self.on.set_password_action, self._on_set_password)
-        self.framework.observe(self.on.mongodb_storage_detaching, self.mongodb_storage_detaching)
+        self.framework.observe(self.on.stop, self._on_stop)
 
         self.framework.observe(self.on.secret_remove, self._on_secret_remove)
         self.framework.observe(self.on.secret_changed, self._on_secret_changed)
@@ -162,11 +157,6 @@ class MongoDBCharm(CharmBase):
         )
 
     # BEGIN: properties
-    @property
-    def _is_removing_last_replica(self) -> bool:
-        """Returns True if the last replica (juju unit) is getting removed."""
-        return self.app.planned_units() == 0 and len(self.peers_units) == 0
-
     @property
     def monitoring_jobs(self) -> list[dict[str, Any]]:
         """Defines the labels and targets for metrics."""
@@ -718,6 +708,10 @@ class MongoDBCharm(CharmBase):
         self._connect_mongodb_exporter()
         self._connect_pbm_agent()
 
+        if isinstance(event, RelationDepartedEvent):
+            if event.departing_unit.name == self.unit.name:
+                self.unit_peer_data.setdefault("unit_departed", "True")
+
         if not self.unit.is_leader():
             return
 
@@ -812,66 +806,25 @@ class MongoDBCharm(CharmBase):
             patch_type=PatchType.MERGE,
         )
 
-    def mongodb_storage_detaching(self, event) -> None:
-        """Before storage detaches, allow removing unit to remove itself from the set.
-
-        If the removing unit is primary also allow it to step down and elect another unit as
-        primary while it still has access to its storage.
-        """
-        if self.upgrade_in_progress:
-            # We cannot defer and prevent a user from removing a unit, log a warning instead.
-            logger.warning(
-                "Removing replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
-            )
-
-        # A single replica cannot step down as primary and we cannot reconfigure the replica set to
-        # have 0 members.
-        if self._is_removing_last_replica:
-            # removing config-server from a sharded cluster can be disaterous.
-            if self.is_role(Config.Role.CONFIG_SERVER) and self.config_server.has_shards():
-                current_shards = self.config_server.get_related_shards()
-                early_removal_message = f"Cannot remove config-server, still related to shards {', '.join(current_shards)}"
-                logger.error(early_removal_message)
-                # question: what happens in ks if you raise in storage detached? I assume the pod
-                # is still removed
-                raise EarlyRemovalOfConfigServerError(early_removal_message)
-
-            # cannot drain shard after storage detached.
-            if self.is_role(Config.Role.SHARD) and self.shard.has_config_server():
-                logger.info("Wait for shard to drain before detaching storage.")
-                self.status.set_and_share_status(MaintenanceStatus("Draining shard from cluster"))
-                mongos_hosts = self.shard.get_mongos_hosts()
-                # TODO need to update this function to attempt to patch the statefulset
-                self.shard.wait_for_draining(mongos_hosts)
-                logger.info("Shard successfully drained storage.")
-
-        try:
-            # retries over a period of 10 minutes in an attempt to resolve race conditions it is
-            # not possible to defer in storage detached.
-            logger.debug("Removing %s from replica set", self.unit_host(self.unit))
-            for attempt in Retrying(
-                stop=stop_after_attempt(10),
-                wait=wait_fixed(1),
-                reraise=True,
-            ):
-                with attempt:
-                    # remove_replset_member retries for 60 seconds
-                    with MongoDBConnection(self.mongodb_config) as mongo:
-                        mongo.remove_replset_member(self.unit_host(self.unit))
-
-        except NotReadyError:
-            logger.info(
-                "Failed to remove %s from replica set, another member is syncing", self.unit.name
-            )
-        except PyMongoError as e:
-            logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
-
     def _on_stop(self, _) -> None:
         """Handle on_stop event.
 
         On stop can occur after a user has refreshed, after a unit has been removed, or when a pod
         is getting restarted.
         """
+        if "True" == self.unit_peer_data.get("unit_departed", "False"):
+            logger.debug(f"{self.unit.name} blocking on_stop")
+            is_in_replica_set = True
+            timeout = UNIT_REMOVAL_TIMEOUT
+            while is_in_replica_set and timeout > 0:
+                is_in_replica_set = self.is_unit_in_replica_set()
+                time.sleep(1)
+                timeout -= 1
+                if timeout < 0:
+                    raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
+            logger.debug(f"{self.unit.name} releasing on_stop")
+            self.unit_peer_data["unit_departed"] = ""
+
         # I can add this functionality to mongodb lib - i.e. a function wait_for_new_primary, but
         # this is just a POC
         waiting = 0
