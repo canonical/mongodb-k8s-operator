@@ -159,6 +159,9 @@ class Config:
         CONTAINER_NAME = "webhook-mutator"
         SERVICE_NAME = "fastapi"
         GRACE_PERIOD_SECONDS = 31_556_952  # one year
+        PORT = 8000
+        CRT_PATH = "/app/certificate.crt"
+        KEY_PATH = "/app/certificate.key"
 
     @staticmethod
     def get_license_path(license_name: str) -> str:

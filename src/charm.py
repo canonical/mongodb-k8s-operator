@@ -49,16 +49,7 @@ from data_platform_helpers.version_check import (
     get_charm_revision,
 )
 from lightkube import Client
-from lightkube.core.exceptions import ApiError
-from lightkube.models.admissionregistration_v1 import (
-    MutatingWebhook,
-    RuleWithOperations,
-    ServiceReference,
-    WebhookClientConfig,
-)
-from lightkube.models.meta_v1 import ObjectMeta
 from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
-from lightkube.resources.core_v1 import Pod
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -102,6 +93,8 @@ from exceptions import (
 )
 from upgrades import kubernetes_upgrades
 from upgrades.mongodb_upgrades import MongoDBUpgrade
+from gen_cert import gen_certificate
+from service_manager import generate_mutating_webhook, generate_service
 
 logger = logging.getLogger(__name__)
 
@@ -191,6 +184,11 @@ class MongoDBCharm(CharmBase):
         )
 
     # BEGIN: properties
+
+    @property
+    def _is_removing_last_replica(self) -> bool:
+        """Returns True if the last replica (juju unit) is getting removed."""
+        return self.app.planned_units() == 0 and len(self.peers_units) == 0
 
     @property
     def monitoring_jobs(self) -> list[dict[str, Any]]:
@@ -387,14 +385,16 @@ class MongoDBCharm(CharmBase):
     @property
     def _webhook_layer(self) -> Layer:
         """Returns a Pebble configuration layer for wehooks mutator."""
+        config = Config.WebhookManager
+        cmd = f"uvicorn app:app --host 0.0.0.0 --port {config.PORT} --ssl-keyfile={config.KEY_PATH} --ssl-certfile={config.CRT_PATH}"
         layer_config = {
             "summary": "Webhook Manager layer",
             "description": "Pebble layer configuration for webhook mutation",
             "services": {
-                "fastapi": {
+                Config.WebhookManager.SERVICE_NAME: {
                     "override": "merge",
-                    "summary": "webhook manager  daemon",
-                    "command": "fastapi run app.py",
+                    "summary": "webhook manager daemon",
+                    "command": cmd,
                     "startup": "enabled",
                     "environment": {
                         "GRACE_PERIOD_SECONDS": Config.WebhookManager.GRACE_PERIOD_SECONDS,
@@ -665,73 +665,28 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
+        cert = self.get_secret(APP_SCOPE, "webhook-certificate")
+        private_key = self.get_secret(APP_SCOPE, "webhook-key")
+
+        if not cert or not private_key:
+            logger.debug("Waiting for certificates")
+            event.defer()
+            return
+
+        container.push(Config.WebhookManager.CRT_PATH, cert)
+        container.push(Config.WebhookManager.KEY_PATH, private_key)
+
         # Add initial Pebble config layer using the Pebble API
         container.add_layer(Config.WebhookManager.SERVICE_NAME, self._webhook_layer, combine=True)
         container.replan()
 
-        # temporary solution until we figure out how to expose the fastapi service
-        self.unit.open_port(protocol="tcp", port=8000)
-
         if not self.unit.is_leader():
             return
 
+        # Lightkube client
         client = Client()
-
-        # todo make this into a nice function so it isn't this ugly mess
-        try:
-            webhooks = client.get(
-                MutatingWebhookConfiguration, namespace=self.model.name, name=self.app.name
-            )
-            if webhooks:
-                return
-        except ApiError:
-            logger.debug("Mutating Webhook doesn't yet exist.")
-
-        # Define the Webhook Configuration
-        try:
-            pod_name = self.unit.name.replace("/", "-")
-            pod = client.get(res=Pod, name=pod_name)
-        except ApiError:
-            raise
-
-        if not pod.metadata:
-            raise Exception(f"Could not find metadata for {pod}")
-
-        logger.debug("Registering our Mutating Wehook.")
-        webhook_config = MutatingWebhookConfiguration(
-            metadata=ObjectMeta(
-                name=self.app.name,
-                namespace=self.model.name,
-                ownerReferences=pod.metadata.ownerReferences,
-            ),
-            apiVersion="admissionregistration.k8s.io/v1",
-            webhooks=[
-                MutatingWebhook(
-                    name=f"{self.app.name}.juju.is",
-                    clientConfig=WebhookClientConfig(
-                        service=ServiceReference(
-                            namespace=self.model.name,
-                            name=self.app.name,  # issue the service is not visible? but we don't know why- NOTE this is a temporary solution
-                            port=8000,  # this value isn't allowed
-                            path="/mutate",
-                        ),
-                        # Future work support self-signed-certificates
-                    ),
-                    rules=[
-                        RuleWithOperations(
-                            operations=["CREATE", "UPDATE"],
-                            apiGroups=["apps"],
-                            apiVersions=["v1"],
-                            resources=["statefulsets"],
-                        )
-                    ],
-                    admissionReviewVersions=["v1"],
-                    sideEffects="None",
-                    timeoutSeconds=5,
-                )
-            ],
-        )
-        client.create(webhook_config)
+        generate_service(client, self.unit, self.model.name)
+        generate_mutating_webhook(client, self.unit, self.model.name, cert)
 
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
@@ -937,6 +892,12 @@ class MongoDBCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
+        if not self.get_secret(APP_SCOPE, "webhook-certificate") or not self.get_secret(
+            APP_SCOPE, "webhook-key"
+        ):
+            cert, key = gen_certificate(Config.WebhookManager.SERVICE_NAME, self.model.name)
+            self.set_secret(APP_SCOPE, "webhook-certificate", cert.decode())
+            self.set_secret(APP_SCOPE, "webhook-key", key.decode())
         self._initialise_replica_set(event)
         try:
             self._initialise_users(event)
@@ -1075,6 +1036,13 @@ class MongoDBCharm(CharmBase):
             return
 
     def _on_stop(self, event) -> None:
+        if self._is_removing_last_replica:
+            client = Client()
+            client.delete(
+                MutatingWebhookConfiguration,
+                namespace=self.model.name,
+                name=Config.WebhookManager.SERVICE_NAME,
+            )
         self.__handle_partition_on_stop()
         if self.unit_departed:
             self.__handle_relation_departed_on_stop()
