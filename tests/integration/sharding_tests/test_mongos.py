@@ -8,7 +8,7 @@ from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
 from ..ha_tests.helpers import get_direct_mongo_client
-from ..helpers import METADATA, is_relation_joined
+from ..helpers import RESOURCES, is_relation_joined
 from .helpers import count_users, get_related_username_password
 
 SHARD_ONE_APP_NAME = "shard-one"
@@ -25,10 +25,9 @@ TIMEOUT = 10 * 60
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
     mongodb_charm = await ops_test.build_charm(".")
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         mongodb_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=1,
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
@@ -36,7 +35,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
     await ops_test.model.deploy(
         mongodb_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=1,
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,

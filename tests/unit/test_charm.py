@@ -330,6 +330,7 @@ class TestCharm(unittest.TestCase):
         defer.assert_not_called()
 
     @patch("charm.MongoDBCharm._configure_container", return_value=None)
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -359,6 +360,7 @@ class TestCharm(unittest.TestCase):
         provider.return_value.oversee_users.assert_not_called()
         defer.assert_not_called()
 
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -390,11 +392,14 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
+    @patch("ops.framework.EventBase.defer")
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._initialise_users")
-    @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    def test_start_mongod_error_initialising_replica_set(self, connection, defer, *unused):
+    def test_start_mongod_error_initalising_replica_set(
+        self, connection, init_users, provider, gen_cert, defer
+    ):
         """Tests that failure to initialise replica set is properly handled.
 
         Verifies that when there is a failure to initialise replica set the defer is called and
@@ -417,6 +422,7 @@ class TestCharm(unittest.TestCase):
             self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
             defer.assert_called()
 
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -448,6 +454,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
 
     @patch("charm.MongoDBCharm._init_operator_user")
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBConnection")
@@ -655,6 +662,7 @@ class TestCharm(unittest.TestCase):
             defer.assert_called()
 
     @patch("charm.MongoDBCharm._configure_container", return_value=None)
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongoDBConnection")
@@ -1019,6 +1027,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.USER_CREATION_COOLDOWN", 1)
     @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
     @patch("charm.MongoDBCharm._configure_container", return_value=None)
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBCharm._init_monitor_user")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
