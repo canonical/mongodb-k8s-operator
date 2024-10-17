@@ -120,9 +120,13 @@ class TestCharm(unittest.TestCase):
         # Ensure that _connect_mongodb_exporter was called
         connect_exporter.assert_called_once()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._push_keyfile_to_workload")
-    def test_pebble_ready_cannot_retrieve_container(self, push_keyfile_to_workload, defer):
+    def test_pebble_ready_cannot_retrieve_container(
+        self, push_keyfile_to_workload, defer, *unused
+    ):
         """Test verifies behavior when retrieving container results in ModelError in pebble ready.
 
         Verifies that when a failure to get a container occurs, that that failure is raised and
@@ -142,9 +146,11 @@ class TestCharm(unittest.TestCase):
         mock_container.replan.assert_not_called()
         defer.assert_not_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._push_keyfile_to_workload")
-    def test_pebble_ready_container_cannot_connect(self, push_keyfile_to_workload, defer):
+    def test_pebble_ready_container_cannot_connect(self, push_keyfile_to_workload, defer, *unused):
         """Test verifies behavior when cannot connect to container in pebble ready function.
 
         Verifies that when a failure to connect to container results in a deferral and that no
@@ -203,11 +209,15 @@ class TestCharm(unittest.TestCase):
         mock_container.replan.assert_not_called()
         defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
-    def test_start_cannot_retrieve_container(self, connection, init_user, provider, defer):
+    def test_start_cannot_retrieve_container(
+        self, connection, init_user, provider, defer, *unused
+    ):
         """Verifies that failures to get container result in a ModelError being raised.
 
         Further this function verifies that on error no attempts to set up the replica set or
@@ -230,11 +240,13 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_not_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
-    def test_start_container_cannot_connect(self, connection, init_user, provider, defer):
+    def test_start_container_cannot_connect(self, connection, init_user, provider, defer, *unused):
         """Tests inability to connect results in deferral.
 
         Verifies that if connection is not possible, that there are no attempts to set up the
@@ -257,11 +269,13 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
-    def test_start_container_does_not_exist(self, connection, init_user, provider, defer):
+    def test_start_container_does_not_exist(self, connection, init_user, provider, defer, *unused):
         """Tests lack of existence of files on container results in deferral.
 
         Verifies that if files do not exists, that there are no attempts to set up the replica set
@@ -285,11 +299,13 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
-    def test_start_container_exists_fails(self, connection, init_user, provider, defer):
+    def test_start_container_exists_fails(self, connection, init_user, provider, defer, *unused):
         """Tests failure in checking file existence on container raises an APIError.
 
         Verifies that when checking container files raises an API Error, we raise that same error
@@ -314,11 +330,13 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_not_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
-    def test_start_already_initialised(self, connection, init_user, provider, defer):
+    def test_start_already_initialised(self, connection, init_user, provider, defer, *unused):
         """Tests that if the replica set has already been set up that we return.
 
         Verifies that if the replica set is already set up that no attempts to set it up again are
@@ -343,11 +361,13 @@ class TestCharm(unittest.TestCase):
         provider.return_value.oversee_users.assert_not_called()
         defer.assert_not_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
-    def test_start_mongod_not_ready(self, connection, init_user, provider, defer):
+    def test_start_mongod_not_ready(self, connection, init_user, provider, defer, *unused):
         """Tests that if mongod is not ready that we defer and return.
 
         Verifies that if mongod is not ready that no attempts to set up the replica set and set up
@@ -374,12 +394,14 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._initialise_users")
     @patch("charm.MongoDBConnection")
     def test_start_mongod_error_initalising_replica_set(
-        self, connection, init_users, provider, defer
+        self, connection, init_users, provider, defer, *unused
     ):
         """Tests that failure to initialise replica set is properly handled.
 
@@ -403,12 +425,14 @@ class TestCharm(unittest.TestCase):
             self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
             defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     @patch("tenacity.nap.time.sleep", MagicMock())
-    def test_error_initalising_users(self, connection, init_user, provider, defer):
+    def test_error_initalising_users(self, connection, init_user, provider, defer, *unused):
         """Tests that failure to initialise users set is properly handled.
 
         Verifies that when there is a failure to initialise users that overseeing users is not
@@ -433,6 +457,8 @@ class TestCharm(unittest.TestCase):
         # verify app data
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -444,7 +470,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.wait_fixed")
     @patch("charm.stop_after_attempt")
     def test_start_mongod_error_overseeing_users(
-        self, retry_stop, retry_wait, connection, init_user, provider, defer
+        self, retry_stop, retry_wait, connection, init_user, provider, defer, *unused
     ):
         """Tests failures related to pymongo are properly handled when overseeing users.
 
@@ -640,10 +666,14 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.add_replset_member.assert_called()
             defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongoDBConnection")
-    def test_start_init_operator_user_after_second_call(self, connection, oversee_users, defer):
+    def test_start_init_operator_user_after_second_call(
+        self, connection, oversee_users, defer, *unused
+    ):
         """Tests that the creation of the admin user is only performed once.
 
         Verifies that if the user is already set up, that no attempts to set it up again are
@@ -999,6 +1029,8 @@ class TestCharm(unittest.TestCase):
         expected_uri = uri_template.format(password="mongo123")
         self.assertEqual(expected_uri, new_uri)
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("tenacity.nap.time.sleep", MagicMock())
     @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
     @patch("charm.USER_CREATION_COOLDOWN", 1)
@@ -1021,6 +1053,7 @@ class TestCharm(unittest.TestCase):
         _connect_mongodb_exporter,
         _init_operator_user,
         _init_monitor_user,
+        *unused,
     ):
         """Tests what backup user was created."""
         self.harness.charm._initialise_users.retry.wait = wait_none()
@@ -1032,8 +1065,10 @@ class TestCharm(unittest.TestCase):
         self.harness.charm._initialise_users.retry.wait = wait_none()
         self.assertIsNotNone(password)  # verify the password is set
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("charm.MongoDBConnection")
-    def test_set_password_provided(self, connection):
+    def test_set_password_provided(self, connection, *unused):
         """Tests that a given password is set as the new mongodb password for backup user."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_leader(True)
