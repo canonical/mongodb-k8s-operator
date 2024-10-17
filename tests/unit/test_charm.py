@@ -128,6 +128,8 @@ class TestCharm(unittest.TestCase):
         # Ensure that _connect_mongodb_exporter was called
         connect_exporter.assert_called_once()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._push_keyfile_to_workload")
     def test_pebble_ready_cannot_retrieve_container(
@@ -152,6 +154,8 @@ class TestCharm(unittest.TestCase):
         mock_container.replan.assert_not_called()
         defer.assert_not_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._push_keyfile_to_workload")
     def test_pebble_ready_container_cannot_connect(self, push_keyfile_to_workload, defer, *unused):
@@ -215,6 +219,8 @@ class TestCharm(unittest.TestCase):
         mock_container.replan.assert_not_called()
         defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -244,6 +250,8 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_not_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -271,6 +279,8 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -299,6 +309,8 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("charm.MongoDBCharm._configure_container", return_value=None)
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -329,6 +341,8 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_not_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("charm.MongoDBCharm._configure_container", return_value=None)
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -359,6 +373,8 @@ class TestCharm(unittest.TestCase):
         provider.return_value.oversee_users.assert_not_called()
         defer.assert_not_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -390,11 +406,15 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
+    @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._initialise_users")
-    @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    def test_start_mongod_error_initialising_replica_set(self, connection, defer, *unused):
+    def test_start_mongod_error_initalising_replica_set(
+        self, connection, init_users, provider, defer, *unused
+    ):
         """Tests that failure to initialise replica set is properly handled.
 
         Verifies that when there is a failure to initialise replica set the defer is called and
@@ -417,6 +437,8 @@ class TestCharm(unittest.TestCase):
             self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
             defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -447,6 +469,8 @@ class TestCharm(unittest.TestCase):
         # verify app data
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -654,6 +678,8 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.add_replset_member.assert_called()
             defer.assert_called()
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("charm.MongoDBCharm._configure_container", return_value=None)
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
@@ -1014,6 +1040,8 @@ class TestCharm(unittest.TestCase):
         expected_uri = uri_template.format(password="mongo123")
         self.assertEqual(expected_uri, new_uri)
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("tenacity.nap.time.sleep", MagicMock())
     @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
     @patch("charm.USER_CREATION_COOLDOWN", 1)
@@ -1038,6 +1066,8 @@ class TestCharm(unittest.TestCase):
         self.harness.charm._initialise_users.retry.wait = wait_none()
         self.assertIsNotNone(password)  # verify the password is set
 
+    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("charm.MongoDBConnection")
     def test_set_password_provided(self, *unused):
         """Tests that a given password is set as the new mongodb password for backup user."""
