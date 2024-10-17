@@ -76,10 +76,10 @@ async def test_preflight_check(ops_test: OpsTest) -> None:
     db_app_name = await get_app_name(ops_test)
     leader_unit = await backup_helpers.get_leader_unit(ops_test, db_app_name)
 
-    logger.info("Calling pre-upgrade-check")
-    action = await leader_unit.run_action("pre-upgrade-check")
+    logger.info("Calling pre-refresh-check")
+    action = await leader_unit.run_action("pre-refresh-check")
     await action.wait()
-    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+    assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
 
 @pytest.mark.skip("skip until upgrades work has been released to charmhub")
@@ -100,10 +100,10 @@ async def test_preflight_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
         ops_test, non_leader_unit, leader_unit, "(not reachable/healthy)"
     )
 
-    logger.info("Calling pre-upgrade-check")
-    action = await leader_unit.run_action("pre-upgrade-check")
+    logger.info("Calling pre-refresh-check")
+    action = await leader_unit.run_action("pre-refresh-check")
     await action.wait()
-    assert action.status == "completed", "pre-upgrade-check failed, expected to succeed."
+    assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
     # restore network after test
     remove_instance_isolation(ops_test)

@@ -37,6 +37,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
         application_name=app_name,
         num_units=1,
         series=SERIES,
+        trust=True,
     )
 
     # issuing dummy update_status just to trigger an event

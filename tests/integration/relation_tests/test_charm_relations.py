@@ -69,6 +69,7 @@ async def test_deploy_charms(ops_test: OpsTest):
                 application_name=DATABASE_APP_NAME,
                 resources=db_resources,
                 num_units=REQUIRED_UNITS,
+                trust=True,
             )
         )
 
@@ -83,6 +84,7 @@ async def test_deploy_charms(ops_test: OpsTest):
             application_name=ANOTHER_DATABASE_APP_NAME,
             resources=db_resources,
             num_units=REQUIRED_UNITS,
+            trust=True,
         ),
     )
 

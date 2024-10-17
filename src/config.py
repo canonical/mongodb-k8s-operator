@@ -5,7 +5,7 @@
 
 from typing import List, Literal
 
-from ops.model import BlockedStatus
+from ops.model import BlockedStatus, WaitingStatus
 
 
 class Config:
@@ -116,6 +116,11 @@ class Config:
         SECRET_CSR_LABEL = "csr-secret"
         SECRET_CHAIN_LABEL = "chain-secret"
 
+    class Upgrade:
+        """Upgrade related constants."""
+
+        FEATURE_VERSION_6 = "6.0"
+
     class Secrets:
         """Secrets related constants."""
 
@@ -143,6 +148,10 @@ class Config:
 
         # TODO Future PR add more status messages here as constants
         UNHEALTHY_UPGRADE = BlockedStatus("Unhealthy after upgrade.")
+        INCOMPATIBLE_UPGRADE = BlockedStatus(
+            "Refresh incompatible. Rollback to previous revision with `juju refresh`"
+        )
+        WAITING_POST_UPGRADE_STATUS = WaitingStatus("Waiting for post upgrade checks")
 
     @staticmethod
     def get_license_path(license_name: str) -> str:

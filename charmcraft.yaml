@@ -2,8 +2,19 @@
 # See LICENSE file for licensing details.
 
 type: "charm"
+bases:
+  - build-on:
+      - name: "ubuntu"
+        channel: "22.04"
+    run-on:
+      - name: "ubuntu"
+        channel: "22.04"
 parts:
   charm:
+    charm-strict-dependencies: true
+    override-build: |
+      rustup default stable
+      craftctl default
     build-snaps:
       - rustup
     build-packages:
@@ -17,18 +28,13 @@ parts:
           echo 'ERROR: Use "tox run -e build-dev" instead of calling "charmcraft pack" directly' >&2
           exit 1
       fi
-    override-build: |
-      rustup default stable
-      craftctl default
   files:
     plugin: dump
     source: .
     prime:
       - charm_internal_version
-bases:
-  - build-on:
-      - name: "ubuntu"
-        channel: "22.04"
-    run-on:
-      - name: "ubuntu"
-        channel: "22.04"
+      - charm_version
+      - workload_version
+    override-build: |
+      rustup default stable
+      craftctl default

@@ -714,3 +714,9 @@ async def destroy_cluster(ops_test: OpsTest, applications: list[str]) -> None:
             # This case we don't raise an error in the context manager which fails to restore the
             # `update-status-hook-interval` value to it's former state.
             assert finished, "old cluster not destroyed successfully"
+
+
+def get_juju_status(model_name: str, app_name: str) -> str:
+    return subprocess.check_output(f"juju status --model {model_name} {app_name}".split()).decode(
+        "utf-8"
+    )

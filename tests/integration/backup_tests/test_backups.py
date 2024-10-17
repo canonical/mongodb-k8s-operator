@@ -103,7 +103,11 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
                 "mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]
             }
             await ops_test.model.deploy(
-                my_charm, num_units=NUM_UNITS, resources=resources, series="jammy"
+                my_charm,
+                num_units=NUM_UNITS,
+                resources=resources,
+                series="jammy",
+                trust=True,
             )
             await ops_test.model.wait_for_idle(
                 apps=[DATABASE_APP_NAME],
@@ -404,7 +408,11 @@ async def test_restore_new_cluster(
     db_charm = await ops_test.build_charm(".")
     resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
-        db_charm, num_units=3, resources=resources, application_name=new_cluster_app_name
+        db_charm,
+        num_units=3,
+        resources=resources,
+        application_name=new_cluster_app_name,
+        trust=True,
     )
 
     await asyncio.gather(
