@@ -1445,12 +1445,12 @@ class MongoDBCharm(CharmBase):
         """Set TLS certs for webhooks."""
         if not self.unit.is_leader():
             return
-        if not self.get_secret(APP_SCOPE, "webhook-certificate") or not self.get_secret(
-            APP_SCOPE, "webhook-key"
+        if not self.get_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET) or not self.get_secret(
+            APP_SCOPE, Config.WebhookManager.KEY_SECRET
         ):
-            cert, key = gen_certificate(Config.WebhookManager.SERVICE_NAME, self.model.name)
-            self.set_secret(APP_SCOPE, "webhook-certificate", cert.decode())
-            self.set_secret(APP_SCOPE, "webhook-key", key.decode())
+            cert, key = gen_certificate(SERVICE_NAME, self.model.name)
+            self.set_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET, cert.decode())
+            self.set_secret(APP_SCOPE, Config.WebhookManager.KEY_SECRET, key.decode())
 
     def _generate_keyfile(self) -> None:
         self.set_secret(APP_SCOPE, "keyfile", generate_keyfile())
