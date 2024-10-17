@@ -46,3 +46,7 @@ class ContainerNotReadyError(Exception):
 
 class FailedToUpdateFilesystem(Exception):
     """Raised when the container is not ready for a replan of services."""
+
+
+class UnitStillInReplicaSet(Exception):
+    """Raised when the container is not ready for a replan of services."""

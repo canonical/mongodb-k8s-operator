@@ -88,6 +88,7 @@ from exceptions import (
     FailedToUpdateFilesystem,
     MissingSecretError,
     NotConfigServerError,
+    UnitStillInReplicaSet,
 )
 from upgrades import kubernetes_upgrades
 from upgrades.mongodb_upgrades import MongoDBUpgrade
@@ -928,17 +929,17 @@ class MongoDBCharm(CharmBase):
 
         try:
             # retries over a period of 10 minutes in an attempt to resolve race conditions it is
-            # not possible to defer in storage detached.
             logger.debug("Removing %s from replica set", self.unit_host(self.unit))
             for attempt in Retrying(
-                stop=stop_after_attempt(10),
+                stop=stop_after_attempt(600),
                 wait=wait_fixed(1),
                 reraise=True,
             ):
                 with attempt:
-                    # remove_replset_member retries for 60 seconds
-                    with MongoDBConnection(self.mongodb_config) as mongo:
-                        mongo.remove_replset_member(self.unit_host(self.unit))
+                    # in K8s we have the leader remove the unit from the replica set to reduce race
+                    # conditions
+                    if self.is_unit_in_replica_set():
+                        raise UnitStillInReplicaSet()
 
         except NotReadyError:
             logger.info(
@@ -1220,6 +1221,17 @@ class MongoDBCharm(CharmBase):
     # END: user management
 
     # BEGIN: helper functions
+    def _update_related_hosts(self, event) -> None:
+        # app relations should be made aware of the new set of hosts
+        try:
+            if not self.is_role(Config.Role.SHARD):
+                self.client_relations.update_app_relation_data()
+            self.config_server.update_mongos_hosts()
+            self.cluster.update_config_server_db(event)
+        except PyMongoError as e:
+            logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
 
     def _is_user_created(self, user: MongoDBUser) -> bool:
         return f"{user.get_username()}-user-created" in self.app_peer_data
@@ -1391,7 +1403,7 @@ class MongoDBCharm(CharmBase):
             mongo.add_replset_member(member)
 
     def _remove_units_from_replica_set(
-        self, evemt, mongo: MongoDBConnection, units_to_remove: Set[str]
+        self, event, mongo: MongoDBConnection, units_to_remove: Set[str]
     ) -> None:
         for member in units_to_remove:
             logger.debug("Removing %s from the replica set", member)
