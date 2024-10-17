@@ -857,12 +857,6 @@ class MongoDBCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
-        if not self.get_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET) or not self.get_secret(
-            APP_SCOPE, Config.WebhookManager.KEY_SECRET
-        ):
-            cert, key = gen_certificate(SERVICE_NAME, self.model.name)
-            self.set_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET, cert.decode())
-            self.set_secret(APP_SCOPE, Config.WebhookManager.KEY_SECRET, key.decode())
         self._initialise_replica_set(event)
         try:
             self._initialise_users(event)
@@ -1384,6 +1378,17 @@ class MongoDBCharm(CharmBase):
         if not self.get_secret(APP_SCOPE, "keyfile"):
             self._generate_keyfile()
 
+    def _check_or_set_webhook_certs(self) -> None:
+        """Set TLS certs for webhooks."""
+        if not self.unit.is_leader():
+            return
+        if not self.get_secret(APP_SCOPE, "webhook-certificate") or not self.get_secret(
+            APP_SCOPE, "webhook-key"
+        ):
+            cert, key = gen_certificate(Config.WebhookManager.SERVICE_NAME, self.model.name)
+            self.set_secret(APP_SCOPE, "webhook-certificate", cert.decode())
+            self.set_secret(APP_SCOPE, "webhook-key", key.decode())
+
     def _generate_keyfile(self) -> None:
         self.set_secret(APP_SCOPE, "keyfile", generate_keyfile())
 
@@ -1410,8 +1415,8 @@ class MongoDBCharm(CharmBase):
         """
         self._check_or_set_user_password(OperatorUser)
         self._check_or_set_user_password(MonitorUser)
-
         self._check_or_set_keyfile()
+        self._check_or_set_webhook_certs()
 
     def _initialise_replica_set(self, event: StartEvent) -> None:
         """Initialise replica set and create users."""
