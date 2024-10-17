@@ -7,11 +7,10 @@ import time
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import check_or_scale_app, get_app_name
+from ..helpers import RESOURCES, check_or_scale_app, get_app_name
 from .helpers import (
     EXTERNAL_CERT_PATH,
     INTERNAL_CERT_PATH,
-    METADATA,
     check_certs_correctly_distributed,
     check_tls,
     time_file_created,
@@ -37,11 +36,8 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         app_name = DATABASE_APP_NAME
         async with ops_test.fast_forward():
             my_charm = await ops_test.build_charm(".")
-            resources = {
-                "mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]
-            }
             await ops_test.model.deploy(
-                my_charm, num_units=3, resources=resources, series="jammy", trust=True
+                my_charm, num_units=3, resources=RESOURCES, series="jammy", trust=True
             )
             # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
             await ops_test.model.wait_for_idle(

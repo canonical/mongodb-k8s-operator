@@ -2,17 +2,14 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 import time
-from pathlib import Path
 
 import pytest
 import requests
-import yaml
 from pytest_operator.plugin import OpsTest
 
 from ..ha_tests import helpers as ha_helpers
-from ..helpers import check_or_scale_app, get_app_name
+from ..helpers import RESOURCES, check_or_scale_app, get_app_name
 
-METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 DATABASE_APP_NAME = "mongodb-k8s"
 MONGODB_EXPORTER_PORT = 9216
 MEDIAN_REELECTION_TIME = 12
@@ -63,11 +60,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
     async with ops_test.fast_forward():
         my_charm = await ops_test.build_charm(".")
-        resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
         await ops_test.model.deploy(
             my_charm,
             num_units=NUM_UNITS,
-            resources=resources,
+            resources=RESOURCES,
             series="jammy",
             trust=True,
         )

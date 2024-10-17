@@ -14,8 +14,8 @@ from tenacity import Retrying, stop_after_delay, wait_fixed
 from ..backup_tests import helpers as backup_helpers
 from ..ha_tests.helpers import deploy_and_scale_application, get_direct_mongo_client
 from ..helpers import (
-    METADATA,
     MONGOS_PORT,
+    RESOURCES,
     get_leader_id,
     get_password,
     mongodb_uri,
@@ -299,7 +299,6 @@ async def deploy_cluster_backup_test(
     ops_test: OpsTest, deploy_s3_integrator=True, new_names=False
 ) -> None:
     """Deploy a cluster for the backup test."""
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     my_charm = await ops_test.build_charm(".")
 
     config_server_name = CONFIG_SERVER_APP_NAME if not new_names else CONFIG_SERVER_APP_NAME_NEW
@@ -307,7 +306,7 @@ async def deploy_cluster_backup_test(
     shard_two_name = SHARD_TWO_APP_NAME if not new_names else SHARD_TWO_APP_NAME_NEW
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=2,
         config={"role": "config-server"},
         application_name=config_server_name,
@@ -315,7 +314,7 @@ async def deploy_cluster_backup_test(
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=2,
         config={"role": "shard"},
         application_name=shard_one_name,
@@ -323,7 +322,7 @@ async def deploy_cluster_backup_test(
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=1,
         config={"role": "shard"},
         application_name=shard_two_name,
