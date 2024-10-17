@@ -19,7 +19,7 @@ jobs:
           # Workaround for https://github.com/canonical/charmcraft/issues/1389#issuecomment-1880921728
           touch requirements.txt
       - name: Check libs
-        uses: canonical/charming-actions/check-libraries@2.6.2
+        uses: canonical/charming-actions/check-libraries@2.6.3
         with:
           # NOTE: CHARMHUB_TOKEN is only allowed in latest/edge, latest/candidate
           credentials: "${{ secrets.CHARMHUB_TOKEN }}"
@@ -35,14 +35,14 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v21.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v21.0.1
 
   release:
     name: Release charm
     needs:
       - ci-tests
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v21.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v21.0.1
     with:
       channel: 6/edge
       artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
