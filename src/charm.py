@@ -968,15 +968,15 @@ class MongoDBCharm(CharmBase):
 
         # I can add this functionality to mongodb lib - i.e. a function wait_for_new_primary, but
         # this is just a POC
-        waiting = 0
-        while (
-            self.unit.name == self.primary and len(self.peers_units) > 1 and waiting < ONE_MINUTE
-        ):
-            logger.debug("Stepping down current primary, before stopping.")
-            with MongoDBConnection(self.mongodb_config) as mongo:
-                mongo.step_down_primary()
-            time.sleep(1)
-            waiting += 1
+        old_primary = self.primary
+        with MongoDBConnection(self.mongodb_config) as mongod:
+            mongod.step_down_primary()
+
+        for attempt in Retrying(stop=stop_after_attempt(30), wait=wait_fixed(1), reraise=True):
+            with attempt:
+                new_primary = self.primary
+                if new_primary == old_primary:
+                    raise FailedToElectNewPrimaryError()
 
         if "True" == self.unit_peer_data.get("unit_departed", "False"):
             logger.debug(f"{self.unit.name} blocking on_stop")
@@ -1903,6 +1903,10 @@ class SetPasswordError(Exception):
 
 class ShardingMigrationError(Exception):
     """Raised when there is an attempt to change the role of a sharding component."""
+
+
+class FailedToElectNewPrimaryError(Exception):
+    """Raised when a new primary isn't elected after stepping down."""
 
 
 if __name__ == "__main__":
