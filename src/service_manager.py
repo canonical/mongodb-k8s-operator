@@ -23,6 +23,8 @@ from config import Config
 
 logger = getLogger()
 
+SERVICE_NAME = f"{Config.WebhookManager.SERVICE_NAME}-{Config.WebhookManager.CONTAINER_NAME}"
+
 
 def get_pod(client: Client, pod_name: str) -> Pod:
     """Gets a pod definition from k8s."""
@@ -43,7 +45,7 @@ def generate_service(client: Client, unit: Unit, model_name: str):
     try:
         service = Service(
             metadata=ObjectMeta(
-                name=Config.WebhookManager.SERVICE_NAME,
+                name=SERVICE_NAME,
                 namespace=model_name,
                 ownerReferences=[
                     OwnerReference(
@@ -63,7 +65,7 @@ def generate_service(client: Client, unit: Unit, model_name: str):
                         protocol="TCP",
                         port=Config.WebhookManager.PORT,
                         targetPort=Config.WebhookManager.PORT,
-                        name=f"{Config.WebhookManager.SERVICE_NAME}-port",
+                        name=f"{SERVICE_NAME}-port",
                     ),
                 ],
             ),
@@ -82,7 +84,7 @@ def generate_mutating_webhook(client: Client, unit: Unit, model_name: str, cert:
         webhooks = client.get(
             MutatingWebhookConfiguration,
             namespace=model_name,
-            name=Config.WebhookManager.SERVICE_NAME,
+            name=SERVICE_NAME,
         )
         if webhooks:
             return
@@ -94,7 +96,7 @@ def generate_mutating_webhook(client: Client, unit: Unit, model_name: str, cert:
     logger.debug("Registering our Mutating Wehook.")
     webhook_config = MutatingWebhookConfiguration(
         metadata=ObjectMeta(
-            name=Config.WebhookManager.SERVICE_NAME,
+            name=SERVICE_NAME,
             namespace=model_name,
             ownerReferences=pod.metadata.ownerReferences,
         ),
@@ -105,7 +107,7 @@ def generate_mutating_webhook(client: Client, unit: Unit, model_name: str, cert:
                 clientConfig=WebhookClientConfig(
                     service=ServiceReference(
                         namespace=model_name,
-                        name=Config.WebhookManager.SERVICE_NAME,
+                        name=SERVICE_NAME,
                         port=8000,
                         path="/mutate",
                     ),

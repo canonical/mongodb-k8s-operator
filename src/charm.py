@@ -91,10 +91,10 @@ from exceptions import (
     MissingSecretError,
     NotConfigServerError,
 )
+from gen_cert import gen_certificate
+from service_manager import SERVICE_NAME, generate_mutating_webhook, generate_service
 from upgrades import kubernetes_upgrades
 from upgrades.mongodb_upgrades import MongoDBUpgrade
-from gen_cert import gen_certificate
-from service_manager import generate_mutating_webhook, generate_service
 
 logger = logging.getLogger(__name__)
 
@@ -639,20 +639,16 @@ class MongoDBCharm(CharmBase):
     # BEGIN: charm events
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
-        # Get a reference the container attribute
         container = self.unit.get_container(Config.CONTAINER_NAME)
-        if not container.can_connect():
-            logger.debug("mongod container is not ready yet.")
+
+        # Just run the configure layers steps on the container and defer if it fails.
+        try:
+            self._configure_container(container)
+        except ContainerNotReadyError:
             event.defer()
             return
 
-        # We need to check that the storages are attached before starting the services.
-        # pebble-ready is not guaranteed to run after storage-attached so this check allows
-        # to ensure that the storages are attached before the pebble-ready hook is run.
-        if any(not storage for storage in self.model.storages.values()):
-            logger.debug("Storages are not attached yet")
-            event.defer()
-            return
+        self.upgrade._reconcile_upgrade(event)
 
     # BEGIN: charm events
     def _on_webhook_mutator_pebble_ready(self, event) -> None:
@@ -665,8 +661,8 @@ class MongoDBCharm(CharmBase):
             event.defer()
             return
 
-        cert = self.get_secret(APP_SCOPE, "webhook-certificate")
-        private_key = self.get_secret(APP_SCOPE, "webhook-key")
+        cert = self.get_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET)
+        private_key = self.get_secret(APP_SCOPE, Config.WebhookManager.KEY_SECRET)
 
         if not cert or not private_key:
             logger.debug("Waiting for certificates")
@@ -687,24 +683,6 @@ class MongoDBCharm(CharmBase):
         client = Client()
         generate_service(client, self.unit, self.model.name)
         generate_mutating_webhook(client, self.unit, self.model.name, cert)
-
-    def _on_mongod_pebble_ready(self, event) -> None:
-        """Configure MongoDB pebble layer specification."""
-        # Get a reference the container attribute
-        container = self.unit.get_container(Config.CONTAINER_NAME)
-        if not container.can_connect():
-            logger.debug("mongod container is not ready yet.")
-            event.defer()
-            return
-
-        # We need to check that the storages are attached before starting the services.
-        # pebble-ready is not guaranteed to run after storage-attached so this check allows
-        # to ensure that the storages are attached before the pebble-ready hook is run.
-        if any(not storage for storage in self.model.storages.values()):
-            logger.debug("Storages are not attached yet")
-            event.defer()
-            return
-
 
     def _configure_layers(self, container: Container) -> None:
         """Configure the layers of the container."""
@@ -787,19 +765,6 @@ class MongoDBCharm(CharmBase):
         if self.upgrade._upgrade.is_compatible:
             # Post upgrade event verifies the success of the upgrade.
             self.upgrade.post_app_upgrade_event.emit()
-
-    def _on_mongod_pebble_ready(self, event) -> None:
-        """Configure MongoDB pebble layer specification."""
-        container = self.unit.get_container(Config.CONTAINER_NAME)
-
-        # Just run the configure layers steps on the container and defer if it fails.
-        try:
-            self._configure_container(container)
-        except ContainerNotReadyError:
-            event.defer()
-            return
-
-        self.upgrade._reconcile_upgrade(event)
 
     def is_db_service_ready(self) -> bool:
         """Checks if the MongoDB service is ready to accept connections."""
@@ -892,12 +857,12 @@ class MongoDBCharm(CharmBase):
         if not self.unit.is_leader():
             return
 
-        if not self.get_secret(APP_SCOPE, "webhook-certificate") or not self.get_secret(
-            APP_SCOPE, "webhook-key"
+        if not self.get_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET) or not self.get_secret(
+            APP_SCOPE, Config.WebhookManager.KEY_SECRET
         ):
-            cert, key = gen_certificate(Config.WebhookManager.SERVICE_NAME, self.model.name)
-            self.set_secret(APP_SCOPE, "webhook-certificate", cert.decode())
-            self.set_secret(APP_SCOPE, "webhook-key", key.decode())
+            cert, key = gen_certificate(SERVICE_NAME, self.model.name)
+            self.set_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET, cert.decode())
+            self.set_secret(APP_SCOPE, Config.WebhookManager.KEY_SECRET, key.decode())
         self._initialise_replica_set(event)
         try:
             self._initialise_users(event)
@@ -1041,7 +1006,7 @@ class MongoDBCharm(CharmBase):
             client.delete(
                 MutatingWebhookConfiguration,
                 namespace=self.model.name,
-                name=Config.WebhookManager.SERVICE_NAME,
+                name=SERVICE_NAME,
             )
         self.__handle_partition_on_stop()
         if self.unit_departed:

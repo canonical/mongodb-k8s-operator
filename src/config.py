@@ -162,6 +162,8 @@ class Config:
         PORT = 8000
         CRT_PATH = "/app/certificate.crt"
         KEY_PATH = "/app/certificate.key"
+        CRT_SECRET = "webhook-certificate"
+        KEY_SECRET = "webhook-key"
 
     @staticmethod
     def get_license_path(license_name: str) -> str:

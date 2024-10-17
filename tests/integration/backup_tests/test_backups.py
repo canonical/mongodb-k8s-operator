@@ -403,17 +403,11 @@ async def test_restore_new_cluster(
     # deploy a new cluster with a different name
     db_charm = await ops_test.build_charm(".")
     await ops_test.model.deploy(
-<<<<<<< HEAD
         db_charm,
         num_units=3,
-        resources=resources,
+        resources=RESOURCES,
         application_name=new_cluster_app_name,
         trust=True,
-||||||| parent of 0ded9b66 (wip: test part)
-        db_charm, num_units=3, resources=resources, application_name=new_cluster_app_name
-=======
-        db_charm, num_units=3, resources=RESOURCES, application_name=new_cluster_app_name
->>>>>>> 0ded9b66 (wip: test part)
     )
 
     await asyncio.gather(
