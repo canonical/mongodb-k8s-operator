@@ -416,10 +416,9 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("charm.MongoDBCharm.get_current_termination_period")
     @patch("charm.MongoDBCharm.update_termination_grace_period")
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._initialise_users")

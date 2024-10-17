@@ -34,6 +34,7 @@ from .helpers import (
     get_password,
     get_secret_content,
     get_secret_id,
+    get_termination_period_for_pod,
     primary_host,
     run_mongo_op,
     secondary_mongo_uris_with_sync_delay,
@@ -41,7 +42,8 @@ from .helpers import (
 )
 
 LOG_PATH = "/var/log/mongodb/"
-
+TIMEOUT_15M = 15 * 60
+ONE_YEAR = 31540000
 logger = logging.getLogger(__name__)
 
 
@@ -79,6 +81,40 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
     # effectively disable the update status from firing
     await ops_test.model.set_config({"update-status-hook-interval": "60m"})
+
+
+@pytest.mark.group(1)
+async def test_termination_period(ops_test: OpsTest) -> None:
+    """Verify termination period of 1 year for shards, persists after deployment.
+
+    Shards, unlike other deployments of MongoDB should have a larger termination period, to handle
+    cases where the user performs incorrect operations leading to data loss.
+
+    This test verifies:
+    1. on deployment the shar has a termination period of 1 year
+    2. if the termination period is changed, the charm resets it to 1 year
+    """
+    app_name = await get_app_name(ops_test)
+    for replica in ops_test.model.applications[app_name].units:
+        pod_name = replica.name.replace("/", "-")
+        termination_period_for_replica = get_termination_period_for_pod(
+            pod_name, ops_test.model.name
+        )
+        assert (
+            termination_period_for_replica == ONE_YEAR
+        ), f"replica {pod_name} does not have expected termination period."
+
+    # when scaling up the application, juju attempts resets the termination period, so scale it up
+    await ops_test.model.applications[app_name].scale(scale_change=1)
+
+    for shard_replica in ops_test.model.applications[app_name].units:
+        pod_name = shard_replica.name.replace("/", "-")
+        termination_period_for_shard = get_termination_period_for_pod(
+            pod_name, ops_test.model.name
+        )
+        assert (
+            termination_period_for_shard == ONE_YEAR
+        ), f"shard replica {pod_name} does not have expected termination period."
 
 
 @pytest.mark.group(1)
