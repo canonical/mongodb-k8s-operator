@@ -84,8 +84,8 @@ from config import Config
 from exceptions import (
     AdminUserCreationError,
     ContainerNotReadyError,
-    FailedToUpdateFilesystem,
     EarlyRemovalOfConfigServerError,
+    FailedToUpdateFilesystem,
     MissingSecretError,
     NotConfigServerError,
 )
