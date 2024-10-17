@@ -9,18 +9,6 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from lightkube import Client
-from lightkube import Client
-from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
-from lightkube.models.admissionregistration_v1 import (
-    WebhookClientConfig,
-    ServiceReference,
-    MutatingWebhook,
-    RuleWithOperations,
-)
-from lightkube.core.exceptions import ApiError
-from lightkube.core.exceptions import ApiError
-
 import jinja2
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
@@ -60,6 +48,17 @@ from data_platform_helpers.version_check import (
     CrossAppVersionChecker,
     get_charm_revision,
 )
+from lightkube import Client
+from lightkube.core.exceptions import ApiError
+from lightkube.models.admissionregistration_v1 import (
+    MutatingWebhook,
+    RuleWithOperations,
+    ServiceReference,
+    WebhookClientConfig,
+)
+from lightkube.models.meta_v1 import ObjectMeta
+from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
+from lightkube.resources.core_v1 import Pod
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -657,7 +656,8 @@ class MongoDBCharm(CharmBase):
 
     # BEGIN: charm events
     def _on_webhook_mutator_pebble_ready(self, event) -> None:
-        # still need todo use lightkube register the mutating webhook with lightkube (maybe in on start)?
+        # still need todo use lightkube register the mutating webhook with
+        # lightkube (maybe in on start)?
         # Get a reference the container attribute
         container = self.unit.get_container(Config.WebhookManager.CONTAINER_NAME)
         if not container.can_connect():
@@ -688,16 +688,30 @@ class MongoDBCharm(CharmBase):
             logger.debug("Mutating Webhook doesn't yet exist.")
 
         # Define the Webhook Configuration
-        logger.debug("REgisteing our Mutating Wehook.")
+        try:
+            pod_name = self.unit.name.replace("/", "-")
+            pod = client.get(res=Pod, name=pod_name)
+        except ApiError:
+            raise
+
+        if not pod.metadata:
+            raise Exception(f"Could not find metadata for {pod}")
+
+        logger.debug("Registering our Mutating Wehook.")
         webhook_config = MutatingWebhookConfiguration(
-            metadata={"name": self.app.name},
+            metadata=ObjectMeta(
+                name=self.app.name,
+                namespace=self.model.name,
+                ownerReferences=pod.metadata.ownerReferences,
+            ),
+            apiVersion="admissionregistration.k8s.io/v1",
             webhooks=[
                 MutatingWebhook(
-                    name=self.app.name,
+                    name=f"{self.app.name}.juju.is",
                     clientConfig=WebhookClientConfig(
                         service=ServiceReference(
                             namespace=self.model.name,
-                            name=self.app.name,  # issue the service is not visible? but we don't know why- NOTE this is a temporay solution
+                            name=self.app.name,  # issue the service is not visible? but we don't know why- NOTE this is a temporary solution
                             port=8000,  # this value isn't allowed
                             path="/mutate",
                         ),
