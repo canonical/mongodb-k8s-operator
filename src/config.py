@@ -153,6 +153,13 @@ class Config:
         )
         WAITING_POST_UPGRADE_STATUS = WaitingStatus("Waiting for post upgrade checks")
 
+    class WebhookManager:
+        """Webhook Manager related constants."""
+
+        CONTAINER_NAME = "webhook-mutator"
+        SERVICE_NAME = "fastapi"
+        GRACE_PERIOD_SECONDS = 31_556_952  # one year
+
     @staticmethod
     def get_license_path(license_name: str) -> str:
         """Return the path to the license file."""

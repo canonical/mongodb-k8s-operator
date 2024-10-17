@@ -59,7 +59,7 @@ containers:
     mounts:
       - storage: mongodb
         location: /var/lib/mongodb
-  data-platform-k8s-webhook-mutator:
+  webhook-mutator:
     resource: data-platform-k8s-webhook-mutator-image
 resources:
   mongodb-image:
@@ -71,7 +71,7 @@ resources:
     type: oci-image
     description: OCI image for mongodb
     # TODO: Update sha whenever upstream rock changes
-    upstream-source: ghcr.io/canonical/data-platform-k8s-webhook-mutator@sha256:c1eeac37e90e81b63fa9d9cd6b3c654ba51db611fef7045eccbb6cec27585b3d
+    upstream-source: ghcr.io/canonical/data-platform-k8s-webhook-mutator@sha256:6b161078854208e92b0827a910fe29fddb00138d17ede144970a671a9dee0c95
 storage:
   mongodb:
     type: filesystem

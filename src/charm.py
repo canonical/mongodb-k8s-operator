@@ -9,6 +9,18 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from lightkube import Client
+from lightkube import Client
+from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
+from lightkube.models.admissionregistration_v1 import (
+    WebhookClientConfig,
+    ServiceReference,
+    MutatingWebhook,
+    RuleWithOperations,
+)
+from lightkube.core.exceptions import ApiError
+from lightkube.core.exceptions import ApiError
+
 import jinja2
 from charms.grafana_k8s.v0.grafana_dashboard import GrafanaDashboardProvider
 from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
@@ -116,8 +128,8 @@ class MongoDBCharm(CharmBase):
         super().__init__(*args)
 
         self.framework.observe(
-            self.on.data_platform_k8s_webhook_mutator_pebble_ready,
-            self._on_data_platform_k8s_webhook_mutator_pebble_ready,
+            self.on.webhook_mutator_pebble_ready,
+            self._on_webhook_mutator_pebble_ready,
         )
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
@@ -374,6 +386,26 @@ class MongoDBCharm(CharmBase):
         return Layer(layer_config)
 
     @property
+    def _webhook_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for wehooks mutator."""
+        layer_config = {
+            "summary": "Webhook Manager layer",
+            "description": "Pebble layer configuration for webhook mutation",
+            "services": {
+                "fastapi": {
+                    "override": "merge",
+                    "summary": "webhook manager  daemon",
+                    "command": "fastapi run app.py",
+                    "startup": "enabled",
+                    "environment": {
+                        "GRACE_PERIOD_SECONDS": Config.WebhookManager.GRACE_PERIOD_SECONDS,
+                    },
+                },
+            },
+        }
+        return Layer(layer_config)
+
+    @property
     def relation(self) -> Optional[Relation]:
         """Peer relation data object."""
         return self.model.get_relation(Config.Relations.PEERS)
@@ -624,10 +656,68 @@ class MongoDBCharm(CharmBase):
             return
 
     # BEGIN: charm events
-    def _on_data_platform_k8s_webhook_mutator_pebble_ready(self, event) -> None:
-        # todo use lightkube register the mutating webhook with lightkube (maybe in on start)?
+    def _on_webhook_mutator_pebble_ready(self, event) -> None:
+        # still need todo use lightkube register the mutating webhook with lightkube (maybe in on start)?
+        # Get a reference the container attribute
+        container = self.unit.get_container(Config.WebhookManager.CONTAINER_NAME)
+        if not container.can_connect():
+            logger.debug("%s container is not ready yet.", Config.WebhookManager.CONTAINER_NAME)
+            event.defer()
+            return
 
-        pass
+        # Add initial Pebble config layer using the Pebble API
+        container.add_layer(Config.WebhookManager.SERVICE_NAME, self._webhook_layer, combine=True)
+        container.replan()
+
+        # temporary solution until we figure out how to expose the fastapi service
+        self.unit.open_port(protocol="tcp", port=8000)
+
+        if not self.unit.is_leader():
+            return
+
+        client = Client()
+
+        # todo make this into a nice function so it isn't this ugly mess
+        try:
+            webhooks = client.get(
+                MutatingWebhookConfiguration, namespace=self.model.name, name=self.app.name
+            )
+            if webhooks:
+                return
+        except ApiError:
+            logger.debug("Mutating Webhook doesn't yet exist.")
+
+        # Define the Webhook Configuration
+        logger.debug("REgisteing our Mutating Wehook.")
+        webhook_config = MutatingWebhookConfiguration(
+            metadata={"name": self.app.name},
+            webhooks=[
+                MutatingWebhook(
+                    name=self.app.name,
+                    clientConfig=WebhookClientConfig(
+                        service=ServiceReference(
+                            namespace=self.model.name,
+                            name=self.app.name,  # issue the service is not visible? but we don't know why- NOTE this is a temporay solution
+                            port=8000,  # this value isn't allowed
+                            path="/mutate",
+                        ),
+                        # Future work support self-signed-certificates
+                    ),
+                    rules=[
+                        RuleWithOperations(
+                            operations=["CREATE", "UPDATE"],
+                            apiGroups=["apps"],
+                            apiVersions=["v1"],
+                            resources=["statefulsets"],
+                        )
+                    ],
+                    admissionReviewVersions=["v1"],
+                    sideEffects="None",
+                    timeoutSeconds=5,
+                )
+            ],
+        )
+        client.create(webhook_config)
 
     def _on_mongod_pebble_ready(self, event) -> None:
         """Configure MongoDB pebble layer specification."""
