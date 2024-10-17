@@ -42,3 +42,21 @@ set-tls-private-key:
     internal-key:
       type: string
       description: The content of private key for internal communications with clients. Content will be auto-generated if this option is not specified.
+
+pre-refresh-check:
+  description: Check if charm is ready to refresh.
+
+resume-refresh:
+  description: Refresh remaining units (after you manually verified that refreshed units are healthy).
+  params:
+    force:
+      type: boolean
+      default: false
+      description: |
+        Potential of *data loss* and *downtime*
+        
+        Force refresh of next unit.
+        
+        Use to
+        - force incompatible refresh and/or
+        - continue refresh if 1+ refreshed units have non-active status

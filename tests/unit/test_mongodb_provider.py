@@ -6,6 +6,7 @@ import unittest
 from unittest import mock
 from unittest.mock import patch
 
+import pytest
 from ops.charm import RelationEvent
 from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
@@ -24,6 +25,13 @@ RELATION_EVENTS = ["joined", "changed", "departed"]
 DEPARTED_IDS = [None, 0]
 
 
+@pytest.fixture(autouse=True)
+def patch_upgrades(monkeypatch):
+    monkeypatch.setattr("charms.mongodb.v0.upgrade_helpers.AbstractUpgrade.in_progress", False)
+    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.get", lambda *args, **kwargs: 0)
+    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.set", lambda *args, **kwargs: None)
+
+
 class TestMongoProvider(unittest.TestCase):
     @patch("charm.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
@@ -39,9 +47,12 @@ class TestMongoProvider(unittest.TestCase):
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
 
+    @patch("charms.mongodb.v0.set_status.get_charm_revision")
+    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
-    def test_relation_event_db_not_initialised(self, oversee_users, defer):
+    def test_relation_event_db_not_initialised(self, oversee_users, defer, *unused):
         """Tests no database relations are handled until the database is initialised.
 
         Users should not be "overseen" until the database has been initialised, no matter the

@@ -40,6 +40,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         database_charm,
         application_name=REPLICATION_APP_NAME,
         resources=resources,
+        trust=True,
     )
 
     await ops_test.model.deploy(
@@ -47,18 +48,21 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         config={"role": "config-server"},
         resources=resources,
         application_name=CONFIG_SERVER_ONE_APP_NAME,
+        trust=True,
     )
     await ops_test.model.deploy(
         database_charm,
         config={"role": "config-server"},
         resources=resources,
         application_name=CONFIG_SERVER_TWO_APP_NAME,
+        trust=True,
     )
     await ops_test.model.deploy(
         database_charm,
         resources=resources,
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
+        trust=True,
     )
 
     # Will be enabled after DPE-5040 is done

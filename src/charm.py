@@ -6,6 +6,7 @@ import json
 import logging
 import re
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 import jinja2
@@ -14,6 +15,11 @@ from charms.loki_k8s.v0.loki_push_api import LogProxyConsumer
 from charms.mongodb.v0.config_server_interface import ClusterProvider
 from charms.mongodb.v0.mongodb_secrets import SecretCache, generate_secret_label
 from charms.mongodb.v0.set_status import MongoDBStatusHandler
+from charms.mongodb.v0.upgrade_helpers import (
+    FailedToElectNewPrimaryError,
+    UnitState,
+    unit_number,
+)
 from charms.mongodb.v1.helpers import (
     generate_keyfile,
     generate_password,
@@ -53,6 +59,7 @@ from ops.charm import (
     RelationEvent,
     StartEvent,
     UpdateStatusEvent,
+    UpgradeCharmEvent,
 )
 from ops.main import main
 from ops.model import (
@@ -78,9 +85,21 @@ from tenacity import (
 )
 
 from config import Config
-from exceptions import AdminUserCreationError, MissingSecretError
+from exceptions import (
+    AdminUserCreationError,
+    ContainerNotReadyError,
+    FailedToUpdateFilesystem,
+    MissingSecretError,
+    NotConfigServerError,
+)
+from upgrades import kubernetes_upgrades
+from upgrades.mongodb_upgrades import MongoDBUpgrade
 
 logger = logging.getLogger(__name__)
+
+# Disable spamming logs from lightkube
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 UNIT_REMOVAL_TIMEOUT = 1000
 
@@ -103,6 +122,7 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
+        self.framework.observe(self.on.upgrade_charm, self._on_upgrade)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(
             self.on[Config.Relations.PEERS].relation_joined, self._relation_changes_handler
@@ -136,6 +156,18 @@ class MongoDBCharm(CharmBase):
         self.shard = ConfigServerRequirer(self)
         self.config_server = ShardingProvider(self)
         self.cluster = ClusterProvider(self)
+
+        self.upgrade = MongoDBUpgrade(self)
+
+        self.version_checker = CrossAppVersionChecker(
+            self,
+            version=get_charm_revision(self.unit, local_version=self.get_charm_internal_revision),
+            relations_to_check=[
+                Config.Relations.SHARDING_RELATIONS_NAME,
+                Config.Relations.CONFIG_SERVER_RELATIONS_NAME,
+            ],
+        )
+
         self.metrics_endpoint = MetricsEndpointProvider(
             self, refresh_event=[self.on.start, self.on.update_status], jobs=self.monitoring_jobs
         )
@@ -145,15 +177,6 @@ class MongoDBCharm(CharmBase):
             log_files=Config.get_logs_files_paths(),
             relation_name=Config.Relations.LOGGING,
             container_name=Config.CONTAINER_NAME,
-        )
-
-        self.version_checker = CrossAppVersionChecker(
-            self,
-            version=get_charm_revision(self.unit, local_version=self.get_charm_internal_revision),
-            relations_to_check=[
-                Config.Relations.SHARDING_RELATIONS_NAME,
-                Config.Relations.CONFIG_SERVER_RELATIONS_NAME,
-            ],
         )
 
     # BEGIN: properties
@@ -320,7 +343,7 @@ class MongoDBCharm(CharmBase):
                     "command": f"sh -c 'logrotate {Config.LogRotate.RENDERED_TEMPLATE}; sleep 1'",
                     "startup": "enabled",
                     "override": "replace",
-                    "backoff-delay": "1m",
+                    "backoff-delay": "1m0s",
                     "backoff-factor": 1,
                     "user": Config.UNIX_USER,
                     "group": Config.UNIX_GROUP,
@@ -377,6 +400,21 @@ class MongoDBCharm(CharmBase):
         """Check if MongoDB is initialised."""
         return json.loads(self.app_peer_data.get("db_initialised", "false"))
 
+    @property
+    def unit_departed(self) -> bool:
+        """Whether the unit has departed or not."""
+        return json.loads(self.unit_peer_data.get("unit_departed", "false"))
+
+    @unit_departed.setter
+    def unit_departed(self, value: bool) -> None:
+        """Set the unit_departed flag."""
+        if isinstance(value, bool):
+            self.unit_peer_data["unit_departed"] = json.dumps(value)
+        else:
+            raise ValueError(
+                f"'unit_departed' must be a boolean value. Provided: {value} is of type {type(value)}"
+            )
+
     def is_role_changed(self) -> bool:
         """Checks if application is running in provided role."""
         return self.role != self.model.config["role"]
@@ -410,9 +448,11 @@ class MongoDBCharm(CharmBase):
             )
 
     @property
-    def upgrade_in_progress(self):
-        """TODO: implement this as part of upgrades."""
-        return False
+    def upgrade_in_progress(self) -> bool:
+        """Returns true if upgrade is in progress."""
+        if not self.upgrade._upgrade:
+            return False
+        return self.upgrade._upgrade.in_progress
 
     @property
     def replica_set_initialised(self) -> bool:
@@ -551,25 +591,8 @@ class MongoDBCharm(CharmBase):
             return pure_id1 == pure_id2
         return False
 
-    # BEGIN: charm events
-
-    def _on_mongod_pebble_ready(self, event) -> None:
-        """Configure MongoDB pebble layer specification."""
-        # Get a reference the container attribute
-        container = self.unit.get_container(Config.CONTAINER_NAME)
-        if not container.can_connect():
-            logger.debug("mongod container is not ready yet.")
-            event.defer()
-            return
-
-        # We need to check that the storages are attached before starting the services.
-        # pebble-ready is not guaranteed to run after storage-attached so this check allows
-        # to ensure that the storages are attached before the pebble-ready hook is run.
-        if any(not storage for storage in self.model.storages.values()):
-            logger.debug("Storages are not attached yet")
-            event.defer()
-            return
-
+    def _filesystem_handler(self, container: Container) -> None:
+        """Pushes files on the container and handle permissions."""
         try:
             # mongod needs keyFile and TLS certificates on filesystem
             self.push_tls_certificate_to_workload()
@@ -579,19 +602,52 @@ class MongoDBCharm(CharmBase):
 
         except (PathError, ProtocolError, MissingSecretError) as e:
             logger.error("Cannot initialize workload: %r", e)
-            event.defer()
-            return
+            raise FailedToUpdateFilesystem
 
-        # Add initial Pebble config layer using the Pebble API
-        container.add_layer("mongod", self._mongod_layer, combine=True)
-        container.add_layer("log_rotate", self._log_rotate_layer, combine=True)
+    def _configure_layers(self, container: Container) -> None:
+        """Configure the layers of the container."""
+        modified = False
+        current_layers = container.get_plan()
+        new_layers = {
+            Config.SERVICE_NAME: self._mongod_layer,
+            "log_rotate": self._log_rotate_layer,
+        }
         if self.is_role(Config.Role.CONFIG_SERVER):
-            container.add_layer("mongos", self._mongos_layer, combine=True)
+            new_layers["mongos"] = self._mongos_layer
 
+        # Add Pebble config layers missing or modified
+        for layer_name, definition in new_layers.items():
+            for service_name, service in definition.services.items():
+                if current_layers.services.get(service_name) != service:
+                    modified = True
+                    logger.debug(f"Adding layer {service_name}.")
+                    container.add_layer(layer_name, definition, combine=True)
+
+        # We'll always have a logrotate configuration at this point.
         container.exec(["chmod", "644", "/etc/logrotate.d/mongodb"])
 
-        # Restart changed services and start startup-enabled services.
-        container.replan()
+        if modified:
+            container.replan()
+
+    def _configure_container(self, container: Container) -> None:
+        """Configure MongoDB pebble layer specification."""
+        if not container.can_connect():
+            logger.debug("mongod container is not ready yet.")
+            raise ContainerNotReadyError
+
+        # We need to check that the storages are attached before starting the services.
+        # pebble-ready is not guaranteed to run after storage-attached so this check allows
+        # to ensure that the storages are attached before the pebble-ready hook is run.
+        if any(not storage for storage in self.model.storages.values()):
+            logger.debug("Storages are not attached yet")
+            raise ContainerNotReadyError
+
+        try:
+            self._filesystem_handler(container)
+        except FailedToUpdateFilesystem as err:
+            raise ContainerNotReadyError from err
+
+        self._configure_layers(container)
 
         # when a network cuts and the pod restarts - reconnect to the exporter
         try:
@@ -599,8 +655,49 @@ class MongoDBCharm(CharmBase):
             self._connect_pbm_agent()
         except MissingSecretError as e:
             logger.error("Cannot connect mongodb exporter: %r", e)
+            raise ContainerNotReadyError
+
+    # BEGIN: charm events
+    def _on_upgrade(self, event: UpgradeCharmEvent) -> None:
+        """Upgrade event handler.
+
+        During an upgrade event, it will set the version in all relations,
+        replan the container and process the upgrade statuses. If the upgrade
+        is compatible, it will end up emitting a post upgrade event that
+        verifies the health of the cluster.
+        """
+        if self.unit.is_leader():
+            self.version_checker.set_version_across_all_relations()
+
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+
+        # Just run the configure layers steps on the container and defer if it fails.
+        try:
+            self._configure_container(container)
+        except ContainerNotReadyError:
+            self.status.set_and_share_status(Config.Status.UNHEALTHY_UPGRADE)
+            self.upgrade._reconcile_upgrade(event, during_upgrade=True)
             event.defer()
             return
+
+        self.status.set_and_share_status(Config.Status.WAITING_POST_UPGRADE_STATUS)
+        self.upgrade._reconcile_upgrade(event, during_upgrade=True)
+        if self.upgrade._upgrade.is_compatible:
+            # Post upgrade event verifies the success of the upgrade.
+            self.upgrade.post_app_upgrade_event.emit()
+
+    def _on_mongod_pebble_ready(self, event) -> None:
+        """Configure MongoDB pebble layer specification."""
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+
+        # Just run the configure layers steps on the container and defer if it fails.
+        try:
+            self._configure_container(container)
+        except ContainerNotReadyError:
+            event.defer()
+            return
+
+        self.upgrade._reconcile_upgrade(event)
 
     def is_db_service_ready(self) -> bool:
         """Checks if the MongoDB service is ready to accept connections."""
@@ -632,7 +729,30 @@ class MongoDBCharm(CharmBase):
             f"Migration of sharding components not permitted, revert config role to {self.role}"
         )
 
-    def _on_start(self, event) -> None:
+    def __can_charm_start(self) -> bool:
+        """Runs the checks that are mandatory before trying to create anything mongodb related."""
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+
+        try:
+            self._configure_container(container)
+        except ContainerNotReadyError:
+            return
+
+        if not container.can_connect():
+            logger.debug("mongod container is not ready yet.")
+            return False
+
+        if not container.exists(Config.SOCKET_PATH):
+            logger.debug("The mongod socket is not ready yet.")
+            return False
+
+        if not self.is_db_service_ready():
+            logger.debug("mongodb service is not ready yet.")
+            return False
+
+        return True
+
+    def _on_start(self, event: StartEvent) -> None:
         """Initialise MongoDB.
 
         Initialisation of replSet should be made once after start.
@@ -650,32 +770,7 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
-        # Patch the stateful set to have an increased termination period to prevent data loss on
-        # removed shards. As Juju gives us a termination period of 30 seconds:
-        # https://bugs.launchpad.net/juju/+bug/2035102
-
-        # It doesn't matter if we patch the stateful set before or after the charm has started.
-        # The usual start hooks emitted by juju will have already been emitted, so we can expect
-        # two rounds of restarts on one or more units (some units that get initialised late will
-        # only have one round of restarts). The second round of start hooks will be emitted
-        # **only after the replica set has been initialized**, we have 0 control over that.
-
-        if self.unit.is_leader() and self.get_current_termination_period() != ONE_YEAR:
-            self.update_termination_grace_period(ONE_YEAR)
-
-        container = self.unit.get_container(Config.CONTAINER_NAME)
-        if not container.can_connect():
-            logger.debug("mongod container is not ready yet.")
-            event.defer()
-            return
-
-        if not container.exists(Config.SOCKET_PATH):
-            logger.debug("The mongod socket is not ready yet.")
-            event.defer()
-            return
-
-        if not self.is_db_service_ready():
-            logger.debug("mongodb service is not ready yet.")
+        if not self.__can_charm_start():
             event.defer()
             return
 
@@ -690,6 +785,7 @@ class MongoDBCharm(CharmBase):
 
         # mongod is now active
         self.status.set_and_share_status(ActiveStatus())
+        self.upgrade._reconcile_upgrade(event)
 
         if not self.unit.is_leader():
             return
@@ -705,12 +801,13 @@ class MongoDBCharm(CharmBase):
 
     def _relation_changes_handler(self, event: RelationEvent) -> None:
         """Handles different relation events and updates MongoDB replica set."""
+        self.upgrade._reconcile_upgrade(event)
         self._connect_mongodb_exporter()
         self._connect_pbm_agent()
 
         if isinstance(event, RelationDepartedEvent):
             if event.departing_unit.name == self.unit.name:
-                self.unit_peer_data.setdefault("unit_departed", "True")
+                self.unit_departed = True
 
         if not self.unit.is_leader():
             return
@@ -761,7 +858,8 @@ class MongoDBCharm(CharmBase):
                 self._add_units_from_replica_set(event, mongo, mongodb_hosts - replset_members)
 
                 # app relations should be made aware of the new set of hosts
-                self.client_relations.update_app_relation_data()
+                if not self.is_role(Config.Role.SHARD):
+                    self.client_relations.update_app_relation_data()
 
             except NotReadyError:
                 self.status.set_and_share_status(
@@ -806,24 +904,67 @@ class MongoDBCharm(CharmBase):
             patch_type=PatchType.MERGE,
         )
 
-    def _on_stop(self, _) -> None:
-        """Handle on_stop event.
+    def __handle_partition_on_stop(self) -> None:
+        """Raise partition to prevent other units from restarting if an upgrade is in progress.
 
-        On stop can occur after a user has refreshed, after a unit has been removed, or when a pod
-        is getting restarted.
+        If an upgrade is not in progress, the leader unit will reset the partition to 0.
         """
-        if "True" == self.unit_peer_data.get("unit_departed", "False"):
-            logger.debug(f"{self.unit.name} blocking on_stop")
-            is_in_replica_set = True
-            timeout = UNIT_REMOVAL_TIMEOUT
-            while is_in_replica_set and timeout > 0:
-                is_in_replica_set = self.is_unit_in_replica_set()
-                time.sleep(1)
-                timeout -= 1
-                if timeout < 0:
-                    raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
-            logger.debug(f"{self.unit.name} releasing on_stop")
-            self.unit_peer_data["unit_departed"] = ""
+        current_unit_number = unit_number(self.unit)
+        if kubernetes_upgrades.partition.get(app_name=self.app.name) < current_unit_number:
+            kubernetes_upgrades.partition.set(app_name=self.app.name, value=current_unit_number)
+            logger.debug(f"Partition set to {current_unit_number} during stop event")
+
+    def __handle_relation_departed_on_stop(self) -> None:
+        """Leaves replicaset.
+
+        If the unit has not already left the replica set, this function
+        attempts to block operations until the unit is removed. Note that with
+        how Juju currently operates, we only have 30 seconds until SIGTERM
+        command, so we are by no means guaranteed to have removed the replica
+        before the pod is removed. However the leader will reconfigure the
+        replica set if this is the case on `update status`.
+        """
+        logger.debug(f"{self.unit.name} blocking on_stop")
+        is_in_replica_set = True
+        timeout = UNIT_REMOVAL_TIMEOUT
+        while is_in_replica_set and timeout > 0:
+            is_in_replica_set = self.is_unit_in_replica_set()
+            time.sleep(1)
+            timeout -= 1
+            if timeout < 0:
+                raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
+        logger.debug("{self.unit.name} releasing on_stop")
+        self.unit_departed = False
+
+    def __handle_upgrade_on_stop(self) -> None:
+        """Sets the unit state to RESTARTING and step down from replicaset.
+
+        Note that with how Juju currently operates, we only have at most 30
+        seconds until SIGTERM command, so we are by no means guaranteed to have
+        stepped down before the pod is removed.
+        Upon restart, the upgrade will still resume because all hooks run the
+        `_reconcile_upgrade` handler.
+        """
+        self.upgrade._upgrade.unit_state = UnitState.RESTARTING
+
+        # According to the MongoDB documentation, before upgrading the primary, we must ensure a
+        # safe primary re-election.
+        try:
+            if self.unit.name == self.primary:
+                logger.debug("Stepping down current primary, before upgrading service...")
+                self.upgrade.step_down_primary_and_wait_reelection()
+        except FailedToElectNewPrimaryError:
+            logger.error("Failed to reelect primary before upgrading unit.")
+            return
+
+    def _on_stop(self, event) -> None:
+        self.__handle_partition_on_stop()
+        if self.unit_departed:
+            self.__handle_relation_departed_on_stop()
+        if not self.upgrade._upgrade:
+            logger.debug("Peer relation missing during stop event")
+            return
+        self.__handle_upgrade_on_stop()
 
         # I can add this functionality to mongodb lib - i.e. a function wait_for_new_primary, but
         # this is just a POC
@@ -836,6 +977,19 @@ class MongoDBCharm(CharmBase):
                 mongo.step_down_primary()
             time.sleep(1)
             waiting += 1
+
+        if "True" == self.unit_peer_data.get("unit_departed", "False"):
+            logger.debug(f"{self.unit.name} blocking on_stop")
+            is_in_replica_set = True
+            timeout = UNIT_REMOVAL_TIMEOUT
+            while is_in_replica_set and timeout > 0:
+                is_in_replica_set = self.is_unit_in_replica_set()
+                time.sleep(1)
+                timeout -= 1
+                if timeout < 0:
+                    raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
+            logger.debug(f"{self.unit.name} releasing on_stop")
+            self.unit_peer_data["unit_departed"] = ""
 
     def _on_update_status(self, event: UpdateStatusEvent):
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
@@ -862,6 +1016,12 @@ class MongoDBCharm(CharmBase):
                 else:
                     self.status.set_and_share_status(WaitingStatus("Waiting for MongoDB to start"))
                     return
+
+        self.upgrade._reconcile_upgrade(event)
+        if self.upgrade_in_progress:
+            self.status.set_and_share_status(self.status.process_statuses())
+            # Useless to reun relation changes handler if upgrade is in progress and will delay.
+            return
 
         # leader should periodically handle configuring the replica set. Incidents such as network
         # cuts can lead to new IP addresses and therefore will require a reconfigure. Especially
@@ -1123,7 +1283,11 @@ class MongoDBCharm(CharmBase):
         self.app_peer_data[f"{user.get_username()}-user-created"] = "True"
 
     def _get_mongodb_config_for_user(
-        self, user: MongoDBUser, hosts: List[str]
+        self,
+        user: MongoDBUser,
+        hosts: List[str],
+        replset: str | None = None,
+        standalone: bool = False,
     ) -> MongoConfiguration:
         external_ca, _ = self.tls.get_tls_files(internal=False)
         internal_ca, _ = self.tls.get_tls_files(internal=True)
@@ -1134,7 +1298,7 @@ class MongoDBCharm(CharmBase):
             )
         else:
             return MongoConfiguration(
-                replset=self.app.name,
+                replset=replset or self.app.name,
                 database=user.get_database_name(),
                 username=user.get_username(),
                 password=password,  # type: ignore
@@ -1142,6 +1306,7 @@ class MongoDBCharm(CharmBase):
                 roles=set(user.get_roles()),
                 tls_external=external_ca is not None,
                 tls_internal=internal_ca is not None,
+                standalone=standalone,
             )
 
     def _get_mongos_config_for_user(
@@ -1342,7 +1507,7 @@ class MongoDBCharm(CharmBase):
         container = self.unit.get_container(Config.CONTAINER_NAME)
         container.stop(Config.SERVICE_NAME)
 
-        container.add_layer("mongod", self._mongod_layer, combine=True)
+        container.add_layer(Config.SERVICE_NAME, self._mongod_layer, combine=True)
         if self.is_role(Config.Role.CONFIG_SERVER):
             container.add_layer("mongos", self._mongos_layer, combine=True)
 
@@ -1649,8 +1814,8 @@ class MongoDBCharm(CharmBase):
             )
             logger.error(
                 "Charm is in sharding role: %s. Does not support %s interface.",
-                rel_interface,
                 self.role,
+                rel_interface,
             )
             return False
 
@@ -1678,6 +1843,17 @@ class MongoDBCharm(CharmBase):
         """Returns true if charm is running as a sharded component."""
         return self.is_role(Config.Role.SHARD) or self.is_role(Config.Role.CONFIG_SERVER)
 
+    def is_cluster_on_same_revision(self) -> bool:
+        """Returns True if the cluster is using the same charm revision.
+
+        Note: This can only be determined by the config-server since shards are not integrated to
+        each other.
+        """
+        if not self.is_role(Config.Role.CONFIG_SERVER):
+            raise NotConfigServerError("This check can only be ran by the config-server.")
+
+        return self.version_checker.are_related_apps_valid()
+
     # END: helper functions
 
     # BEGIN: static methods
@@ -1693,13 +1869,11 @@ class MongoDBCharm(CharmBase):
         ]
 
         for license_name in licenses:
-            try:
+            # Lazy copy, only if the file wasn't already pulled.
+            filename = Path(f"LICENSE_{license_name}")
+            if not filename.is_file():
                 license_file = container.pull(path=Config.get_license_path(license_name))
-                f = open(f"LICENSE_{license_name}", "x")
-                f.write(str(license_file.read()))
-                f.close()
-            except FileExistsError:
-                pass
+                filename.write_text(str(license_file.read()))
 
     @staticmethod
     def _set_data_dir_permissions(container: Container) -> None:
@@ -1708,6 +1882,9 @@ class MongoDBCharm(CharmBase):
         Until the ability to set fsGroup and fsGroupChangePolicy via Pod securityContext
         is available, we fix permissions incorrectly with chown.
         """
+        # Ensure the log status dir exists
+        container.make_dir(Config.LogRotate.LOG_STATUS_DIR, make_parents=True)
+
         for path in [Config.DATA_DIR, Config.LOG_DIR, Config.LogRotate.LOG_STATUS_DIR]:
             paths = container.list_files(path, itself=True)
             assert len(paths) == 1, "list_files doesn't return only the directory itself"

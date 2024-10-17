@@ -35,6 +35,13 @@ PEER_ADDR = {"private-address": "127.4.5.6"}
 logger = logging.getLogger(__name__)
 
 
+@pytest.fixture(autouse=True)
+def patch_upgrades(monkeypatch):
+    monkeypatch.setattr("charms.mongodb.v0.upgrade_helpers.AbstractUpgrade.in_progress", False)
+    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.get", lambda *args, **kwargs: 0)
+    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.set", lambda *args, **kwargs: None)
+
+
 class TestCharm(unittest.TestCase):
     @patch("charm.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
@@ -47,6 +54,7 @@ class TestCharm(unittest.TestCase):
         self.harness.add_oci_resource("mongodb-image", mongo_resource)
         self.harness.begin()
         self.harness.add_relation("database-peers", "mongodb-peers")
+        self.harness.add_relation("upgrade-version-a", "upgrade-version-a")
         self.harness.set_leader(True)
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
@@ -75,7 +83,7 @@ class TestCharm(unittest.TestCase):
                     "command": "sh -c 'logrotate /etc/logrotate.d/mongodb; sleep 1'",
                     "user": "mongodb",
                     "group": "mongodb",
-                    "backoff-delay": "1m",
+                    "backoff-delay": "1m0s",
                     "backoff-factor": 1,
                 },
                 "mongod": {
@@ -172,7 +180,9 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._push_keyfile_to_workload")
-    def test_pebble_ready_push_keyfile_to_workload_failure(self, push_keyfile_to_workload, defer):
+    def test_pebble_ready_push_keyfile_to_workload_failure(
+        self, push_keyfile_to_workload, defer, *unused
+    ):
         """Test verifies behavior when setting keyfile fails.
 
         Verifies that when a failure to set keyfile occurs that there is no attempt to add layers
@@ -301,6 +311,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongoDBCharm.get_current_termination_period")
     @patch("charm.MongoDBCharm.update_termination_grace_period")
+    @patch("charm.MongoDBCharm._configure_container", return_value=None)
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -332,6 +343,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongoDBCharm.get_current_termination_period")
     @patch("charm.MongoDBCharm.update_termination_grace_period")
+    @patch("charm.MongoDBCharm._configure_container", return_value=None)
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
     @patch("charm.MongoDBCharm._init_operator_user")
@@ -432,7 +444,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     @patch("tenacity.nap.time.sleep", MagicMock())
-    def test_error_initalising_users(self, connection, init_user, provider, defer, *unused):
+    def test_error_initialising_users(self, connection, init_user, provider, defer, *unused):
         """Tests that failure to initialise users set is properly handled.
 
         Verifies that when there is a failure to initialise users that overseeing users is not
@@ -459,9 +471,9 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongoDBCharm.get_current_termination_period")
     @patch("charm.MongoDBCharm.update_termination_grace_period")
+    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBConnection")
     @patch("tenacity.nap.time.sleep", MagicMock())
     @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
@@ -470,7 +482,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.wait_fixed")
     @patch("charm.stop_after_attempt")
     def test_start_mongod_error_overseeing_users(
-        self, retry_stop, retry_wait, connection, init_user, provider, defer, *unused
+        self, retry_stop, retry_wait, connection, provider, defer, *unused
     ):
         """Tests failures related to pymongo are properly handled when overseeing users.
 
@@ -501,7 +513,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    def test_reconfigure_not_already_initialised(self, connection, defer):
+    def test_reconfigure_not_already_initialised(self, connection, defer, *unused):
         """Tests reconfigure does not execute when database has not been initialised.
 
         Verifies in case of relation_joined and relation departed, that when the the database has
@@ -539,10 +551,10 @@ class TestCharm(unittest.TestCase):
 
             defer.assert_not_called()
 
+    @patch("charms.mongodb.v0.mongo.MongoClient")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    @patch("charms.mongodb.v0.mongo.MongoClient")
-    def test_reconfigure_get_members_failure(self, client, connection, defer):
+    def test_reconfigure_get_members_failure(self, connection, defer, *unused):
         """Tests reconfigure does not execute when unable to get the replica set members.
 
         Verifies in case of relation_joined and relation departed, that when the the database
@@ -578,7 +590,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    def test_reconfigure_remove_member_failure(self, connection, defer):
+    def test_reconfigure_remove_member_failure(self, connection, defer, *unused):
         """Tests reconfigure does not proceed when unable to remove a member.
 
         Verifies in relation departed events, that when the database cannot remove a member that
@@ -638,7 +650,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBConnection")
-    def test_reconfigure_add_member_failure(self, connection, defer):
+    def test_reconfigure_add_member_failure(self, connection, defer, *unused):
         """Tests reconfigure does not proceed when unable to add a member.
 
         Verifies in relation joined events, that when the database cannot add a member that the
@@ -668,6 +680,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongoDBCharm.get_current_termination_period")
     @patch("charm.MongoDBCharm.update_termination_grace_period")
+    @patch("charm.MongoDBCharm._configure_container", return_value=None)
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider.oversee_users")
     @patch("charm.MongoDBConnection")
@@ -714,16 +727,16 @@ class TestCharm(unittest.TestCase):
 
         defer.assert_not_called()
 
-    def test_get_password(self):
+    def test_get_password(self, *unused):
         self._setup_secrets()
         assert isinstance(self.harness.charm.get_secret("app", "monitor-password"), str)
-        self.harness.charm.get_secret("app", "non-existing-secret") is None
+        assert self.harness.charm.get_secret("app", "non-existing-secret") is None
 
         self.harness.charm.set_secret("unit", "somekey", "bla")
         assert isinstance(self.harness.charm.get_secret("unit", "somekey"), str)
-        self.harness.charm.get_secret("unit", "non-existing-secret") is None
+        assert self.harness.charm.get_secret("unit", "non-existing-secret") is None
 
-    def test_set_reset_existing_password_app(self):
+    def test_set_reset_existing_password_app(self, *unused):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         self._setup_secrets()
         self.harness.set_leader(True)
@@ -735,7 +748,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.set_secret("app", "monitor-password", "blablabla")
         assert self.harness.charm.get_secret("app", "monitor-password") == "blablabla"
 
-    def test_set_reset_existing_password_app_nonleader(self):
+    def test_set_reset_existing_password_app_nonleader(self, *unused):
         self._setup_secrets()
         self.harness.set_leader(False)
 
@@ -749,7 +762,7 @@ class TestCharm(unittest.TestCase):
         assert re.match(f"mongodb-k8s.{scope}", secret_id)
 
     @parameterized.expand([("app"), ("unit")])
-    def test_set_reset_new_secret(self, scope):
+    def test_set_reset_new_secret(self, scope, *unused):
         if scope == "app":
             self.harness.set_leader(True)
 
@@ -765,7 +778,7 @@ class TestCharm(unittest.TestCase):
         self.harness.charm.set_secret(scope, "new-secret2", "blablabla")
         assert self.harness.charm.get_secret(scope, "new-secret2") == "blablabla"
 
-    def test_set_reset_new_secret_non_leader(self):
+    def test_set_reset_new_secret_non_leader(self, *unused):
         self.harness.set_leader(True)
 
         # Getting current password
@@ -790,7 +803,7 @@ class TestCharm(unittest.TestCase):
         assert self.harness.charm.get_secret(scope, "somekey") is None
 
     @pytest.mark.usefixtures("use_caplog")
-    def test_delete_password(self):
+    def test_delete_password(self, *unused):
         self._setup_secrets()
         self.harness.set_leader(True)
 
@@ -827,7 +840,7 @@ class TestCharm(unittest.TestCase):
                 in self._caplog.text
             )
 
-    def test_delete_password_non_leader(self):
+    def test_delete_password_non_leader(self, *unused):
         self._setup_secrets()
         self.harness.set_leader(False)
         assert self.harness.charm.get_secret("app", "monitor-password")
@@ -867,9 +880,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._pull_licenses")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    def test_connect_to_mongo_exporter_on_set_password(
-        self, connect_exporter, pull_licenses, connection
-    ):
+    def test_connect_to_mongo_exporter_on_set_password(self, connect_exporter, *unused):
         """Test _connect_mongodb_exporter is called when the password is set for 'montior' user."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
@@ -881,12 +892,12 @@ class TestCharm(unittest.TestCase):
         self.harness.charm._on_set_password(action_event)
         connect_exporter.assert_called()
 
+    @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
     def test_event_set_password_secrets(
-        self, connect_exporter, connection, has_backup_service, get_pbm_status
+        self, connect_exporter, has_backup_service, get_pbm_status, *unused
     ):
         """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
 
@@ -913,12 +924,12 @@ class TestCharm(unittest.TestCase):
         assert "password" in args_pw
         assert args_pw["password"] == pw
 
+    @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBBackups.get_pbm_status")
     @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
     def test_event_auto_reset_password_secrets_when_no_pw_value_shipped(
-        self, connect_exporter, connection, has_backup_service, get_pbm_status
+        self, connect_exporter, has_backup_service, get_pbm_status, *unused
     ):
         """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
 
@@ -956,7 +967,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.MongoDBConnection")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    def test_event_any_unit_can_get_password_secrets(self, connect_exporter, connection):
+    def test_event_any_unit_can_get_password_secrets(self, *unused):
         """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
 
         Furthermore: in Juju 3.x we want to use secrets
@@ -1035,6 +1046,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
     @patch("charm.USER_CREATION_COOLDOWN", 1)
     @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
+    @patch("charm.MongoDBCharm._configure_container", return_value=None)
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.MongoDBCharm._init_monitor_user")
     @patch("charm.MongoDBCharm._connect_mongodb_exporter")
@@ -1043,18 +1055,7 @@ class TestCharm(unittest.TestCase):
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._set_data_dir_permissions")
     @patch("charm.MongoDBConnection")
-    def test__backup_user_created(
-        self,
-        connection,
-        fix_data_dir,
-        defer,
-        pull_licenses,
-        _socket_exists,
-        _connect_mongodb_exporter,
-        _init_operator_user,
-        _init_monitor_user,
-        *unused,
-    ):
+    def test_backup_user_created(self, *unused):
         """Tests what backup user was created."""
         self.harness.charm._initialise_users.retry.wait = wait_none()
         container = self.harness.model.unit.get_container("mongod")
@@ -1068,7 +1069,7 @@ class TestCharm(unittest.TestCase):
     @patch("charm.MongoDBCharm.get_current_termination_period")
     @patch("charm.MongoDBCharm.update_termination_grace_period")
     @patch("charm.MongoDBConnection")
-    def test_set_password_provided(self, connection, *unused):
+    def test_set_password_provided(self, *unused):
         """Tests that a given password is set as the new mongodb password for backup user."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_leader(True)
@@ -1085,7 +1086,7 @@ class TestCharm(unittest.TestCase):
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.MongoDBCharm.has_backup_service")
     @patch("charm.MongoDBBackups.get_pbm_status")
-    def test_set_backup_password_pbm_busy(self, pbm_status, has_backup_service):
+    def test_set_backup_password_pbm_busy(self, pbm_status, has_backup_service, *unused):
         """Tests changes to passwords fail when pbm is restoring/backing up."""
         self.harness.set_leader(True)
         original_password = "pass123"

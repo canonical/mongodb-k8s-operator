@@ -65,7 +65,11 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         my_charm = await ops_test.build_charm(".")
         resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
         await ops_test.model.deploy(
-            my_charm, num_units=NUM_UNITS, resources=resources, series="jammy"
+            my_charm,
+            num_units=NUM_UNITS,
+            resources=resources,
+            series="jammy",
+            trust=True,
         )
         # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
         await ops_test.model.wait_for_idle(

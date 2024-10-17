@@ -32,6 +32,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         num_units=1,
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
+        trust=True,
     )
     await ops_test.model.deploy(
         mongodb_charm,
@@ -39,6 +40,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         num_units=1,
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
+        trust=True,
     )
 
     await ops_test.model.deploy(
