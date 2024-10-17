@@ -1022,6 +1022,7 @@ class MongoDBCharm(CharmBase):
             return
 
     def _on_stop(self, event) -> None:
+        self.__handle_partition_on_stop()
         if self._is_removing_last_replica:
             client = Client()
             client.delete(
@@ -1029,7 +1030,6 @@ class MongoDBCharm(CharmBase):
                 namespace=self.model.name,
                 name=SERVICE_NAME,
             )
-        self.__handle_partition_on_stop()
         if self.unit_departed:
             self.__handle_relation_departed_on_stop()
         if not self.upgrade._upgrade:
