@@ -20,7 +20,7 @@ from .ha_tests.helpers import (
 )
 from .helpers import (
     APP_NAME,
-    METADATA,
+    RESOURCES,
     TEST_DOCUMENTS,
     UNIT_IDS,
     audit_log_line_sanity_check,
@@ -59,10 +59,9 @@ async def test_build_and_deploy(ops_test: OpsTest):
     app_name = APP_NAME
     # build and deploy charm from local source folder
     charm = await ops_test.build_charm(".")
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         charm,
-        resources=resources,
+        resources=RESOURCES,
         application_name=app_name,
         num_units=len(UNIT_IDS),
         series="jammy",

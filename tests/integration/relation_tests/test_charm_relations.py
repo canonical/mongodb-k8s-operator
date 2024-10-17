@@ -4,16 +4,20 @@
 import asyncio
 import logging
 import time
-from pathlib import Path
 
 import pytest
-import yaml
 from pymongo.uri_parser import parse_uri
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ..ha_tests.helpers import get_replica_set_primary as replica_set_primary
-from ..helpers import check_or_scale_app, get_app_name, is_relation_joined, run_mongo_op
+from ..helpers import (
+    RESOURCES,
+    check_or_scale_app,
+    get_app_name,
+    is_relation_joined,
+    run_mongo_op,
+)
 from .helpers import (
     assert_created_user_can_connect,
     get_application_relation_data,
@@ -25,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 MEDIAN_REELECTION_TIME = 12
 APPLICATION_APP_NAME = "application"
-DATABASE_METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 PORT = 27017
 DATABASE_APP_NAME = "mongodb-k8s"
 FIRST_DATABASE_RELATION_NAME = "first-database"
@@ -56,10 +59,6 @@ async def test_deploy_charms(ops_test: OpsTest):
             False
         ), f"provided MongoDB application, cannot be named {ANOTHER_DATABASE_APP_NAME}, this name is reserved for this test."
 
-    db_resources = {
-        "mongodb-image": DATABASE_METADATA["resources"]["mongodb-image"]["upstream-source"]
-    }
-
     if app_name:
         await asyncio.gather(check_or_scale_app(ops_test, app_name, REQUIRED_UNITS))
     else:
@@ -67,7 +66,7 @@ async def test_deploy_charms(ops_test: OpsTest):
             ops_test.model.deploy(
                 database_charm,
                 application_name=DATABASE_APP_NAME,
-                resources=db_resources,
+                resources=RESOURCES,
                 num_units=REQUIRED_UNITS,
                 trust=True,
             )
@@ -82,7 +81,7 @@ async def test_deploy_charms(ops_test: OpsTest):
         ops_test.model.deploy(
             database_charm,
             application_name=ANOTHER_DATABASE_APP_NAME,
-            resources=db_resources,
+            resources=RESOURCES,
             num_units=REQUIRED_UNITS,
             trust=True,
         ),

@@ -8,7 +8,7 @@ import pytest
 from pytest_operator.plugin import OpsTest
 
 from .ha_tests.helpers import get_replica_set_primary as replica_set_primary
-from .helpers import METADATA, SERIES, check_or_scale_app, get_app_name
+from .helpers import RESOURCES, SERIES, check_or_scale_app, get_app_name
 
 DATABASE_APP_NAME = "mongodb-k8s"
 MEDIAN_REELECTION_TIME = 12
@@ -30,10 +30,9 @@ async def test_build_and_deploy(ops_test: OpsTest):
     app_name = DATABASE_APP_NAME
     # build and deploy charm from local source folder
     charm = await ops_test.build_charm(".")
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         charm,
-        resources=resources,
+        resources=RESOURCES,
         application_name=app_name,
         num_units=1,
         series=SERIES,

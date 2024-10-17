@@ -33,6 +33,7 @@ def patch_upgrades(monkeypatch):
 
 
 class TestMongoProvider(unittest.TestCase):
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("charm.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
     def setUp(self, *unused):
@@ -47,6 +48,7 @@ class TestMongoProvider(unittest.TestCase):
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
 
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("charms.mongodb.v0.set_status.get_charm_revision")
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charm.CrossAppVersionChecker.is_integrated_to_locally_built_charm")
@@ -73,6 +75,7 @@ class TestMongoProvider(unittest.TestCase):
         oversee_users.assert_not_called()
         defer.assert_not_called()
 
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charms.mongodb.v0.set_status.get_charm_revision")
@@ -99,6 +102,7 @@ class TestMongoProvider(unittest.TestCase):
             defer.assert_called()
 
     # oversee_users raises AssertionError when unable to attain users from relation
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch_network_get(private_address="1.1.1.1")
     @patch("charm.CrossAppVersionChecker.is_local_charm")
     @patch("charms.mongodb.v0.set_status.get_charm_revision")
