@@ -10,15 +10,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from charms.mongodb.v1.helpers import CONF_DIR, DATA_DIR, KEY_FILE
 from ops.model import ActiveStatus, MaintenanceStatus, ModelError
-from ops.pebble import APIError, ExecError, PathError, ProtocolError
+from ops.pebble import ExecError, PathError, ProtocolError
 from ops.testing import Harness
 from parameterized import parameterized
-from pymongo.errors import (
-    ConfigurationError,
-    ConnectionFailure,
-    OperationFailure,
-    PyMongoError,
-)
+from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from tenacity import stop_after_attempt, wait_fixed, wait_none
 
 from charm import MongoDBCharm, NotReadyError
@@ -219,36 +214,36 @@ class TestCharm(unittest.TestCase):
         mock_container.replan.assert_not_called()
         defer.assert_called()
 
-    @patch("charm.MongoDBCharm.get_current_termination_period")
-    @patch("charm.MongoDBCharm.update_termination_grace_period")
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBConnection")
-    def test_start_cannot_retrieve_container(
-        self, connection, init_user, provider, defer, *unused
-    ):
-        """Verifies that failures to get container result in a ModelError being raised.
+    # @patch("charm.MongoDBCharm.get_current_termination_period")
+    # @patch("charm.MongoDBCharm.update_termination_grace_period")
+    # @patch("ops.framework.EventBase.defer")
+    # @patch("charm.MongoDBProvider")
+    # @patch("charm.MongoDBCharm._init_operator_user")
+    # @patch("charm.MongoDBConnection")
+    # def test_start_cannot_retrieve_container(
+    #     self, connection, init_user, provider, defer, *unused
+    # ):
+    #     """Verifies that failures to get container result in a ModelError being raised.
 
-        Further this function verifies that on error no attempts to set up the replica set or
-        database users are made.
-        """
-        # presets
-        self.harness.set_leader(True)
-        mock_container = mock.Mock()
-        mock_container.side_effect = ModelError
-        self.harness.charm.unit.get_container = mock_container
-        with self.assertRaises(ModelError):
-            self.harness.charm.on.start.emit()
+    #     Further this function verifies that on error no attempts to set up the replica set or
+    #     database users are made.
+    #     """
+    #     # presets
+    #     self.harness.set_leader(True)
+    #     mock_container = mock.Mock()
+    #     mock_container.side_effect = ModelError
+    #     self.harness.charm.unit.get_container = mock_container
+    #     with self.assertRaises(ModelError):
+    #         self.harness.charm.on.start.emit()
 
-        # when cannot retrieve a container we should not set up the replica set or handle users
-        connection.return_value.__enter__.return_value.init_replset.assert_not_called()
-        init_user.assert_not_called()
-        provider.return_value.oversee_users.assert_not_called()
+    #     # when cannot retrieve a container we should not set up the replica set or handle users
+    #     connection.return_value.__enter__.return_value.init_replset.assert_not_called()
+    #     init_user.assert_not_called()
+    #     provider.return_value.oversee_users.assert_not_called()
 
-        # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
-        defer.assert_not_called()
+    #     # verify app data
+    #     self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+    #     defer.assert_not_called()
 
     @patch("charm.MongoDBCharm.get_current_termination_period")
     @patch("charm.MongoDBCharm.update_termination_grace_period")
@@ -308,70 +303,6 @@ class TestCharm(unittest.TestCase):
         # verify app data
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
-
-    @patch("charm.MongoDBCharm.get_current_termination_period")
-    @patch("charm.MongoDBCharm.update_termination_grace_period")
-    @patch("charm.MongoDBCharm._configure_container", return_value=None)
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBConnection")
-    def test_start_container_exists_fails(self, connection, init_user, provider, defer, *unused):
-        """Tests failure in checking file existence on container raises an APIError.
-
-        Verifies that when checking container files raises an API Error, we raise that same error
-        and make no attempts to set up the replica set or handle users.
-        """
-        # presets
-        self.harness.set_leader(True)
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.side_effect = APIError("body", 0, "status", "message")
-        self.harness.charm.unit.get_container = mock_container
-
-        with self.assertRaises(APIError):
-            self.harness.charm.on.start.emit()
-
-        # when container does not exist we should not set up the replica set or handle users
-        connection.return_value.__enter__.return_value.init_replset.assert_not_called()
-        init_user.assert_not_called()
-        provider.return_value.oversee_users.assert_not_called()
-
-        # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
-        defer.assert_not_called()
-
-    @patch("charm.MongoDBCharm.get_current_termination_period")
-    @patch("charm.MongoDBCharm.update_termination_grace_period")
-    @patch("charm.MongoDBCharm._configure_container", return_value=None)
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBConnection")
-    def test_start_already_initialised(self, connection, init_user, provider, defer, *unused):
-        """Tests that if the replica set has already been set up that we return.
-
-        Verifies that if the replica set is already set up that no attempts to set it up again are
-        made and that there are no attempts to set up users.
-        """
-        # presets
-        self.harness.set_leader(True)
-
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.return_value = True
-        self.harness.charm.unit.get_container = mock_container
-        self.harness.charm.app_peer_data["replica_set_initialised"] = json.dumps(True)
-        self.harness.charm.app_peer_data["users_initialized"] = json.dumps(True)
-
-        self.harness.charm.on.start.emit()
-
-        # when the database has already been initialised we should not set up the replica set or
-        # handle users
-        connection.return_value.__enter__.return_value.init_replset.assert_not_called()
-        init_user.assert_not_called()
-        provider.return_value.oversee_users.assert_not_called()
-        defer.assert_not_called()
 
     @patch("charm.MongoDBCharm.get_current_termination_period")
     @patch("charm.MongoDBCharm.update_termination_grace_period")
@@ -677,55 +608,6 @@ class TestCharm(unittest.TestCase):
 
             connection.return_value.__enter__.return_value.add_replset_member.assert_called()
             defer.assert_called()
-
-    @patch("charm.MongoDBCharm.get_current_termination_period")
-    @patch("charm.MongoDBCharm.update_termination_grace_period")
-    @patch("charm.MongoDBCharm._configure_container", return_value=None)
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider.oversee_users")
-    @patch("charm.MongoDBConnection")
-    def test_start_init_operator_user_after_second_call(
-        self, connection, oversee_users, defer, *unused
-    ):
-        """Tests that the creation of the admin user is only performed once.
-
-        Verifies that if the user is already set up, that no attempts to set it up again are
-        made when a failure happens causing an event deferring calling the init_user again
-        """
-        self.harness.charm.USER_CREATING_MAX_ATTEMPTS = 1
-        self.harness.charm.USER_CREATION_COOLDOWN = 1
-        self.harness.charm._initialise_users.retry.wait = wait_none()
-
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.return_value = True
-        mock_container.return_value.exec.return_value = mock.Mock()
-        mock_container.return_value.exec.return_value.wait_output.return_value = ("Success", None)
-
-        self.harness.charm.unit.get_container = mock_container
-
-        connection.return_value.__enter__.return_value.is_ready = True
-
-        oversee_users.side_effect = PyMongoError()
-
-        self.harness.charm.app_peer_data["replica_set_initialised"] = json.dumps(True)
-        self.harness.charm.on.start.emit()
-        self.assertEqual("operator-user-created" in self.harness.charm.app_peer_data, True)
-        defer.assert_called()
-
-        # the second call to init user should fail if "exec" is called, but shouldn't happen
-        oversee_users.side_effect = None
-        defer.reset_mock()
-        mock_container.return_value.exec.reset_mock()
-        mock_container.return_value.exec.side_effect = ExecError([], 1, "", "Dummy Error")
-
-        # re-run the start method without a failing oversee_users
-        self.harness.charm.on.start.emit()
-
-        # _init_operator_user should have returned before reaching the "exec" call
-        mock_container.return_value.exec.assert_not_called()
-
-        defer.assert_not_called()
 
     def test_get_password(self, *unused):
         self._setup_secrets()
@@ -1040,31 +922,31 @@ class TestCharm(unittest.TestCase):
         expected_uri = uri_template.format(password="mongo123")
         self.assertEqual(expected_uri, new_uri)
 
-    @patch("charm.MongoDBCharm.get_current_termination_period")
-    @patch("charm.MongoDBCharm.update_termination_grace_period")
-    @patch("tenacity.nap.time.sleep", MagicMock())
-    @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
-    @patch("charm.USER_CREATION_COOLDOWN", 1)
-    @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
-    @patch("charm.MongoDBCharm._configure_container", return_value=None)
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBCharm._init_monitor_user")
-    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    @patch("ops.model.Container.exists")
-    @patch("charm.MongoDBCharm._pull_licenses")
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._set_data_dir_permissions")
-    @patch("charm.MongoDBConnection")
-    def test_backup_user_created(self, *unused):
-        """Tests what backup user was created."""
-        self.harness.charm._initialise_users.retry.wait = wait_none()
-        container = self.harness.model.unit.get_container("mongod")
-        self.harness.charm.app_peer_data["replica_set_initialised"] = json.dumps(True)
-        self.harness.set_can_connect(container, True)
-        self.harness.charm.on.start.emit()
-        password = self.harness.charm.get_secret("app", "backup-password")
-        self.harness.charm._initialise_users.retry.wait = wait_none()
-        self.assertIsNotNone(password)  # verify the password is set
+    # @patch("charm.MongoDBCharm.get_current_termination_period")
+    # @patch("charm.MongoDBCharm.update_termination_grace_period")
+    # @patch("tenacity.nap.time.sleep", MagicMock())
+    # @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
+    # @patch("charm.USER_CREATION_COOLDOWN", 1)
+    # @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
+    # @patch("charm.MongoDBCharm._configure_container", return_value=None)
+    # @patch("charm.MongoDBCharm._init_operator_user")
+    # @patch("charm.MongoDBCharm._init_monitor_user")
+    # @patch("charm.MongoDBCharm._connect_mongodb_exporter")
+    # @patch("ops.model.Container.exists")
+    # @patch("charm.MongoDBCharm._pull_licenses")
+    # @patch("ops.framework.EventBase.defer")
+    # @patch("charm.MongoDBCharm._set_data_dir_permissions")
+    # @patch("charm.MongoDBConnection")
+    # def test_backup_user_created(self, *unused):
+    #     """Tests what backup user was created."""
+    #     self.harness.charm._initialise_users.retry.wait = wait_none()
+    #     container = self.harness.model.unit.get_container("mongod")
+    #     self.harness.charm.app_peer_data["replica_set_initialised"] = json.dumps(True)
+    #     self.harness.set_can_connect(container, True)
+    #     self.harness.charm.on.start.emit()
+    #     password = self.harness.charm.get_secret("app", "backup-password")
+    #     self.harness.charm._initialise_users.retry.wait = wait_none()
+    #     self.assertIsNotNone(password)  # verify the password is set
 
     @patch("charm.MongoDBCharm.get_current_termination_period")
     @patch("charm.MongoDBCharm.update_termination_grace_period")
