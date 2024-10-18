@@ -49,8 +49,10 @@ from data_platform_helpers.version_check import (
     get_charm_revision,
 )
 from lightkube import Client
+from lightkube.core.exceptions import ApiError
 from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
 from lightkube.resources.apps_v1 import StatefulSet
+from lightkube.resources.core_v1 import Pod
 from lightkube.types import PatchType
 from ops.charm import (
     ActionEvent,
@@ -94,7 +96,7 @@ from exceptions import (
     NotConfigServerError,
 )
 from gen_cert import gen_certificate
-from service_manager import SERVICE_NAME, generate_mutating_webhook, generate_service
+from service_manager import generate_mutating_webhook, generate_service
 from upgrades import kubernetes_upgrades
 from upgrades.mongodb_upgrades import MongoDBUpgrade
 
@@ -111,7 +113,7 @@ UNIT_SCOPE = Config.Relations.UNIT_SCOPE
 Scopes = Config.Relations.Scopes
 
 ONE_MINUTE = 60
-ONE_YEAR = 31540000
+ONE_YEAR = Config.WebhookManager.GRACE_PERIOD_SECONDS
 USER_CREATING_MAX_ATTEMPTS = 5
 USER_CREATION_COOLDOWN = 30
 REPLICA_SET_INIT_CHECK_TIMEOUT = 10
@@ -187,6 +189,11 @@ class MongoDBCharm(CharmBase):
         )
 
     # BEGIN: properties
+    @property
+    def mutator_service_name(self):
+        """Property to get the mutator service name for k8s."""
+        return f"{self.app.name}-{self.model.name}-{Config.WebhookManager.SERVICE_NAME}-{Config.WebhookManager.CONTAINER_NAME}"
+
     @property
     def _is_removing_last_replica(self) -> bool:
         """Returns True if the last replica (juju unit) is getting removed."""
@@ -435,6 +442,21 @@ class MongoDBCharm(CharmBase):
         return json.loads(self.app_peer_data.get("db_initialised", "false"))
 
     @property
+    def needs_new_termination_period(self) -> bool:
+        """Check if the charm needs a new termination period."""
+        return json.loads(self.app_peer_data.get("needs_new_termination_period", "true"))
+
+    @needs_new_termination_period.setter
+    def needs_new_termination_period(self, value):
+        """Set the needs_new_termination_period flag."""
+        if isinstance(value, bool):
+            self.app_peer_data["needs_new_termination_period"] = json.dumps(value)
+        else:
+            raise ValueError(
+                f"'needs_new_termination_period' must be a boolean value. Provided: {value} is of type {type(value)}"
+            )
+
+    @property
     def unit_departed(self) -> bool:
         """Whether the unit has departed or not."""
         return json.loads(self.unit_peer_data.get("unit_departed", "false"))
@@ -447,6 +469,23 @@ class MongoDBCharm(CharmBase):
         else:
             raise ValueError(
                 f"'unit_departed' must be a boolean value. Provided: {value} is of type {type(value)}"
+            )
+
+    @property
+    def first_time_with_new_termination_period(self) -> bool:
+        """Whether the unit has departed or not."""
+        return json.loads(
+            self.unit_peer_data.get("first_time_with_new_termination_period", "true")
+        )
+
+    @first_time_with_new_termination_period.setter
+    def first_time_with_new_termination_period(self, value: bool) -> None:
+        """Set the unit_departed flag."""
+        if isinstance(value, bool):
+            self.unit_peer_data["first_time_with_new_termination_period"] = json.dumps(value)
+        else:
+            raise ValueError(
+                f"'first_time_with_new_termination_period' must be a boolean value. Provided: {value} is of type {type(value)}"
             )
 
     def is_role_changed(self) -> bool:
@@ -683,8 +722,27 @@ class MongoDBCharm(CharmBase):
 
         # Lightkube client
         client = Client()
-        generate_service(client, self.unit, self.model.name)
-        generate_mutating_webhook(client, self.unit, self.model.name, cert)
+        generate_service(client, self.unit, self.model.name, self.mutator_service_name)
+        generate_mutating_webhook(
+            client, self.unit, self.model.name, cert, self.mutator_service_name
+        )
+
+        # We must ensure that juju does not overwrite our termination period, so we should update
+        # it as needed. However, updating the termination period can result in an onslaught of
+        # events, including the upgrade event. To prevent this from messing with upgrades do not
+        # update the termination period when an upgrade is occurring.
+        if (
+            self.unit.is_leader()
+            and self.get_current_termination_period() != ONE_YEAR
+            and not self.upgrade_in_progress
+        ):
+            for attempt in Retrying(
+                stop=stop_after_attempt(10),
+                wait=wait_fixed(5),
+                reraise=True,
+            ):
+                logger.info(f"Retrying to update termination period (attempt {attempt}")
+                self.update_termination_grace_period(ONE_YEAR)
 
     def _configure_layers(self, container: Container) -> None:
         """Configure the layers of the container."""
@@ -748,6 +806,11 @@ class MongoDBCharm(CharmBase):
         is compatible, it will end up emitting a post upgrade event that
         verifies the health of the cluster.
         """
+        if self.get_termination_period_for_pod() != ONE_YEAR:
+            return
+        if self.first_time_with_new_termination_period:
+            self.first_time_with_new_termination_period = False
+            return
         if self.unit.is_leader():
             self.version_checker.set_version_across_all_relations()
 
@@ -949,6 +1012,14 @@ class MongoDBCharm(CharmBase):
         statefulset = client.get(StatefulSet, name=self.app.name, namespace=self.model.name)
         return statefulset.spec.template.spec.terminationGracePeriodSeconds
 
+    def get_termination_period_for_pod(self) -> int:
+        """Returns the current termination period for the pod of this unit."""
+        pod_name = self.unit.name.replace("/", "-")
+        client = Client()
+        pod = client.get(Pod, name=pod_name, namespace=self.model.name)
+        termination_grace_period = pod.spec.terminationGracePeriodSeconds
+        return termination_grace_period
+
     def update_termination_grace_period(self, seconds: int) -> None:
         """Patch the termination grace period for the stateful set of this juju application."""
         client = Client()
@@ -967,6 +1038,8 @@ class MongoDBCharm(CharmBase):
             obj=patch_data,
             patch_type=PatchType.MERGE,
         )
+        # Works because we're leader.
+        self.needs_new_termination_period = False
 
     def __handle_partition_on_stop(self) -> None:
         """Raise partition to prevent other units from restarting if an upgrade is in progress.
@@ -1021,16 +1094,27 @@ class MongoDBCharm(CharmBase):
             logger.error("Failed to reelect primary before upgrading unit.")
             return
 
-    def _on_stop(self, event) -> None:
-        self.__handle_partition_on_stop()
-        if self._is_removing_last_replica:
+    def _delete_service(self):
+        """Deletes the mutator."""
+        try:
             client = Client()
             client.delete(
                 MutatingWebhookConfiguration,
                 namespace=self.model.name,
-                name=SERVICE_NAME,
+                name=self.mutator_service_name,
             )
-        if self.unit_departed:
+        except ApiError as err:
+            logger.error(
+                "Mutating webhook configuration failed to delete. Remove it manually please"
+            )
+            logger.error(str(err))
+
+    def _on_stop(self, event) -> None:
+        if self.needs_new_termination_period and not self.first_time_with_new_termination_period:
+            self.__handle_partition_on_stop()
+        if self._is_removing_last_replica:
+            self._delete_service()
+        if self.db_initialised and self.unit_departed:
             self.__handle_relation_departed_on_stop()
         if not self.upgrade._upgrade:
             logger.debug("Peer relation missing during stop event")
@@ -1448,7 +1532,7 @@ class MongoDBCharm(CharmBase):
         if not self.get_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET) or not self.get_secret(
             APP_SCOPE, Config.WebhookManager.KEY_SECRET
         ):
-            cert, key = gen_certificate(SERVICE_NAME, self.model.name)
+            cert, key = gen_certificate(self.mutator_service_name, self.model.name)
             self.set_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET, cert.decode())
             self.set_secret(APP_SCOPE, Config.WebhookManager.KEY_SECRET, key.decode())
 

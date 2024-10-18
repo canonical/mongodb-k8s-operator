@@ -14,6 +14,8 @@ from lightkube.resources.core_v1 import Pod
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
+from config import Config
+
 from .ha_tests.helpers import (
     deploy_and_scale_application,
     relate_mongodb_and_application,
@@ -43,7 +45,7 @@ from .helpers import (
 
 LOG_PATH = "/var/log/mongodb/"
 TIMEOUT_15M = 15 * 60
-ONE_YEAR = 31540000
+ONE_YEAR = Config.WebhookManager.GRACE_PERIOD_SECONDS
 logger = logging.getLogger(__name__)
 
 

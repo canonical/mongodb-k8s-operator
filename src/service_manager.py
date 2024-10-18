@@ -23,8 +23,6 @@ from config import Config
 
 logger = getLogger()
 
-SERVICE_NAME = f"{Config.WebhookManager.SERVICE_NAME}-{Config.WebhookManager.CONTAINER_NAME}"
-
 
 def get_pod(client: Client, pod_name: str) -> Pod:
     """Gets a pod definition from k8s."""
@@ -35,7 +33,7 @@ def get_pod(client: Client, pod_name: str) -> Pod:
     return pod
 
 
-def generate_service(client: Client, unit: Unit, model_name: str):
+def generate_service(client: Client, unit: Unit, model_name: str, service_name: str):
     """Generates the k8s service for the mutating webhook."""
     pod_name = unit.name.replace("/", "-")
     pod = get_pod(client, pod_name)
@@ -45,7 +43,7 @@ def generate_service(client: Client, unit: Unit, model_name: str):
     try:
         service = Service(
             metadata=ObjectMeta(
-                name=SERVICE_NAME,
+                name=service_name,
                 namespace=model_name,
                 ownerReferences=[
                     OwnerReference(
@@ -53,7 +51,7 @@ def generate_service(client: Client, unit: Unit, model_name: str):
                         kind=pod.kind,
                         name=pod_name,
                         uid=pod.metadata.uid,
-                        blockOwnerDeletion=False,
+                        blockOwnerDeletion=True,
                     )
                 ],
             ),
@@ -65,7 +63,7 @@ def generate_service(client: Client, unit: Unit, model_name: str):
                         protocol="TCP",
                         port=Config.WebhookManager.PORT,
                         targetPort=Config.WebhookManager.PORT,
-                        name=f"{SERVICE_NAME}-port",
+                        name=f"{service_name}-port",
                     ),
                 ],
             ),
@@ -75,16 +73,17 @@ def generate_service(client: Client, unit: Unit, model_name: str):
         logger.info("Not creating a service, already present")
 
 
-def generate_mutating_webhook(client: Client, unit: Unit, model_name: str, cert: str):
+def generate_mutating_webhook(
+    client: Client, unit: Unit, model_name: str, cert: str, service_name: str
+):
     """Generates the mutating webhook for this application."""
     pod_name = unit.name.replace("/", "-")
     pod = get_pod(client, pod_name)
-    app_name = unit.name.split("/")[0]
     try:
         webhooks = client.get(
             MutatingWebhookConfiguration,
             namespace=model_name,
-            name=SERVICE_NAME,
+            name=service_name,
         )
         if webhooks:
             return
@@ -96,18 +95,26 @@ def generate_mutating_webhook(client: Client, unit: Unit, model_name: str, cert:
     logger.debug("Registering our Mutating Wehook.")
     webhook_config = MutatingWebhookConfiguration(
         metadata=ObjectMeta(
-            name=SERVICE_NAME,
+            name=service_name,
             namespace=model_name,
-            ownerReferences=pod.metadata.ownerReferences,
+            ownerReferences=[
+                OwnerReference(
+                    apiVersion=pod.apiVersion,
+                    kind=pod.kind,
+                    name=pod_name,
+                    uid=pod.metadata.uid,
+                    blockOwnerDeletion=True,
+                )
+            ],
         ),
         apiVersion="admissionregistration.k8s.io/v1",
         webhooks=[
             MutatingWebhook(
-                name=f"{app_name}.juju.is",
+                name=f"{service_name}.juju.is",
                 clientConfig=WebhookClientConfig(
                     service=ServiceReference(
                         namespace=model_name,
-                        name=SERVICE_NAME,
+                        name=service_name,
                         port=8000,
                         path="/mutate",
                     ),
