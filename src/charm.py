@@ -731,11 +731,7 @@ class MongoDBCharm(CharmBase):
         # it as needed. However, updating the termination period can result in an onslaught of
         # events, including the upgrade event. To prevent this from messing with upgrades do not
         # update the termination period when an upgrade is occurring.
-        if (
-            self.unit.is_leader()
-            and self.get_current_termination_period() != ONE_YEAR
-            and not self.upgrade_in_progress
-        ):
+        if self.get_current_termination_period() != ONE_YEAR and not self.upgrade_in_progress:
             self.update_termination_grace_period(ONE_YEAR)
 
     def _configure_layers(self, container: Container) -> None:
@@ -806,6 +802,7 @@ class MongoDBCharm(CharmBase):
             self.first_time_with_new_termination_period = False
             return
         if self.unit.is_leader():
+            self.needs_new_termination_period = False
             self.version_checker.set_version_across_all_relations()
 
         container = self.unit.get_container(Config.CONTAINER_NAME)
@@ -912,6 +909,9 @@ class MongoDBCharm(CharmBase):
         # mongod is now active
         self.status.set_and_share_status(ActiveStatus())
         self.upgrade._reconcile_upgrade(event)
+
+        if self.get_termination_period_for_pod() == ONE_YEAR:
+            self.first_time_with_new_termination_period = False
 
         if not self.unit.is_leader():
             return
@@ -1104,7 +1104,10 @@ class MongoDBCharm(CharmBase):
             logger.error(str(err))
 
     def _on_stop(self, event) -> None:
-        if self.needs_new_termination_period and not self.first_time_with_new_termination_period:
+        if (
+            not self.needs_new_termination_period
+            and not self.first_time_with_new_termination_period
+        ):
             self.__handle_partition_on_stop()
         if self._is_removing_last_replica:
             self._delete_service()
@@ -1184,12 +1187,13 @@ class MongoDBCharm(CharmBase):
         # it as needed. However, updating the termination period can result in an onslaught of
         # events, including the upgrade event. To prevent this from messing with upgrades do not
         # update the termination period when an upgrade is occurring.
-        if (
-            self.unit.is_leader()
-            and self.get_current_termination_period() != ONE_YEAR
-            and not self.upgrade_in_progress
-        ):
+        if self.get_termination_period_for_pod() == ONE_YEAR:
+            self.first_time_with_new_termination_period = False
+        if not self.unit.is_leader():
+            return
+        if self.get_current_termination_period() != ONE_YEAR and not self.upgrade_in_progress:
             self.update_termination_grace_period(ONE_YEAR)
+        self.needs_new_termination_period = False
 
     # END: charm events
 
