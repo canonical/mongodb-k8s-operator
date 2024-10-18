@@ -736,13 +736,7 @@ class MongoDBCharm(CharmBase):
             and self.get_current_termination_period() != ONE_YEAR
             and not self.upgrade_in_progress
         ):
-            for attempt in Retrying(
-                stop=stop_after_attempt(10),
-                wait=wait_fixed(5),
-                reraise=True,
-            ):
-                logger.info(f"Retrying to update termination period (attempt {attempt}")
-                self.update_termination_grace_period(ONE_YEAR)
+            self.update_termination_grace_period(ONE_YEAR)
 
     def _configure_layers(self, container: Container) -> None:
         """Configure the layers of the container."""

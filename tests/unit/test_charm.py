@@ -21,6 +21,7 @@ from pymongo.errors import (
 from tenacity import stop_after_attempt, wait_fixed, wait_none
 
 from charm import MongoDBCharm, NotReadyError
+from config import Config
 
 from .helpers import patch_network_get
 
@@ -37,6 +38,10 @@ logger = logging.getLogger(__name__)
 @pytest.fixture(autouse=True)
 def patch_upgrades(monkeypatch):
     monkeypatch.setattr("charms.mongodb.v0.upgrade_helpers.AbstractUpgrade.in_progress", False)
+    monkeypatch.setattr(
+        "charm.MongoDBCharm.get_termination_period_for_pod",
+        lambda *args, **kwargs: Config.WebhookManager.GRACE_PERIOD_SECONDS,
+    )
     monkeypatch.setattr("charm.kubernetes_upgrades._Partition.get", lambda *args, **kwargs: 0)
     monkeypatch.setattr("charm.kubernetes_upgrades._Partition.set", lambda *args, **kwargs: None)
 
