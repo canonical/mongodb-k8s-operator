@@ -25,6 +25,7 @@ from ops.pebble import ExecError
 from ops.testing import Harness
 
 from charm import MongoDBCharm
+from config import Config
 
 from .helpers import patch_network_get
 
@@ -33,6 +34,10 @@ RELATION_NAME = "s3-credentials"
 
 @pytest.fixture(autouse=True)
 def patch_upgrades(monkeypatch):
+    monkeypatch.setattr(
+        "charm.MongoDBCharm.get_termination_period_for_pod",
+        lambda *args, **kwargs: Config.WebhookManager.GRACE_PERIOD_SECONDS,
+    )
     monkeypatch.setattr("charm.kubernetes_upgrades._Partition.get", lambda *args, **kwargs: 0)
     monkeypatch.setattr("charm.kubernetes_upgrades._Partition.set", lambda *args, **kwargs: None)
 

@@ -12,6 +12,7 @@ from ops.testing import Harness
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 
 from charm import MongoDBCharm
+from config import Config
 
 from .helpers import patch_network_get
 
@@ -28,6 +29,10 @@ DEPARTED_IDS = [None, 0]
 @pytest.fixture(autouse=True)
 def patch_upgrades(monkeypatch):
     monkeypatch.setattr("charms.mongodb.v0.upgrade_helpers.AbstractUpgrade.in_progress", False)
+    monkeypatch.setattr(
+        "charm.MongoDBCharm.get_termination_period_for_pod",
+        lambda *args, **kwargs: Config.WebhookManager.GRACE_PERIOD_SECONDS,
+    )
     monkeypatch.setattr("charm.kubernetes_upgrades._Partition.get", lambda *args, **kwargs: 0)
     monkeypatch.setattr("charm.kubernetes_upgrades._Partition.set", lambda *args, **kwargs: None)
 

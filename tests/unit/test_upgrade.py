@@ -1,5 +1,6 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+import json
 import unittest
 from unittest.mock import Mock, PropertyMock, patch
 
@@ -23,6 +24,10 @@ from .helpers import patch_network_get
 @pytest.fixture(autouse=True)
 def patch_upgrades(monkeypatch):
     monkeypatch.setattr("charms.mongodb.v0.upgrade_helpers.AbstractUpgrade.in_progress", False)
+    monkeypatch.setattr(
+        "charm.MongoDBCharm.get_termination_period_for_pod",
+        lambda *args, **kwargs: Config.WebhookManager.GRACE_PERIOD_SECONDS,
+    )
     monkeypatch.setattr("charm.kubernetes_upgrades._Partition.get", lambda *args, **kwargs: 0)
     monkeypatch.setattr("charm.kubernetes_upgrades._Partition.set", lambda *args, **kwargs: None)
 
@@ -152,6 +157,7 @@ class TestUpgrades(unittest.TestCase):
         mock_wait.side_effect = cluster_healthy_return
         mock_is_cluster.return_value = is_cluster_able_to_read_write_return
         self.harness.charm.unit.status = initial_status
+        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
         self.harness.charm.upgrade._upgrade.unit_state = UnitState(initial_unit_state)
 
         self.harness.charm.upgrade.run_post_upgrade_checks(StartEvent, False)
