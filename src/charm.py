@@ -731,8 +731,11 @@ class MongoDBCharm(CharmBase):
         # it as needed. However, updating the termination period can result in an onslaught of
         # events, including the upgrade event. To prevent this from messing with upgrades do not
         # update the termination period when an upgrade is occurring.
-        if self.get_current_termination_period() != ONE_YEAR and not self.upgrade_in_progress:
-            self.update_termination_grace_period(ONE_YEAR)
+        try:
+            if self.get_current_termination_period() != ONE_YEAR and not self.upgrade_in_progress:
+                self.update_termination_grace_period(ONE_YEAR)
+        except ApiError:
+            event.defer()
 
     def _configure_layers(self, container: Container) -> None:
         """Configure the layers of the container."""

@@ -405,7 +405,7 @@ async def test_scale_up(ops_test: OpsTest):
         apps=[app_name],
         status="active",
         timeout=1000,
-        wait_for_exact_units=5,
+        wait_for_exact_units=6,
         raise_on_error=False,
     )
     num_units = len(ops_test.model.applications[app_name].units)
