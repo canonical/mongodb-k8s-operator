@@ -770,6 +770,19 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
+        # We must ensure that juju does not overwrite our termination period, so we should update
+        # it as needed. However, updating the termination period can result in an onslaught of
+        # events, including the upgrade event. To prevent this from messing with upgrades do not
+        # update the termination period when an upgrade is occurring.
+        if (
+            self.unit.is_leader()
+            and self.get_current_termination_period() != ONE_YEAR
+            and not self.upgrade_in_progress
+        ):
+            self.update_termination_grace_period(ONE_YEAR)
+            event.defer()
+            return
+
         if not self.__can_charm_start():
             event.defer()
             return
@@ -1903,10 +1916,6 @@ class SetPasswordError(Exception):
 
 class ShardingMigrationError(Exception):
     """Raised when there is an attempt to change the role of a sharding component."""
-
-
-class FailedToElectNewPrimaryError(Exception):
-    """Raised when a new primary isn't elected after stepping down."""
 
 
 if __name__ == "__main__":
