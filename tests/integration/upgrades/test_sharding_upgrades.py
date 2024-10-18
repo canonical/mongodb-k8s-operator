@@ -94,7 +94,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.applications[WRITE_APP].set_config({"mongos-uri": mongos_uri})
 
 
-@pytest.mark.skip()
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
@@ -139,7 +138,6 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
     ), "missed writes during upgrade procedure."
 
 
-@pytest.mark.skip()
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
@@ -151,7 +149,6 @@ async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
         assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
 
-@pytest.mark.skip()
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
