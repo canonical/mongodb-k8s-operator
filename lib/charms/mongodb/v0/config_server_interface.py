@@ -14,8 +14,15 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseRequestedEvent,
     DatabaseRequires,
 )
+from charms.mongodb.v0.mongo import MongoConnection
 from charms.mongodb.v1.mongos import MongosConnection
-from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
+from ops.charm import (
+    CharmBase,
+    EventBase,
+    RelationBrokenEvent,
+    RelationChangedEvent,
+    RelationCreatedEvent,
+)
 from ops.framework import Object
 from ops.model import (
     ActiveStatus,
@@ -24,6 +31,7 @@ from ops.model import (
     StatusBase,
     WaitingStatus,
 )
+from pymongo.errors import PyMongoError
 
 from config import Config
 
@@ -43,7 +51,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 13
+LIBPATCH = 14
 
 
 class ClusterProvider(Object):
@@ -179,8 +187,6 @@ class ClusterProvider(Object):
             logger.info("Skipping relation broken event, broken event due to scale down")
             return
 
-        self.charm.client_relations.oversee_users(departed_relation_id, event)
-
     def update_config_server_db(self, event):
         """Provides related mongos applications with new config server db."""
         if not self.pass_hook_checks(event):
@@ -244,7 +250,7 @@ class ClusterRequirer(Object):
         super().__init__(charm, self.relation_name)
         self.framework.observe(
             charm.on[self.relation_name].relation_created,
-            self.database_requires._on_relation_created_event,
+            self._on_relation_created_handler,
         )
 
         self.framework.observe(
@@ -260,6 +266,11 @@ class ClusterRequirer(Object):
         self.framework.observe(
             charm.on[self.relation_name].relation_broken, self._on_relation_broken
         )
+
+    def _on_relation_created_handler(self, event: RelationCreatedEvent) -> None:
+        logger.info("Integrating to config-server")
+        self.charm.status.set_and_share_status(WaitingStatus("Connecting to config-server"))
+        self.database_requires._on_relation_created_event(event)
 
     def _on_database_created(self, event) -> None:
         if self.charm.upgrade_in_progress:
@@ -303,6 +314,8 @@ class ClusterRequirer(Object):
 
         # avoid restarting mongos when possible
         if not updated_keyfile and not updated_config and self.is_mongos_running():
+            # mongos-k8s router must update its users on start
+            self._update_k8s_users(event)
             return
 
         # mongos is not available until it is using new secrets
@@ -321,6 +334,18 @@ class ClusterRequirer(Object):
         if self.charm.unit.is_leader():
             self.charm.mongos_initialised = True
 
+        # mongos-k8s router must update its users on start
+        self._update_k8s_users(event)
+
+    def _update_k8s_users(self, event) -> None:
+        # K8s can handle its 1:Many users after being initialized
+        try:
+            if self.substrate == Config.Substrate.K8S:
+                self.charm.client_relations.oversee_users(None, None)
+        except PyMongoError:
+            event.defer()
+            logger.debug("failed to add users on mongos-k8s router, will defer and try again.")
+
     def _on_relation_broken(self, event: RelationBrokenEvent) -> None:
         # Only relation_deparated events can check if scaling down
         if not self.charm.has_departed_run(event.relation.id):
@@ -333,6 +358,22 @@ class ClusterRequirer(Object):
         if not self.charm.proceed_on_broken_event(event):
             logger.info("Skipping relation broken event, broken event due to scale down")
             return
+
+        # remove all client mongos-k8s users
+        if (
+            self.charm.unit.is_leader()
+            and self.charm.client_relations.remove_all_relational_users()
+        ):
+            try:
+                self.charm.client_relations.remove_all_relational_users()
+
+                # now that the client mongos users have been removed we can remove ourself
+                with MongoConnection(self.charm.mongo_config) as mongo:
+                    mongo.drop_user(self.charm.mongo_config.username)
+            except PyMongoError:
+                logger.debug("Trouble removing router users, will defer and try again")
+                event.defer()
+                return
 
         self.charm.stop_mongos_service()
         logger.info("Stopped mongos daemon")
@@ -348,7 +389,7 @@ class ClusterRequirer(Object):
         if self.substrate == Config.Substrate.VM:
             self.charm.remove_connection_info()
         else:
-            self.db_initialised = False
+            self.charm.db_initialised = False
 
     # BEGIN: helper functions
     def pass_hook_checks(self, event):
