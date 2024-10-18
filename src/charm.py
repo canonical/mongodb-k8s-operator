@@ -1203,6 +1203,7 @@ class MongoDBCharm(CharmBase):
             if self.get_current_termination_period() != ONE_YEAR and not self.upgrade_in_progress:
                 self.update_termination_grace_period(ONE_YEAR)
         except ApiError:
+            logger.info("Failed to update termination period.")
             return
         self.needs_new_termination_period = False
 
