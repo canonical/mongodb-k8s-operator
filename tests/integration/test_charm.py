@@ -409,7 +409,7 @@ async def test_scale_up(ops_test: OpsTest):
         raise_on_error=False,
     )
     num_units = len(ops_test.model.applications[app_name].units)
-    assert num_units == 5
+    assert num_units == 6
 
     # grab juju hosts
     juju_hosts = [
@@ -448,11 +448,11 @@ async def test_scale_down(ops_test: OpsTest):
         apps=[app_name],
         status="active",
         timeout=1000,
-        wait_for_exact_units=3,
+        wait_for_exact_units=4,
         raise_on_error=False,
     )
     num_units = len(ops_test.model.applications[app_name].units)
-    assert num_units == 3
+    assert num_units == 4
 
     # grab juju hosts
     juju_hosts = [
