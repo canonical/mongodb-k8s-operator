@@ -16,6 +16,10 @@ class ApplicationHostNotFoundError(MongoError):
     """Raised when a queried host is not in the application peers or the current host."""
 
 
+class EarlyRemovalOfConfigServerError(Exception):
+    """Raised when there is an attempt to remove a config-server, while related to a shard."""
+
+
 class MongoSecretError(MongoError):
     """Common parent for all Mongo Secret Exceptions."""
 
@@ -41,4 +45,8 @@ class ContainerNotReadyError(Exception):
 
 
 class FailedToUpdateFilesystem(Exception):
+    """Raised when the container is not ready for a replan of services."""
+
+
+class UnitStillInReplicaSet(Exception):
     """Raised when the container is not ready for a replan of services."""
