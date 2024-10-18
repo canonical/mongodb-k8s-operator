@@ -1183,19 +1183,28 @@ class MongoDBCharm(CharmBase):
 
         self.status.set_and_share_status(self.status.process_statuses())
 
-        # We must ensure that juju does not overwrite our termination period, so we should update
-        # it as needed. However, updating the termination period can result in an onslaught of
-        # events, including the upgrade event. To prevent this from messing with upgrades do not
-        # update the termination period when an upgrade is occurring.
+        self._handle_termination()
+
+    # END: charm events
+
+    def _handle_termination(self):
+        """Handles the termination perdiod fiddling.
+
+        We must ensure that juju does not overwrite our termination period, so we should update
+        it as needed. However, updating the termination period can result in an onslaught of
+        events, including the upgrade event. To prevent this from messing with upgrades do not
+        update the termination period when an upgrade is occurring.
+        """
         if self.get_termination_period_for_pod() == ONE_YEAR:
             self.first_time_with_new_termination_period = False
         if not self.unit.is_leader():
             return
-        if self.get_current_termination_period() != ONE_YEAR and not self.upgrade_in_progress:
-            self.update_termination_grace_period(ONE_YEAR)
+        try:
+            if self.get_current_termination_period() != ONE_YEAR and not self.upgrade_in_progress:
+                self.update_termination_grace_period(ONE_YEAR)
+        except ApiError:
+            return
         self.needs_new_termination_period = False
-
-    # END: charm events
 
     # BEGIN: actions
     def _on_get_password(self, event: ActionEvent) -> None:

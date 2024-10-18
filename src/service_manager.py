@@ -8,6 +8,7 @@ from logging import getLogger
 from lightkube import Client
 from lightkube.core.exceptions import ApiError
 from lightkube.models.admissionregistration_v1 import (
+    MatchCondition,
     MutatingWebhook,
     RuleWithOperations,
     ServiceReference,
@@ -78,6 +79,7 @@ def generate_mutating_webhook(
 ):
     """Generates the mutating webhook for this application."""
     pod_name = unit.name.replace("/", "-")
+    app_name = unit.name.split("/")[0]
     pod = get_pod(client, pod_name)
     try:
         webhooks = client.get(
@@ -131,6 +133,12 @@ def generate_mutating_webhook(
                 admissionReviewVersions=["v1"],
                 sideEffects="None",
                 timeoutSeconds=5,
+                matchConditions=[
+                    MatchCondition(
+                        name=f"match-sts-{app_name}",
+                        expression=f'object.metadata.name == "{app_name}"',
+                    )
+                ],
             )
         ],
     )
