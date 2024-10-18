@@ -38,6 +38,7 @@ def generate_service(client: Client, unit: Unit, model_name: str, service_name: 
     """Generates the k8s service for the mutating webhook."""
     pod_name = unit.name.replace("/", "-")
     pod = get_pod(client, pod_name)
+    app_name = unit.name.split("/")[0]
     if not pod.metadata:
         raise Exception(f"Could not find metadata for {pod}")
 
@@ -58,7 +59,7 @@ def generate_service(client: Client, unit: Unit, model_name: str, service_name: 
             ),
             spec=ServiceSpec(
                 type="ClusterIP",
-                selector={"statefulset.kubernetes.io/pod-name": pod_name},
+                selector={"app.kubernetes.io/name": app_name},
                 ports=[
                     ServicePort(
                         protocol="TCP",
