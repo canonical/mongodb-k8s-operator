@@ -12,7 +12,7 @@ import pytest_asyncio
 import tenacity
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import APP_NAME, METADATA, get_juju_status, get_leader_id
+from ..helpers import APP_NAME, RESOURCES, get_juju_status, get_leader_id
 from .helpers import get_workload_version
 
 logger = logging.getLogger(__name__)
@@ -46,10 +46,9 @@ def righty_upgrade_charm(local_charm, tmp_path: Path):
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, local_charm: Path):
     """Build and deploy a sharded cluster."""
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         local_charm,
-        resources=resources,
+        resources=RESOURCES,
         application_name=APP_NAME,
         num_units=3,
         series="jammy",
