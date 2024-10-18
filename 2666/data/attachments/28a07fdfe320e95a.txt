@@ -1,0 +1,34 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:44:00Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address        Exposed  Message
+application             waiting      1  application             0  10.152.183.88  no       installing agent
+config-server           active       2  mongodb-k8s             0  10.152.183.24  no       
+shard-one               active       3  mongodb-k8s             1  10.152.183.36  no       
+shard-two               active       1  mongodb-k8s             2  10.152.183.65  no       
+
+Unit              Workload  Agent      Address      Ports  Message
+application/0*    waiting   executing  10.1.12.136         (config-changed) 
+config-server/0*  active    idle       10.1.12.141         
+config-server/1   active    idle       10.1.12.142         
+shard-one/0*      active    idle       10.1.12.149         
+shard-one/1       active    idle       10.1.12.151         
+shard-one/2       active    idle       10.1.12.150         
+shard-two/0*      active    idle       10.1.12.154         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-0: 01:42:00 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1729215719, 1), 'signature': {'hash': b'\\xb7$9?\\xd0s\\xaeiPSS\\xb1\\x16\\x10\\xb5\\x85\\xb6\\xed\\x1d\\xc5', 'keyId': 7426924466912886809}}, 'operationTime': Timestamp(1729215719, 1)}")
+unit-config-server-0: 01:42:00 ERROR unit.config-server/0.juju-log config-server:7: shard-one shard does not have the same auth as the config server.
+unit-config-server-0: 01:42:02 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1729215722, 1), 'signature': {'hash': b'Y\\x9eI\\x9a\\xfaJ\\x13f\\xa1\\xdc7\\xd0\\xa4\\x8e\\xbf\\xea=\\xbc*+', 'keyId': 7426924466912886809}}, 'operationTime': Timestamp(1729215722, 1)}")
+unit-config-server-0: 01:42:02 ERROR unit.config-server/0.juju-log config-server:7: shard-one shard does not have the same auth as the config server.
+unit-config-server-0: 01:42:04 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1729215723, 1), 'signature': {'hash': b'\\xaa\\x85[\\xb4\\xbd9*\\x1a\\x12W\\x99lc.\\x91y\\xe4\\x16B,', 'keyId': 7426924466912886809}}, 'operationTime': Timestamp(1729215723, 1)}")
+unit-config-server-0: 01:42:04 ERROR unit.config-server/0.juju-log config-server:7: shard-one shard does not have the same auth as the config server.
+unit-config-server-0: 01:42:05 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1729215724, 1), 'signature': {'hash': b'\\xcd\\xbc\\x99\\xbc>\\x90\\xae,\\x94}\\xfd\\xac\\x9f\\xe9\\xddz\\x9c\\xc8\\x8a\\x16', 'keyId': 7426924466912886809}}, 'operationTime': Timestamp(1729215724, 1)}")
+unit-config-server-0: 01:42:05 ERROR unit.config-server/0.juju-log config-server:7: shard-one shard does not have the same auth as the config server.
+unit-config-server-0: 01:42:29 ERROR unit.config-server/0.juju-log config-server:8: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1729215749, 1), 'signature': {'hash': b'\\x88|P\\xe2\\xc1Z\\xf8\\x8f(F?:\\x93\\x12,J\\x0f\\xda\\xba\\x81', 'keyId': 7426924466912886809}}, 'operationTime': Timestamp(1729215749, 1)}")
+unit-config-server-0: 01:42:29 ERROR unit.config-server/0.juju-log config-server:8: shard-two shard does not have the same auth as the config server.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

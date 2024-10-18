@@ -1,0 +1,53 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:40:25Z
+
+App                   Version  Status   Scale  Charm        Channel      Rev  Address         Exposed  Message
+local-config-server            waiting      1  mongodb-k8s                 0  10.152.183.211  no       installing agent
+local-shard                    waiting      1  mongodb-k8s                 1  10.152.183.231  no       installing agent
+remote-config-server           waiting      1  mongodb-k8s  latest/edge   59  10.152.183.86   no       installing agent
+remote-shard                   waiting      1  mongodb-k8s  latest/edge   59  10.152.183.32   no       installing agent
+
+Unit                     Workload     Agent      Address     Ports  Message
+local-config-server/0*   waiting      idle       10.1.49.80         Waiting for shards to upgrade/downgrade to revision f9224f3-locally built.
+local-shard/0*           blocked      idle       10.1.49.83         Charm revision (f9224f3-locally built) is not up-to date with config-server (59).
+remote-config-server/0*  unknown      executing  10.1.49.77         
+remote-shard/0*          maintenance  idle       10.1.49.76         Adding shard to config-server
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-remote-shard-0: 01:38:44 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:45 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:46 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:47 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:47 ERROR unit.remote-shard/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:47 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:48 ERROR unit.remote-shard/0.juju-log upgrade-version-a:1: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:48 ERROR unit.remote-shard/0.juju-log upgrade-version-a:1: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:49 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:50 ERROR unit.remote-shard/0.juju-log database-peers:0: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:38:50 ERROR unit.remote-shard/0.juju-log database-peers:0: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:50 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:53 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:53 ERROR unit.remote-config-server/0.juju-log Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:54 ERROR unit.remote-config-server/0.juju-log database-peers:2: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:54 ERROR unit.remote-config-server/0.juju-log database-peers:2: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:55 ERROR unit.remote-config-server/0.juju-log upgrade-version-a:3: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:38:55 ERROR unit.remote-config-server/0.juju-log upgrade-version-a:3: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:51 ERROR unit.remote-shard/0.juju-log sharding:8: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:51 ERROR unit.remote-shard/0.juju-log sharding:8: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:52 ERROR unit.remote-shard/0.juju-log sharding:8: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:52 ERROR unit.remote-shard/0.juju-log sharding:8: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:53 ERROR unit.remote-shard/0.juju-log sharding:8: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:53 ERROR unit.remote-shard/0.juju-log sharding:8: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:54 ERROR unit.remote-shard/0.juju-log sharding:8: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:54 ERROR unit.remote-shard/0.juju-log sharding:8: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:55 ERROR unit.remote-shard/0.juju-log sharding:8: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-shard-0: 01:39:55 ERROR unit.remote-shard/0.juju-log sharding:8: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:40:21 ERROR unit.remote-config-server/0.juju-log config-server:9: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:40:21 ERROR unit.remote-config-server/0.juju-log config-server:9: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:40:22 ERROR unit.remote-config-server/0.juju-log config-server:9: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+unit-remote-config-server-0: 01:40:22 ERROR unit.remote-config-server/0.juju-log config-server:9: Cannot initialize workload: PathError('not-found', 'stat /licenses/LICENSE-snap: no such file or directory')
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
