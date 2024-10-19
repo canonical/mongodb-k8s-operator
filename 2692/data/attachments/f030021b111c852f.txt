@@ -1,0 +1,26 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server-one/0 [idle] active: 
+  mongos-k8s/0 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:46:27Z
+
+App                Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+config-server-one           active      1  mongodb-k8s             0  10.152.183.47   no       
+mongos-k8s                  active      1  mongos-k8s   6/edge    16  10.152.183.20   no       
+shard-one                   active      1  mongodb-k8s             1  10.152.183.221  no       
+
+Unit                  Workload  Agent  Address      Ports  Message
+config-server-one/0*  active    idle   10.1.132.74         Primary
+mongos-k8s/0*         active    idle   10.1.132.78         
+shard-one/0*          active    idle   10.1.132.77         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-one-0: 01:42:14 ERROR unit.config-server-one/0.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1729302133, 3), 'signature': {'hash': b'4]M\\xfbI\\xe4\\xd4o%\\xa9\\x0b\\x94\\xb7\\xa8G\\xca\\xeeu\\xcey', 'keyId': 7427295908569546773}}, 'operationTime': Timestamp(1729302133, 3)}")
+unit-config-server-one-0: 01:42:14 ERROR unit.config-server-one/0.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-mongos-k8s-0: 01:43:57 ERROR unit.mongos-k8s/0.juju-log cluster:7: mongos service is not ready yet.
+unit-mongos-k8s-0: 01:45:00 ERROR unit.mongos-k8s/0.juju-log cluster:7: mongos service is not ready yet.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
