@@ -70,7 +70,7 @@ async def test_build_and_deploy(ops_test: OpsTest, local_charm: Path):
 @pytest.mark.abort_on_fail
 async def test_upgrade(ops_test: OpsTest, righty_upgrade_charm: Path) -> None:
     mongodb_application = ops_test.model.applications[APP_NAME]
-    leader_unit = await backup_helpers.get_leader_unit(ops_test, mongodb_application)
+    leader_unit = await backup_helpers.get_leader_unit(ops_test, APP_NAME)
     action = await leader_unit.run_action("pre-refresh-check")
     await action.wait()
     assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
