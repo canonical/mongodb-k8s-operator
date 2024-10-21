@@ -7,7 +7,7 @@ from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import retry, stop_after_attempt, wait_fixed
 
-from ..helpers import METADATA, get_application_relation_data, get_secret_content
+from ..helpers import RESOURCES, get_application_relation_data, get_secret_content
 
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
@@ -57,10 +57,9 @@ async def deploy_cluster_components(
     else:
         my_charm = MONGODB_CHARM_NAME
 
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
@@ -70,7 +69,7 @@ async def deploy_cluster_components(
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=num_units_cluster_config[SHARD_ONE_APP_NAME],
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
@@ -80,7 +79,7 @@ async def deploy_cluster_components(
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=num_units_cluster_config[SHARD_TWO_APP_NAME],
         config={"role": "shard"},
         application_name=SHARD_TWO_APP_NAME,

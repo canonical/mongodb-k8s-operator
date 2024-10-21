@@ -25,6 +25,12 @@ APP_NAME = METADATA["name"]
 UNIT_IDS = [0, 1, 2]
 MONGOS_PORT = 27018
 MONGOD_PORT = 27017
+RESOURCES = {
+    "mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"],
+    "data-platform-k8s-webhook-mutator-image": METADATA["resources"][
+        "data-platform-k8s-webhook-mutator-image"
+    ]["upstream-source"],
+}
 
 TEST_DOCUMENTS = """[
     {

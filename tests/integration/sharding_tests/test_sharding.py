@@ -6,7 +6,7 @@ from pytest_operator.plugin import OpsTest
 
 from ..ha_tests.helpers import get_direct_mongo_client
 from ..helpers import (
-    METADATA,
+    RESOURCES,
     get_leader_id,
     get_password,
     set_password,
@@ -45,11 +45,10 @@ SHARD_NEEDS_CONFIG_SERVER_STATUS = "missing relation to config server"
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
     my_charm = await ops_test.build_charm(".")
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
 
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=2,
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
@@ -57,7 +56,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
@@ -65,7 +64,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_TWO_APP_NAME,
@@ -73,7 +72,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_THREE_APP_NAME,

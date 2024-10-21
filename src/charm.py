@@ -47,6 +47,8 @@ from data_platform_helpers.version_check import (
     CrossAppVersionChecker,
     get_charm_revision,
 )
+from lightkube import Client
+from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -90,6 +92,8 @@ from exceptions import (
     NotConfigServerError,
     UnitStillInReplicaSet,
 )
+from gen_cert import gen_certificate
+from service_manager import SERVICE_NAME, generate_mutating_webhook, generate_service
 from upgrades import kubernetes_upgrades
 from upgrades.mongodb_upgrades import MongoDBUpgrade
 
@@ -116,6 +120,10 @@ class MongoDBCharm(CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
+        self.framework.observe(
+            self.on.webhook_mutator_pebble_ready,
+            self._on_webhook_mutator_pebble_ready,
+        )
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
@@ -178,6 +186,11 @@ class MongoDBCharm(CharmBase):
         )
 
     # BEGIN: properties
+
+    @property
+    def _is_removing_last_replica(self) -> bool:
+        """Returns True if the last replica (juju unit) is getting removed."""
+        return self.app.planned_units() == 0 and len(self.peers_units) == 0
 
     @property
     def monitoring_jobs(self) -> list[dict[str, Any]]:
@@ -367,6 +380,28 @@ class MongoDBCharm(CharmBase):
                     "group": Config.UNIX_GROUP,
                     "environment": {"PBM_MONGODB_URI": self.backup_config.uri},
                 }
+            },
+        }
+        return Layer(layer_config)
+
+    @property
+    def _webhook_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for wehooks mutator."""
+        config = Config.WebhookManager
+        cmd = f"uvicorn app:app --host 0.0.0.0 --port {config.PORT} --ssl-keyfile={config.KEY_PATH} --ssl-certfile={config.CRT_PATH}"
+        layer_config = {
+            "summary": "Webhook Manager layer",
+            "description": "Pebble layer configuration for webhook mutation",
+            "services": {
+                Config.WebhookManager.SERVICE_NAME: {
+                    "override": "merge",
+                    "summary": "webhook manager daemon",
+                    "command": cmd,
+                    "startup": "enabled",
+                    "environment": {
+                        "GRACE_PERIOD_SECONDS": Config.WebhookManager.GRACE_PERIOD_SECONDS,
+                    },
+                },
             },
         }
         return Layer(layer_config)
@@ -593,6 +628,54 @@ class MongoDBCharm(CharmBase):
             logger.error("Cannot initialize workload: %r", e)
             raise FailedToUpdateFilesystem
 
+    # BEGIN: charm events
+    def _on_mongod_pebble_ready(self, event) -> None:
+        """Configure MongoDB pebble layer specification."""
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+
+        # Just run the configure layers steps on the container and defer if it fails.
+        try:
+            self._configure_container(container)
+        except ContainerNotReadyError:
+            event.defer()
+            return
+
+        self.upgrade._reconcile_upgrade(event)
+
+    # BEGIN: charm events
+    def _on_webhook_mutator_pebble_ready(self, event) -> None:
+        # still need todo use lightkube register the mutating webhook with
+        # lightkube (maybe in on start)?
+        # Get a reference the container attribute
+        container = self.unit.get_container(Config.WebhookManager.CONTAINER_NAME)
+        if not container.can_connect():
+            logger.debug("%s container is not ready yet.", Config.WebhookManager.CONTAINER_NAME)
+            event.defer()
+            return
+
+        cert = self.get_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET)
+        private_key = self.get_secret(APP_SCOPE, Config.WebhookManager.KEY_SECRET)
+
+        if not cert or not private_key:
+            logger.debug("Waiting for certificates")
+            event.defer()
+            return
+
+        container.push(Config.WebhookManager.CRT_PATH, cert)
+        container.push(Config.WebhookManager.KEY_PATH, private_key)
+
+        # Add initial Pebble config layer using the Pebble API
+        container.add_layer(Config.WebhookManager.SERVICE_NAME, self._webhook_layer, combine=True)
+        container.replan()
+
+        if not self.unit.is_leader():
+            return
+
+        # Lightkube client
+        client = Client()
+        generate_service(client, self.unit, self.model.name)
+        generate_mutating_webhook(client, self.unit, self.model.name, cert)
+
     def _configure_layers(self, container: Container) -> None:
         """Configure the layers of the container."""
         modified = False
@@ -674,19 +757,6 @@ class MongoDBCharm(CharmBase):
         if self.upgrade._upgrade.is_compatible:
             # Post upgrade event verifies the success of the upgrade.
             self.upgrade.post_app_upgrade_event.emit()
-
-    def _on_mongod_pebble_ready(self, event) -> None:
-        """Configure MongoDB pebble layer specification."""
-        container = self.unit.get_container(Config.CONTAINER_NAME)
-
-        # Just run the configure layers steps on the container and defer if it fails.
-        try:
-            self._configure_container(container)
-        except ContainerNotReadyError:
-            event.defer()
-            return
-
-        self.upgrade._reconcile_upgrade(event)
 
     def is_db_service_ready(self) -> bool:
         """Checks if the MongoDB service is ready to accept connections."""
@@ -891,6 +961,13 @@ class MongoDBCharm(CharmBase):
             return
 
     def _on_stop(self, event) -> None:
+        if self._is_removing_last_replica:
+            client = Client()
+            client.delete(
+                MutatingWebhookConfiguration,
+                namespace=self.model.name,
+                name=SERVICE_NAME,
+            )
         self.__handle_partition_on_stop()
         if not self.upgrade._upgrade:
             logger.debug("Peer relation missing during stop event")
@@ -1327,6 +1404,17 @@ class MongoDBCharm(CharmBase):
         if not self.get_secret(APP_SCOPE, "keyfile"):
             self._generate_keyfile()
 
+    def _check_or_set_webhook_certs(self) -> None:
+        """Set TLS certs for webhooks."""
+        if not self.unit.is_leader():
+            return
+        if not self.get_secret(APP_SCOPE, "webhook-certificate") or not self.get_secret(
+            APP_SCOPE, "webhook-key"
+        ):
+            cert, key = gen_certificate(Config.WebhookManager.SERVICE_NAME, self.model.name)
+            self.set_secret(APP_SCOPE, "webhook-certificate", cert.decode())
+            self.set_secret(APP_SCOPE, "webhook-key", key.decode())
+
     def _generate_keyfile(self) -> None:
         self.set_secret(APP_SCOPE, "keyfile", generate_keyfile())
 
@@ -1353,8 +1441,8 @@ class MongoDBCharm(CharmBase):
         """
         self._check_or_set_user_password(OperatorUser)
         self._check_or_set_user_password(MonitorUser)
-
         self._check_or_set_keyfile()
+        self._check_or_set_webhook_certs()
 
     def _initialise_replica_set(self, event: StartEvent) -> None:
         """Initialise replica set and create users."""

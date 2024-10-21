@@ -5,7 +5,7 @@ import pytest
 from juju.errors import JujuAPIError
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import METADATA, wait_for_mongodb_units_blocked
+from ..helpers import RESOURCES, wait_for_mongodb_units_blocked
 
 S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard"
@@ -32,34 +32,33 @@ TEST_APP_CHARM_PATH = "./tests/integration/relation_tests/application-charm"
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
     database_charm = await ops_test.build_charm(".")
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     application_charm = await ops_test.build_charm(TEST_APP_CHARM_PATH)
 
     await ops_test.model.deploy(application_charm, application_name=APP_CHARM_NAME)
     await ops_test.model.deploy(
         database_charm,
         application_name=REPLICATION_APP_NAME,
-        resources=resources,
+        resources=RESOURCES,
         trust=True,
     )
 
     await ops_test.model.deploy(
         database_charm,
         config={"role": "config-server"},
-        resources=resources,
+        resources=RESOURCES,
         application_name=CONFIG_SERVER_ONE_APP_NAME,
         trust=True,
     )
     await ops_test.model.deploy(
         database_charm,
         config={"role": "config-server"},
-        resources=resources,
+        resources=RESOURCES,
         application_name=CONFIG_SERVER_TWO_APP_NAME,
         trust=True,
     )
     await ops_test.model.deploy(
         database_charm,
-        resources=resources,
+        resources=RESOURCES,
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
         trust=True,

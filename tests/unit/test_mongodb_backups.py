@@ -38,6 +38,7 @@ def patch_upgrades(monkeypatch):
 
 
 class TestMongoBackups(unittest.TestCase):
+    @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("charm.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
     def setUp(self, *unused):

@@ -16,7 +16,6 @@ from typing import Dict, List, Optional
 
 import kubernetes as kubernetes
 import ops
-import yaml
 from juju.unit import Unit
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
@@ -33,6 +32,7 @@ from ..helpers import (
     APP_NAME,
     MONGOD_PORT,
     MONGOS_PORT,
+    RESOURCES,
     get_app_name,
     get_mongo_cmd,
     get_password,
@@ -41,7 +41,6 @@ from ..helpers import (
     primary_host,
 )
 
-METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 MONGODB_CONTAINER_NAME = "mongod"
 MONGODB_SERVICE_NAME = "mongod"
 MONGOD_PROCESS_NAME = "mongod"
@@ -175,13 +174,11 @@ async def deploy_and_scale_mongodb(
         # Cache the built charm to avoid rebuilding it between tests
         mongodb_charm = charm
 
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
-
     async with ops_test.fast_forward():
         await ops_test.model.deploy(
             mongodb_charm,
             application_name=mongodb_application_name,
-            resources=resources,
+            resources=RESOURCES,
             num_units=num_units,
             series="jammy",
             trust=True,
