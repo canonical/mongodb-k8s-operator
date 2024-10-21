@@ -4,6 +4,7 @@
 
 
 import pytest
+import tenacity
 from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
@@ -19,6 +20,7 @@ CLUSTER_REL_NAME = "cluster"
 CONFIG_SERVER_REL_NAME = "config-server"
 NUMBER_OF_MONGOS_USERS_WHEN_NO_ROUTERS = 1
 TIMEOUT = 10 * 60
+TWO_MINUTE_TIMEOUT = 2 * 60
 
 
 @pytest.mark.group(1)
@@ -151,9 +153,16 @@ async def test_disconnect_from_cluster_removes_all_mongos_users(ops_test: OpsTes
         raise_on_error=False,
     )
     num_users_after_removal = count_users(mongos_client)
-    assert (
-        NUMBER_OF_MONGOS_USERS_WHEN_NO_ROUTERS == num_users_after_removal
-    ), "Cluster did not remove user after integration removal."
+
+    for attempt in tenacity.Retrying(
+        reraise=True,
+        stop=tenacity.stop_after_delay(TWO_MINUTE_TIMEOUT),
+        wait=tenacity.wait_fixed(10),
+    ):
+        with attempt:
+            assert (
+                NUMBER_OF_MONGOS_USERS_WHEN_NO_ROUTERS == num_users_after_removal
+            ), "Cluster did not remove user after integration removal."
 
     mongos_user_client = await get_direct_mongo_client(
         ops_test,
