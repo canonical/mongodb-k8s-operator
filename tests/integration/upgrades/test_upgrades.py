@@ -4,7 +4,6 @@
 
 import logging
 from pathlib import Path
-
 import pytest
 from pytest_operator.plugin import OpsTest
 
@@ -19,7 +18,7 @@ from ..ha_tests.helpers import (
     remove_instance_isolation,
     wait_until_unit_in_status,
 )
-from ..helpers import check_or_scale_app, get_app_name, get_password, set_password
+from ..helpers import check_or_scale_app, get_app_name, get_password
 from .helpers import assert_successful_run_upgrade_sequence
 
 logger = logging.getLogger(__name__)
@@ -122,15 +121,18 @@ async def test_preflight_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
 @pytest.mark.abort_on_fail
 async def test_upgrade_password_change_fail(ops_test: OpsTest):
     app_name = await get_app_name(ops_test)
-    leader_id = await find_unit(ops_test, leader=True, app_name=app_name)
-
-    current_password = await get_password(ops_test, leader_id, app_name=app_name)
+    leader = await find_unit(ops_test, leader=True, app_name="mongodb-k8s")
+    leader_id = leader.name.split("/")[1]
+    current_password = await get_password(ops_test, leader_id, app_name="mongodb-k8s")
     new_charm = await ops_test.build_charm(".")
+
     await ops_test.model.applications[app_name].refresh(path=new_charm)
-    results = await set_password(ops_test, leader_id, password="0xdeadbeef", app_name=app_name)
 
-    assert results == "Cannot set passwords while an upgrade is in progress."
+    action = await ops_test.model.units.get(f"{app_name}/{leader_id}").run_action(
+        "set-password", **{"username": "username", "password": "new-password"}
+    )
+    action = await action.wait()
 
+    assert "Cannot set passwords while an upgrade is in progress." == action.message
     after_action_password = await get_password(ops_test, leader_id, app_name=app_name)
-
     assert current_password == after_action_password
