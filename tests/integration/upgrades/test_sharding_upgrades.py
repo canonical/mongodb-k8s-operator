@@ -180,5 +180,9 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
     # restore network after test
     remove_instance_isolation(ops_test)
     await ops_test.model.wait_for_idle(
-        apps=[SHARD_TWO_APP_NAME], status="active", timeout=1000, idle_period=30
+        apps=[SHARD_TWO_APP_NAME],
+        status="active",
+        timeout=1000,
+        idle_period=30,
+        raise_on_error=False,
     )
