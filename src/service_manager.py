@@ -74,9 +74,8 @@ def generate_service(client: Client, unit: Unit, model_name: str, service_name: 
             ),
         )
         client.create(service)
-    except ApiError as err:
-        logger.error("Not creating a service, already present")
-        logger.error(err)
+    except ApiError:
+        logger.info("Not creating a service, already present")
 
 
 def generate_mutating_webhook(
