@@ -1,0 +1,55 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-10-21T02:02:44Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-10-21T02:02:44Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-10-21T02:02:44Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-10-21T02:02:44Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] maintenance: backup started/running, backup id:'2024-10-21T02:02:44Z'
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [executing] active: Primary
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:08:18Z
+
+App              Version  Status  Scale  Charm          Channel      Rev  Address         Exposed  Message
+application               active      1  application                   0  10.152.183.174  no       
+mongodb-k8s               active      3  mongodb-k8s                   0  10.152.183.251  no       
+new-mongodb-gcp           active      3  mongodb-k8s                   1  10.152.183.23   no       
+s3-integrator             active      1  s3-integrator  latest/edge   71  10.152.183.51   no       
+
+Unit                Workload     Agent  Address      Ports  Message
+application/0*      active       idle   10.1.116.18         
+mongodb-k8s/0*      maintenance  idle   10.1.116.13         backup started/running, backup id:'2024-10-21T02:08:12Z'
+mongodb-k8s/1       active       idle   10.1.116.15         
+mongodb-k8s/2       active       idle   10.1.116.16         
+new-mongodb-gcp/0   active       idle   10.1.116.39         
+new-mongodb-gcp/1   active       idle   10.1.116.40         
+new-mongodb-gcp/2*  active       idle   10.1.116.37         
+s3-integrator/0*    active       idle   10.1.116.17         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+controller-0: 02:01:07 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-aws": finding filesystem info for new-mongodb-aws-mongodb-f3c46880: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-aws-mongodb-f3c46880-new-mongodb-aws-2" not found
+unit-new-mongodb-gcp-2: 02:05:07 ERROR unit.new-mongodb-gcp/2.juju-log Restore failed: Restore failed: non-zero exit code 1 executing ['/usr/bin/pbm', 'restore', '----------------------------------------------------'], stdout='', stderr="Error: parse command line parameters: unknown long flag '----------------------------------------------------'\n"
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
