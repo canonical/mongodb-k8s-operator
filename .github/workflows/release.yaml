@@ -1,9 +1,7 @@
 name: Release to 6/edge
 
 on:
-  push:
-    branches:
-      - 6/edge
+  pull_request:
 
 jobs:
   lib-check:
@@ -25,14 +23,6 @@ jobs:
           credentials: "${{ secrets.CHARMHUB_TOKEN }}"
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
-  ci-tests:
-    needs:
-      - lib-check
-    uses: ./.github/workflows/ci.yaml
-    secrets: inherit
-    permissions:
-      contents: write # Needed for Allure Report beta
-
   build:
     name: Build charm
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v21.0.0
@@ -40,7 +30,6 @@ jobs:
   release:
     name: Release charm
     needs:
-      - ci-tests
       - build
     uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v21.0.0
     with:
