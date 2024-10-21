@@ -4,6 +4,7 @@
 
 import logging
 from pathlib import Path
+
 import pytest
 from pytest_operator.plugin import OpsTest
 
