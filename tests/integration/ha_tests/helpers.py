@@ -395,6 +395,7 @@ async def get_direct_mongo_client(
             port=port,
             username=username,
             password=password,
+            app_name=app_name,
         )
         return MongoClient(url, directConnection=True)
 
@@ -666,11 +667,15 @@ def remove_instance_isolation(ops_test: OpsTest) -> None:
     reraise=True,
 )
 async def wait_until_unit_in_status(
-    ops_test: OpsTest, unit_to_check: Unit, online_unit: Unit, status: str
+    ops_test: OpsTest,
+    unit_to_check: Unit,
+    online_unit: Unit,
+    status: str,
+    app_name: str = APP_NAME,
 ) -> None:
     """Waits until a replica is in the provided status as reported by MongoDB or timeout occurs."""
     with await get_direct_mongo_client(
-        ops_test, online_unit.name, use_subprocess_to_get_password=True
+        ops_test, online_unit.name, use_subprocess_to_get_password=True, app_name=app_name
     ) as client:
         data = client.admin.command("replSetGetStatus")
 

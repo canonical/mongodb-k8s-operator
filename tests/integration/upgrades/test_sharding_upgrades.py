@@ -192,7 +192,11 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
 
     isolate_instance_from_cluster(ops_test, non_leader_unit.name)
     await wait_until_unit_in_status(
-        ops_test, non_leader_unit, leader_unit, "(not reachable/healthy)"
+        ops_test,
+        non_leader_unit,
+        leader_unit,
+        "(not reachable/healthy)",
+        app_name=SHARD_TWO_APP_NAME,
     )
 
     for sharding_component in CLUSTER_COMPONENTS:
