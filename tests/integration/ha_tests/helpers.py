@@ -415,10 +415,10 @@ async def get_direct_mongo_client(
     assert False, "No fitting unit could be found"
 
 
-async def find_unit(ops_test: OpsTest, leader: bool) -> ops.model.Unit:
+async def find_unit(ops_test: OpsTest, leader: bool, app_name: str = APP_NAME) -> ops.model.Unit:
     """Helper function identifies a unit, based on need for leader or non-leader."""
     ret_unit = None
-    app = await get_application_name(ops_test, APP_NAME)
+    app = await get_application_name(ops_test, app_name)
     for unit in ops_test.model.applications[app].units:
         if await unit.is_leader_from_status() == leader:
             ret_unit = unit

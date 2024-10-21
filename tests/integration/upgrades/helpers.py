@@ -24,7 +24,8 @@ async def assert_successful_run_upgrade_sequence(
     logger.info(f"Upgrading {app_name}")
 
     await ops_test.model.applications[app_name].refresh(path=new_charm)
-    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=30)
+    # TODO future work, resolve flickering status of app
+    await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=90)
 
     # resume upgrade only needs to be ran when:
     # 1. there are more than one units in the application
