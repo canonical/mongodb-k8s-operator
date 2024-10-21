@@ -57,7 +57,11 @@ async def deploy_cluster_components(
     else:
         my_charm = MONGODB_CHARM_NAME
 
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
+    resources = (
+        None
+        if channel
+        else {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
+    )
     await ops_test.model.deploy(
         my_charm,
         resources=resources,
