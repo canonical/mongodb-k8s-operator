@@ -338,10 +338,12 @@ class ClusterRequirer(Object):
         self._update_k8s_users(event)
 
     def _update_k8s_users(self, event) -> None:
+        if self.substrate != Config.Substrate.K8S:
+            return
+
         # K8s can handle its 1:Many users after being initialized
         try:
-            if self.substrate == Config.Substrate.K8S:
-                self.charm.client_relations.oversee_users(None, None)
+            self.charm.client_relations.oversee_users(None, None)
         except PyMongoError:
             event.defer()
             logger.debug("failed to add users on mongos-k8s router, will defer and try again.")
@@ -359,21 +361,12 @@ class ClusterRequirer(Object):
             logger.info("Skipping relation broken event, broken event due to scale down")
             return
 
-        # remove all client mongos-k8s users
-        if (
-            self.charm.unit.is_leader()
-            and self.charm.client_relations.remove_all_relational_users()
-        ):
-            try:
-                self.charm.client_relations.remove_all_relational_users()
-
-                # now that the client mongos users have been removed we can remove ourself
-                with MongoConnection(self.charm.mongo_config) as mongo:
-                    mongo.drop_user(self.charm.mongo_config.username)
-            except PyMongoError:
-                logger.debug("Trouble removing router users, will defer and try again")
-                event.defer()
-                return
+        try:
+            self.handle_mongos_k8s_users_removal()
+        except PyMongoError:
+            logger.debug("Trouble removing router users, will defer and try again")
+            event.defer()
+            return
 
         self.charm.stop_mongos_service()
         logger.info("Stopped mongos daemon")
@@ -392,6 +385,23 @@ class ClusterRequirer(Object):
             self.charm.db_initialised = False
 
     # BEGIN: helper functions
+    def handle_mongos_k8s_users_removal(self) -> None:
+        """Handles the removal of all client mongos-k8s users and the mongos-k8s admin user.
+
+        Raises:
+            PyMongoError
+        """
+        if (
+            self.charm.unit.is_leader()
+            and self.charm.client_relations.remove_all_relational_users()
+            and self.substrate == Config.Substrate.K8S
+        ):
+            self.charm.client_relations.remove_all_relational_users()
+
+            # now that the client mongos users have been removed we can remove ourself
+            with MongoConnection(self.charm.mongo_config) as mongo:
+                mongo.drop_user(self.charm.mongo_config.username)
+
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ClusterRequirer, returns True if all pass."""
         if self.is_mongos_tls_missing():

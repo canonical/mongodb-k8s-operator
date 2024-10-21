@@ -16,7 +16,13 @@ from typing import List, Optional, Set
 from charms.data_platform_libs.v0.data_interfaces import DatabaseProvides
 from charms.mongodb.v0.mongo import MongoConfiguration, MongoConnection
 from charms.mongodb.v1.helpers import generate_password
-from ops.charm import CharmBase, EventBase, RelationBrokenEvent, RelationChangedEvent
+from ops.charm import (
+    CharmBase,
+    EventBase,
+    RelationBrokenEvent,
+    RelationChangedEvent,
+    RelationEvent,
+)
 from ops.framework import Object
 from ops.model import Relation
 from pymongo.errors import PyMongoError
@@ -88,6 +94,11 @@ class MongoDBProvider(Object):
         if not self.charm.db_initialised:
             return False
 
+        # Warning: the sanity_hook_checks can pass when the call is
+        # issued by a config-sever because the config-server is allowed to manage the users
+        # in MongoDB. This is not well named and does not protect integration of a config-server
+        # to a client application. The mongos charm however doesn't care
+        # because it supports only one integration that uses MongoDBProvider.
         if not self.charm.is_role(Config.Role.MONGOS) and not self.charm.is_relation_feasible(
             self.get_relation_name()
         ):
@@ -99,8 +110,14 @@ class MongoDBProvider(Object):
 
         return True
 
-    def pass_hook_checks(self, event: EventBase) -> bool:
+    def pass_hook_checks(self, event: RelationEvent) -> bool:
         """Runs the pre-hooks checks for MongoDBProvider, returns True if all pass."""
+        # First, ensure that the relation is valid, useless to do anything else otherwise
+        if not self.charm.is_role(Config.Role.MONGOS) and not self.charm.is_relation_feasible(
+            event.relation.name
+        ):
+            return False
+
         if not self.pass_sanity_hook_checks():
             return False
 
