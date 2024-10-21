@@ -91,9 +91,11 @@ from config import Config
 from exceptions import (
     AdminUserCreationError,
     ContainerNotReadyError,
+    EarlyRemovalOfConfigServerError,
     FailedToUpdateFilesystem,
     MissingSecretError,
     NotConfigServerError,
+    UnitStillInReplicaSet,
 )
 from gen_cert import gen_certificate
 from service_manager import generate_mutating_webhook, generate_service
@@ -131,6 +133,8 @@ class MongoDBCharm(CharmBase):
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
+        self.framework.observe(self.on.stop, self._on_stop)
+        self.framework.observe(self.on.mongodb_storage_detaching, self.mongodb_storage_detaching)
         self.framework.observe(self.on.upgrade_charm, self._on_upgrade)
         self.framework.observe(self.on.update_status, self._on_update_status)
         self.framework.observe(
@@ -150,7 +154,6 @@ class MongoDBCharm(CharmBase):
 
         self.framework.observe(self.on.get_password_action, self._on_get_password)
         self.framework.observe(self.on.set_password_action, self._on_set_password)
-        self.framework.observe(self.on.stop, self._on_stop)
 
         self.framework.observe(self.on.secret_remove, self._on_secret_remove)
         self.framework.observe(self.on.secret_changed, self._on_secret_changed)
@@ -454,21 +457,6 @@ class MongoDBCharm(CharmBase):
         else:
             raise ValueError(
                 f"'needs_new_termination_period' must be a boolean value. Provided: {value} is of type {type(value)}"
-            )
-
-    @property
-    def unit_departed(self) -> bool:
-        """Whether the unit has departed or not."""
-        return json.loads(self.unit_peer_data.get("unit_departed", "false"))
-
-    @unit_departed.setter
-    def unit_departed(self, value: bool) -> None:
-        """Set the unit_departed flag."""
-        if isinstance(value, bool):
-            self.unit_peer_data["unit_departed"] = json.dumps(value)
-        else:
-            raise ValueError(
-                f"'unit_departed' must be a boolean value. Provided: {value} is of type {type(value)}"
             )
 
     @property
@@ -931,10 +919,6 @@ class MongoDBCharm(CharmBase):
         self._connect_mongodb_exporter()
         self._connect_pbm_agent()
 
-        if isinstance(event, RelationDepartedEvent):
-            if event.departing_unit.name == self.unit.name:
-                self.unit_departed = True
-
         if not self.unit.is_leader():
             return
 
@@ -1045,28 +1029,6 @@ class MongoDBCharm(CharmBase):
             kubernetes_upgrades.partition.set(app_name=self.app.name, value=current_unit_number)
             logger.debug(f"Partition set to {current_unit_number} during stop event")
 
-    def __handle_relation_departed_on_stop(self) -> None:
-        """Leaves replicaset.
-
-        If the unit has not already left the replica set, this function
-        attempts to block operations until the unit is removed. Note that with
-        how Juju currently operates, we only have 30 seconds until SIGTERM
-        command, so we are by no means guaranteed to have removed the replica
-        before the pod is removed. However the leader will reconfigure the
-        replica set if this is the case on `update status`.
-        """
-        logger.debug(f"{self.unit.name} blocking on_stop")
-        is_in_replica_set = True
-        timeout = UNIT_REMOVAL_TIMEOUT
-        while is_in_replica_set and timeout > 0:
-            is_in_replica_set = self.is_unit_in_replica_set()
-            time.sleep(1)
-            timeout -= 1
-            if timeout < 0:
-                raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
-        logger.debug("{self.unit.name} releasing on_stop")
-        self.unit_departed = False
-
     def __handle_upgrade_on_stop(self) -> None:
         """Sets the unit state to RESTARTING and step down from replicaset.
 
@@ -1111,37 +1073,61 @@ class MongoDBCharm(CharmBase):
             self.__handle_partition_on_stop()
         if self._is_removing_last_replica:
             self._delete_service()
-        if self.db_initialised and self.unit_departed:
-            self.__handle_relation_departed_on_stop()
         if not self.upgrade._upgrade:
             logger.debug("Peer relation missing during stop event")
             return
         self.__handle_upgrade_on_stop()
 
-        # I can add this functionality to mongodb lib - i.e. a function wait_for_new_primary, but
-        # this is just a POC
-        waiting = 0
-        while (
-            self.unit.name == self.primary and len(self.peers_units) > 1 and waiting < ONE_MINUTE
-        ):
-            logger.debug("Stepping down current primary, before stopping.")
-            with MongoDBConnection(self.mongodb_config) as mongo:
-                mongo.step_down_primary()
-            time.sleep(1)
-            waiting += 1
+    def mongodb_storage_detaching(self, event) -> None:
+        """Before storage detaches, allow removing unit to remove itself from the set.
 
-        if "True" == self.unit_peer_data.get("unit_departed", "False"):
-            logger.debug(f"{self.unit.name} blocking on_stop")
-            is_in_replica_set = True
-            timeout = UNIT_REMOVAL_TIMEOUT
-            while is_in_replica_set and timeout > 0:
-                is_in_replica_set = self.is_unit_in_replica_set()
-                time.sleep(1)
-                timeout -= 1
-                if timeout < 0:
-                    raise Exception(f"{self.unit.name}.on_stop timeout exceeded")
-            logger.debug(f"{self.unit.name} releasing on_stop")
-            self.unit_peer_data["unit_departed"] = ""
+        If the removing unit is primary also allow it to step down and elect another unit as
+        primary while it still has access to its storage.
+        """
+        if self.upgrade_in_progress:
+            # We cannot defer and prevent a user from removing a unit, log a warning instead.
+            logger.warning(
+                "Removing replicas during an upgrade is not supported. The charm may be in a broken, unrecoverable state"
+            )
+
+        # A single replica cannot step down as primary and we cannot reconfigure the replica set to
+        # have 0 members.
+        if self._is_removing_last_replica:
+            # removing config-server from a sharded cluster can be disaterous.
+            if self.is_role(Config.Role.CONFIG_SERVER) and self.config_server.has_shards():
+                current_shards = self.config_server.get_related_shards()
+                early_removal_message = f"Cannot remove config-server, still related to shards {', '.join(current_shards)}"
+                logger.error(early_removal_message)
+                raise EarlyRemovalOfConfigServerError(early_removal_message)
+
+            # cannot drain shard after storage detached.
+            if self.is_role(Config.Role.SHARD) and self.shard.has_config_server():
+                logger.info("Wait for shard to drain before detaching storage.")
+                self.status.set_and_share_status(MaintenanceStatus("Draining shard from cluster"))
+                mongos_hosts = self.shard.get_mongos_hosts()
+                self.shard.wait_for_draining(mongos_hosts)
+                logger.info("Shard successfully drained storage.")
+
+        try:
+            # retries over a period of 10 minutes in an attempt to resolve race conditions it is
+            logger.debug("Removing %s from replica set", self.unit_host(self.unit))
+            for attempt in Retrying(
+                stop=stop_after_attempt(600),
+                wait=wait_fixed(1),
+                reraise=True,
+            ):
+                with attempt:
+                    # in K8s we have the leader remove the unit from the replica set to reduce race
+                    # conditions
+                    if self.is_unit_in_replica_set():
+                        raise UnitStillInReplicaSet()
+
+        except NotReadyError:
+            logger.info(
+                "Failed to remove %s from replica set, another member is syncing", self.unit.name
+            )
+        except PyMongoError as e:
+            logger.error("Failed to remove %s from replica set, error=%r", self.unit.name, e)
 
     def _on_update_status(self, event: UpdateStatusEvent):
         # user-made mistakes might result in other incorrect statues. Prioritise informing users of
@@ -1438,6 +1424,17 @@ class MongoDBCharm(CharmBase):
     # END: user management
 
     # BEGIN: helper functions
+    def _update_related_hosts(self, event) -> None:
+        # app relations should be made aware of the new set of hosts
+        try:
+            if not self.is_role(Config.Role.SHARD):
+                self.client_relations.update_app_relation_data()
+            self.config_server.update_mongos_hosts()
+            self.cluster.update_config_server_db(event)
+        except PyMongoError as e:
+            logger.error("Deferring on updating app relation data since: error: %r", e)
+            event.defer()
+            return
 
     def _is_user_created(self, user: MongoDBUser) -> bool:
         return f"{user.get_username()}-user-created" in self.app_peer_data
@@ -1620,7 +1617,7 @@ class MongoDBCharm(CharmBase):
             mongo.add_replset_member(member)
 
     def _remove_units_from_replica_set(
-        self, evemt, mongo: MongoDBConnection, units_to_remove: Set[str]
+        self, event, mongo: MongoDBConnection, units_to_remove: Set[str]
     ) -> None:
         for member in units_to_remove:
             logger.debug("Removing %s from the replica set", member)
