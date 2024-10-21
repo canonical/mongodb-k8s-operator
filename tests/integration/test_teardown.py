@@ -47,6 +47,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
         status="active",
         raise_on_blocked=True,
         timeout=1000,
+        idle_period=60,
     )
     assert ops_test.model.applications[app_name].units[0].workload_status == "active"
 

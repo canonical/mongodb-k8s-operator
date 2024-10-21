@@ -110,6 +110,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
                 status="active",
                 timeout=2000,
                 raise_on_error=False,
+                idle_period=60,
             )
 
     # deploy the s3 integrator charm

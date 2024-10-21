@@ -44,6 +44,8 @@ def generate_service(client: Client, unit: Unit, model_name: str, service_name: 
 
     try:
         service = Service(
+            apiVersion="v1",
+            kind="Service",
             metadata=ObjectMeta(
                 name=service_name,
                 namespace=model_name,
@@ -56,6 +58,7 @@ def generate_service(client: Client, unit: Unit, model_name: str, service_name: 
                         blockOwnerDeletion=True,
                     )
                 ],
+                labels={"app.kubernetes.io/name": app_name},
             ),
             spec=ServiceSpec(
                 type="ClusterIP",
