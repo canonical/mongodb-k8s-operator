@@ -227,6 +227,15 @@ class MongoDBProvider(Object):
                 ):
                     continue
 
+                # for user removal of mongos-k8s router, we let the router remove itself
+                if (
+                    self.charm.is_role(Config.Role.CONFIG_SERVER)
+                    and self.substrate == Config.Substrate.K8S
+                ):
+                    logger.info("K8s routers will remove themselves.")
+                    self._remove_from_relational_users_to_manage(username)
+                    return
+
                 mongo.drop_user(username)
                 self._remove_from_relational_users_to_manage(username)
 
@@ -513,6 +522,34 @@ class MongoDBProvider(Object):
         current_users = self._get_relational_users_to_manage()
         current_users.add(user_to_add)
         self._update_relational_users_to_manage(current_users)
+
+    def remove_all_relational_users(self):
+        """Removes all users from DB.
+
+        Raises: PyMongoError.
+        """
+        with MongoConnection(self.charm.mongo_config) as mongo:
+            database_users = mongo.get_users()
+
+        users_being_managed = database_users.intersection(self._get_relational_users_to_manage())
+        self.remove_users(users_being_managed, expected_current_users=set())
+
+        # now we must remove all of their connection info
+        for relation in self._get_relations():
+            fields = self.database_provides.fetch_my_relation_data([relation.id])[relation.id]
+            self.database_provides.delete_relation_data(relation.id, fields=list(fields))
+
+            # unforatunately the above doesn't work to remove secrets, so we forcibly remove the
+            # rest manually remove the secret before clearing the databag
+            for unit in relation.units:
+                secret_id = json.loads(relation.data[unit]["data"])["secret-user"]
+                # secret id is the same on all units for `secret-user`
+                break
+
+            user_secrets = self.charm.model.get_secret(id=secret_id)
+            user_secrets.remove_all_revisions()
+            user_secrets.get_content(refresh=True)
+            relation.data[self.charm.app].clear()
 
     @staticmethod
     def _get_database_from_relation(relation: Relation) -> Optional[str]:

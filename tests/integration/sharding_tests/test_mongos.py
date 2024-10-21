@@ -4,6 +4,7 @@
 
 
 import pytest
+import tenacity
 from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
@@ -17,7 +18,9 @@ CONFIG_SERVER_APP_NAME = "config-server-one"
 SHARD_REL_NAME = "sharding"
 CLUSTER_REL_NAME = "cluster"
 CONFIG_SERVER_REL_NAME = "config-server"
+NUMBER_OF_MONGOS_USERS_WHEN_NO_ROUTERS = 3  # operator-user, backup-user, and montior-user
 TIMEOUT = 10 * 60
+TWO_MINUTE_TIMEOUT = 2 * 60
 
 
 @pytest.mark.group(1)
@@ -125,7 +128,11 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
-    """Verifies that when the cluster is formed a the user is removed."""
+    """Verifies that when the cluster is formed the client users are removed.
+
+    Since mongos-k8s router supports multiple users, we expect that the removal of this
+    integration will result in the removal of the mongos-k8s admin users and all of its clients.
+    """
     # generate URI for new mongos user
     (username, password) = await get_related_username_password(
         ops_test, app_name=MONGOS_APP_NAME, relation_name=CLUSTER_REL_NAME
@@ -135,7 +142,6 @@ async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     mongos_client = await get_direct_mongo_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )
-    num_users = count_users(mongos_client)
     await ops_test.model.applications[MONGOS_APP_NAME].remove_relation(
         f"{MONGOS_APP_NAME}:cluster",
         f"{CONFIG_SERVER_APP_NAME}:cluster",
@@ -148,9 +154,15 @@ async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     )
     num_users_after_removal = count_users(mongos_client)
 
-    assert (
-        num_users - 1 == num_users_after_removal
-    ), "Cluster did not remove user after integration removal."
+    for attempt in tenacity.Retrying(
+        reraise=True,
+        stop=tenacity.stop_after_delay(TWO_MINUTE_TIMEOUT),
+        wait=tenacity.wait_fixed(10),
+    ):
+        with attempt:
+            assert (
+                NUMBER_OF_MONGOS_USERS_WHEN_NO_ROUTERS == num_users_after_removal
+            ), "Cluster did not remove user after integration removal."
 
     mongos_user_client = await get_direct_mongo_client(
         ops_test,
