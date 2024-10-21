@@ -110,6 +110,14 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
             ops_test, sharding_component, new_charm=new_charm
         )
 
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        status="active",
+        timeout=1000,
+        idle_period=30,
+        raise_on_error=False,
+    )
+
     application_unit = ops_test.model.applications[WRITE_APP].units[0]
     stop_writes_action = await application_unit.run_action(
         "stop-continuous-writes",
@@ -147,6 +155,14 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
     """Verify that the pre-refresh check succeeds in the happy path."""
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        status="active",
+        timeout=1000,
+        idle_period=30,
+        raise_on_error=False,
+    )
+
     for sharding_component in CLUSTER_COMPONENTS:
         leader_unit = await backup_helpers.get_leader_unit(ops_test, sharding_component)
         action = await leader_unit.run_action("pre-refresh-check")
@@ -158,6 +174,14 @@ async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
     """Verify that the pre-refresh check fails if there is a problem with one of the shards."""
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        status="active",
+        timeout=1000,
+        idle_period=30,
+        raise_on_error=False,
+    )
+
     leader_unit = await backup_helpers.get_leader_unit(ops_test, SHARD_TWO_APP_NAME)
 
     non_leader_unit = None
