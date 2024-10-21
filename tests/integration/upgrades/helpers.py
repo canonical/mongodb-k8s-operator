@@ -38,7 +38,9 @@ async def assert_successful_run_upgrade_sequence(
     logger.info(f"Calling resume-refresh for {app_name}")
     action = await leader_unit.run_action("resume-refresh")
     await action.wait()
-    assert action.status == "completed", "resume-refresh failed, expected to succeed."
+    assert (
+        action.status == "completed"
+    ), f"resume-refresh failed, expected to succeed. ({action.results})"
 
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=30)
 

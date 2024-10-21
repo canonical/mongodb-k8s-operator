@@ -71,9 +71,14 @@ async def add_writes_to_shards(ops_test: OpsTest):
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build deploy, and integrate, a sharded cluster."""
+    num_units_cluster_config = {
+        CONFIG_SERVER_APP_NAME: 3,
+        SHARD_ONE_APP_NAME: 3,
+        SHARD_TWO_APP_NAME: 3,
+    }
     await deploy_and_scale_application(ops_test)
 
-    await deploy_cluster_components(ops_test)
+    await deploy_cluster_components(ops_test, num_units_cluster_config)
 
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS,

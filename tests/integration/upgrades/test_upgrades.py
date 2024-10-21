@@ -36,10 +36,10 @@ async def test_build_and_deploy(ops_test: OpsTest):
     db_app_name = await get_app_name(ops_test)
 
     if db_app_name:
-        await check_or_scale_app(ops_test, db_app_name, required_units=2)
+        await check_or_scale_app(ops_test, db_app_name, required_units=3)
         return
     else:
-        await ops_test.model.deploy(MONGODB_CHARM_NAME, channel="6/edge", num_units=2)
+        await ops_test.model.deploy(MONGODB_CHARM_NAME, channel="6/edge", num_units=3, trust=True)
 
     db_app_name = await get_app_name(ops_test)
     await ops_test.model.wait_for_idle(
