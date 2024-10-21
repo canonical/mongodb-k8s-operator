@@ -18,7 +18,7 @@ CONFIG_SERVER_APP_NAME = "config-server-one"
 SHARD_REL_NAME = "sharding"
 CLUSTER_REL_NAME = "cluster"
 CONFIG_SERVER_REL_NAME = "config-server"
-NUMBER_OF_MONGOS_USERS_WHEN_NO_ROUTERS = 1
+NUMBER_OF_MONGOS_USERS_WHEN_NO_ROUTERS = 3  # operator-user, backup-user, and montior-user
 TIMEOUT = 10 * 60
 TWO_MINUTE_TIMEOUT = 2 * 60
 
@@ -127,7 +127,7 @@ async def test_connect_to_cluster_creates_user(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_disconnect_from_cluster_removes_all_mongos_users(ops_test: OpsTest) -> None:
+async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
     """Verifies that when the cluster is formed the client users are removed.
 
     Since mongos-k8s router supports multiple users, we expect that the removal of this
