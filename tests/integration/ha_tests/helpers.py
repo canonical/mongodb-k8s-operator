@@ -387,6 +387,7 @@ async def get_direct_mongo_client(
 ) -> MongoClient:
     """Returns a direct mongodb client potentially passing over some of the units."""
     port = MONGOS_PORT if mongos else MONGOD_PORT
+    mongodb_name = app_name or await get_application_name(ops_test, APP_NAME)
     if unit:
         url = await mongodb_uri(
             ops_test,
@@ -395,11 +396,9 @@ async def get_direct_mongo_client(
             port=port,
             username=username,
             password=password,
-            app_name=app_name,
+            app_name=mongodb_name,
         )
         return MongoClient(url, directConnection=True)
-
-    mongodb_name = app_name or await get_application_name(ops_test, APP_NAME)
 
     for unit in ops_test.model.applications[mongodb_name].units:
         if unit.name not in excluded and unit.workload_status == "active":
@@ -977,5 +976,5 @@ async def count_writes(ops_test: OpsTest, app_name: str = None) -> int:
     """New versions of pymongo no longer support the count operation, instead find is used."""
     app_name = app_name or await get_app_name(ops_test)
     unit = ops_test.model.applications[app_name].units[0]
-    with await get_direct_mongo_client(ops_test, unit.name) as client:
+    with await get_direct_mongo_client(ops_test, unit.name, app_name=app_name) as client:
         return client[TEST_DB][TEST_COLLECTION].count_documents({})
