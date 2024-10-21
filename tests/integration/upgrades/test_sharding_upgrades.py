@@ -78,7 +78,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     }
     await deploy_and_scale_application(ops_test)
 
-    await deploy_cluster_components(ops_test, num_units_cluster_config)
+    await deploy_cluster_components(ops_test, num_units_cluster_config, channel="6/edge")
 
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS,
@@ -162,7 +162,7 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
 
     non_leader_unit = None
     for unit in ops_test.model.applications[SHARD_TWO_APP_NAME].units:
-        if unit != leader_unit:
+        if unit.name != leader_unit.name:
             non_leader_unit = unit
             break
 
@@ -175,7 +175,7 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
         leader_unit = await backup_helpers.get_leader_unit(ops_test, sharding_component)
         action = await leader_unit.run_action("pre-refresh-check")
         await action.wait()
-        assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
+        assert action.status == "failed", "pre-refresh-check succeeded, expected to fail."
 
     # restore network after test
     remove_instance_isolation(ops_test)

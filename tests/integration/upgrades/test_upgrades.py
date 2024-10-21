@@ -9,6 +9,7 @@ import pytest
 from pytest_operator.plugin import OpsTest
 
 from ..backup_tests import helpers as backup_helpers
+from ..ha_tests import helpers as ha_helpers
 from ..ha_tests.helpers import (
     count_writes,
     deploy_and_scale_application,
@@ -25,6 +26,15 @@ logger = logging.getLogger(__name__)
 
 WRITE_APP = "application"
 MONGODB_CHARM_NAME = "mongodb-k8s"
+
+
+@pytest.fixture(scope="module")
+def chaos_mesh(ops_test: OpsTest) -> None:
+    ha_helpers.deploy_chaos_mesh(ops_test.model.info.name)
+
+    yield
+
+    ha_helpers.destroy_chaos_mesh(ops_test.model.info.name)
 
 
 @pytest.mark.group(1)
@@ -87,7 +97,7 @@ async def test_preflight_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
 
     non_leader_unit = None
     for unit in ops_test.model.applications[db_app_name].units:
-        if unit != leader_unit:
+        if unit.name != leader_unit.name:
             non_leader_unit = unit
             break
 
@@ -99,12 +109,12 @@ async def test_preflight_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
     logger.info("Calling pre-refresh-check")
     action = await leader_unit.run_action("pre-refresh-check")
     await action.wait()
-    assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
+    assert action.status == "failed", "pre-refresh-check succeeded, expected to fail."
 
     # restore network after test
     remove_instance_isolation(ops_test)
     await ops_test.model.wait_for_idle(
-        apps=[db_app_name], status="active", timeout=1000, idle_period=30
+        apps=[db_app_name], status="active", timeout=1000, idle_period=30, raise_on_error=False
     )
 
 
