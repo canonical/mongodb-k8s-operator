@@ -58,9 +58,13 @@ class ClusterProvider(Object):
     """Manage relations between the config server and mongos router on the config-server side."""
 
     def __init__(
-        self, charm: CharmBase, relation_name: str = Config.Relations.CLUSTER_RELATIONS_NAME
+        self,
+        charm: CharmBase,
+        relation_name: str = Config.Relations.CLUSTER_RELATIONS_NAME,
+        substrate: str = Config.Substrate.VM,
     ) -> None:
         """Constructor for ShardingProvider object."""
+        self.substrate = substrate
         self.relation_name = relation_name
         self.charm = charm
         self.database_provides = DatabaseProvides(self.charm, relation_name=self.relation_name)
@@ -186,6 +190,10 @@ class ClusterProvider(Object):
         if not self.charm.proceed_on_broken_event(event):
             logger.info("Skipping relation broken event, broken event due to scale down")
             return
+
+        # mongos-k8s router is in charge of removing its own users.
+        if self.substrate == Config.Substrate.VM:
+            self.charm.client_relations.oversee_users(departed_relation_id, event)
 
     def update_config_server_db(self, event):
         """Provides related mongos applications with new config server db."""
@@ -391,16 +399,14 @@ class ClusterRequirer(Object):
         Raises:
             PyMongoError
         """
-        if (
-            self.charm.unit.is_leader()
-            and self.charm.client_relations.remove_all_relational_users()
-            and self.substrate == Config.Substrate.K8S
-        ):
-            self.charm.client_relations.remove_all_relational_users()
+        if not self.charm.unit.is_leader() or self.substrate != Config.Substrate.K8S:
+            return
 
-            # now that the client mongos users have been removed we can remove ourself
-            with MongoConnection(self.charm.mongo_config) as mongo:
-                mongo.drop_user(self.charm.mongo_config.username)
+        self.charm.client_relations.remove_all_relational_users()
+
+        # now that the client mongos users have been removed we can remove ourself
+        with MongoConnection(self.charm.mongo_config) as mongo:
+            mongo.drop_user(self.charm.mongo_config.username)
 
     def pass_hook_checks(self, event):
         """Runs the pre-hooks checks for ClusterRequirer, returns True if all pass."""
