@@ -151,7 +151,7 @@ class MongoDBCharm(CharmBase):
 
         self.shard = ConfigServerRequirer(self)
         self.config_server = ShardingProvider(self)
-        self.cluster = ClusterProvider(self)
+        self.cluster = ClusterProvider(self, substrate=Config.SUBSTRATE)
 
         self.upgrade = MongoDBUpgrade(self)
 
