@@ -17,7 +17,8 @@ from lightkube.models.admissionregistration_v1 import (
 from lightkube.models.core_v1 import ServicePort, ServiceSpec
 from lightkube.models.meta_v1 import ObjectMeta, OwnerReference
 from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
-from lightkube.resources.core_v1 import Pod, Service
+from lightkube.resources.apps_v1 import StatefulSet
+from lightkube.resources.core_v1 import Service
 from ops.model import Unit
 
 from config import Config
@@ -25,22 +26,21 @@ from config import Config
 logger = getLogger()
 
 
-def get_pod(client: Client, pod_name: str) -> Pod:
-    """Gets a pod definition from k8s."""
+def get_sts(client: Client, sts_name: str) -> StatefulSet:
+    """Gets a stateful set from k8s."""
     try:
-        pod = client.get(res=Pod, name=pod_name)
+        sts = client.get(res=StatefulSet, name=sts_name)
     except ApiError:
         raise
-    return pod
+    return sts
 
 
 def generate_service(client: Client, unit: Unit, model_name: str, service_name: str):
     """Generates the k8s service for the mutating webhook."""
-    pod_name = unit.name.replace("/", "-")
-    pod = get_pod(client, pod_name)
     app_name = unit.name.split("/")[0]
-    if not pod.metadata:
-        raise Exception(f"Could not find metadata for {pod}")
+    sts = get_sts(client, app_name)
+    if not sts.metadata:
+        raise Exception(f"Could not find metadata for {sts}")
 
     try:
         service = Service(
@@ -49,10 +49,10 @@ def generate_service(client: Client, unit: Unit, model_name: str, service_name: 
                 namespace=model_name,
                 ownerReferences=[
                     OwnerReference(
-                        apiVersion=pod.apiVersion,
-                        kind=pod.kind,
-                        name=pod_name,
-                        uid=pod.metadata.uid,
+                        apiVersion=sts.apiVersion,
+                        kind=sts.kind,
+                        name=app_name,
+                        uid=sts.metadata.uid,
                         blockOwnerDeletion=True,
                     )
                 ],
@@ -71,17 +71,19 @@ def generate_service(client: Client, unit: Unit, model_name: str, service_name: 
             ),
         )
         client.create(service)
-    except ApiError:
-        logger.info("Not creating a service, already present")
+    except ApiError as err:
+        logger.error("Not creating a service, already present")
+        logger.error(err)
 
 
 def generate_mutating_webhook(
     client: Client, unit: Unit, model_name: str, cert: str, service_name: str
 ):
     """Generates the mutating webhook for this application."""
-    pod_name = unit.name.replace("/", "-")
     app_name = unit.name.split("/")[0]
-    pod = get_pod(client, pod_name)
+    sts = get_sts(client, app_name)
+    if not sts.metadata:
+        raise Exception(f"Could not find metadata for {sts}")
     try:
         webhooks = client.get(
             MutatingWebhookConfiguration,
@@ -102,10 +104,10 @@ def generate_mutating_webhook(
             namespace=model_name,
             ownerReferences=[
                 OwnerReference(
-                    apiVersion=pod.apiVersion,
-                    kind=pod.kind,
-                    name=pod_name,
-                    uid=pod.metadata.uid,
+                    apiVersion=sts.apiVersion,
+                    kind=sts.kind,
+                    name=app_name,
+                    uid=sts.metadata.uid,
                     blockOwnerDeletion=True,
                 )
             ],
