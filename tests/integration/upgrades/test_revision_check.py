@@ -32,29 +32,33 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         MONGODB_K8S_CHARM,
         application_name=REMOTE_SHARD_APP_NAME,
         config={"role": "shard"},
-        channel="edge",
+        channel="6/edge",
+        trust=True,
     )
 
     await ops_test.model.deploy(
         MONGODB_K8S_CHARM,
         application_name=REMOTE_CONFIG_SERVER_APP_NAME,
         config={"role": "config-server"},
-        channel="edge",
+        channel="6/edge",
+        trust=True,
     )
     await ops_test.model.deploy(
         my_charm,
         resources=RESOURCES,
         config={"role": "config-server"},
         application_name=LOCAL_CONFIG_SERVER_APP_NAME,
+        trust=True,
     )
     await ops_test.model.deploy(
         my_charm,
         resources=RESOURCES,
         config={"role": "shard"},
         application_name=LOCAL_SHARD_APP_NAME,
+        trust=True,
     )
 
-    await ops_test.model.wait_for_idle(apps=CLUSTER_COMPONENTS, idle_period=20)
+    await ops_test.model.wait_for_idle(apps=CLUSTER_COMPONENTS, idle_period=40)
 
 
 @pytest.mark.group(1)
