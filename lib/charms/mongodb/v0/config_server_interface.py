@@ -13,6 +13,7 @@ from charms.data_platform_libs.v0.data_interfaces import (
     DatabaseProvides,
     DatabaseRequestedEvent,
     DatabaseRequires,
+    PrematureDataAccessError,
 )
 from charms.mongodb.v0.mongo import MongoConnection
 from charms.mongodb.v1.mongos import MongosConnection
@@ -158,15 +159,11 @@ class ClusterProvider(Object):
 
     def _on_relation_changed(self, event: RelationChangedEvent) -> None:
         """Handles providing mongos with KeyFile and hosts."""
-        # First we need to ensure that the database requested event has run
-        # otherwise we risk the chance of writing secrets in plain sight.
-        if not self.database_provides.fetch_relation_field(event.relation.id, "database"):
+        try:
+            self._on_database_requested(event)
+        except PrematureDataAccessError:
             logger.info("Database Requested has not run yet, skipping.")
             event.defer()
-            return
-
-        # TODO : This workflow is a fix until we have time for a better and complete fix (DPE-5513)
-        self._on_database_requested(event)
 
     def _on_relation_broken(self, event) -> None:
         if self.charm.upgrade_in_progress:

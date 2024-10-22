@@ -331,7 +331,7 @@ LIBAPI = 0
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 39
+LIBPATCH = 41
 
 PYDEPS = ["ops>=2.0.0"]
 
@@ -389,6 +389,10 @@ class SecretsIllegalUpdateError(SecretError):
 
 class IllegalOperationError(DataInterfacesError):
     """To be used when an operation is not allowed to be performed."""
+
+
+class PrematureDataAccessError(DataInterfacesError):
+    """To be raised when the Relation Data may be accessed (written) before protocol init complete."""
 
 
 ##############################################################################
@@ -1277,7 +1281,6 @@ class Data(ABC):
                     str(field),
                     str(relation.id),
                 )
-                pass
 
     # Public interface methods
     # Handling Relation Fields seamlessly, regardless if in databag or a Juju Secret
@@ -1453,6 +1456,8 @@ class EventHandlers(Object):
 class ProviderData(Data):
     """Base provides-side of the data products relation."""
 
+    RESOURCE_FIELD = "database"
+
     def __init__(
         self,
         model: Model,
@@ -1536,21 +1541,26 @@ class ProviderData(Data):
         secret = self._get_relation_secret(relation.id, group)
 
         if not secret:
-            logging.error("Can't delete secret for relation %s", str(relation.id))
+            logging.debug(
+                "Can't delete secret from group '%s' (relation ID: %s)",
+                str(group),
+                str(relation.id),
+            )
             return False
 
         old_content = secret.get_content()
         new_content = copy.deepcopy(old_content)
-        for field in fields:
+        for field in set(fields) & set(secret_fields):
             try:
                 new_content.pop(field)
             except KeyError:
                 logging.debug(
-                    "Non-existing secret was attempted to be removed %s, %s",
-                    str(relation.id),
+                    "Non-existing secret '%s' was attempted to be removed (relation ID: %s)",
                     str(field),
+                    str(relation.id),
                 )
-                return False
+        if old_content == new_content:
+            return False
 
         # Remove secret from the relation if it's fully gone
         if not new_content:
@@ -1618,6 +1628,15 @@ class ProviderData(Data):
     def _update_relation_data(self, relation: Relation, data: Dict[str, str]) -> None:
         """Set values for fields not caring whether it's a secret or not."""
         req_secret_fields = []
+
+        keys = set(data.keys())
+        if self.fetch_relation_field(relation.id, self.RESOURCE_FIELD) is None and (
+            keys - {"endpoints", "read-only-endpoints", "replset"}
+        ):
+            raise PrematureDataAccessError(
+                "Premature access to relation data, update is forbidden before the connection is initialized."
+            )
+
         if relation.app:
             req_secret_fields = get_encoded_list(relation, relation.app, REQ_SECRET_FIELDS)
 
@@ -3290,6 +3309,8 @@ class KafkaRequiresEvents(CharmEvents):
 class KafkaProviderData(ProviderData):
     """Provider-side of the Kafka relation."""
 
+    RESOURCE_FIELD = "topic"
+
     def __init__(self, model: Model, relation_name: str) -> None:
         super().__init__(model, relation_name)
 
@@ -3538,6 +3559,8 @@ class OpenSearchRequiresEvents(CharmEvents):
 
 class OpenSearchProvidesData(ProviderData):
     """Provider-side of the OpenSearch relation."""
+
+    RESOURCE_FIELD = "index"
 
     def __init__(self, model: Model, relation_name: str) -> None:
         super().__init__(model, relation_name)
