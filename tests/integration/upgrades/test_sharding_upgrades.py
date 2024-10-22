@@ -71,9 +71,14 @@ async def add_writes_to_shards(ops_test: OpsTest):
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build deploy, and integrate, a sharded cluster."""
+    num_units_cluster_config = {
+        CONFIG_SERVER_APP_NAME: 3,
+        SHARD_ONE_APP_NAME: 3,
+        SHARD_TWO_APP_NAME: 3,
+    }
     await deploy_and_scale_application(ops_test)
 
-    await deploy_cluster_components(ops_test)
+    await deploy_cluster_components(ops_test, num_units_cluster_config, channel="6/edge")
 
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS,
@@ -94,7 +99,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.applications[WRITE_APP].set_config({"mongos-uri": mongos_uri})
 
 
-@pytest.mark.skip()
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
@@ -105,6 +109,14 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
         await assert_successful_run_upgrade_sequence(
             ops_test, sharding_component, new_charm=new_charm
         )
+
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        status="active",
+        timeout=1000,
+        idle_period=30,
+        raise_on_error=False,
+    )
 
     application_unit = ops_test.model.applications[WRITE_APP].units[0]
     stop_writes_action = await application_unit.run_action(
@@ -139,34 +151,16 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
     ), "missed writes during upgrade procedure."
 
 
-@pytest.mark.skip()
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
     """Verify that the pre-refresh check succeeds in the happy path."""
-    for sharding_component in CLUSTER_COMPONENTS:
-        leader_unit = await backup_helpers.get_leader_unit(ops_test, sharding_component)
-        action = await leader_unit.run_action("pre-refresh-check")
-        await action.wait()
-        assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
-
-
-@pytest.mark.skip()
-@pytest.mark.group(1)
-@pytest.mark.abort_on_fail
-async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
-    """Verify that the pre-refresh check fails if there is a problem with one of the shards."""
-    leader_unit = await backup_helpers.get_leader_unit(ops_test, SHARD_TWO_APP_NAME)
-
-    non_leader_unit = None
-    for unit in ops_test.model.applications[SHARD_TWO_APP_NAME].units:
-        if unit != leader_unit:
-            non_leader_unit = unit
-            break
-
-    isolate_instance_from_cluster(ops_test, non_leader_unit.name)
-    await wait_until_unit_in_status(
-        ops_test, non_leader_unit, leader_unit, "(not reachable/healthy)"
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        status="active",
+        timeout=1000,
+        idle_period=30,
+        raise_on_error=False,
     )
 
     for sharding_component in CLUSTER_COMPONENTS:
@@ -175,8 +169,48 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
         await action.wait()
         assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
 
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
+    """Verify that the pre-refresh check fails if there is a problem with one of the shards."""
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS,
+        status="active",
+        timeout=1000,
+        idle_period=30,
+        raise_on_error=False,
+    )
+
+    leader_unit = await backup_helpers.get_leader_unit(ops_test, SHARD_TWO_APP_NAME)
+
+    non_leader_unit = None
+    for unit in ops_test.model.applications[SHARD_TWO_APP_NAME].units:
+        if unit.name != leader_unit.name:
+            non_leader_unit = unit
+            break
+
+    isolate_instance_from_cluster(ops_test, non_leader_unit.name)
+    await wait_until_unit_in_status(
+        ops_test,
+        non_leader_unit,
+        leader_unit,
+        "(not reachable/healthy)",
+        app_name=SHARD_TWO_APP_NAME,
+    )
+
+    for sharding_component in CLUSTER_COMPONENTS:
+        leader_unit = await backup_helpers.get_leader_unit(ops_test, sharding_component)
+        action = await leader_unit.run_action("pre-refresh-check")
+        await action.wait()
+        assert action.status == "failed", "pre-refresh-check succeeded, expected to fail."
+
     # restore network after test
     remove_instance_isolation(ops_test)
     await ops_test.model.wait_for_idle(
-        apps=[SHARD_TWO_APP_NAME], status="active", timeout=1000, idle_period=30
+        apps=[SHARD_TWO_APP_NAME],
+        status="active",
+        timeout=1000,
+        idle_period=30,
+        raise_on_error=False,
     )

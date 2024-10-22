@@ -57,9 +57,10 @@ async def deploy_cluster_components(
     else:
         my_charm = MONGODB_CHARM_NAME
 
+    resources = None if channel else RESOURCES
     await ops_test.model.deploy(
         my_charm,
-        resources=RESOURCES,
+        resources=resources,
         num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
@@ -69,7 +70,7 @@ async def deploy_cluster_components(
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=RESOURCES,
+        resources=resources,
         num_units=num_units_cluster_config[SHARD_ONE_APP_NAME],
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
@@ -79,7 +80,7 @@ async def deploy_cluster_components(
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=RESOURCES,
+        resources=resources,
         num_units=num_units_cluster_config[SHARD_TWO_APP_NAME],
         config={"role": "shard"},
         application_name=SHARD_TWO_APP_NAME,
