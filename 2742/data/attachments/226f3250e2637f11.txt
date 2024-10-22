@@ -1,0 +1,95 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: Primary
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2024-10-22T01:45:25Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server/0 [idle] active: Primary
+  config-server/1 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:54:21Z
+
+App            Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             waiting      1  application                   0  10.152.183.191  no       installing agent
+config-server           active       2  mongodb-k8s                   0  10.152.183.108  no       
+s3-integrator           active       1  s3-integrator  latest/edge   71  10.152.183.244  no       
+shard-one               active       2  mongodb-k8s                   1  10.152.183.206  no       
+shard-two               active       1  mongodb-k8s                   2  10.152.183.55   no       
+
+Unit              Workload  Agent  Address      Ports  Message
+application/0*    waiting   idle   10.1.174.72         
+config-server/0*  active    idle   10.1.174.77         Primary
+config-server/1   active    idle   10.1.174.78         
+s3-integrator/0*  active    idle   10.1.174.87         
+shard-one/0       active    idle   10.1.174.84         Primary
+shard-one/1*      active    idle   10.1.174.83         
+shard-two/0*      active    idle   10.1.174.88         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-0: 01:40:06 ERROR unit.config-server/0.juju-log config-server:9: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of pitr: unable check PITR config status: get config: missed config"}\n', stderr=''
+unit-config-server-0: 01:40:18 ERROR unit.config-server/0.juju-log config-server:9: Failed to add shard shard-one to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729561218, 1), \'signature\': {\'hash\': b"6\\x91h\\xee\\xff \\xdf\\xa4\'r\\xba\\x18\'@\\xe2\\x88\\xfc\\xfb\\x96\\x1c", \'keyId\': 7428408373818687513}}, \'operationTime\': Timestamp(1729561218, 1)}')
+unit-config-server-0: 01:40:18 ERROR unit.config-server/0.juju-log config-server:9: shard-one shard does not have the same auth as the config server.
+unit-config-server-0: 01:40:35 ERROR unit.config-server/0.juju-log config-server:9: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729561234, 2), \'signature\': {\'hash\': b\'\\xa4\\xaaeeoXC\\xec\\xa1\\x9c\\xa4e\\x88\\x1c\\xd2*\\x00\\xb5\\xfc=\', \'keyId\': 7428408373818687513}}, \'operationTime\': Timestamp(1729561234, 2)}')
+unit-config-server-0: 01:40:35 ERROR unit.config-server/0.juju-log config-server:9: Failed to add shard-one to cluster
+unit-config-server-0: 01:40:35 ERROR unit.config-server/0.juju-log config-server:9: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729561234, 2), \'signature\': {\'hash\': b\'\\xa4\\xaaeeoXC\\xec\\xa1\\x9c\\xa4e\\x88\\x1c\\xd2*\\x00\\xb5\\xfc=\', \'keyId\': 7428408373818687513}}, \'operationTime\': Timestamp(1729561234, 2)}')
+unit-config-server-0: 01:40:38 ERROR unit.config-server/0.juju-log s3-credentials:8: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of cluster: connect to `shard-one` [shard-one/shard-one-0.shard-one-endpoints:27017,shard-one-1.shard-one-endpoints:27017]: ping: connection() error occurred during connection handshake: auth error: unable to authenticate using mechanism \\"SCRAM-SHA-256\\": (AuthenticationFailed) Authentication failed."}\n', stderr=''
+unit-config-server-0: 01:40:52 ERROR unit.config-server/0.juju-log config-server:9: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1729561252, 1), 'signature': {'hash': b'\\xec*:\\xffr~\\x81\\x1fZ!\\rI\\xea\\x9eJ4\\n\\x9a\\x9b\\x9a', 'keyId': 7428408373818687513}}, 'operationTime': Timestamp(1729561252, 1)}")
+unit-config-server-0: 01:40:52 ERROR unit.config-server/0.juju-log config-server:9: shard-two shard does not have the same auth as the config server.
+unit-config-server-0: 01:40:56 ERROR unit.config-server/0.juju-log config-server:10: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of cluster: connect to `shard-two` [shard-two/shard-two-0.shard-two-endpoints:27017]: ping: connection() error occurred during connection handshake: auth error: unable to authenticate using mechanism \\"SCRAM-SHA-256\\": (AuthenticationFailed) Authentication failed."}\n', stderr=''
+unit-shard-one-1: 01:41:45 ERROR unit.shard-one/1.juju-log Backup failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-1: 01:41:47 ERROR unit.shard-one/1.juju-log List-backups failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-1: 01:41:49 ERROR unit.shard-one/1.juju-log Restore failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
