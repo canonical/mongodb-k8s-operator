@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+import asyncio
 from typing import List, Optional, Tuple
 
 from pymongo import MongoClient
@@ -58,35 +59,37 @@ async def deploy_cluster_components(
         my_charm = MONGODB_CHARM_NAME
 
     resources = None if channel else RESOURCES
-    await ops_test.model.deploy(
-        my_charm,
-        resources=resources,
-        num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
-        config={"role": "config-server"},
-        application_name=CONFIG_SERVER_APP_NAME,
-        channel=channel,
-        series="jammy",
-        trust=True,
-    )
-    await ops_test.model.deploy(
-        my_charm,
-        resources=resources,
-        num_units=num_units_cluster_config[SHARD_ONE_APP_NAME],
-        config={"role": "shard"},
-        application_name=SHARD_ONE_APP_NAME,
-        channel=channel,
-        series="jammy",
-        trust=True,
-    )
-    await ops_test.model.deploy(
-        my_charm,
-        resources=resources,
-        num_units=num_units_cluster_config[SHARD_TWO_APP_NAME],
-        config={"role": "shard"},
-        application_name=SHARD_TWO_APP_NAME,
-        channel=channel,
-        series="jammy",
-        trust=True,
+    await asyncio.gather(
+        ops_test.model.deploy(
+            my_charm,
+            resources=resources,
+            num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
+            config={"role": "config-server"},
+            application_name=CONFIG_SERVER_APP_NAME,
+            channel=channel,
+            series="jammy",
+            trust=True,
+        ),
+        ops_test.model.deploy(
+            my_charm,
+            resources=resources,
+            num_units=num_units_cluster_config[SHARD_ONE_APP_NAME],
+            config={"role": "shard"},
+            application_name=SHARD_ONE_APP_NAME,
+            channel=channel,
+            series="jammy",
+            trust=True,
+        ),
+        ops_test.model.deploy(
+            my_charm,
+            resources=resources,
+            num_units=num_units_cluster_config[SHARD_TWO_APP_NAME],
+            config={"role": "shard"},
+            application_name=SHARD_TWO_APP_NAME,
+            channel=channel,
+            series="jammy",
+            trust=True,
+        ),
     )
 
     await ops_test.model.wait_for_idle(

@@ -129,6 +129,9 @@ async def test_upgrade_password_change_fail(ops_test: OpsTest):
 
     await ops_test.model.applications[app_name].refresh(path=new_charm)
 
+    leader = await find_unit(ops_test, leader=True, app_name="mongodb-k8s")
+    leader_id = leader.name.split("/")[1]
+
     action = await ops_test.model.units.get(f"{app_name}/{leader_id}").run_action(
         "set-password", **{"username": "username", "password": "new-password"}
     )
