@@ -193,6 +193,11 @@ class MongoDBCharm(CharmBase):
 
     # BEGIN: properties
     @property
+    def needs_new_termination_period(self) -> bool:
+        """Returns True the termination period is incorrect."""
+        return self.get_termination_period_for_statefulset() != ONE_YEAR
+
+    @property
     def mutator_service_name(self):
         """Property to get the mutator service name for k8s."""
         return f"{self.app.name}-{self.model.name}-{Config.WebhookManager.SERVICE_NAME}-{Config.WebhookManager.CONTAINER_NAME}"
@@ -443,21 +448,6 @@ class MongoDBCharm(CharmBase):
     def db_initialised(self) -> bool:
         """Check if MongoDB is initialised."""
         return json.loads(self.app_peer_data.get("db_initialised", "false"))
-
-    @property
-    def needs_new_termination_period(self) -> bool:
-        """Check if the charm needs a new termination period."""
-        return json.loads(self.app_peer_data.get("needs_new_termination_period", "true"))
-
-    @needs_new_termination_period.setter
-    def needs_new_termination_period(self, value):
-        """Set the needs_new_termination_period flag."""
-        if isinstance(value, bool):
-            self.app_peer_data["needs_new_termination_period"] = json.dumps(value)
-        else:
-            raise ValueError(
-                f"'needs_new_termination_period' must be a boolean value. Provided: {value} is of type {type(value)}"
-            )
 
     @property
     def first_time_with_new_termination_period(self) -> bool:
@@ -715,14 +705,6 @@ class MongoDBCharm(CharmBase):
             client, self.unit, self.model.name, cert, self.mutator_service_name
         )
 
-        # We must ensure that juju does not overwrite our termination period, so we should update
-        # it as needed. However, updating the termination period can result in an onslaught of
-        # events, including the upgrade event.
-        # To prevent this from messing with upgrades do not update the termination period when an
-        # upgrade is occurring.
-        if self.get_current_termination_period() != ONE_YEAR and not self.upgrade_in_progress:
-            self.update_termination_grace_period_to_one_year()
-
     def _configure_layers(self, container: Container) -> None:
         """Configure the layers of the container."""
         modified = False
@@ -791,7 +773,6 @@ class MongoDBCharm(CharmBase):
             self.first_time_with_new_termination_period = False
             return
         if self.unit.is_leader():
-            self.needs_new_termination_period = False
             self.version_checker.set_version_across_all_relations()
 
         container = self.unit.get_container(Config.CONTAINER_NAME)
@@ -882,6 +863,20 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
+        # We must ensure that juju does not overwrite our termination period, so we should update
+        # it as needed. However, updating the termination period can result in an onslaught of
+        # events, including the upgrade event.
+        # To prevent this from messing with upgrades do not update the termination period when an
+        # upgrade is occurring.
+        if (
+            self.unit.is_leader()
+            and self.needs_new_termination_period
+            and not self.upgrade_in_progress
+        ):
+            self.update_termination_grace_period_to_one_year()
+            event.defer()
+            return
+
         if not self.__can_charm_start():
             event.defer()
             return
@@ -985,7 +980,7 @@ class MongoDBCharm(CharmBase):
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
-    def get_current_termination_period(self) -> int:
+    def get_termination_period_for_statefulset(self) -> int:
         """Returns the current termination period for the stateful set of this juju application."""
         client = Client()
         statefulset = client.get(StatefulSet, name=self.app.name, namespace=self.model.name)
@@ -1002,23 +997,26 @@ class MongoDBCharm(CharmBase):
     def update_termination_grace_period_to_one_year(self) -> None:
         """Patch the termination grace period for the stateful set of this juju application."""
         client = Client()
-        patch_data = {
-            "spec": {
-                "template": {
-                    "spec": {"terminationGracePeriodSeconds": ONE_YEAR},
-                    "metadata": {"annotations": {"force-update": str(int(time.time()))}},
+
+        # Attempts to rewrite the terminationGracePeriodSeconds can fail if the fastapi service is
+        # not yet running, so we retry to give it some time settle.
+        for attempt in Retrying(stop=stop_after_attempt(30), wait=wait_fixed(1), reraise=True):
+            with attempt:
+                patch_data = {
+                    "spec": {
+                        "template": {
+                            "spec": {"terminationGracePeriodSeconds": ONE_YEAR},
+                            "metadata": {"annotations": {"force-update": str(int(time.time()))}},
+                        }
+                    }
                 }
-            }
-        }
-        client.patch(
-            StatefulSet,
-            name=self.app.name,
-            namespace=self.model.name,
-            obj=patch_data,
-            patch_type=PatchType.MERGE,
-        )
-        # Works because we're leader.
-        self.needs_new_termination_period = False
+                client.patch(
+                    StatefulSet,
+                    name=self.app.name,
+                    namespace=self.model.name,
+                    obj=patch_data,
+                    patch_type=PatchType.MERGE,
+                )
 
     def __handle_partition_on_stop(self) -> None:
         """Raise partition to prevent other units from restarting if an upgrade is in progress.
@@ -1182,17 +1180,14 @@ class MongoDBCharm(CharmBase):
         events, including the upgrade event. To prevent this from messing with upgrades do not
         update the termination period when an upgrade is occurring.
         """
-        if self.get_termination_period_for_pod() == ONE_YEAR:
-            self.first_time_with_new_termination_period = False
         if not self.unit.is_leader():
             return
         try:
-            if self.get_current_termination_period() != ONE_YEAR and not self.upgrade_in_progress:
+            if self.needs_new_termination_period and not self.upgrade_in_progress:
                 self.update_termination_grace_period_to_one_year()
         except ApiError:
             logger.info("Failed to update termination period.")
             return
-        self.needs_new_termination_period = False
 
     # BEGIN: actions
     def _on_get_password(self, event: ActionEvent) -> None:

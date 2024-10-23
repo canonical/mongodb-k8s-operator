@@ -4,7 +4,7 @@ import json
 import logging
 import unittest
 from unittest import mock
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from charms.mongodb.v1.helpers import CONF_DIR, DATA_DIR, KEY_FILE
@@ -133,8 +133,12 @@ class TestCharm(unittest.TestCase):
         # Ensure that _connect_mongodb_exporter was called
         connect_exporter.assert_called_once()
 
+    @patch(
+        "charm.MongoDBCharm.needs_new_termination_period",
+        new_callable=PropertyMock(return_value=False),
+    )
     @patch("charm.gen_certificate", return_value=(b"", b""))
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._push_keyfile_to_workload")
@@ -162,7 +166,7 @@ class TestCharm(unittest.TestCase):
 
     @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("charm.gen_certificate", return_value=(b"", b""))
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBCharm._push_keyfile_to_workload")
@@ -228,8 +232,12 @@ class TestCharm(unittest.TestCase):
         mock_container.replan.assert_not_called()
         defer.assert_called()
 
+    @patch(
+        "charm.MongoDBCharm.needs_new_termination_period",
+        new_callable=PropertyMock(return_value=False),
+    )
     @patch("charm.gen_certificate", return_value=(b"", b""))
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -261,7 +269,7 @@ class TestCharm(unittest.TestCase):
         defer.assert_not_called()
 
     @patch("charm.gen_certificate", return_value=(b"", b""))
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -291,7 +299,7 @@ class TestCharm(unittest.TestCase):
         defer.assert_called()
 
     @patch("charm.gen_certificate", return_value=(b"", b""))
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -321,8 +329,12 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
+    @patch(
+        "charm.MongoDBCharm.needs_new_termination_period",
+        new_callable=PropertyMock(return_value=False),
+    )
     @patch("charm.gen_certificate", return_value=(b"", b""))
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("charm.MongoDBCharm._configure_container", return_value=None)
     @patch("ops.framework.EventBase.defer")
@@ -354,7 +366,11 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_not_called()
 
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch(
+        "charm.MongoDBCharm.needs_new_termination_period",
+        new_callable=PropertyMock(return_value=False),
+    )
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("charm.MongoDBCharm._configure_container", return_value=None)
     @patch("charm.gen_certificate", return_value=(b"", b""))
@@ -388,7 +404,7 @@ class TestCharm(unittest.TestCase):
         defer.assert_not_called()
 
     @patch("charm.gen_certificate", return_value=(b"", b""))
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -421,7 +437,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
         defer.assert_called()
 
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("charm.gen_certificate", return_value=(b"", b""))
     @patch("ops.framework.EventBase.defer")
@@ -454,7 +470,7 @@ class TestCharm(unittest.TestCase):
             defer.assert_called()
 
     @patch("charm.gen_certificate", return_value=(b"", b""))
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("ops.framework.EventBase.defer")
     @patch("charm.MongoDBProvider")
@@ -486,7 +502,7 @@ class TestCharm(unittest.TestCase):
         # verify app data
         self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
 
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("charm.MongoDBCharm._init_operator_user")
     @patch("charm.gen_certificate", return_value=(b"", b""))
@@ -701,7 +717,11 @@ class TestCharm(unittest.TestCase):
             connection.return_value.__enter__.return_value.add_replset_member.assert_called()
             defer.assert_called()
 
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch(
+        "charm.MongoDBCharm.needs_new_termination_period",
+        new_callable=PropertyMock(return_value=False),
+    )
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("charm.MongoDBCharm._configure_container", return_value=None)
     @patch("charm.gen_certificate", return_value=(b"", b""))
@@ -1076,8 +1096,13 @@ class TestCharm(unittest.TestCase):
         expected_uri = uri_template.format(password="mongo123")
         self.assertEqual(expected_uri, new_uri)
 
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
+    @patch(
+        "charm.MongoDBCharm.needs_new_termination_period",
+        new_callable=PropertyMock(return_value=False),
+    )
+    @patch("charm.MongoDBCharm.needs_new_termination_period", return_value=False)
     @patch("tenacity.nap.time.sleep", MagicMock())
     @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
     @patch("charm.USER_CREATION_COOLDOWN", 1)
@@ -1104,7 +1129,7 @@ class TestCharm(unittest.TestCase):
         self.assertIsNotNone(password)  # verify the password is set
 
     @patch("charm.gen_certificate", return_value=(b"", b""))
-    @patch("charm.MongoDBCharm.get_current_termination_period")
+    @patch("charm.MongoDBCharm.get_termination_period_for_statefulset")
     @patch("charm.MongoDBCharm.update_termination_grace_period_to_one_year")
     @patch("charm.MongoDBConnection")
     def test_set_password_provided(self, *unused):
