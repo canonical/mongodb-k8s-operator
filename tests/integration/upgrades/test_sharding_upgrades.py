@@ -80,19 +80,21 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
     await deploy_cluster_components(ops_test, num_units_cluster_config, channel="6/edge")
 
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_COMPONENTS,
-        idle_period=20,
-        raise_on_blocked=False,
-        raise_on_error=False,
-    )
+    async with ops_test.fast_forward(fast_interval="1m"):
+        await ops_test.model.wait_for_idle(
+            apps=CLUSTER_COMPONENTS,
+            idle_period=40,
+            raise_on_blocked=False,
+            raise_on_error=False,
+        )
 
     await integrate_cluster(ops_test)
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_COMPONENTS,
-        idle_period=20,
-        timeout=TIMEOUT,
-    )
+    async with ops_test.fast_forward(fast_interval="1m"):
+        await ops_test.model.wait_for_idle(
+            apps=CLUSTER_COMPONENTS,
+            idle_period=40,
+            timeout=TIMEOUT,
+        )
 
     # configure write app to use mongos uri
     mongos_uri = await mongodb_uri(ops_test, app_name=CONFIG_SERVER_APP_NAME, port=MONGOS_PORT)
