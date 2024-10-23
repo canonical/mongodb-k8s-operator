@@ -333,13 +333,14 @@ async def deploy_cluster_backup_test(
     if deploy_s3_integrator:
         await ops_test.model.deploy(S3_APP_NAME, channel="edge")
 
-    await ops_test.model.wait_for_idle(
-        apps=[S3_APP_NAME, config_server_name, shard_one_name, shard_two_name],
-        idle_period=20,
-        raise_on_blocked=False,
-        timeout=TIMEOUT,
-        raise_on_error=False,
-    )
+    async with ops_test.fast_forward("1m"):
+        await ops_test.model.wait_for_idle(
+            apps=[S3_APP_NAME, config_server_name, shard_one_name, shard_two_name],
+            idle_period=30,
+            raise_on_blocked=False,
+            timeout=TIMEOUT,
+            raise_on_error=False,
+        )
 
 
 async def setup_cluster_and_s3(ops_test: OpsTest, new_names=False) -> None:
