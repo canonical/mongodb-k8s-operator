@@ -714,12 +714,12 @@ class MongoDBCharm(CharmBase):
         generate_mutating_webhook(
             client, self.unit, self.model.name, cert, self.mutator_service_name
         )
-        client.close()
 
         # We must ensure that juju does not overwrite our termination period, so we should update
         # it as needed. However, updating the termination period can result in an onslaught of
-        # events, including the upgrade event. To prevent this from messing with upgrades do not
-        # update the termination period when an upgrade is occurring.
+        # events, including the upgrade event.
+        # To prevent this from messing with upgrades do not update the termination period when an
+        # upgrade is occurring.
         if self.get_current_termination_period() != ONE_YEAR and not self.upgrade_in_progress:
             self.update_termination_grace_period_to_one_year()
 
@@ -989,7 +989,6 @@ class MongoDBCharm(CharmBase):
         """Returns the current termination period for the stateful set of this juju application."""
         client = Client()
         statefulset = client.get(StatefulSet, name=self.app.name, namespace=self.model.name)
-        client.close()
         return statefulset.spec.template.spec.terminationGracePeriodSeconds
 
     def get_termination_period_for_pod(self) -> int:
@@ -998,7 +997,6 @@ class MongoDBCharm(CharmBase):
         client = Client()
         pod = client.get(Pod, name=pod_name, namespace=self.model.name)
         termination_grace_period = pod.spec.terminationGracePeriodSeconds
-        client.close()
         return termination_grace_period
 
     def update_termination_grace_period_to_one_year(self) -> None:
@@ -1021,7 +1019,6 @@ class MongoDBCharm(CharmBase):
         )
         # Works because we're leader.
         self.needs_new_termination_period = False
-        client.close()
 
     def __handle_partition_on_stop(self) -> None:
         """Raise partition to prevent other units from restarting if an upgrade is in progress.
