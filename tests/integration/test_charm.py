@@ -114,6 +114,15 @@ async def test_termination_period(ops_test: OpsTest) -> None:
     # when scaling up the application, juju attempts resets the termination period, so scale it up
     await ops_test.model.applications[app_name].scale(scale_change=1)
 
+    await ops_test.model.wait_for_idle(
+        apps=[app_name],
+        status="active",
+        raise_on_blocked=True,
+        timeout=600,
+        raise_on_error=False,
+        idle_period=20,
+    )
+
     for shard_replica in ops_test.model.applications[app_name].units:
         pod_name = shard_replica.name.replace("/", "-")
         termination_period_for_shard = get_termination_period_for_pod(
