@@ -133,7 +133,7 @@ async def test_upgrade_password_change_fail(ops_test: OpsTest):
     leader_id = leader.name.split("/")[1]
 
     action = await ops_test.model.units.get(f"{app_name}/{leader_id}").run_action(
-        "set-password", **{"username": "username", "password": "new-password"}
+        "set-password", **{"username": "operator", "password": "new-password"}
     )
     action = await action.wait()
 
