@@ -59,19 +59,13 @@ containers:
     mounts:
       - storage: mongodb
         location: /var/lib/mongodb
-  webhook-mutator:
-    resource: data-platform-k8s-webhook-mutator-image
 resources:
   mongodb-image:
     type: oci-image
     description: OCI image for mongodb
     # TODO: Update sha whenever upstream rock changes
-    upstream-source: ghcr.io/canonical/charmed-mongodb@sha256:b4b3edb805b20de471da57802643bfadbf979f112d738bc540ab148d145ddcfe
-  data-platform-k8s-webhook-mutator-image:
-    type: oci-image
-    description: OCI image for mongodb
-    # TODO: Update sha whenever upstream rock changes
-    upstream-source: ghcr.io/canonical/data-platform-k8s-mutator@sha256:42f55732ec151a36c06e056ecb91f2aef12a405c3e34657750a0f8685e6fa37d
+    upstream-source: ghcr.io/miaaltieri/charmed-mongodb@sha256:7e14ef5a316b9d5644c5adb3298ad0ac34cb4b4cb5df857648a8967e414cd141
+
 storage:
   mongodb:
     type: filesystem

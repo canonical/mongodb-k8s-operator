@@ -126,10 +126,6 @@ class MongoDBCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-        self.framework.observe(
-            self.on.webhook_mutator_pebble_ready,
-            self._on_webhook_mutator_pebble_ready,
-        )
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
@@ -403,7 +399,7 @@ class MongoDBCharm(CharmBase):
     def _webhook_layer(self) -> Layer:
         """Returns a Pebble configuration layer for wehooks mutator."""
         config = Config.WebhookManager
-        cmd = f"uvicorn app:app --host 0.0.0.0 --port {config.PORT} --ssl-keyfile={config.KEY_PATH} --ssl-certfile={config.CRT_PATH}"
+        cmd = f"flask run --host 0.0.0.0 --port {config.PORT} --key={config.KEY_PATH} --cert={config.CRT_PATH}"
         layer_config = {
             "summary": "Webhook Manager layer",
             "description": "Pebble layer configuration for webhook mutation",
@@ -668,15 +664,15 @@ class MongoDBCharm(CharmBase):
             return
 
         self.upgrade._reconcile_upgrade(event)
+        self._configue_webhook_mutator(event)
 
-    # BEGIN: charm events
-    def _on_webhook_mutator_pebble_ready(self, event) -> None:
-        # still need todo use lightkube register the mutating webhook with
-        # lightkube (maybe in on start)?
+    def _configue_webhook_mutator(self, event) -> None:
+        # TODO integrate this into the function `_configure_container`
+
         # Get a reference the container attribute
-        container = self.unit.get_container(Config.WebhookManager.CONTAINER_NAME)
+        container = self.unit.get_container(Config.CONTAINER_NAME)
         if not container.can_connect():
-            logger.debug("%s container is not ready yet.", Config.WebhookManager.CONTAINER_NAME)
+            logger.debug("%s container is not ready yet.", Config.CONTAINER_NAME)
             event.defer()
             return
 
