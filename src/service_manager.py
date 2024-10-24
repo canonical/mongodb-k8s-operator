@@ -18,7 +18,7 @@ from lightkube.models.core_v1 import ServicePort, ServiceSpec
 from lightkube.models.meta_v1 import ObjectMeta, OwnerReference
 from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
 from lightkube.resources.apps_v1 import StatefulSet
-from lightkube.resources.core_v1 import Service
+from lightkube.resources.core_v1 import Namespace, Service
 from ops.model import Unit
 
 from config import Config
@@ -30,6 +30,15 @@ def get_sts(client: Client, sts_name: str) -> StatefulSet:
     """Gets a stateful set from k8s."""
     try:
         sts = client.get(res=StatefulSet, name=sts_name)
+    except ApiError:
+        raise
+    return sts
+
+
+def get_namespace(client, ns_name: str) -> Namespace:
+    """Gets a namespace resource from k8s."""
+    try:
+        sts = client.get(res=Namespace, name=ns_name)
     except ApiError:
         raise
     return sts
@@ -83,9 +92,9 @@ def generate_mutating_webhook(
 ):
     """Generates the mutating webhook for this application."""
     app_name = unit.name.split("/")[0]
-    sts = get_sts(client, app_name)
-    if not sts.metadata:
-        raise Exception(f"Could not find metadata for {sts}")
+    namespace = get_namespace(client, model_name)
+    if not namespace.metadata:
+        raise Exception(f"Could not find metadata for {namespace}")
     try:
         webhooks = client.get(
             MutatingWebhookConfiguration,
@@ -106,10 +115,10 @@ def generate_mutating_webhook(
             namespace=model_name,
             ownerReferences=[
                 OwnerReference(
-                    apiVersion=sts.apiVersion,
-                    kind=sts.kind,
-                    name=app_name,
-                    uid=sts.metadata.uid,
+                    apiVersion=namespace.apiVersion,
+                    kind=namespace.kind,
+                    name=model_name,
+                    uid=namespace.metadata.uid,
                     blockOwnerDeletion=True,
                 )
             ],
