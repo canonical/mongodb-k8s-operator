@@ -845,7 +845,7 @@ class MongoDBCharm(CharmBase):
 
         return True
 
-    def _on_start(self, event: StartEvent) -> None:
+    def _on_start(self, event: StartEvent) -> None:  # noqa: C901
         """Initialise MongoDB.
 
         Initialisation of replSet should be made once after start.
@@ -873,9 +873,11 @@ class MongoDBCharm(CharmBase):
             and self.needs_new_termination_period
             and not self.upgrade_in_progress
         ):
-            self.update_termination_grace_period_to_one_year()
-            event.defer()
-            return
+            try:
+                self.update_termination_grace_period_to_one_year()
+            except RetryError:
+                event.defer()
+                return
 
         if not self.__can_charm_start():
             event.defer()
