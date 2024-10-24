@@ -5,6 +5,7 @@
 import json
 import logging
 import re
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
@@ -47,6 +48,12 @@ from data_platform_helpers.version_check import (
     CrossAppVersionChecker,
     get_charm_revision,
 )
+from lightkube import Client
+from lightkube.core.exceptions import ApiError
+from lightkube.resources.admissionregistration_v1 import MutatingWebhookConfiguration
+from lightkube.resources.apps_v1 import StatefulSet
+from lightkube.resources.core_v1 import Pod
+from lightkube.types import PatchType
 from ops.charm import (
     ActionEvent,
     CharmBase,
@@ -90,6 +97,8 @@ from exceptions import (
     NotConfigServerError,
     UnitStillInReplicaSet,
 )
+from gen_cert import gen_certificate
+from service_manager import generate_mutating_webhook, generate_service
 from upgrades import kubernetes_upgrades
 from upgrades.mongodb_upgrades import MongoDBUpgrade
 
@@ -105,6 +114,8 @@ APP_SCOPE = Config.Relations.APP_SCOPE
 UNIT_SCOPE = Config.Relations.UNIT_SCOPE
 Scopes = Config.Relations.Scopes
 
+ONE_MINUTE = 60
+ONE_YEAR = Config.WebhookManager.GRACE_PERIOD_SECONDS
 USER_CREATING_MAX_ATTEMPTS = 5
 USER_CREATION_COOLDOWN = 30
 REPLICA_SET_INIT_CHECK_TIMEOUT = 10
@@ -115,7 +126,10 @@ class MongoDBCharm(CharmBase):
 
     def __init__(self, *args):
         super().__init__(*args)
-
+        self.framework.observe(
+            self.on.webhook_mutator_pebble_ready,
+            self._on_webhook_mutator_pebble_ready,
+        )
         self.framework.observe(self.on.mongod_pebble_ready, self._on_mongod_pebble_ready)
         self.framework.observe(self.on.config_changed, self._on_config_changed)
         self.framework.observe(self.on.start, self._on_start)
@@ -178,6 +192,20 @@ class MongoDBCharm(CharmBase):
         )
 
     # BEGIN: properties
+    @property
+    def needs_new_termination_period(self) -> bool:
+        """Returns True the termination period is incorrect."""
+        return self.get_termination_period_for_statefulset() != ONE_YEAR
+
+    @property
+    def mutator_service_name(self):
+        """Property to get the mutator service name for k8s."""
+        return f"{self.app.name}-{self.model.name}-{Config.WebhookManager.SERVICE_NAME}-{Config.WebhookManager.CONTAINER_NAME}"
+
+    @property
+    def _is_removing_last_replica(self) -> bool:
+        """Returns True if the last replica (juju unit) is getting removed."""
+        return self.app.planned_units() == 0 and len(self.peers_units) == 0
 
     @property
     def monitoring_jobs(self) -> list[dict[str, Any]]:
@@ -372,6 +400,28 @@ class MongoDBCharm(CharmBase):
         return Layer(layer_config)
 
     @property
+    def _webhook_layer(self) -> Layer:
+        """Returns a Pebble configuration layer for wehooks mutator."""
+        config = Config.WebhookManager
+        cmd = f"uvicorn app:app --host 0.0.0.0 --port {config.PORT} --ssl-keyfile={config.KEY_PATH} --ssl-certfile={config.CRT_PATH}"
+        layer_config = {
+            "summary": "Webhook Manager layer",
+            "description": "Pebble layer configuration for webhook mutation",
+            "services": {
+                Config.WebhookManager.SERVICE_NAME: {
+                    "override": "merge",
+                    "summary": "webhook manager daemon",
+                    "command": cmd,
+                    "startup": "enabled",
+                    "environment": {
+                        "GRACE_PERIOD_SECONDS": Config.WebhookManager.GRACE_PERIOD_SECONDS,
+                    },
+                },
+            },
+        }
+        return Layer(layer_config)
+
+    @property
     def relation(self) -> Optional[Relation]:
         """Peer relation data object."""
         return self.model.get_relation(Config.Relations.PEERS)
@@ -398,6 +448,23 @@ class MongoDBCharm(CharmBase):
     def db_initialised(self) -> bool:
         """Check if MongoDB is initialised."""
         return json.loads(self.app_peer_data.get("db_initialised", "false"))
+
+    @property
+    def first_time_with_new_termination_period(self) -> bool:
+        """Whether the unit has departed or not."""
+        return json.loads(
+            self.unit_peer_data.get("first_time_with_new_termination_period", "true")
+        )
+
+    @first_time_with_new_termination_period.setter
+    def first_time_with_new_termination_period(self, value: bool) -> None:
+        """Set the unit_departed flag."""
+        if isinstance(value, bool):
+            self.unit_peer_data["first_time_with_new_termination_period"] = json.dumps(value)
+        else:
+            raise ValueError(
+                f"'first_time_with_new_termination_period' must be a boolean value. Provided: {value} is of type {type(value)}"
+            )
 
     def is_role_changed(self) -> bool:
         """Checks if application is running in provided role."""
@@ -529,11 +596,6 @@ class MongoDBCharm(CharmBase):
         with open(Config.CHARM_INTERNAL_VERSION_FILE, "r") as f:
             return f.read().strip()
 
-    @property
-    def _is_removing_last_replica(self) -> bool:
-        """Returns True if the last replica (juju unit) is getting removed."""
-        return self.app.planned_units() == 0 and len(self.peers_units) == 0
-
     # END: properties
 
     # BEGIN: generic helper methods
@@ -592,6 +654,56 @@ class MongoDBCharm(CharmBase):
         except (PathError, ProtocolError, MissingSecretError) as e:
             logger.error("Cannot initialize workload: %r", e)
             raise FailedToUpdateFilesystem
+
+    # BEGIN: charm events
+    def _on_mongod_pebble_ready(self, event) -> None:
+        """Configure MongoDB pebble layer specification."""
+        container = self.unit.get_container(Config.CONTAINER_NAME)
+
+        # Just run the configure layers steps on the container and defer if it fails.
+        try:
+            self._configure_container(container)
+        except ContainerNotReadyError:
+            event.defer()
+            return
+
+        self.upgrade._reconcile_upgrade(event)
+
+    # BEGIN: charm events
+    def _on_webhook_mutator_pebble_ready(self, event) -> None:
+        # still need todo use lightkube register the mutating webhook with
+        # lightkube (maybe in on start)?
+        # Get a reference the container attribute
+        container = self.unit.get_container(Config.WebhookManager.CONTAINER_NAME)
+        if not container.can_connect():
+            logger.debug("%s container is not ready yet.", Config.WebhookManager.CONTAINER_NAME)
+            event.defer()
+            return
+
+        cert = self.get_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET)
+        private_key = self.get_secret(APP_SCOPE, Config.WebhookManager.KEY_SECRET)
+
+        if not cert or not private_key:
+            logger.debug("Waiting for certificates")
+            event.defer()
+            return
+
+        container.push(Config.WebhookManager.CRT_PATH, cert)
+        container.push(Config.WebhookManager.KEY_PATH, private_key)
+
+        # Add initial Pebble config layer using the Pebble API
+        container.add_layer(Config.WebhookManager.SERVICE_NAME, self._webhook_layer, combine=True)
+        container.replan()
+
+        if not self.unit.is_leader():
+            return
+
+        # Lightkube client
+        client = Client()
+        generate_service(client, self.unit, self.model.name, self.mutator_service_name)
+        generate_mutating_webhook(
+            client, self.unit, self.model.name, cert, self.mutator_service_name
+        )
 
     def _configure_layers(self, container: Container) -> None:
         """Configure the layers of the container."""
@@ -655,6 +767,11 @@ class MongoDBCharm(CharmBase):
         is compatible, it will end up emitting a post upgrade event that
         verifies the health of the cluster.
         """
+        if self.get_termination_period_for_pod() != ONE_YEAR:
+            return
+        if self.first_time_with_new_termination_period:
+            self.first_time_with_new_termination_period = False
+            return
         if self.unit.is_leader():
             self.version_checker.set_version_across_all_relations()
 
@@ -674,19 +791,6 @@ class MongoDBCharm(CharmBase):
         if self.upgrade._upgrade.is_compatible:
             # Post upgrade event verifies the success of the upgrade.
             self.upgrade.post_app_upgrade_event.emit()
-
-    def _on_mongod_pebble_ready(self, event) -> None:
-        """Configure MongoDB pebble layer specification."""
-        container = self.unit.get_container(Config.CONTAINER_NAME)
-
-        # Just run the configure layers steps on the container and defer if it fails.
-        try:
-            self._configure_container(container)
-        except ContainerNotReadyError:
-            event.defer()
-            return
-
-        self.upgrade._reconcile_upgrade(event)
 
     def is_db_service_ready(self) -> bool:
         """Checks if the MongoDB service is ready to accept connections."""
@@ -741,7 +845,7 @@ class MongoDBCharm(CharmBase):
 
         return True
 
-    def _on_start(self, event: StartEvent) -> None:
+    def _on_start(self, event: StartEvent) -> None:  # noqa: C901
         """Initialise MongoDB.
 
         Initialisation of replSet should be made once after start.
@@ -759,6 +863,22 @@ class MongoDBCharm(CharmBase):
         It is needed to install mongodb-clients inside the charm container
         to make this function work correctly.
         """
+        # We must ensure that juju does not overwrite our termination period, so we should update
+        # it as needed. However, updating the termination period can result in an onslaught of
+        # events, including the upgrade event.
+        # To prevent this from messing with upgrades do not update the termination period when an
+        # upgrade is occurring.
+        if (
+            self.unit.is_leader()
+            and self.needs_new_termination_period
+            and not self.upgrade_in_progress
+        ):
+            try:
+                self.update_termination_grace_period_to_one_year()
+            except RetryError:
+                event.defer()
+                return
+
         if not self.__can_charm_start():
             event.defer()
             return
@@ -775,6 +895,9 @@ class MongoDBCharm(CharmBase):
         # mongod is now active
         self.status.set_and_share_status(ActiveStatus())
         self.upgrade._reconcile_upgrade(event)
+
+        if self.get_termination_period_for_pod() == ONE_YEAR:
+            self.first_time_with_new_termination_period = False
 
         if not self.unit.is_leader():
             return
@@ -859,6 +982,44 @@ class MongoDBCharm(CharmBase):
                 logger.info("Deferring reconfigure: error=%r", e)
                 event.defer()
 
+    def get_termination_period_for_statefulset(self) -> int:
+        """Returns the current termination period for the stateful set of this juju application."""
+        client = Client()
+        statefulset = client.get(StatefulSet, name=self.app.name, namespace=self.model.name)
+        return statefulset.spec.template.spec.terminationGracePeriodSeconds
+
+    def get_termination_period_for_pod(self) -> int:
+        """Returns the current termination period for the pod of this unit."""
+        pod_name = self.unit.name.replace("/", "-")
+        client = Client()
+        pod = client.get(Pod, name=pod_name, namespace=self.model.name)
+        termination_grace_period = pod.spec.terminationGracePeriodSeconds
+        return termination_grace_period
+
+    def update_termination_grace_period_to_one_year(self) -> None:
+        """Patch the termination grace period for the stateful set of this juju application."""
+        client = Client()
+
+        # Attempts to rewrite the terminationGracePeriodSeconds can fail if the fastapi service is
+        # not yet running, so we retry to give it some time settle.
+        for attempt in Retrying(stop=stop_after_attempt(30), wait=wait_fixed(1), reraise=True):
+            with attempt:
+                patch_data = {
+                    "spec": {
+                        "template": {
+                            "spec": {"terminationGracePeriodSeconds": ONE_YEAR},
+                            "metadata": {"annotations": {"force-update": str(int(time.time()))}},
+                        }
+                    }
+                }
+                client.patch(
+                    StatefulSet,
+                    name=self.app.name,
+                    namespace=self.model.name,
+                    obj=patch_data,
+                    patch_type=PatchType.MERGE,
+                )
+
     def __handle_partition_on_stop(self) -> None:
         """Raise partition to prevent other units from restarting if an upgrade is in progress.
 
@@ -890,8 +1051,29 @@ class MongoDBCharm(CharmBase):
             logger.error("Failed to reelect primary before upgrading unit.")
             return
 
+    def _delete_service(self):
+        """Deletes the mutator."""
+        try:
+            client = Client()
+            client.delete(
+                MutatingWebhookConfiguration,
+                namespace=self.model.name,
+                name=self.mutator_service_name,
+            )
+        except ApiError as err:
+            logger.error(
+                "Mutating webhook configuration failed to delete. Remove it manually please"
+            )
+            logger.error(str(err))
+
     def _on_stop(self, event) -> None:
-        self.__handle_partition_on_stop()
+        if (
+            not self.needs_new_termination_period
+            and not self.first_time_with_new_termination_period
+        ):
+            self.__handle_partition_on_stop()
+        if self._is_removing_last_replica:
+            self._delete_service()
         if not self.upgrade._upgrade:
             logger.debug("Peer relation missing during stop event")
             return
@@ -988,7 +1170,26 @@ class MongoDBCharm(CharmBase):
 
         self.status.set_and_share_status(self.status.process_statuses())
 
+        self._handle_termination()
+
     # END: charm events
+
+    def _handle_termination(self):
+        """Handles the termination perdiod fiddling.
+
+        We must ensure that juju does not overwrite our termination period, so we should update
+        it as needed. However, updating the termination period can result in an onslaught of
+        events, including the upgrade event. To prevent this from messing with upgrades do not
+        update the termination period when an upgrade is occurring.
+        """
+        if not self.unit.is_leader():
+            return
+        try:
+            if self.needs_new_termination_period and not self.upgrade_in_progress:
+                self.update_termination_grace_period_to_one_year()
+        except ApiError:
+            logger.info("Failed to update termination period.")
+            return
 
     # BEGIN: actions
     def _on_get_password(self, event: ActionEvent) -> None:
@@ -1327,6 +1528,17 @@ class MongoDBCharm(CharmBase):
         if not self.get_secret(APP_SCOPE, "keyfile"):
             self._generate_keyfile()
 
+    def _check_or_set_webhook_certs(self) -> None:
+        """Set TLS certs for webhooks."""
+        if not self.unit.is_leader():
+            return
+        if not self.get_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET) or not self.get_secret(
+            APP_SCOPE, Config.WebhookManager.KEY_SECRET
+        ):
+            cert, key = gen_certificate(self.mutator_service_name, self.model.name)
+            self.set_secret(APP_SCOPE, Config.WebhookManager.CRT_SECRET, cert.decode())
+            self.set_secret(APP_SCOPE, Config.WebhookManager.KEY_SECRET, key.decode())
+
     def _generate_keyfile(self) -> None:
         self.set_secret(APP_SCOPE, "keyfile", generate_keyfile())
 
@@ -1353,8 +1565,8 @@ class MongoDBCharm(CharmBase):
         """
         self._check_or_set_user_password(OperatorUser)
         self._check_or_set_user_password(MonitorUser)
-
         self._check_or_set_keyfile()
+        self._check_or_set_webhook_certs()
 
     def _initialise_replica_set(self, event: StartEvent) -> None:
         """Initialise replica set and create users."""

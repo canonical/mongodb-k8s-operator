@@ -4,7 +4,7 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import METADATA, wait_for_mongodb_units_blocked
+from ..helpers import RESOURCES, wait_for_mongodb_units_blocked
 
 MONGODB_K8S_CHARM = "mongodb-k8s"
 SHARD_REL_NAME = "sharding"
@@ -27,35 +27,38 @@ CLUSTER_COMPONENTS = [
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     my_charm = await ops_test.build_charm(".")
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
 
     await ops_test.model.deploy(
         MONGODB_K8S_CHARM,
         application_name=REMOTE_SHARD_APP_NAME,
         config={"role": "shard"},
-        channel="edge",
+        channel="6/edge",
+        trust=True,
     )
 
     await ops_test.model.deploy(
         MONGODB_K8S_CHARM,
         application_name=REMOTE_CONFIG_SERVER_APP_NAME,
         config={"role": "config-server"},
-        channel="edge",
+        channel="6/edge",
+        trust=True,
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         config={"role": "config-server"},
         application_name=LOCAL_CONFIG_SERVER_APP_NAME,
+        trust=True,
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         config={"role": "shard"},
         application_name=LOCAL_SHARD_APP_NAME,
+        trust=True,
     )
 
-    await ops_test.model.wait_for_idle(apps=CLUSTER_COMPONENTS, idle_period=20)
+    await ops_test.model.wait_for_idle(apps=CLUSTER_COMPONENTS, idle_period=40)
 
 
 @pytest.mark.group(1)

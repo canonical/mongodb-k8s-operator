@@ -16,6 +16,8 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 from dateutil.parser import parse
+from lightkube import Client
+from lightkube.resources.core_v1 import Pod
 from more_itertools import one
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, retry, stop_after_attempt, stop_after_delay, wait_fixed
@@ -25,6 +27,12 @@ APP_NAME = METADATA["name"]
 UNIT_IDS = [0, 1, 2]
 MONGOS_PORT = 27018
 MONGOD_PORT = 27017
+RESOURCES = {
+    "mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"],
+    "data-platform-k8s-webhook-mutator-image": METADATA["resources"][
+        "data-platform-k8s-webhook-mutator-image"
+    ]["upstream-source"],
+}
 
 TEST_DOCUMENTS = """[
     {
@@ -720,3 +728,10 @@ def get_juju_status(model_name: str, app_name: str) -> str:
     return subprocess.check_output(f"juju status --model {model_name} {app_name}".split()).decode(
         "utf-8"
     )
+
+
+def get_termination_period_for_pod(pod_name: str, namespace: str) -> int:
+    client = Client()
+    pod = client.get(Pod, name=pod_name, namespace=namespace)
+    termination_grace_period = pod.spec.terminationGracePeriodSeconds
+    return termination_grace_period

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+import asyncio
+
 import pytest
 from pytest_operator.plugin import OpsTest
 
 from ..ha_tests.helpers import get_direct_mongo_client
 from ..helpers import (
-    METADATA,
+    RESOURCES,
     get_leader_id,
     get_password,
     set_password,
@@ -45,11 +47,10 @@ SHARD_NEEDS_CONFIG_SERVER_STATUS = "missing relation to config server"
 async def test_build_and_deploy(ops_test: OpsTest) -> None:
     """Build and deploy a sharded cluster."""
     my_charm = await ops_test.build_charm(".")
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
 
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=2,
         config={"role": "config-server"},
         application_name=CONFIG_SERVER_APP_NAME,
@@ -57,7 +58,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_ONE_APP_NAME,
@@ -65,7 +66,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_TWO_APP_NAME,
@@ -73,7 +74,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
     await ops_test.model.deploy(
         my_charm,
-        resources=resources,
+        resources=RESOURCES,
         num_units=2,
         config={"role": "shard"},
         application_name=SHARD_THREE_APP_NAME,
@@ -94,18 +95,33 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials
-    await wait_for_mongodb_units_blocked(
-        ops_test, CONFIG_SERVER_APP_NAME, status=CONFIG_SERVER_NEEDS_SHARD_STATUS, timeout=300
-    )
-    await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_ONE_APP_NAME, status=SHARD_NEEDS_CONFIG_SERVER_STATUS, timeout=300
-    )
-    await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_TWO_APP_NAME, status=SHARD_NEEDS_CONFIG_SERVER_STATUS, timeout=300
-    )
-    await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_THREE_APP_NAME, status=SHARD_NEEDS_CONFIG_SERVER_STATUS, timeout=300
-    )
+    async with ops_test.fast_forward(fast_interval="1m"):
+        await asyncio.gather(
+            wait_for_mongodb_units_blocked(
+                ops_test,
+                CONFIG_SERVER_APP_NAME,
+                status=CONFIG_SERVER_NEEDS_SHARD_STATUS,
+                timeout=300,
+            ),
+            wait_for_mongodb_units_blocked(
+                ops_test,
+                SHARD_ONE_APP_NAME,
+                status=SHARD_NEEDS_CONFIG_SERVER_STATUS,
+                timeout=300,
+            ),
+            wait_for_mongodb_units_blocked(
+                ops_test,
+                SHARD_TWO_APP_NAME,
+                status=SHARD_NEEDS_CONFIG_SERVER_STATUS,
+                timeout=300,
+            ),
+            wait_for_mongodb_units_blocked(
+                ops_test,
+                SHARD_THREE_APP_NAME,
+                status=SHARD_NEEDS_CONFIG_SERVER_STATUS,
+                timeout=300,
+            ),
+        )
 
 
 @pytest.mark.group(1)
@@ -125,16 +141,17 @@ async def test_cluster_active(ops_test: OpsTest) -> None:
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[
-            CONFIG_SERVER_APP_NAME,
-            SHARD_ONE_APP_NAME,
-            SHARD_TWO_APP_NAME,
-            SHARD_THREE_APP_NAME,
-        ],
-        idle_period=15,
-        status="active",
-    )
+    async with ops_test.fast_forward("30s"):
+        await ops_test.model.wait_for_idle(
+            apps=[
+                CONFIG_SERVER_APP_NAME,
+                SHARD_ONE_APP_NAME,
+                SHARD_TWO_APP_NAME,
+                SHARD_THREE_APP_NAME,
+            ],
+            idle_period=15,
+            status="active",
+        )
     mongos_client = await get_direct_mongo_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
     )
@@ -225,7 +242,7 @@ async def test_set_operator_password(ops_test: OpsTest, username):
         apps=CLUSTER_APPS,
         status="active",
         idle_period=30,
-    ),
+    )
     # verify that the password was set across the cluster
     for cluster_app_name in CLUSTER_APPS:
         operator_password = await get_password(
@@ -278,15 +295,16 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[
-            CONFIG_SERVER_APP_NAME,
-            SHARD_THREE_APP_NAME,
-            SHARD_THREE_APP_NAME,
-        ],
-        idle_period=15,
-        status="active",
-    )
+    async with ops_test.fast_forward("30s"):
+        await ops_test.model.wait_for_idle(
+            apps=[
+                CONFIG_SERVER_APP_NAME,
+                SHARD_THREE_APP_NAME,
+                SHARD_THREE_APP_NAME,
+            ],
+            idle_period=15,
+            status="active",
+        )
 
     # verify that config server turned back on the balancer
     balancer_state = mongos_client.admin.command("balancerStatus")
@@ -314,29 +332,31 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[
-            CONFIG_SERVER_APP_NAME,
-            SHARD_ONE_APP_NAME,
-            SHARD_TWO_APP_NAME,
-            SHARD_THREE_APP_NAME,
-        ],
-        idle_period=15,
-        status="active",
-        raise_on_error=False,
-    )
+    async with ops_test.fast_forward("30s"):
+        await ops_test.model.wait_for_idle(
+            apps=[
+                CONFIG_SERVER_APP_NAME,
+                SHARD_ONE_APP_NAME,
+                SHARD_TWO_APP_NAME,
+                SHARD_THREE_APP_NAME,
+            ],
+            idle_period=15,
+            status="active",
+            raise_on_error=False,
+        )
 
     await ops_test.model.applications[CONFIG_SERVER_APP_NAME].remove_relation(
         f"{SHARD_TWO_APP_NAME}:{SHARD_REL_NAME}",
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
-        idle_period=15,
-        status="active",
-        raise_on_error=False,
-    )
+    async with ops_test.fast_forward("30s"):
+        await ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
+            idle_period=15,
+            status="active",
+            raise_on_error=False,
+        )
 
     mongos_client = await get_direct_mongo_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True
@@ -368,29 +388,32 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
         f"{CONFIG_SERVER_APP_NAME}:{CONFIG_SERVER_REL_NAME}",
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=[SHARD_TWO_APP_NAME],
-        idle_period=15,
-        status="active",
-        raise_on_error=False,
-    )
+    async with ops_test.fast_forward("30s"):
+        await ops_test.model.wait_for_idle(
+            apps=[SHARD_TWO_APP_NAME],
+            idle_period=15,
+            status="active",
+            raise_on_error=False,
+        )
 
     await ops_test.model.applications[SHARD_TWO_APP_NAME].scale(scale_change=-1)
-    await ops_test.model.wait_for_idle(
-        apps=[SHARD_TWO_APP_NAME],
-        idle_period=15,
-        status="active",
-        raise_on_error=False,
-    )
+    async with ops_test.fast_forward("30s"):
+        await ops_test.model.wait_for_idle(
+            apps=[SHARD_TWO_APP_NAME],
+            idle_period=15,
+            status="active",
+            raise_on_error=False,
+        )
 
     await ops_test.model.remove_application(SHARD_TWO_APP_NAME, block_until_done=True)
 
-    await ops_test.model.wait_for_idle(
-        apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME],
-        idle_period=15,
-        status="active",
-        raise_on_error=False,
-    )
+    async with ops_test.fast_forward("30s"):
+        await ops_test.model.wait_for_idle(
+            apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME],
+            idle_period=15,
+            status="active",
+            raise_on_error=False,
+        )
 
     mongos_client = await get_direct_mongo_client(
         ops_test, app_name=CONFIG_SERVER_APP_NAME, mongos=True

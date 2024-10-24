@@ -78,6 +78,16 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
 
     def _reconcile_upgrade(self, _, during_upgrade: bool = False) -> None:
         """Handle upgrade events."""
+        if (
+            self.charm.get_termination_period_for_pod()
+            != Config.WebhookManager.GRACE_PERIOD_SECONDS
+        ) or self.charm.first_time_with_new_termination_period:
+            logger.debug("Pod hasn't reastarted at least once")
+            return
+
+        if self.charm.needs_new_termination_period:
+            logger.debug("Can't upgrade before graceTerminationPeriod is set")
+            return
         if not self._upgrade:
             logger.debug("Peer relation not available")
             return
@@ -233,6 +243,9 @@ class MongoDBUpgrade(GenericMongoDBUpgrade):
     def run_post_upgrade_checks(self, event, finished_whole_cluster: bool) -> None:
         """Runs post-upgrade checks for after a shard/config-server/replset/cluster upgrade."""
         upgrade_type = "unit" if not finished_whole_cluster else "sharded cluster"
+        if not self.charm.db_initialised:
+            self._upgrade.unit_state = UnitState.HEALTHY
+            return
         try:
             self.wait_for_cluster_healthy()
         except RetryError:

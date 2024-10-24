@@ -12,7 +12,8 @@ import pytest_asyncio
 import tenacity
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import APP_NAME, METADATA, get_juju_status, get_leader_id
+from ..backup_tests import helpers as backup_helpers
+from ..helpers import APP_NAME, RESOURCES, get_juju_status, get_leader_id
 from .helpers import get_workload_version
 
 logger = logging.getLogger(__name__)
@@ -46,24 +47,33 @@ def righty_upgrade_charm(local_charm, tmp_path: Path):
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest, local_charm: Path):
     """Build and deploy a sharded cluster."""
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         local_charm,
-        resources=resources,
+        resources=RESOURCES,
         application_name=APP_NAME,
         num_units=3,
         series="jammy",
         trust=True,
     )
-    await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=1000, raise_on_error=False
-    )
+    async with ops_test.fast_forward():
+        await ops_test.model.wait_for_idle(
+            apps=[APP_NAME],
+            status="active",
+            raise_on_blocked=True,
+            timeout=1000,
+            raise_on_error=False,
+            idle_period=120,
+        )
 
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_upgrade(ops_test: OpsTest, righty_upgrade_charm: Path) -> None:
     mongodb_application = ops_test.model.applications[APP_NAME]
+    leader_unit = await backup_helpers.get_leader_unit(ops_test, APP_NAME)
+    action = await leader_unit.run_action("pre-refresh-check")
+    await action.wait()
+    assert action.status == "completed", "pre-refresh-check failed, expected to succeed."
     await mongodb_application.refresh(path=righty_upgrade_charm)
 
     initial_version = Path("workload_version").read_text().strip()

@@ -14,13 +14,15 @@ from lightkube.resources.core_v1 import Pod
 from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
+from config import Config
+
 from .ha_tests.helpers import (
     deploy_and_scale_application,
     relate_mongodb_and_application,
 )
 from .helpers import (
     APP_NAME,
-    METADATA,
+    RESOURCES,
     TEST_DOCUMENTS,
     UNIT_IDS,
     audit_log_line_sanity_check,
@@ -34,6 +36,7 @@ from .helpers import (
     get_password,
     get_secret_content,
     get_secret_id,
+    get_termination_period_for_pod,
     primary_host,
     run_mongo_op,
     secondary_mongo_uris_with_sync_delay,
@@ -41,7 +44,8 @@ from .helpers import (
 )
 
 LOG_PATH = "/var/log/mongodb/"
-
+TIMEOUT_15M = 15 * 60
+ONE_YEAR = Config.WebhookManager.GRACE_PERIOD_SECONDS
 logger = logging.getLogger(__name__)
 
 
@@ -59,10 +63,9 @@ async def test_build_and_deploy(ops_test: OpsTest):
     app_name = APP_NAME
     # build and deploy charm from local source folder
     charm = await ops_test.build_charm(".")
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         charm,
-        resources=resources,
+        resources=RESOURCES,
         application_name=app_name,
         num_units=len(UNIT_IDS),
         series="jammy",
@@ -74,12 +77,60 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
     # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
     await ops_test.model.wait_for_idle(
-        apps=[app_name], status="active", raise_on_blocked=True, timeout=1000, raise_on_error=False
+        apps=[app_name],
+        status="active",
+        raise_on_blocked=True,
+        timeout=1000,
+        raise_on_error=False,
+        idle_period=60,
     )
     assert ops_test.model.applications[app_name].units[0].workload_status == "active"
 
     # effectively disable the update status from firing
     await ops_test.model.set_config({"update-status-hook-interval": "60m"})
+
+
+@pytest.mark.group(1)
+async def test_termination_period(ops_test: OpsTest) -> None:
+    """Verify termination period of 1 year for shards, persists after deployment.
+
+    Shards, unlike other deployments of MongoDB should have a larger termination period, to handle
+    cases where the user performs incorrect operations leading to data loss.
+
+    This test verifies:
+    1. on deployment the shar has a termination period of 1 year
+    2. if the termination period is changed, the charm resets it to 1 year
+    """
+    app_name = await get_app_name(ops_test)
+    for replica in ops_test.model.applications[app_name].units:
+        pod_name = replica.name.replace("/", "-")
+        termination_period_for_replica = get_termination_period_for_pod(
+            pod_name, ops_test.model.name
+        )
+        assert (
+            termination_period_for_replica == ONE_YEAR
+        ), f"replica {pod_name} does not have expected termination period."
+
+    # when scaling up the application, juju attempts resets the termination period, so scale it up
+    await ops_test.model.applications[app_name].scale(scale_change=1)
+
+    await ops_test.model.wait_for_idle(
+        apps=[app_name],
+        status="active",
+        raise_on_blocked=True,
+        timeout=600,
+        raise_on_error=False,
+        idle_period=20,
+    )
+
+    for shard_replica in ops_test.model.applications[app_name].units:
+        pod_name = shard_replica.name.replace("/", "-")
+        termination_period_for_shard = get_termination_period_for_pod(
+            pod_name, ops_test.model.name
+        )
+        assert (
+            termination_period_for_shard == ONE_YEAR
+        ), f"shard replica {pod_name} does not have expected termination period."
 
 
 @pytest.mark.group(1)
@@ -368,11 +419,11 @@ async def test_scale_up(ops_test: OpsTest):
         apps=[app_name],
         status="active",
         timeout=1000,
-        wait_for_exact_units=5,
+        wait_for_exact_units=6,
         raise_on_error=False,
     )
     num_units = len(ops_test.model.applications[app_name].units)
-    assert num_units == 5
+    assert num_units == 6
 
     # grab juju hosts
     juju_hosts = [
@@ -411,11 +462,11 @@ async def test_scale_down(ops_test: OpsTest):
         apps=[app_name],
         status="active",
         timeout=1000,
-        wait_for_exact_units=3,
+        wait_for_exact_units=4,
         raise_on_error=False,
     )
     num_units = len(ops_test.model.applications[app_name].units)
-    assert num_units == 3
+    assert num_units == 4
 
     # grab juju hosts
     juju_hosts = [
