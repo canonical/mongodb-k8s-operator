@@ -1,0 +1,425 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: Primary
+  shard-one/2 [idle] active: 
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: Primary
+  shard-two/2 [idle] active: 
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:649 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-two/0 [idle] active: Primary
+  shard-two/1 [idle] active: Primary
+  shard-two/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  shard-two/1 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:20:08Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application             waiting      1  application             0  10.152.183.135  no       installing agent
+config-server           active       3  mongodb-k8s             2  10.152.183.150  no       
+shard-one               active       3  mongodb-k8s             0  10.152.183.48   no       
+shard-two               active       3  mongodb-k8s             1  10.152.183.102  no       
+
+Unit              Workload  Agent  Address      Ports  Message
+application/0*    waiting   idle   10.1.185.8          
+config-server/0*  active    idle   10.1.185.44         Primary
+config-server/1   active    idle   10.1.185.43         
+config-server/2   active    idle   10.1.185.42         
+shard-one/0*      active    idle   10.1.185.38         
+shard-one/1       active    idle   10.1.185.37         Primary
+shard-one/2       active    idle   10.1.185.36         
+shard-two/0*      active    idle   10.1.185.41         Primary
+shard-two/1       active    idle   10.1.185.40         
+shard-two/2       active    idle   10.1.185.39         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-shard-two-2: 01:42:19 ERROR unit.shard-two/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/./src/charm.py", line 1866, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/./src/charm.py", line 684, in _on_mongod_pebble_ready
+    self._configure_container(container)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/./src/charm.py", line 639, in _configure_container
+    self._configure_layers(container)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/./src/charm.py", line 619, in _configure_layers
+    container.replan()
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/model.py", line 2259, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/pebble.py", line 2129, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-shard-two-2/charm/venv/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "logrotate" (cannot start service: exited quickly with code 0)
+----- Logs from task 0 -----
+2024-10-24T01:42:19Z INFO Most recent service output:
+    
+2024-10-24T01:42:19Z ERROR cannot start service: exited quickly with code 0
+-----
+unit-shard-two-2: 01:42:19 ERROR juju.worker.uniter.operation hook "mongod-pebble-ready" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-two-2: 01:42:19 ERROR juju.worker.uniter pebble poll failed for container "mongod": failed to send pebble-ready event: hook failed
+unit-config-server-0: 01:44:25 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729734264, 4), \'signature\': {\'hash\': b\'/\\xa6\\x7f-<\\x16\\xddP\\xc1:\\x80/b\\xeb\\xdb\\x15\\x88\\xfd\\x8d\\xfa\', \'keyId\': 7429151373096124437}}, \'operationTime\': Timestamp(1729734264, 4)}')
+unit-config-server-0: 01:44:25 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard-one to cluster
+unit-config-server-0: 01:44:25 ERROR unit.config-server/0.juju-log config-server:7: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729734264, 4), \'signature\': {\'hash\': b\'/\\xa6\\x7f-<\\x16\\xddP\\xc1:\\x80/b\\xeb\\xdb\\x15\\x88\\xfd\\x8d\\xfa\', \'keyId\': 7429151373096124437}}, \'operationTime\': Timestamp(1729734264, 4)}')
+unit-config-server-0: 01:44:47 ERROR unit.config-server/0.juju-log config-server:8: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1729734286, 1), 'signature': {'hash': b'A\\xc3\\xe6\\x93\\xef1fy\\xc0\\x8f%!h\\x89\\xe7S\\x00t\\x14H', 'keyId': 7429151373096124437}}, 'operationTime': Timestamp(1729734286, 1)}")
+unit-config-server-0: 01:44:47 ERROR unit.config-server/0.juju-log config-server:8: shard-two shard does not have the same auth as the config server.
+unit-config-server-0: 01:45:03 ERROR unit.config-server/0.juju-log config-server:8: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729734303, 3), \'signature\': {\'hash\': b\'T\\xd7\\x8d\\x81\\xd8\\x9e\\xd0\\x1e\\xec\\xac\\x0f\\x9c\\xf2\\x99\\x91\\xd77\\xa0&\\xd4\', \'keyId\': 7429151373096124437}}, \'operationTime\': Timestamp(1729734303, 3)}')
+unit-config-server-0: 01:45:04 ERROR unit.config-server/0.juju-log config-server:8: Failed to add shard-two to cluster
+unit-config-server-0: 01:45:04 ERROR unit.config-server/0.juju-log config-server:8: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1729734303, 3), \'signature\': {\'hash\': b\'T\\xd7\\x8d\\x81\\xd8\\x9e\\xd0\\x1e\\xec\\xac\\x0f\\x9c\\xf2\\x99\\x91\\xd77\\xa0&\\xd4\', \'keyId\': 7429151373096124437}}, \'operationTime\': Timestamp(1729734303, 3)}')
+unit-application-0: 02:14:40 ERROR unit.application/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-application-0/charm/./src/charm.py", line 222, in <module>
+    main(ContinuousWritesApplication)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-application-0/charm/./src/charm.py", line 189, in _on_clear_continuous_writes_action
+    test_collection.drop()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/collection.py", line 1234, in drop
+    dbo.drop_collection(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/_csot.py", line 108, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/database.py", line 1249, in drop_collection
+    return self._drop_helper(name, session, comment)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/database.py", line 1163, in _drop_helper
+    with self.__client._conn_for_writes(session, operation=_Op.DROP) as connection:
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/mongo_client.py", line 1333, in _conn_for_writes
+    server = self._select_server(writable_server_selector, session, operation)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/mongo_client.py", line 1316, in _select_server
+    server = topology.select_server(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 368, in select_server
+    server = self._select_server(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 346, in _select_server
+    servers = self.select_servers(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 253, in select_servers
+    server_descriptions = self._select_servers_loop(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 303, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: 10.1.185.19:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),10.1.185.14:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),10.1.185.20:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 6719ad7233aa90f8154dd899, topology_type: Unknown, servers: [<ServerDescription ('10.1.185.14', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.185.14:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('10.1.185.19', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.185.19:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('10.1.185.20', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.185.20:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+unit-application-0: 02:15:14 ERROR unit.application/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-application-0/charm/./src/charm.py", line 222, in <module>
+    main(ContinuousWritesApplication)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-application-0/charm/./src/charm.py", line 189, in _on_clear_continuous_writes_action
+    test_collection.drop()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/collection.py", line 1234, in drop
+    dbo.drop_collection(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/_csot.py", line 108, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/database.py", line 1249, in drop_collection
+    return self._drop_helper(name, session, comment)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/database.py", line 1163, in _drop_helper
+    with self.__client._conn_for_writes(session, operation=_Op.DROP) as connection:
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/mongo_client.py", line 1333, in _conn_for_writes
+    server = self._select_server(writable_server_selector, session, operation)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/mongo_client.py", line 1316, in _select_server
+    server = topology.select_server(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 368, in select_server
+    server = self._select_server(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 346, in _select_server
+    servers = self.select_servers(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 253, in select_servers
+    server_descriptions = self._select_servers_loop(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 303, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: 10.1.185.20:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),10.1.185.14:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),10.1.185.19:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 6719ad94b1bba3928fefc35a, topology_type: Unknown, servers: [<ServerDescription ('10.1.185.14', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.185.14:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('10.1.185.19', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.185.19:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('10.1.185.20', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.185.20:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+unit-shard-one-0: 02:18:15 ERROR unit.shard-one/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/./src/charm.py", line 1866, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/src/upgrades/mongodb_upgrades.py", line 213, in _on_pre_upgrade_check_action
+    self._upgrade.pre_upgrade_check()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 336, in pre_upgrade_check
+    if not self._charm.upgrade.is_cluster_able_to_read_write():
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 523, in is_cluster_able_to_read_write
+    return self.is_sharded_cluster_able_to_read_write()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 539, in is_sharded_cluster_able_to_read_write
+    write_replicated = self.is_write_on_secondaries(
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 651, in is_write_on_secondaries
+    self.confirm_excepted_write_on_replica(
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/tenacity/__init__.py", line 336, in wrapped_f
+    return copy(f, *args, **kw)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/tenacity/__init__.py", line 475, in __call__
+    do = self.iter(retry_state=retry_state)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/tenacity/__init__.py", line 376, in iter
+    result = action(retry_state)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/tenacity/__init__.py", line 418, in exc_check
+    raise retry_exc.reraise()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/tenacity/__init__.py", line 185, in reraise
+    raise self.last_attempt.result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 451, in result
+    return self.__get_result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 403, in __get_result
+    raise self._exception
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/tenacity/__init__.py", line 478, in __call__
+    result = fn(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 610, in confirm_excepted_write_on_replica
+    if query[0][WRITE_KEY] != expected_write_value:
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/cursor.py", line 638, in __getitem__
+    for doc in clone:  # type: ignore[attr-defined]
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/cursor.py", line 1281, in __next__
+    return self.next()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/cursor.py", line 1257, in next
+    if len(self._data) or self._refresh():
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/cursor.py", line 1205, in _refresh
+    self._send_message(q)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/cursor.py", line 1100, in _send_message
+    response = client._run_operation(
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1754, in _run_operation
+    return self._retryable_read(
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1863, in _retryable_read
+    return self._retry_internal(
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1830, in _retry_internal
+    ).run()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2554, in run
+    return self._read() if self._is_read else self._write()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2689, in _read
+    self._server = self._get_server()
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2645, in _get_server
+    return self._client._select_server(
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1649, in _select_server
+    server = topology.select_server(
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/topology.py", line 398, in select_server
+    server = self._select_server(
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/topology.py", line 376, in _select_server
+    servers = self.select_servers(
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/topology.py", line 283, in select_servers
+    server_descriptions = self._select_servers_loop(
+  File "/var/lib/juju/agents/unit-shard-one-0/charm/venv/pymongo/synchronous/topology.py", line 333, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: No servers found yet, Timeout: 1.0s, Topology Description: <TopologyDescription id: 6719ae66bbd90f55d04dd8dc, topology_type: Single, servers: [<ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: Unknown, rtt: None>]>
+unit-shard-two-0: 02:18:48 ERROR unit.shard-two/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/./src/charm.py", line 1866, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/src/upgrades/mongodb_upgrades.py", line 213, in _on_pre_upgrade_check_action
+    self._upgrade.pre_upgrade_check()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 336, in pre_upgrade_check
+    if not self._charm.upgrade.is_cluster_able_to_read_write():
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 523, in is_cluster_able_to_read_write
+    return self.is_sharded_cluster_able_to_read_write()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 539, in is_sharded_cluster_able_to_read_write
+    write_replicated = self.is_write_on_secondaries(
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 651, in is_write_on_secondaries
+    self.confirm_excepted_write_on_replica(
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/tenacity/__init__.py", line 336, in wrapped_f
+    return copy(f, *args, **kw)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/tenacity/__init__.py", line 475, in __call__
+    do = self.iter(retry_state=retry_state)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/tenacity/__init__.py", line 376, in iter
+    result = action(retry_state)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/tenacity/__init__.py", line 418, in exc_check
+    raise retry_exc.reraise()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/tenacity/__init__.py", line 185, in reraise
+    raise self.last_attempt.result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 451, in result
+    return self.__get_result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 403, in __get_result
+    raise self._exception
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/tenacity/__init__.py", line 478, in __call__
+    result = fn(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 610, in confirm_excepted_write_on_replica
+    if query[0][WRITE_KEY] != expected_write_value:
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/cursor.py", line 638, in __getitem__
+    for doc in clone:  # type: ignore[attr-defined]
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/cursor.py", line 1281, in __next__
+    return self.next()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/cursor.py", line 1257, in next
+    if len(self._data) or self._refresh():
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/cursor.py", line 1205, in _refresh
+    self._send_message(q)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/cursor.py", line 1100, in _send_message
+    response = client._run_operation(
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1754, in _run_operation
+    return self._retryable_read(
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1863, in _retryable_read
+    return self._retry_internal(
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1830, in _retry_internal
+    ).run()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2554, in run
+    return self._read() if self._is_read else self._write()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2689, in _read
+    self._server = self._get_server()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2645, in _get_server
+    return self._client._select_server(
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1649, in _select_server
+    server = topology.select_server(
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/topology.py", line 398, in select_server
+    server = self._select_server(
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/topology.py", line 376, in _select_server
+    servers = self.select_servers(
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/topology.py", line 283, in select_servers
+    server_descriptions = self._select_servers_loop(
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/pymongo/synchronous/topology.py", line 333, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: No servers found yet, Timeout: 1.0s, Topology Description: <TopologyDescription id: 6719ae8776ee3abde9090a3b, topology_type: Single, servers: [<ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: Unknown, rtt: None>]>
+unit-shard-two-1: 02:19:00 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [2b22d8] "unit-shard-two-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-shard-two-1: 02:19:07 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [2b22d8] "unit-shard-two-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-shard-two-1: 02:19:14 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [2b22d8] "unit-shard-two-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-config-server-0: 02:19:19 ERROR unit.config-server/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-0/charm/./src/charm.py", line 1866, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/src/upgrades/mongodb_upgrades.py", line 213, in _on_pre_upgrade_check_action
+    self._upgrade.pre_upgrade_check()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 336, in pre_upgrade_check
+    if not self._charm.upgrade.is_cluster_able_to_read_write():
+  File "/var/lib/juju/agents/unit-config-server-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 523, in is_cluster_able_to_read_write
+    return self.is_sharded_cluster_able_to_read_write()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 539, in is_sharded_cluster_able_to_read_write
+    write_replicated = self.is_write_on_secondaries(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 651, in is_write_on_secondaries
+    self.confirm_excepted_write_on_replica(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 336, in wrapped_f
+    return copy(f, *args, **kw)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 475, in __call__
+    do = self.iter(retry_state=retry_state)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 376, in iter
+    result = action(retry_state)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 418, in exc_check
+    raise retry_exc.reraise()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 185, in reraise
+    raise self.last_attempt.result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 451, in result
+    return self.__get_result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 403, in __get_result
+    raise self._exception
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/tenacity/__init__.py", line 478, in __call__
+    result = fn(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 610, in confirm_excepted_write_on_replica
+    if query[0][WRITE_KEY] != expected_write_value:
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/cursor.py", line 638, in __getitem__
+    for doc in clone:  # type: ignore[attr-defined]
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/cursor.py", line 1281, in __next__
+    return self.next()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/cursor.py", line 1257, in next
+    if len(self._data) or self._refresh():
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/cursor.py", line 1205, in _refresh
+    self._send_message(q)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/cursor.py", line 1100, in _send_message
+    response = client._run_operation(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1754, in _run_operation
+    return self._retryable_read(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1863, in _retryable_read
+    return self._retry_internal(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1830, in _retry_internal
+    ).run()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2554, in run
+    return self._read() if self._is_read else self._write()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2689, in _read
+    self._server = self._get_server()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 2645, in _get_server
+    return self._client._select_server(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/mongo_client.py", line 1649, in _select_server
+    server = topology.select_server(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/topology.py", line 398, in select_server
+    server = self._select_server(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/topology.py", line 376, in _select_server
+    servers = self.select_servers(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/topology.py", line 283, in select_servers
+    server_descriptions = self._select_servers_loop(
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/pymongo/synchronous/topology.py", line 333, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: No servers found yet, Timeout: 1.0s, Topology Description: <TopologyDescription id: 6719aea6c8c6382004171b97, topology_type: Single, servers: [<ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: Unknown, rtt: None>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
