@@ -1,0 +1,26 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server-one/0 [idle] active: 
+  mongos-k8s/0 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:41:54Z
+
+App                Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+config-server-one           active      1  mongodb-k8s             0  10.152.183.232  no       
+mongos-k8s                  active      1  mongos-k8s   6/edge    17  10.152.183.150  no       
+shard-one                   active      1  mongodb-k8s             1  10.152.183.167  no       
+
+Unit                  Workload  Agent  Address       Ports  Message
+config-server-one/0*  active    idle   10.1.124.138         
+mongos-k8s/0*         active    idle   10.1.124.142         
+shard-one/0*          active    idle   10.1.124.141         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-one-0: 01:37:41 ERROR unit.config-server-one/0.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1729993061, 2), 'signature': {'hash': b'(\\xbb\\xc1\\x1b\\x1c\\x90S\\xd9\\xa3I>u\\xba,\\xad\\xdf@3\\x9e\\xe5', 'keyId': 7430263400258600985}}, 'operationTime': Timestamp(1729993061, 2)}")
+unit-config-server-one-0: 01:37:41 ERROR unit.config-server-one/0.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-mongos-k8s-0: 01:39:24 ERROR unit.mongos-k8s/0.juju-log cluster:7: mongos service is not ready yet.
+unit-mongos-k8s-0: 01:40:27 ERROR unit.mongos-k8s/0.juju-log cluster:7: mongos service is not ready yet.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
