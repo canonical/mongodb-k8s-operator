@@ -875,7 +875,7 @@ class MongoDBCharm(CharmBase):
         ):
             try:
                 self.update_termination_grace_period_to_one_year()
-            except RetryError:
+            except ApiError:
                 event.defer()
                 return
 
