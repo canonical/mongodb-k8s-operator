@@ -1,0 +1,282 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:341 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:649 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:568 Primary instance mongodb-k8s/0 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:573 Waiting until Mongodb detects primary instance mongodb-k8s/0 is not reachable
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:579 Validating writes are continuing to DB
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:341 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:341 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:341 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:14:06Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database           active      1  mongodb-k8s             1  10.152.183.191  no       
+application                active      1  application             0  10.152.183.196  no       
+mongodb-k8s                active      3  mongodb-k8s             0  10.152.183.225  no       
+
+Unit                 Workload  Agent  Address     Ports  Message
+another-database/0*  active    idle   10.1.22.92         Primary
+application/0*       active    idle   10.1.22.81         
+mongodb-k8s/0        active    idle   10.1.22.79         
+mongodb-k8s/1*       active    idle   10.1.22.89         
+mongodb-k8s/2        active    idle   10.1.22.82         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-2: 01:45:02 ERROR unit.mongodb-k8s/2.juju-log Unable to access primary due to: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6732b31d0e8c4034eee41903, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0013551509999842892>]>
+unit-mongodb-k8s-1: 01:50:46 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:50:47 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:50:48 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:50:49 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:50:51 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:50:52 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:50:53 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:50:55 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:50:56 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:50:57 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:50:57 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-mongodb-k8s-1: 01:50:59 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:00 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:02 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:03 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:04 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:05 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:07 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:08 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:09 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:11 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:11 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-mongodb-k8s-1: 01:51:14 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:15 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:16 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:17 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:19 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:20 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:21 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:22 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:24 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:25 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:25 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-mongodb-k8s-1: 01:51:28 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:29 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:31 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:32 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:33 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:34 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:36 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:37 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:38 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:39 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:39 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-mongodb-k8s-1: 01:51:42 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:43 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:45 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:46 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:47 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:49 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:50 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:51 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:52 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:53 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:53 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-mongodb-k8s-1: 01:51:55 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:57 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:58 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:51:59 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:01 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:02 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:03 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:04 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:06 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:07 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:07 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-mongodb-k8s-1: 01:52:13 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:15 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:16 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:17 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:19 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:20 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:21 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:22 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:24 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:25 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:25 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-mongodb-k8s-1: 01:52:27 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:28 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-3: 01:52:29 ERROR unit.mongodb-k8s/3.juju-log Unable to access primary due to: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6732b4dc3a407396c84f7d67, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.00048072899994622276>]>
+unit-mongodb-k8s-1: 01:52:30 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:31 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:32 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:33 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:34 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:36 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:37 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:38 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:38 ERROR unit.mongodb-k8s/1.juju-log database:3: Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-mongodb-k8s-1: 01:52:41 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:42 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:44 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:45 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:46 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:47 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:48 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:50 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:51 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:52 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:52:52 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-mongodb-k8s-1: 01:52:58 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:00 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:01 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:02 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:03 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:05 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:06 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:07 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:09 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:10 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:10 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-mongodb-k8s-1: 01:53:12 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-4: 01:53:12 ERROR unit.mongodb-k8s/4.juju-log Unable to access primary due to: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6732b507cb51c61ac5e0da2d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-4.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.002523164000081124>]>
+unit-mongodb-k8s-1: 01:53:13 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:53:14 ERROR unit.mongodb-k8s/1.juju-log database:3: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 02:09:57 ERROR unit.mongodb-k8s/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 1866, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 762, in _on_start
+    if not self.__can_charm_start():
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 726, in __can_charm_start
+    self._configure_container(container)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 639, in _configure_container
+    self._configure_layers(container)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 619, in _configure_layers
+    container.replan()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/model.py", line 2259, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 2129, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "mongod" (cannot start service: exited quickly with code 1)
+----- Logs from task 1 -----
+2024-11-12T02:09:57Z INFO Most recent service output:
+    {"t":{"$date":"2024-11-12T02:09:56.998Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"processUmask":{"default":63,"value":31}}}}
+    {"t":{"$date":"2024-11-12T02:09:56.998Z"},"s":"F",  "c":"CONTROL",  "id":20574,   "ctx":"-","msg":"Error during global initialization","attr":{"error":{"code":38,"codeName":"FileNotOpen","errmsg":"Can't initialize rotatable log file :: caused by :: Failed to open /var/log/mongodb/mongodb.log"}}}
+2024-11-12T02:09:57Z ERROR cannot start service: exited quickly with code 1
+-----
+unit-mongodb-k8s-0: 02:09:57 ERROR juju.worker.uniter.operation hook "start" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-0: 02:10:05 ERROR unit.mongodb-k8s/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 1866, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 762, in _on_start
+    if not self.__can_charm_start():
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 726, in __can_charm_start
+    self._configure_container(container)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 643, in _configure_container
+    self._connect_mongodb_exporter()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 1601, in _connect_mongodb_exporter
+    container.replan()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/model.py", line 2259, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 2129, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "mongod" (cannot start service: exited quickly with code 1)
+----- Logs from task 1 -----
+2024-11-12T02:10:05Z INFO Most recent service output:
+    {"t":{"$date":"2024-11-12T02:10:05.269Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"processUmask":{"default":63,"value":31}}}}
+    {"t":{"$date":"2024-11-12T02:10:05.269Z"},"s":"F",  "c":"CONTROL",  "id":20574,   "ctx":"-","msg":"Error during global initialization","attr":{"error":{"code":2,"codeName":"BadValue","errmsg":"Could not open a file for writing at the given auditPath: /var/log/mongodb/audit.log"}}}
+2024-11-12T02:10:05Z ERROR cannot start service: exited quickly with code 1
+-----
+unit-mongodb-k8s-0: 02:10:05 ERROR juju.worker.uniter.operation hook "start" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-0: 02:11:12 ERROR unit.mongodb-k8s/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 1866, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 762, in _on_start
+    if not self.__can_charm_start():
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 726, in __can_charm_start
+    self._configure_container(container)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 644, in _configure_container
+    self._connect_pbm_agent()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 1637, in _connect_pbm_agent
+    for attempt in Retrying(
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/tenacity/__init__.py", line 443, in __iter__
+    do = self.iter(retry_state=retry_state)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/tenacity/__init__.py", line 376, in iter
+    result = action(retry_state)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/tenacity/__init__.py", line 418, in exc_check
+    raise retry_exc.reraise()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/tenacity/__init__.py", line 185, in reraise
+    raise self.last_attempt.result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 451, in result
+    return self.__get_result()
+  File "/usr/lib/python3.10/concurrent/futures/_base.py", line 403, in __get_result
+    raise self._exception
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/./src/charm.py", line 1643, in _connect_pbm_agent
+    container.replan()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/model.py", line 2259, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 2129, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "mongod" (cannot start service: exited quickly with code 1)
+----- Logs from task 1 -----
+2024-11-12T02:11:12Z INFO Most recent service output:
+    {"t":{"$date":"2024-11-12T02:11:12.955Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"processUmask":{"default":63,"value":31}}}}
+    {"t":{"$date":"2024-11-12T02:11:12.955Z"},"s":"F",  "c":"CONTROL",  "id":20574,   "ctx":"-","msg":"Error during global initialization","attr":{"error":{"code":2,"codeName":"BadValue","errmsg":"Could not open a file for writing at the given auditPath: /var/log/mongodb/audit.log"}}}
+2024-11-12T02:11:12Z ERROR cannot start service: exited quickly with code 1
+-----
+unit-mongodb-k8s-0: 02:11:13 ERROR juju.worker.uniter.operation hook "start" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
