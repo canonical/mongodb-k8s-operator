@@ -107,7 +107,7 @@ async def test_set_credentials_in_cluster(ops_test: OpsTest, github_secrets) -> 
 
     # apply new configuration options
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
-    await ops_test.model.wait_for_idle(apps=[S3_APP_NAME], status="active", timeout=TIMEOUT)
+    await ops_test.model.wait_for_idle(apps=CLUSTER_APPS, status="active", timeout=TIMEOUT)
     await setup_cluster_and_s3(ops_test)
 
 
