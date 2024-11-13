@@ -596,7 +596,9 @@ async def test_network_cut(ops_test: OpsTest, continuous_writes, chaos_mesh):
 
     # we need to give juju some time to realize that the instance is back online
     time.sleep(RESTART_DELAY)
-
+    await ops_test.model.wait_for_idle(
+        apps=[app], status="active", raise_on_blocked=False, timeout=1000
+    )
     await wait_until_unit_in_status(ops_test, primary, active_unit, "SECONDARY")
 
     # verify presence of primary, replica set member configuration, and number of primaries
