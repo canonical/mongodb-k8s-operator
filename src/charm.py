@@ -929,6 +929,8 @@ class MongoDBCharm(CharmBase):
                 self.shard.wait_for_draining(mongos_hosts)
                 logger.info("Shard successfully drained storage.")
 
+            return
+
         try:
             # retries over a period of 10 minutes in an attempt to resolve race conditions it is
             logger.debug("Removing %s from replica set", self.unit_host(self.unit))
