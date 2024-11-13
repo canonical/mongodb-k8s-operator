@@ -147,11 +147,12 @@ async def test_disconnect_from_cluster_removes_user(ops_test: OpsTest) -> None:
         f"{CONFIG_SERVER_APP_NAME}:cluster",
     )
     await ops_test.model.wait_for_idle(
-        apps=[CONFIG_SERVER_APP_NAME, MONGOS_APP_NAME],
-        idle_period=20,
+        apps=[CONFIG_SERVER_APP_NAME],
+        status="active",
+        idle_period=30,
         timeout=TIMEOUT,
-        raise_on_error=False,
     )
+
     num_users_after_removal = count_users(mongos_client)
 
     for attempt in tenacity.Retrying(
