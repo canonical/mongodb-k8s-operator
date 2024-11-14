@@ -444,14 +444,14 @@ async def test_restore_new_cluster(
     ), "Backups from old cluster are listed as failed"
 
     # find most recent backup id and restore
-    for attempt in Retrying(stop=stop_after_attempt(120), wait=wait_fixed(1), reraise=True):
-        with attempt:
-            action = await leader_unit.run_action(action_name="list-backups")
-            list_result = await action.wait()
-            list_result = list_result.results["backups"]
-            most_recent_backup = list_result.split("\n")[-1]
-            backup_id = most_recent_backup.split()[0]
-            assert "-----" not in backup_id, "list of backups are empty."
+    action = await leader_unit.run_action(action_name="list-backups")
+    list_result = await action.wait()
+    list_result = list_result.results["backups"]
+    most_recent_backup = list_result.split("\n")[-1]
+    backup_id = most_recent_backup.split()[0]
+    action = await leader_unit.run_action(action_name="restore", **{"backup-id": backup_id})
+    restore = await action.wait()
+    assert restore.results["restore-status"] == "restore started", "restore not successful"
 
     # verify all writes are present
     try:
