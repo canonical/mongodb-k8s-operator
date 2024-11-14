@@ -224,33 +224,36 @@ class KubernetesUpgrade(AbstractUpgrade):
         # This does not address the situation where another unit > 1 restarts and sets the
         # partition during the `stop` event, but that is unlikely to occur in the small time window
         # that causes the unit to hang.
+        if action_event:
+            assert len(units) >= 2
+            if partition_ > unit_number(units[1]):
+                message = "Highest number unit is unhealthy. Refresh will not resume."
+                logger.debug(f"Resume upgrade event failed: {message}")
+                action_event.fail(message)
+            else:
+                if force:
+                    # If a unit was unhealthy and the upgrade was forced, only
+                    # the next unit will upgrade. As long as 1 or more units
+                    # are unhealthy, the upgrade will need to be forced for
+                    # each unit.
+
+                    # Include "Attempting to" because (on Kubernetes) we only
+                    # control the partition, not which units upgrade.
+                    # Kubernetes may not upgrade a unit even if the partition
+                    # allows it (e.g. if the charm container of a higher unit
+                    # is not ready). This is also applicable `if not force`,
+                    # but is unlikely to happen since all units are healthy `if
+                    # not force`.
+                    message = f"Attempting to refresh unit {self._partition}."
+                else:
+                    message = f"Refresh resumed. Unit {self._partition} is refreshing next."
+                action_event.set_results({"result": message})
+                logger.debug(f"Resume refresh succeeded: {message}")
         if partition_ < self._partition:
             self._partition = partition_
             logger.debug(
                 f"Lowered partition to {partition_} {action_event=} {force=} {self.in_progress=}"
             )
-        if action_event:
-            assert len(units) >= 2
-            if self._partition > unit_number(units[1]):
-                message = "Highest number unit is unhealthy. Refresh will not resume."
-                logger.debug(f"Resume upgrade event failed: {message}")
-                action_event.fail(message)
-                return
-            if force:
-                # If a unit was unhealthy and the upgrade was forced, only the next unit will
-                # upgrade. As long as 1 or more units are unhealthy, the upgrade will need to be
-                # forced for each unit.
-
-                # Include "Attempting to" because (on Kubernetes) we only control the partition,
-                # not which units upgrade. Kubernetes may not upgrade a unit even if the partition
-                # allows it (e.g. if the charm container of a higher unit is not ready). This is
-                # also applicable `if not force`, but is unlikely to happen since all units are
-                # healthy `if not force`.
-                message = f"Attempting to refresh unit {self._partition}."
-            else:
-                message = f"Refresh resumed. Unit {self._partition} is refreshing next."
-            action_event.set_results({"result": message})
-            logger.debug(f"Resume refresh succeeded: {message}")
 
 
 partition = _Partition()
