@@ -432,10 +432,6 @@ async def test_restore_new_cluster(
 
     # relate to s3 - s3 has the necessary configurations
     await ops_test.model.integrate(S3_APP_NAME, new_cluster_app_name)
-    await ops_test.model.block_until(
-        lambda: is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
-        timeout=TIMEOUT,
-    )
 
     # wait for new cluster to sync
     await asyncio.gather(
