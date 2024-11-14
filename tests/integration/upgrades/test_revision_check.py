@@ -33,14 +33,14 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         MONGODB_K8S_CHARM,
         application_name=REMOTE_SHARD_APP_NAME,
         config={"role": "shard"},
-        channel="edge",
+        channel="6/edge",
     )
 
     await ops_test.model.deploy(
         MONGODB_K8S_CHARM,
         application_name=REMOTE_CONFIG_SERVER_APP_NAME,
         config={"role": "config-server"},
-        channel="edge",
+        channel="6/edge",
     )
     await ops_test.model.deploy(
         my_charm,

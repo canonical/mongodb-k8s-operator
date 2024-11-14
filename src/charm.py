@@ -636,14 +636,16 @@ class MongoDBCharm(CharmBase):
         except FailedToUpdateFilesystem as err:
             raise ContainerNotReadyError from err
 
-        self._configure_layers(container)
-
-        # when a network cuts and the pod restarts - reconnect to the exporter
         try:
+            self._configure_layers(container)
+            # when a network cuts and the pod restarts - reconnect to the exporter and pbm
             self._connect_mongodb_exporter()
             self._connect_pbm_agent()
         except MissingSecretError as e:
             logger.error("Cannot connect mongodb exporter: %r", e)
+            raise ContainerNotReadyError
+        except ChangeError as e:
+            logger.error("Cannot configure container layers %r", e)
             raise ContainerNotReadyError
 
     # BEGIN: charm events
@@ -926,6 +928,8 @@ class MongoDBCharm(CharmBase):
                 mongos_hosts = self.shard.get_mongos_hosts()
                 self.shard.wait_for_draining(mongos_hosts)
                 logger.info("Shard successfully drained storage.")
+
+            return
 
         try:
             # retries over a period of 10 minutes in an attempt to resolve race conditions it is

@@ -12,7 +12,7 @@ import json
 import logging
 import re
 import socket
-from typing import Dict, List, Optional, Tuple
+from typing import Optional, Tuple
 
 from charms.tls_certificates_interface.v3.tls_certificates import (
     CertificateAvailableEvent,
@@ -42,7 +42,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 4
+LIBPATCH = 5
 
 WAIT_CERT_UPDATE = "wait-cert-updated"
 
@@ -105,9 +105,6 @@ class MongoDBTLS(Object):
         internal: bool,
     ):
         """Request TLS certificate."""
-        if not self.charm.model.get_relation(Config.TLS.TLS_PEER_RELATION):
-            return
-
         if param is None:
             key = generate_private_key()
         else:
@@ -234,7 +231,7 @@ class MongoDBTLS(Object):
             self.charm.cluster.update_ca_secret(new_ca=event.ca)
             self.charm.config_server.update_ca_secret(new_ca=event.ca)
 
-        if self.waiting_for_both_certs():
+        if self.is_waiting_for_both_certs():
             logger.debug(
                 "Defer till both internal and external TLS certificates available to avoid second restart."
             )
@@ -256,7 +253,7 @@ class MongoDBTLS(Object):
             # clear waiting status if db service is ready
             self.charm.status.set_and_share_status(ActiveStatus())
 
-    def waiting_for_both_certs(self):
+    def is_waiting_for_both_certs(self) -> bool:
         """Returns a boolean indicating whether additional certs are needed."""
         if not self.get_tls_secret(internal=True, label_name=Config.TLS.SECRET_CERT_LABEL):
             logger.debug("Waiting for internal certificate.")
@@ -295,6 +292,10 @@ class MongoDBTLS(Object):
             return
 
         logger.debug("Generating a new Certificate Signing Request.")
+        self.request_new_certificates(internal)
+
+    def request_new_certificates(self, internal: bool) -> None:
+        """Requests the renewel of a new certificate."""
         key = self.get_tls_secret(internal, Config.TLS.SECRET_KEY_LABEL).encode("utf-8")
         old_csr = self.get_tls_secret(internal, Config.TLS.SECRET_CSR_LABEL).encode("utf-8")
         sans = self.get_new_sans()
@@ -313,8 +314,9 @@ class MongoDBTLS(Object):
         )
 
         self.set_tls_secret(internal, Config.TLS.SECRET_CSR_LABEL, new_csr.decode("utf-8"))
+        self.set_waiting_for_cert_to_update(waiting=True, internal=internal)
 
-    def get_new_sans(self) -> Dict:
+    def get_new_sans(self) -> dict[str, list[str]]:
         """Create a list of DNS names for a MongoDB unit.
 
         Returns:
@@ -341,7 +343,7 @@ class MongoDBTLS(Object):
 
         return sans
 
-    def get_current_sans(self, internal: bool) -> List[str] | None:
+    def get_current_sans(self, internal: bool) -> dict[str, list[str]] | None:
         """Gets the current SANs for the unit cert."""
         # if unit has no certificates do not proceed.
         if not self.is_tls_enabled(internal=internal):
@@ -411,9 +413,9 @@ class MongoDBTLS(Object):
 
     def is_set_waiting_for_cert_to_update(
         self,
-        internal=False,
+        internal: bool = False,
     ) -> bool:
-        """Returns True we are waiting for a cert to update."""
+        """Returns True if we are waiting for a cert to update."""
         scope = "int" if internal else "ext"
         label_name = f"{scope}-{WAIT_CERT_UPDATE}"
 

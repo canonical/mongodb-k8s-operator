@@ -12,13 +12,7 @@ import pytest
 import pytest_asyncio
 import yaml
 from pytest_operator.plugin import OpsTest
-from tenacity import (
-    RetryError,
-    Retrying,
-    stop_after_attempt,
-    stop_after_delay,
-    wait_fixed,
-)
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
 from ..helpers import (
@@ -244,7 +238,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
     db_unit = await helpers.get_leader_unit(ops_test)
 
     # create first backup once ready
-    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20)
 
     action = await db_unit.run_action(action_name="create-backup")
     first_backup = await action.wait()
@@ -262,7 +256,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
 
-    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20)
 
     # create a backup as soon as possible. might not be immediately possible since only one backup
     # can happen at a time.
@@ -279,7 +273,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
     # backup can take a lot of time so this function returns once the command was successfully
     # sent to pbm. Therefore before checking, wait for Charmed MongoDB to finish creating the
     # backup
-    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20)
 
     # verify that backups was made in GCP bucket
     try:
@@ -298,7 +292,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
         "endpoint": "https://s3.amazonaws.com",
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
-    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20),
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20)
 
     # verify that backups was made on the AWS bucket
     try:
@@ -448,13 +442,14 @@ async def test_restore_new_cluster(
     ), "Backups from old cluster are listed as failed"
 
     # find most recent backup id and restore
-    for attempt in Retrying(stop=stop_after_attempt(120), wait=wait_fixed(1), reraise=True):
-        action = await leader_unit.run_action(action_name="list-backups")
-        list_result = await action.wait()
-        list_result = list_result.results["backups"]
-        most_recent_backup = list_result.split("\n")[-1]
-        backup_id = most_recent_backup.split()[0]
-        assert "-----" not in backup_id, "list of backups are empty."
+    action = await leader_unit.run_action(action_name="list-backups")
+    list_result = await action.wait()
+    list_result = list_result.results["backups"]
+    most_recent_backup = list_result.split("\n")[-1]
+    backup_id = most_recent_backup.split()[0]
+    action = await leader_unit.run_action(action_name="restore", **{"backup-id": backup_id})
+    restore = await action.wait()
+    assert restore.results["restore-status"] == "restore started", "restore not successful"
 
     # verify all writes are present
     try:

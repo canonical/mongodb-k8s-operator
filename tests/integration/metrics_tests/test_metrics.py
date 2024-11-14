@@ -124,6 +124,9 @@ async def test_endpoints_network_cut(ops_test: OpsTest, chaos_mesh):
     time.sleep(60)
 
     # Wait for the network to be restored
+    await ops_test.model.wait_for_idle(
+        apps=[app_name], status="active", raise_on_blocked=False, timeout=1000
+    )
     await ha_helpers.wait_until_unit_in_status(ops_test, primary, active_unit, "SECONDARY")
 
     for unit in ops_test.model.applications[app_name].units:

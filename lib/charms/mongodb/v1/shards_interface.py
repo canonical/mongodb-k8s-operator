@@ -58,7 +58,7 @@ LIBAPI = 1
 
 # Increment this PATCH version before using `charmcraft publish-lib` or reset
 # to 0 if you are raising the major API version
-LIBPATCH = 11
+LIBPATCH = 12
 
 KEYFILE_KEY = "key-file"
 HOSTS_KEY = "host"
@@ -711,7 +711,7 @@ class ConfigServerRequirer(Object):
 
         self.update_member_auth(event, (key_file_enabled, tls_enabled))
 
-        if tls_enabled and self.charm.tls.waiting_for_both_certs():
+        if tls_enabled and self.charm.tls.is_waiting_for_both_certs():
             logger.info("Waiting for requested certs, before restarting and adding to cluster.")
             event.defer()
             return
