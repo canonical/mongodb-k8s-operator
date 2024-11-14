@@ -12,13 +12,7 @@ import pytest
 import pytest_asyncio
 import yaml
 from pytest_operator.plugin import OpsTest
-from tenacity import (
-    RetryError,
-    Retrying,
-    stop_after_attempt,
-    stop_after_delay,
-    wait_fixed,
-)
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
 from ..helpers import (
@@ -432,6 +426,10 @@ async def test_restore_new_cluster(
 
     # relate to s3 - s3 has the necessary configurations
     await ops_test.model.integrate(S3_APP_NAME, new_cluster_app_name)
+    await ops_test.model.block_until(
+        lambda: is_relation_joined(ops_test, ENDPOINT, ENDPOINT) is True,
+        timeout=TIMEOUT,
+    )
 
     # wait for new cluster to sync
     await asyncio.gather(
