@@ -1,0 +1,27 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server-one/0 [idle] active: Primary
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  config-server-one/0 [idle] active: Primary
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:46:51Z
+
+App                Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+config-server-one           active      1  mongodb-k8s             0  10.152.183.253  no       
+mongos-k8s                  active      1  mongos-k8s   6/edge    19  10.152.183.146  no       
+shard-one                   active      1  mongodb-k8s             1  10.152.183.242  no       
+
+Unit                  Workload  Agent  Address      Ports  Message
+config-server-one/0*  active    idle   10.1.24.202         Primary
+mongos-k8s/0*         active    idle   10.1.24.205         
+shard-one/0*          active    idle   10.1.24.206         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-one-0: 01:42:33 ERROR unit.config-server-one/0.juju-log config-server:6: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1731807752, 2), 'signature': {'hash': b'\\xf0\\xae\\xa7\\xfby\\x83*\\x99\\xd8u\\x8c\\xd3_\\xb9T\\x03G\\xf5\\xd1\\x99', 'keyId': 7438057434460979220}}, 'operationTime': Timestamp(1731807752, 2)}")
+unit-config-server-one-0: 01:42:33 ERROR unit.config-server-one/0.juju-log config-server:6: shard-one shard does not have the same auth as the config server.
+unit-mongos-k8s-0: 01:44:16 ERROR unit.mongos-k8s/0.juju-log cluster:7: mongos service is not ready yet.
+unit-mongos-k8s-0: 01:45:19 ERROR unit.mongos-k8s/0.juju-log cluster:7: mongos service is not ready yet.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

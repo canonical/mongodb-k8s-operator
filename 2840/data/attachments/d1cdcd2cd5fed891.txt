@@ -1,0 +1,63 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:06:16Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application             waiting      1  application             0  10.152.183.44   no       installing agent
+config-server           blocked      3  mongodb-k8s             2  10.152.183.175  no       Refreshing. Verify highest unit is healthy & run `resume-refresh` action. To rollback, `juju refresh` to last revision
+shard-one               waiting      3  mongodb-k8s             0  10.152.183.26   no       waiting for units to settle down
+shard-two               waiting      3  mongodb-k8s             1  10.152.183.171  no       waiting for units to settle down
+
+Unit              Workload     Agent      Address      Ports  Message
+application/0*    waiting      idle       10.1.35.200         
+config-server/0   active       idle       10.1.35.213         MongoDB 6.0.6 running (restart pending); Charm revision 1
+config-server/1*  maintenance  executing  10.1.35.235         (stop) 
+config-server/2   active       idle       10.1.35.234         MongoDB 6.0.6 running;  Charm revision 1
+shard-one/0*      blocked      idle       10.1.35.230         Charm revision (3fc7400-locally built) is not up-to date with config-server (61).
+shard-one/1       blocked      idle       10.1.35.229         Charm revision (3fc7400-locally built) is not up-to date with config-server (61).
+shard-one/2       blocked      idle       10.1.35.228         Charm revision (3fc7400-locally built) is not up-to date with config-server (61).
+shard-two/0*      blocked      idle       10.1.35.233         Charm revision (3fc7400-locally built) is not up-to date with config-server (61).
+shard-two/1       blocked      idle       10.1.35.232         Charm revision (3fc7400-locally built) is not up-to date with config-server (61).
+shard-two/2       blocked      idle       10.1.35.231         Charm revision (3fc7400-locally built) is not up-to date with config-server (61).
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-1: 01:44:44 ERROR unit.config-server/1.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1731807884, 1), 'signature': {'hash': b'\\x1c\\xc3X\\x84\\x05O\\x9b\\xdfV\\x130\\xd0y\\xce\\xa6\\xb3a\\x05\\xba4', 'keyId': 7438057528950259737}}, 'operationTime': Timestamp(1731807884, 1)}")
+unit-config-server-1: 01:45:00 ERROR unit.config-server/1.juju-log config-server:7: shard-one shard does not have the same auth as the config server.
+unit-config-server-2: 02:03:08 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:09 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:10 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:12 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:13 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:14 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:16 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:17 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:18 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:19 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:19 ERROR unit.config-server/2.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-config-server-2: 02:03:21 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:23 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:24 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:25 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:26 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:28 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:29 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:30 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:31 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:33 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:33 ERROR unit.config-server/2.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-config-server-2: 02:03:36 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:37 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:39 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:40 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:41 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:42 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:44 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:45 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:46 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:47 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-2: 02:03:47 ERROR unit.config-server/2.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-config-server-2: 02:03:51 ERROR unit.config-server/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
