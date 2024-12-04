@@ -1,0 +1,34 @@
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [executing] active: Primary
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:21:52Z
+
+App            Version  Status  Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             active      1  application                   0  10.152.183.216  no       
+mongodb-k8s             active      3  mongodb-k8s                   0  10.152.183.243  no       
+s3-integrator           active      1  s3-integrator  latest/edge   85  10.152.183.18   no       
+
+Unit              Workload     Agent  Address      Ports  Message
+application/0*    active       idle   10.1.221.18         
+mongodb-k8s/0*    maintenance  idle   10.1.221.13         backup started/running, backup id:'2024-12-04T02:21:46Z'
+mongodb-k8s/1     active       idle   10.1.221.15         
+mongodb-k8s/2     active       idle   10.1.221.16         
+s3-integrator/0*  active       idle   10.1.221.17         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-1: 01:45:05 ERROR unit.mongodb-k8s/1.juju-log s3-credentials:5: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of backups: get storage: storage undefined"}\n', stderr=''
+unit-new-mongodb-aws-1: 02:04:41 ERROR unit.new-mongodb-aws/1.juju-log Unable to access primary due to: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 674fb8b89823d79076c65587, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-1.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.0006952979999823583>]>
+controller-0: 02:05:50 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-aws": finding filesystem info for new-mongodb-aws-mongodb-33537e18: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-aws-mongodb-33537e18-new-mongodb-aws-1" not found
+unit-new-mongodb-gcp-2: 02:13:59 ERROR unit.new-mongodb-gcp/2.juju-log s3-credentials:11: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of backups: get storage: storage undefined"}\n', stderr=''
+controller-0: 02:20:44 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-gcp": finding filesystem info for new-mongodb-gcp-mongodb-logs-59e6fd53: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-gcp-mongodb-logs-59e6fd53-new-mongodb-gcp-1" not found
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
