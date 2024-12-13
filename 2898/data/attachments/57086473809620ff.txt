@@ -1,0 +1,24 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:341 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:649 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m juju.model:model.py:2972 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:54:36Z
+
+App          Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+mongodb-k8s           active      3  mongodb-k8s             0  10.152.183.171  no       
+
+Unit            Workload  Agent  Address    Ports  Message
+mongodb-k8s/0*  active    idle   10.1.1.77         
+mongodb-k8s/1   active    idle   10.1.1.79         
+mongodb-k8s/2   active    idle   10.1.1.80         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:53:35 ERROR unit.mongodb-k8s/0.juju-log Cannot configure container layers ChangeError('cannot perform the following tasks:\n- Start service "mongod" (cannot start service: exited quickly with code 1)', Change(id=ChangeID('15'), kind='replan', summary='Replan service "logrotate" and 1 more', status='Error', tasks=[Task(id=TaskID('28'), kind='start', summary='Start service "logrotate"', status='Done', log=[], progress=TaskProgress(label='', done=1, total=1), spawn_time=datetime.datetime(2024, 12, 13, 1, 53, 34, 362648, tzinfo=datetime.timezone.utc), ready_time=datetime.datetime(2024, 12, 13, 1, 53, 35, 405253, tzinfo=datetime.timezone.utc), data={}), Task(id=TaskID('29'), kind='start', summary='Start service "mongod"', status='Error', log=['2024-12-13T01:53:35Z INFO Most recent service output:\n    {"t":{"$date":"2024-12-13T01:53:35.396Z"},"s":"I",  "c":"CONTROL",  "id":5760901, "ctx":"-","msg":"Applied --setParameter options","attr":{"serverParameters":{"processUmask":{"default":63,"value":31}}}}\n    {"t":{"$date":"2024-12-13T01:53:35.397Z"},"s":"F",  "c":"CONTROL",  "id":20574,   "ctx":"-","msg":"Error during global initialization","attr":{"error":{"code":38,"codeName":"FileNotOpen","errmsg":"Can\'t initialize rotatable log file :: caused by :: Failed to open /var/log/mongodb/mongodb.log"}}}', '2024-12-13T01:53:35Z ERROR cannot start service: exited quickly with code 1'], progress=TaskProgress(label='', done=1, total=1), spawn_time=datetime.datetime(2024, 12, 13, 1, 53, 34, 362660, tzinfo=datetime.timezone.utc), ready_time=datetime.datetime(2024, 12, 13, 1, 53, 35, 403273, tzinfo=datetime.timezone.utc), data={})], ready=True, err='cannot perform the following tasks:\n- Start service "mongod" (cannot start service: exited quickly with code 1)', spawn_time=datetime.datetime(2024, 12, 13, 1, 53, 34, 362667, tzinfo=datetime.timezone.utc), ready_time=datetime.datetime(2024, 12, 13, 1, 53, 35, 405254, tzinfo=datetime.timezone.utc), data={}))
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
