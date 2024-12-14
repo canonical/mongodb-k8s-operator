@@ -1,0 +1,21 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:45:36Z
+
+App                   Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+local-config-server            waiting      1  mongodb-k8s             0  10.152.183.66   no       installing agent
+local-shard                    waiting      1  mongodb-k8s             1  10.152.183.99   no       installing agent
+remote-config-server           waiting      1  mongodb-k8s  6/edge    61  10.152.183.211  no       installing agent
+remote-shard                   waiting      1  mongodb-k8s  6/edge    61  10.152.183.135  no       installing agent
+
+Unit                     Workload  Agent      Address      Ports  Message
+local-config-server/0*   waiting   idle       10.1.255.16         Waiting for shards to upgrade/downgrade to revision d3e85cd-locally built.
+local-shard/0*           blocked   executing  10.1.255.19         Charm revision (d3e85cd-locally built) is not up-to date with config-server (61).
+remote-config-server/0*  waiting   executing  10.1.255.13         Waiting for shards to upgrade/downgrade to revision 61.
+remote-shard/0*          blocked   idle       10.1.255.12         Charm revision (61) is not up-to date with config-server (d3e85cd-locally built).
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
