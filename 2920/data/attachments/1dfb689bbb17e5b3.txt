@@ -1,0 +1,38 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:04:16Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application             waiting      1  application             0  10.152.183.19   no       installing agent
+config-server           blocked      3  mongodb-k8s             2  10.152.183.135  no       Refreshing. Verify highest unit is healthy & run `resume-refresh` action. To rollback, `juju refresh` to last revision
+shard-one               waiting      3  mongodb-k8s             0  10.152.183.184  no       waiting for units to settle down
+shard-two               waiting      3  mongodb-k8s             1  10.152.183.57   no       waiting for units to settle down
+
+Unit              Workload     Agent      Address       Ports  Message
+application/0*    waiting      idle       10.1.248.72          
+config-server/0   active       idle       10.1.248.85          MongoDB 6.0.6 running (restart pending); Charm revision 1
+config-server/1*  maintenance  executing  10.1.248.107         (stop) 
+config-server/2   active       idle       10.1.248.106         MongoDB 6.0.6 running;  Charm revision 1
+shard-one/0*      blocked      idle       10.1.248.102         Charm revision (d3e85cd-locally built) is not up-to date with config-server (61).
+shard-one/1       blocked      idle       10.1.248.101         Charm revision (d3e85cd-locally built) is not up-to date with config-server (61).
+shard-one/2       blocked      idle       10.1.248.100         Charm revision (d3e85cd-locally built) is not up-to date with config-server (61).
+shard-two/0*      blocked      idle       10.1.248.105         Charm revision (d3e85cd-locally built) is not up-to date with config-server (61).
+shard-two/1       blocked      idle       10.1.248.104         Charm revision (d3e85cd-locally built) is not up-to date with config-server (61).
+shard-two/2       blocked      idle       10.1.248.103         Charm revision (d3e85cd-locally built) is not up-to date with config-server (61).
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-1: 01:45:27 ERROR unit.config-server/1.juju-log config-server:8: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1734831926, 1), 'signature': {'hash': b'\\xd64\\x8cR\\xe5\\x01\\xc7}\\xae\\x1b\\rm3\\x12\\x06\\xa0\\xdf\\xff\\x1b\\x94', 'keyId': 7451045724801728537}}, 'operationTime': Timestamp(1734831926, 1)}")
+unit-config-server-1: 01:45:27 ERROR unit.config-server/1.juju-log config-server:8: shard-one shard does not have the same auth as the config server.
+unit-config-server-1: 01:45:31 ERROR unit.config-server/1.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1734831930, 4), 'signature': {'hash': b'\\xcb\\xda\\x85\\x8c\\xe7q\\xdb\\xe0\\xbasX|\\xba\\x86]\\xddcW\\xe4\\x81', 'keyId': 7451045724801728537}}, 'operationTime': Timestamp(1734831930, 4)}")
+unit-config-server-1: 01:45:31 ERROR unit.config-server/1.juju-log config-server:7: shard-one shard does not have the same auth as the config server.
+unit-config-server-1: 01:45:33 ERROR unit.config-server/1.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1734831932, 1), 'signature': {'hash': b'\\xc0y%\\xf3\\xd9\\xf4\\xa0\\x93r)ipq\\xed]\\xb8\\xd9\\xd0\\xfb\\xa4', 'keyId': 7451045724801728537}}, 'operationTime': Timestamp(1734831932, 1)}")
+unit-config-server-1: 01:45:33 ERROR unit.config-server/1.juju-log config-server:7: shard-one shard does not have the same auth as the config server.
+unit-config-server-1: 01:45:58 ERROR unit.config-server/1.juju-log config-server:8: Failed to add shard shard-two to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1734831958, 1), \'signature\': {\'hash\': b"\\xf8\\xff\\x00\\x90?\\xf60`\\xbaa\'\\xa4\\x11\\xd2\\xba\\xd0\\xda\\xf3}\\x1e", \'keyId\': 7451045724801728537}}, \'operationTime\': Timestamp(1734831958, 1)}')
+unit-config-server-1: 01:45:58 ERROR unit.config-server/1.juju-log config-server:8: shard-two shard does not have the same auth as the config server.
+unit-config-server-1: 01:46:15 ERROR unit.config-server/1.juju-log config-server:8: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1734831975, 5), \'signature\': {\'hash\': b"\\x88\\x9f]\\x90\\x92U\\xdfP\\xeb\\xde\\xdcW{\\xca@\\x06\\xa2\'\\x1b}", \'keyId\': 7451045724801728537}}, \'operationTime\': Timestamp(1734831975, 5)}')
+unit-config-server-1: 01:46:15 ERROR unit.config-server/1.juju-log config-server:8: Failed to add shard-two to cluster
+unit-config-server-1: 01:46:15 ERROR unit.config-server/1.juju-log config-server:8: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1734831975, 5), \'signature\': {\'hash\': b"\\x88\\x9f]\\x90\\x92U\\xdfP\\xeb\\xde\\xdcW{\\xca@\\x06\\xa2\'\\x1b}", \'keyId\': 7451045724801728537}}, \'operationTime\': Timestamp(1734831975, 5)}')
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
