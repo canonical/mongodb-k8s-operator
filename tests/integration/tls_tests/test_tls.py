@@ -7,7 +7,7 @@ import time
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import check_or_scale_app, get_app_name
+from ..helpers import DEPLOYMENT_TIMEOUT, check_or_scale_app, get_app_name
 from .helpers import (
     EXTERNAL_CERT_PATH,
     INTERNAL_CERT_PATH,
@@ -45,7 +45,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             )
             # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
             await ops_test.model.wait_for_idle(
-                apps=[app_name], status="active", timeout=2000, raise_on_error=False
+                apps=[app_name], status="active", timeout=DEPLOYMENT_TIMEOUT, raise_on_error=False
             )
 
     tls_app_deployed = False
@@ -62,7 +62,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
                 TLS_CERTIFICATES_APP_NAME, channel="stable", config=config, series="jammy"
             )
             await ops_test.model.wait_for_idle(
-                apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=1000
+                apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=DEPLOYMENT_TIMEOUT
             )
 
 

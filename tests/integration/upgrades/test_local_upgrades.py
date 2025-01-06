@@ -12,7 +12,13 @@ import pytest_asyncio
 import tenacity
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import APP_NAME, METADATA, get_juju_status, get_leader_id
+from ..helpers import (
+    APP_NAME,
+    DEPLOYMENT_TIMEOUT,
+    METADATA,
+    get_juju_status,
+    get_leader_id,
+)
 from .helpers import get_workload_version
 
 logger = logging.getLogger(__name__)
@@ -56,7 +62,11 @@ async def test_build_and_deploy(ops_test: OpsTest, local_charm: Path):
         trust=True,
     )
     await ops_test.model.wait_for_idle(
-        apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=1000, raise_on_error=False
+        apps=[APP_NAME],
+        status="active",
+        raise_on_blocked=True,
+        timeout=DEPLOYMENT_TIMEOUT,
+        raise_on_error=False,
     )
 
 

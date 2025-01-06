@@ -13,7 +13,7 @@ from pytest_operator.plugin import OpsTest
 
 from ..backup_tests.helpers import get_leader_unit
 from ..ha_tests.helpers import deploy_and_scale_application, get_direct_mongo_client
-from ..helpers import MONGOS_PORT, mongodb_uri
+from ..helpers import DEPLOYMENT_TIMEOUT, MONGOS_PORT, mongodb_uri
 from ..sharding_tests import writes_helpers
 from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
 from .helpers import assert_successful_run_upgrade_sequence, get_workload_version
@@ -115,6 +115,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         idle_period=20,
         raise_on_blocked=False,
         raise_on_error=False,
+        timeout=DEPLOYMENT_TIMEOUT,
     )
 
     await integrate_cluster(ops_test)

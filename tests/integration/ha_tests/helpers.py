@@ -31,6 +31,7 @@ from tenacity import (
 
 from ..helpers import (
     APP_NAME,
+    DEPLOYMENT_TIMEOUT,
     MONGOD_PORT,
     MONGOS_PORT,
     get_app_name,
@@ -193,7 +194,7 @@ async def deploy_and_scale_mongodb(
             status="active",
             raise_on_blocked=True,
             raise_on_error=False,
-            timeout=TIMEOUT,
+            timeout=DEPLOYMENT_TIMEOUT,
         )
 
     return mongodb_application_name
@@ -232,7 +233,7 @@ async def deploy_and_scale_application(ops_test: OpsTest) -> str:
             status="waiting",
             raise_on_blocked=True,
             raise_on_error=False,
-            timeout=TIMEOUT,
+            timeout=DEPLOYMENT_TIMEOUT,
         )
 
     return APPLICATION_DEFAULT_APP_NAME

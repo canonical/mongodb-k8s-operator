@@ -16,6 +16,7 @@ from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..ha_tests import helpers as ha_helpers
 from ..helpers import (
+    DEPLOYMENT_TIMEOUT,
     check_or_scale_app,
     destroy_cluster,
     get_app_name,
@@ -112,7 +113,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             await ops_test.model.wait_for_idle(
                 apps=[DATABASE_APP_NAME],
                 status="active",
-                timeout=2000,
+                timeout=DEPLOYMENT_TIMEOUT,
                 raise_on_error=False,
             )
 
@@ -416,7 +417,12 @@ async def test_restore_new_cluster(
     )
 
     await asyncio.gather(
-        ops_test.model.wait_for_idle(apps=[new_cluster_app_name], status="active", idle_period=20),
+        ops_test.model.wait_for_idle(
+            apps=[new_cluster_app_name],
+            status="active",
+            timeout=DEPLOYMENT_TIMEOUT,
+            idle_period=20,
+        ),
     )
 
     leader_unit = await helpers.get_leader_unit(ops_test, db_app_name=new_cluster_app_name)
