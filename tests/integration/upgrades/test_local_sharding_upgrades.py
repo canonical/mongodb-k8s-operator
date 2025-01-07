@@ -84,13 +84,13 @@ def righty_upgrade_charm(local_charm, tmp_path: Path):
     right_charm = tmp_path / "right.charm"
     shutil.copy(local_charm, right_charm)
     workload_version = Path("workload_version").read_text().strip()
-    charm_internal_version = Path("charm_internal_version").read_text().strip()
+    charm_version = Path("charm_version").read_text().strip()
 
     [major, minor, patch] = workload_version.split(".")
 
     with zipfile.ZipFile(right_charm, mode="a") as charm_zip:
         charm_zip.writestr("workload_version", f"{major}.{int(minor) + 1}.{patch}+testupgrade")
-        charm_zip.writestr("charm_internal_version", f"{charm_internal_version}-upgraded")
+        charm_zip.writestr("charm_version", f"{charm_version}-upgraded")
 
     yield right_charm
 
