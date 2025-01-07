@@ -43,7 +43,7 @@ def righty_upgrade_charm(local_charm, tmp_path: Path):
     [major, minor, patch] = workload_version.split(".")
 
     with zipfile.ZipFile(right_charm, mode="a") as charm_zip:
-        charm_zip.writestr("workload_version", f"{major}.{int(minor)+1}.{patch}+testupgrade")
+        charm_zip.writestr("workload_version", f"{major}.{int(minor) + 1}.{patch}+testupgrade")
 
     yield right_charm
 
@@ -78,7 +78,7 @@ async def test_upgrade(ops_test: OpsTest, righty_upgrade_charm: Path) -> None:
 
     initial_version = Path("workload_version").read_text().strip()
     [major, minor, patch] = initial_version.split(".")
-    new_version = f"{major}.{int(minor)+1}.{patch}+testupgrade"
+    new_version = f"{major}.{int(minor) + 1}.{patch}+testupgrade"
 
     logger.info("Wait for refresh to stall")
     await ops_test.model.block_until(

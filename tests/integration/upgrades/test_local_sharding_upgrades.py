@@ -89,7 +89,7 @@ def righty_upgrade_charm(local_charm, tmp_path: Path):
     [major, minor, patch] = workload_version.split(".")
 
     with zipfile.ZipFile(right_charm, mode="a") as charm_zip:
-        charm_zip.writestr("workload_version", f"{major}.{int(minor)+1}.{patch}+testupgrade")
+        charm_zip.writestr("workload_version", f"{major}.{int(minor) + 1}.{patch}+testupgrade")
         charm_zip.writestr("charm_internal_version", f"{charm_internal_version}-upgraded")
 
     yield right_charm
@@ -145,7 +145,7 @@ async def test_pre_upgrade_check_success(ops_test: OpsTest) -> None:
 async def test_upgrade_cluster(ops_test: OpsTest, righty_upgrade_charm, add_writes_to_shards):
     initial_version = Path("workload_version").read_text().strip()
     [major, minor, patch] = initial_version.split(".")
-    new_version = f"{major}.{int(minor)+1}.{patch}+testupgrade"
+    new_version = f"{major}.{int(minor) + 1}.{patch}+testupgrade"
 
     for sharding_component in CLUSTER_COMPONENTS:
         await assert_successful_run_upgrade_sequence(
@@ -187,7 +187,7 @@ async def test_upgrade_cluster(ops_test: OpsTest, righty_upgrade_charm, add_writ
     assert (
         actual_shard_two_writes == shard_two_total_expected_writes
     ), "missed writes during upgrade procedure."
-    logger.error(f"{actual_shard_one_writes = }, {actual_shard_two_writes = }")
+    logger.error(f"{actual_shard_one_writes=}, {actual_shard_two_writes=}")
 
     for sharding_component in CLUSTER_COMPONENTS:
         for unit in ops_test.model.applications[sharding_component].units:

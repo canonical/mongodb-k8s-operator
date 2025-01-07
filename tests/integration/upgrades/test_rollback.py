@@ -43,7 +43,7 @@ def faulty_upgrade_charm(local_charm, tmp_path: Path):
     [major, minor, patch] = workload_version.split(".")
 
     with zipfile.ZipFile(fault_charm, mode="a") as charm_zip:
-        charm_zip.writestr("workload_version", f"{int(major) -1}.{minor}.{patch}+testrollback")
+        charm_zip.writestr("workload_version", f"{int(major) - 1}.{minor}.{patch}+testrollback")
 
     yield fault_charm
 

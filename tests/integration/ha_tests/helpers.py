@@ -276,7 +276,11 @@ async def get_process_pid(
 
 
 async def send_signal_to_pod_container_process(
-    ops_test: OpsTest, unit_name: str, container_name: str, process: str, signal_code: str
+    ops_test: OpsTest,
+    unit_name: str,
+    container_name: str,
+    process: str,
+    signal_code: str,
 ) -> None:
     """Send the specified signal to a pod container process.
 
@@ -331,7 +335,9 @@ async def get_replica_set_primary(
 ) -> Optional[Unit]:
     """Returns the primary unit name based no the replica set host."""
     with await get_direct_mongo_client(
-        ops_test, excluded=excluded, use_subprocess_to_get_password=use_subprocess_to_get_password
+        ops_test,
+        excluded=excluded,
+        use_subprocess_to_get_password=use_subprocess_to_get_password,
     ) as client:
         data = client.admin.command("replSetGetStatus")
     unit_name = host_to_unit(primary_host(data))
@@ -675,7 +681,10 @@ async def wait_until_unit_in_status(
 ) -> None:
     """Waits until a replica is in the provided status as reported by MongoDB or timeout occurs."""
     with await get_direct_mongo_client(
-        ops_test, online_unit.name, use_subprocess_to_get_password=True, app_name=app_name
+        ops_test,
+        online_unit.name,
+        use_subprocess_to_get_password=True,
+        app_name=app_name,
     ) as client:
         data = client.admin.command("replSetGetStatus")
 
@@ -810,7 +819,7 @@ def convert_time(time_as_str: str) -> int:
 def get_highest_unit(ops_test: OpsTest, app_name: str) -> Unit:
     """Retrieves the most recently added unit to the MongoDB application."""
     num_units = len(ops_test.model.applications[app_name].units)
-    highest_unit_name = f"mongodb-k8s/{num_units-1}"
+    highest_unit_name = f"mongodb-k8s/{num_units - 1}"
     for unit in ops_test.model.applications[app_name].units:
         if unit.name == highest_unit_name:
             return unit
@@ -832,7 +841,11 @@ async def are_all_db_processes_down(ops_test: OpsTest, process: str) -> bool:
             with attempt:
                 for unit in ops_test.model.applications[app].units:
                     _, raw_pid, _ = await ops_test.juju(
-                        "ssh", "--container", MONGODB_CONTAINER_NAME, unit.name, *pgrep_cmd
+                        "ssh",
+                        "--container",
+                        MONGODB_CONTAINER_NAME,
+                        unit.name,
+                        *pgrep_cmd,
                     )
 
                     # If something was returned, there is a running process.
