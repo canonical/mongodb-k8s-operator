@@ -62,6 +62,8 @@ jobs:
           - tests/integration/ha_tests/application_charm
           - tests/integration/relation_tests/application-charm
     with:
+      cache: false  # TODO: will change to `true` before merge
+      charmcraft-snap-channel: latest/beta/data-platform  # TODO: remove after charmcraft 3.3 stable release
       path-to-charm-directory: ${{ matrix.path }}
 
   integration-test:
