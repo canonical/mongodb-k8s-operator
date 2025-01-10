@@ -8,7 +8,13 @@ import pytest
 from pytest_operator.plugin import OpsTest
 
 from .ha_tests.helpers import get_replica_set_primary as replica_set_primary
-from .helpers import METADATA, SERIES, check_or_scale_app, get_app_name
+from .helpers import (
+    DEPLOYMENT_TIMEOUT,
+    METADATA,
+    SERIES,
+    check_or_scale_app,
+    get_app_name,
+)
 
 DATABASE_APP_NAME = "mongodb-k8s"
 MEDIAN_REELECTION_TIME = 12
@@ -47,7 +53,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
         apps=[app_name],
         status="active",
         raise_on_blocked=True,
-        timeout=1000,
+        timeout=DEPLOYMENT_TIMEOUT,
     )
     assert ops_test.model.applications[app_name].units[0].workload_status == "active"
 

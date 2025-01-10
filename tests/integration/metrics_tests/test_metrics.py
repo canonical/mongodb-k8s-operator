@@ -10,7 +10,7 @@ import yaml
 from pytest_operator.plugin import OpsTest
 
 from ..ha_tests import helpers as ha_helpers
-from ..helpers import check_or_scale_app, get_app_name
+from ..helpers import DEPLOYMENT_TIMEOUT, check_or_scale_app, get_app_name
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 DATABASE_APP_NAME = "mongodb-k8s"
@@ -73,7 +73,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         )
         # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
         await ops_test.model.wait_for_idle(
-            apps=[DATABASE_APP_NAME], status="active", raise_on_error=False, timeout=2000
+            apps=[DATABASE_APP_NAME],
+            status="active",
+            raise_on_error=False,
+            timeout=DEPLOYMENT_TIMEOUT,
         )
 
 

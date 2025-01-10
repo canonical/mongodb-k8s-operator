@@ -13,7 +13,13 @@ from pytest_operator.plugin import OpsTest
 from tenacity import RetryError
 
 from ..ha_tests.helpers import get_replica_set_primary as replica_set_primary
-from ..helpers import check_or_scale_app, get_app_name, is_relation_joined, run_mongo_op
+from ..helpers import (
+    DEPLOYMENT_TIMEOUT,
+    check_or_scale_app,
+    get_app_name,
+    is_relation_joined,
+    run_mongo_op,
+)
 from .helpers import (
     assert_created_user_can_connect,
     get_application_relation_data,
@@ -91,7 +97,7 @@ async def test_deploy_charms(ops_test: OpsTest):
     APP_NAMES.append(await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME]))
     # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
     await ops_test.model.wait_for_idle(
-        apps=APP_NAMES, status="active", timeout=1000, raise_on_error=False
+        apps=APP_NAMES, status="active", timeout=DEPLOYMENT_TIMEOUT, raise_on_error=False
     )
 
 
@@ -354,7 +360,9 @@ async def test_two_applications_doesnt_share_the_same_relation_data(ops_test: Op
         application_name=another_application_app_name,
     )
     # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
-    await ops_test.model.wait_for_idle(apps=all_app_names, status="active", raise_on_error=False)
+    await ops_test.model.wait_for_idle(
+        apps=all_app_names, status="active", raise_on_error=False, timeout=DEPLOYMENT_TIMEOUT
+    )
 
     db_app_name = await get_app_name(ops_test, test_deployments=[ANOTHER_DATABASE_APP_NAME])
 

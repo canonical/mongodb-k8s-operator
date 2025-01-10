@@ -11,7 +11,7 @@ from ..ha_tests.helpers import (
     remove_instance_isolation,
     wait_until_unit_in_status,
 )
-from ..helpers import MONGOS_PORT, mongodb_uri
+from ..helpers import DEPLOYMENT_TIMEOUT, MONGOS_PORT, mongodb_uri
 from ..sharding_tests import writes_helpers
 from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
 from .helpers import assert_successful_run_upgrade_sequence, backup_helpers
@@ -82,6 +82,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS,
+        timeout=DEPLOYMENT_TIMEOUT,
         idle_period=20,
         raise_on_blocked=False,
         raise_on_error=False,

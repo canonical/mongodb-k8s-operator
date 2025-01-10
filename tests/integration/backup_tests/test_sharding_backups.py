@@ -14,6 +14,7 @@ from tenacity import Retrying, stop_after_delay, wait_fixed
 from ..backup_tests import helpers as backup_helpers
 from ..ha_tests.helpers import deploy_and_scale_application, get_direct_mongo_client
 from ..helpers import (
+    DEPLOYMENT_TIMEOUT,
     METADATA,
     MONGOS_PORT,
     get_leader_id,
@@ -338,7 +339,7 @@ async def deploy_cluster_backup_test(
         apps=[S3_APP_NAME, config_server_name, shard_one_name, shard_two_name],
         idle_period=20,
         raise_on_blocked=False,
-        timeout=TIMEOUT,
+        timeout=DEPLOYMENT_TIMEOUT,
         raise_on_error=False,
     )
 

@@ -20,6 +20,7 @@ from .ha_tests.helpers import (
 )
 from .helpers import (
     APP_NAME,
+    DEPLOYMENT_TIMEOUT,
     METADATA,
     TEST_DOCUMENTS,
     UNIT_IDS,
@@ -74,7 +75,11 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
     # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
     await ops_test.model.wait_for_idle(
-        apps=[app_name], status="active", raise_on_blocked=True, timeout=1000, raise_on_error=False
+        apps=[app_name],
+        status="active",
+        raise_on_blocked=True,
+        timeout=DEPLOYMENT_TIMEOUT,
+        raise_on_error=False,
     )
     assert ops_test.model.applications[app_name].units[0].workload_status == "active"
 
