@@ -9,7 +9,7 @@ from pymongo.errors import OperationFailure
 from pytest_operator.plugin import OpsTest
 
 from ..ha_tests.helpers import get_direct_mongo_client
-from ..helpers import METADATA, is_relation_joined
+from ..helpers import DEPLOYMENT_TIMEOUT, METADATA, is_relation_joined
 from .helpers import count_users, get_related_username_password
 
 SHARD_ONE_APP_NAME = "shard-one"
@@ -55,7 +55,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME],
         idle_period=20,
         raise_on_blocked=False,  # cluster components are blocked waiting for integration.
-        timeout=TIMEOUT,
+        timeout=DEPLOYMENT_TIMEOUT,
         raise_on_error=False,  # Remove this once DPE-4996 is resolved
     )
 

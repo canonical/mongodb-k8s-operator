@@ -5,7 +5,7 @@ import pytest
 from juju.errors import JujuAPIError
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import METADATA, wait_for_mongodb_units_blocked
+from ..helpers import DEPLOYMENT_TIMEOUT, METADATA, wait_for_mongodb_units_blocked
 
 S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard"
@@ -83,6 +83,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             SHARD_ONE_APP_NAME,
         ],
         idle_period=20,
+        timeout=DEPLOYMENT_TIMEOUT,
         raise_on_blocked=False,
         raise_on_error=False,  # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
     )

@@ -6,6 +6,7 @@ from pytest_operator.plugin import OpsTest
 
 from ..ha_tests.helpers import get_direct_mongo_client
 from ..helpers import (
+    DEPLOYMENT_TIMEOUT,
     METADATA,
     get_leader_id,
     get_password,
@@ -89,6 +90,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             SHARD_THREE_APP_NAME,
         ],
         idle_period=20,
+        timeout=DEPLOYMENT_TIMEOUT,
         raise_on_blocked=False,
         raise_on_error=False,
     )

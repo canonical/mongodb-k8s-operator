@@ -19,7 +19,7 @@ from ..ha_tests.helpers import (
     remove_instance_isolation,
     wait_until_unit_in_status,
 )
-from ..helpers import check_or_scale_app, get_app_name, get_password
+from ..helpers import DEPLOYMENT_TIMEOUT, check_or_scale_app, get_app_name, get_password
 from .helpers import assert_successful_run_upgrade_sequence
 
 logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
     db_app_name = await get_app_name(ops_test)
     await ops_test.model.wait_for_idle(
-        apps=[db_app_name], status="active", timeout=1000, idle_period=120
+        apps=[db_app_name], status="active", timeout=DEPLOYMENT_TIMEOUT, idle_period=120
     )
 
     await relate_mongodb_and_application(ops_test, db_app_name, WRITE_APP)

@@ -4,7 +4,7 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import METADATA, wait_for_mongodb_units_blocked
+from ..helpers import DEPLOYMENT_TIMEOUT, METADATA, wait_for_mongodb_units_blocked
 
 MONGODB_K8S_CHARM = "mongodb-k8s"
 SHARD_REL_NAME = "sharding"
@@ -55,7 +55,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         application_name=LOCAL_SHARD_APP_NAME,
     )
 
-    await ops_test.model.wait_for_idle(apps=CLUSTER_COMPONENTS, idle_period=20)
+    await ops_test.model.wait_for_idle(
+        apps=CLUSTER_COMPONENTS, idle_period=20, timeout=DEPLOYMENT_TIMEOUT
+    )
 
 
 @pytest.mark.group(1)

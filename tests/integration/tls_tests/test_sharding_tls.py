@@ -6,7 +6,11 @@
 import pytest
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import destroy_cluster, wait_for_mongodb_units_blocked
+from ..helpers import (
+    DEPLOYMENT_TIMEOUT,
+    destroy_cluster,
+    wait_for_mongodb_units_blocked,
+)
 from ..sharding_tests.helpers import deploy_cluster_components, integrate_cluster
 from .helpers import (
     EXTERNAL_CERT_PATH,
@@ -45,7 +49,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         apps=[CERTS_APP_NAME, CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
         idle_period=20,
         raise_on_blocked=False,
-        timeout=TIMEOUT,
+        timeout=DEPLOYMENT_TIMEOUT,
         raise_on_error=False,
     )
 
@@ -101,7 +105,7 @@ async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS,
         idle_period=20,
-        timeout=TIMEOUT,
+        timeout=DEPLOYMENT_TIMEOUT,
     )
 
     await integrate_cluster(ops_test)
@@ -132,7 +136,7 @@ async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS,
         idle_period=20,
-        timeout=TIMEOUT,
+        timeout=DEPLOYMENT_TIMEOUT,
         raise_on_blocked=False,
     )
 
