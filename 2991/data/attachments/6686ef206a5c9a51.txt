@@ -1,0 +1,34 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: Primary
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  02:28:30Z
+
+App            Version  Status  Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             active      1  application                   0  10.152.183.54   no       
+mongodb-k8s             active      3  mongodb-k8s                   0  10.152.183.173  no       
+s3-integrator           active      1  s3-integrator  latest/edge   97  10.152.183.115  no       
+
+Unit              Workload     Agent  Address      Ports  Message
+application/0*    active       idle   10.1.218.18         
+mongodb-k8s/0*    maintenance  idle   10.1.218.14         backup started/running, backup id:'2025-01-11T02:28:24Z'
+mongodb-k8s/1     active       idle   10.1.218.16         
+mongodb-k8s/2     active       idle   10.1.218.15         
+s3-integrator/0*  active       idle   10.1.218.17         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-new-mongodb-aws-1: 02:11:04 ERROR unit.new-mongodb-aws/1.juju-log Unable to access primary due to: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6781d3379a7b3087e40dba06, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-1.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.0005553139999392442>]>
+controller-0: 02:12:16 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-aws": finding filesystem info for new-mongodb-aws-mongodb-logs-12a2e5cf: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-aws-mongodb-logs-12a2e5cf-new-mongodb-aws-0" not found
+unit-new-mongodb-gcp-0: 02:20:07 ERROR unit.new-mongodb-gcp/0.juju-log s3-credentials:11: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of backups: get storage: storage undefined"}\n', stderr=''
+unit-new-mongodb-gcp-1: 02:26:05 ERROR unit.new-mongodb-gcp/1.juju-log Unable to access primary due to: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6781d6bcc65adf55aafaa6c8, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-gcp-1.new-mongodb-gcp-endpoints', 27017) server_type: RSGhost, rtt: 0.0006477730003098259>]>
+controller-0: 02:27:17 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-gcp": finding filesystem info for new-mongodb-gcp-mongodb-59746b17: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-gcp-mongodb-59746b17-new-mongodb-gcp-1" not found
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
