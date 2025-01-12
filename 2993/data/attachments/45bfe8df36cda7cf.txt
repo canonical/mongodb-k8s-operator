@@ -1,0 +1,109 @@
+[32mINFO    [0m integration.upgrades.helpers:helpers.py:24 Upgrading shard-one
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-one/0 [idle] active: Primary
+  shard-one/1 [idle] active: 
+  shard-one/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-one/0 [idle] active: MongoDB 6.0.6 running (restart pending); Charm revision 1+f6562a9
+  shard-one/1 [idle] active: MongoDB 6.0.6 running (restart pending); Charm revision 1+f6562a9
+  shard-one/2 [executing] maintenance:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.5.3    unsupported  01:47:30Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application             waiting      1  application             0  10.152.183.241  no       installing agent
+config-server           active       3  mongodb-k8s             0  10.152.183.69   no       
+shard-one               blocked      3  mongodb-k8s             3  10.152.183.121  no       Refreshing. Verify highest unit is healthy & run `resume-refresh` action. To rollback, `juju refresh` to last revision
+shard-two               active       3  mongodb-k8s             2  10.152.183.182  no       
+
+Unit              Workload  Agent  Address      Ports  Message
+application/0*    waiting   idle   10.1.76.72          
+config-server/0*  active    idle   10.1.76.78          
+config-server/1   active    idle   10.1.76.80          
+config-server/2   active    idle   10.1.76.81          
+shard-one/0*      active    idle   10.1.76.88          MongoDB 6.0.6 running (restart pending); Charm revision 1+f6562a9
+shard-one/1       active    idle   10.1.76.93          MongoDB 6.0.6 running (restart pending); Charm revision 1+f6562a9
+shard-one/2       error     idle   10.1.76.100         hook failed: "upgrade-charm"
+shard-two/0*      active    idle   10.1.76.97          Primary
+shard-two/1       active    idle   10.1.76.98          
+shard-two/2       active    idle   10.1.76.99          
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-shard-two-1: 01:39:28 ERROR unit.shard-two/1.juju-log Cannot initialize workload: MissingSecretError('No secret defined for app, keyfile')
+unit-config-server-0: 01:42:02 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1736646122, 1), \'signature\': {\'hash\': b\'\\x0b\\x89\\xc5\\x9e"8s\\xa7;}\\xab\\x12\\x8b\\xf7\\xe7<J\\xa2\\x88\\n\', \'keyId\': 7458837499851309057}}, \'operationTime\': Timestamp(1736646122, 1)}')
+unit-config-server-0: 01:42:02 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard-one to cluster
+unit-config-server-0: 01:42:02 ERROR unit.config-server/0.juju-log config-server:7: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1736646122, 1), \'signature\': {\'hash\': b\'\\x0b\\x89\\xc5\\x9e"8s\\xa7;}\\xab\\x12\\x8b\\xf7\\xe7<J\\xa2\\x88\\n\', \'keyId\': 7458837499851309057}}, \'operationTime\': Timestamp(1736646122, 1)}')
+unit-config-server-0: 01:42:22 ERROR unit.config-server/0.juju-log config-server:8: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1736646140, 6), 'signature': {'hash': b'j\\x873\\xd4\\xf6-\\xe7~\\x87\\\\b\\xb1\\x1f{{\\x17+\\x80;L', 'keyId': 7458837499851309057}}, 'operationTime': Timestamp(1736646140, 6)}")
+unit-config-server-0: 01:42:22 ERROR unit.config-server/0.juju-log config-server:8: shard-two shard does not have the same auth as the config server.
+unit-config-server-0: 01:42:39 ERROR unit.config-server/0.juju-log config-server:8: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1736646158, 3), \'signature\': {\'hash\': b\'\\xe1$Wp\\xcc\\xe6\\xd2/\\xb8\\xa7\\x8aJr\\xf7\\xc2B\\xce"\\xc2\\xc4\', \'keyId\': 7458837499851309057}}, \'operationTime\': Timestamp(1736646158, 3)}')
+unit-config-server-0: 01:42:39 ERROR unit.config-server/0.juju-log config-server:8: Failed to add shard-two to cluster
+unit-config-server-0: 01:42:39 ERROR unit.config-server/0.juju-log config-server:8: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1736646158, 3), \'signature\': {\'hash\': b\'\\xe1$Wp\\xcc\\xe6\\xd2/\\xb8\\xa7\\x8aJr\\xf7\\xc2B\\xce"\\xc2\\xc4\', \'keyId\': 7458837499851309057}}, \'operationTime\': Timestamp(1736646158, 3)}')
+unit-shard-one-2: 01:47:20 ERROR unit.shard-one/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1870, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 675, in _on_upgrade
+    self.upgrade._reconcile_upgrade(event, during_upgrade=True)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/src/upgrades/mongodb_upgrades.py", line 94, in _reconcile_upgrade
+    if not self._upgrade.is_compatible:
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 160, in is_compatible
+    current_versions = {
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 161, in <dictcomp>
+    key: poetry_version.Version.parse(value) for key, value in current_version_strs.items()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/poetry/core/version/pep440/version.py", line 177, in parse
+    return parse_pep440(value, cls)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/poetry/core/version/pep440/parser.py", line 84, in parse_pep440
+    version: T = PEP440Parser.parse(value, version_class)  # type: ignore[arg-type]
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/poetry/core/version/pep440/parser.py", line 70, in parse
+    raise InvalidVersionError(f"Invalid PEP 440 version: '{value}'")
+poetry.core.version.exceptions.InvalidVersionError: Invalid PEP 440 version: '1-upgraded'
+unit-shard-one-2: 01:47:21 ERROR juju.worker.uniter.operation hook "upgrade-charm" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-2: 01:47:28 ERROR unit.shard-one/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 1870, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/main.py", line 516, in _emit
+    self.framework.reemit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 870, in reemit
+    self._reemit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/./src/charm.py", line 675, in _on_upgrade
+    self.upgrade._reconcile_upgrade(event, during_upgrade=True)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/src/upgrades/mongodb_upgrades.py", line 94, in _reconcile_upgrade
+    if not self._upgrade.is_compatible:
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 160, in is_compatible
+    current_versions = {
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 161, in <dictcomp>
+    key: poetry_version.Version.parse(value) for key, value in current_version_strs.items()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/poetry/core/version/pep440/version.py", line 177, in parse
+    return parse_pep440(value, cls)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/poetry/core/version/pep440/parser.py", line 84, in parse_pep440
+    version: T = PEP440Parser.parse(value, version_class)  # type: ignore[arg-type]
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/poetry/core/version/pep440/parser.py", line 70, in parse
+    raise InvalidVersionError(f"Invalid PEP 440 version: '{value}'")
+poetry.core.version.exceptions.InvalidVersionError: Invalid PEP 440 version: '1-upgraded'
+unit-shard-one-2: 01:47:29 ERROR juju.worker.uniter.operation hook "upgrade-charm" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
