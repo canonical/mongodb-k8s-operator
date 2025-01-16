@@ -1,0 +1,103 @@
+[32mINFO    [0m integration.upgrades.helpers:helpers.py:24 Upgrading shard-one
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: 
+  shard-one/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:39:57Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application             waiting      1  application             0  10.152.183.101  no       
+config-server           active       3  mongodb-k8s             0  10.152.183.24   no       
+shard-one               blocked      3  mongodb-k8s             3  10.152.183.62   no       Refreshing. Verify highest unit is healthy & run `resume-refresh` action. To rollback, `juju refresh` to last revision
+shard-two               active       3  mongodb-k8s             2  10.152.183.221  no       
+
+Unit              Workload  Agent  Address       Ports  Message
+application/0*    waiting   idle   10.1.187.72          
+config-server/0*  active    idle   10.1.187.78          
+config-server/1   active    idle   10.1.187.80          
+config-server/2   active    idle   10.1.187.81          
+shard-one/0*      active    idle   10.1.187.87          MongoDB 6.0.6 running (restart pending); Charm revision 1+42d953c-dirty
+shard-one/1       active    idle   10.1.187.92          MongoDB 6.0.6 running (restart pending); Charm revision 1+42d953c-dirty
+shard-one/2       error     idle   10.1.187.100         hook failed: "upgrade-charm"
+shard-two/0*      active    idle   10.1.187.97          Primary
+shard-two/1       active    idle   10.1.187.98          
+shard-two/2       active    idle   10.1.187.99          
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-0: 01:34:14 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1736991254, 3), 'signature': {'hash': b'\\xaa$\\xa7\\x8f\\x8e\\x14\\xfedg\\xa7\\xff(\\x15\\xb1\\x8d&\\xb96\\x13\\xfd', 'keyId': 7460319985122934795}}, 'operationTime': Timestamp(1736991254, 3)}")
+unit-config-server-0: 01:34:15 ERROR unit.config-server/0.juju-log config-server:7: shard-one shard does not have the same auth as the config server.
+unit-config-server-0: 01:34:34 ERROR unit.config-server/0.juju-log config-server:8: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1736991272, 6), \'signature\': {\'hash\': b\'\\xb0\\x08=?\\xc8Ne\\x0bD\\x1a\\xd8\\x86\\xf3\\xd3\\xf3^\\x0f\\x94G\\xb2\', \'keyId\': 7460319985122934795}}, \'operationTime\': Timestamp(1736991272, 6)}')
+unit-config-server-0: 01:34:34 ERROR unit.config-server/0.juju-log config-server:8: Failed to add shard-one to cluster
+unit-config-server-0: 01:34:34 ERROR unit.config-server/0.juju-log config-server:8: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1736991272, 6), \'signature\': {\'hash\': b\'\\xb0\\x08=?\\xc8Ne\\x0bD\\x1a\\xd8\\x86\\xf3\\xd3\\xf3^\\x0f\\x94G\\xb2\', \'keyId\': 7460319985122934795}}, \'operationTime\': Timestamp(1736991272, 6)}')
+unit-config-server-0: 01:34:45 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1736991284, 3), 'signature': {'hash': b'\\xad\\xdc\\xc1su4\\xbe\\xd0T_Nq\\xf8\\xcb7\\xc3\\xa1\\xe8\\xfa\\xa2', 'keyId': 7460319985122934795}}, 'operationTime': Timestamp(1736991284, 3)}")
+unit-config-server-0: 01:34:46 ERROR unit.config-server/0.juju-log config-server:7: shard-two shard does not have the same auth as the config server.
+unit-shard-one-2: 01:39:47 ERROR unit.shard-one/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/src/charm.py", line 1870, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/src/charm.py", line 675, in _on_upgrade
+    self.upgrade._reconcile_upgrade(event, during_upgrade=True)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/src/upgrades/mongodb_upgrades.py", line 94, in _reconcile_upgrade
+    if not self._upgrade.is_compatible:
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 160, in is_compatible
+    current_versions = {
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 161, in <dictcomp>
+    key: poetry_version.Version.parse(value) for key, value in current_version_strs.items()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/poetry/core/version/pep440/version.py", line 177, in parse
+    return parse_pep440(value, cls)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/poetry/core/version/pep440/parser.py", line 84, in parse_pep440
+    version: T = PEP440Parser.parse(value, version_class)  # type: ignore[arg-type]
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/poetry/core/version/pep440/parser.py", line 70, in parse
+    raise InvalidVersionError(f"Invalid PEP 440 version: '{value}'")
+poetry.core.version.exceptions.InvalidVersionError: Invalid PEP 440 version: '1-upgraded'
+unit-shard-one-2: 01:39:48 ERROR juju.worker.uniter.operation hook "upgrade-charm" (via hook dispatching script: dispatch) failed: exit status 1
+unit-shard-one-2: 01:39:54 ERROR unit.shard-one/2.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/src/charm.py", line 1870, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/main.py", line 516, in _emit
+    self.framework.reemit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 870, in reemit
+    self._reemit()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/src/charm.py", line 675, in _on_upgrade
+    self.upgrade._reconcile_upgrade(event, during_upgrade=True)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/src/upgrades/mongodb_upgrades.py", line 94, in _reconcile_upgrade
+    if not self._upgrade.is_compatible:
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 160, in is_compatible
+    current_versions = {
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 161, in <dictcomp>
+    key: poetry_version.Version.parse(value) for key, value in current_version_strs.items()
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/poetry/core/version/pep440/version.py", line 177, in parse
+    return parse_pep440(value, cls)
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/poetry/core/version/pep440/parser.py", line 84, in parse_pep440
+    version: T = PEP440Parser.parse(value, version_class)  # type: ignore[arg-type]
+  File "/var/lib/juju/agents/unit-shard-one-2/charm/venv/lib/python3.10/site-packages/poetry/core/version/pep440/parser.py", line 70, in parse
+    raise InvalidVersionError(f"Invalid PEP 440 version: '{value}'")
+poetry.core.version.exceptions.InvalidVersionError: Invalid PEP 440 version: '1-upgraded'
+unit-shard-one-2: 01:39:55 ERROR juju.worker.uniter.operation hook "upgrade-charm" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
