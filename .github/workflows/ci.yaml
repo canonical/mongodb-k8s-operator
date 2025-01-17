@@ -9,14 +9,18 @@ concurrency:
 on:
   pull_request:
   schedule:
-    - cron: "53 0 * * *" # Daily at 00:53 UTC
+    - cron: '53 0 * * *'  # Daily at 00:53 UTC
   # Triggered on push to branch "main" by .github/workflows/release.yaml
   workflow_call:
+    outputs:
+      artifact-prefix:
+        description: build_charm.yaml `artifact-prefix` output
+        value: ${{ jobs.build.outputs.artifact-prefix }}
 
 jobs:
   lint:
     name: Lint
-    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v26.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v29.0.0
 
   lib-check:
     name: Check libraries
@@ -55,7 +59,7 @@ jobs:
 
   build:
     name: Build charm | ${{ matrix.path }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v26.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
     strategy:
       matrix:
         path:
@@ -63,7 +67,6 @@ jobs:
           - tests/integration/ha_tests/application_charm
           - tests/integration/relation_tests/application-charm
     with:
-      cache: true
       charmcraft-snap-channel: latest/candidate  # TODO: remove after charmcraft 3.3 stable release
       path-to-charm-directory: ${{ matrix.path }}
 
@@ -73,9 +76,9 @@ jobs:
       - lint
       - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v26.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v29.0.0
     with:
-      artifact-prefix: packed-charm-cache-true
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       cloud: microk8s
       microk8s-snap-channel: 1.29-strict/stable  # renovate: latest microk8s
       juju-agent-version: 3.6.1  # renovate: juju-agent-pin-minor
