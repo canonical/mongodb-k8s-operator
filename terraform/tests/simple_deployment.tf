@@ -6,7 +6,7 @@ module "mongodb-k8s" {
   channel  = "6/edge"
 }
 
-resource "juju_integration" "simple_deployment_tls-operator_mongodb-integration" {
+resource "juju_integration" "tls-operator_mongodb-integration" {
   model = var.model_name
 
   application {
@@ -22,7 +22,7 @@ resource "juju_integration" "simple_deployment_tls-operator_mongodb-integration"
 
 }
 
-resource "juju_integration" "simple_deployment_data-integrator_mongodb-integration" {
+resource "juju_integration" "data-integrator_mongodb-integration" {
   model = var.model_name
 
   application {
@@ -38,12 +38,29 @@ resource "juju_integration" "simple_deployment_data-integrator_mongodb-integrati
 
 }
 
-resource "null_resource" "simple_deployment_juju_wait_deployment" {
+resource "juju_integration" "s3-integrator_mongodb-integration" {
+  model = var.model_name
+
+  application {
+    name = juju_application.s3-integrator.name
+  }
+  application {
+    name = var.app_name
+  }
+  depends_on = [
+    juju_application.s3-integrator,
+    module.mongodb-k8s
+  ]
+
+}
+
+
+resource "null_resource" "juju_wait_deployment" {
   provisioner "local-exec" {
     command = <<-EOT
     juju-wait -v --model ${var.model_name}
     EOT
   }
 
-  depends_on = [juju_integration.simple_deployment_tls-operator_mongodb-integration]
+  depends_on = [juju_integration.tls-operator_mongodb-integration]
 }
