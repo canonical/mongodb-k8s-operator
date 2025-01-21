@@ -1,0 +1,83 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:34:58Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application             waiting      1  application             0  10.152.183.110  no       
+config-server           waiting      3  mongodb-k8s             0  10.152.183.162  no       installing agent
+shard-one               waiting      3  mongodb-k8s             1  10.152.183.219  no       installing agent
+shard-two               waiting      3  mongodb-k8s             2  10.152.183.17   no       installing agent
+
+Unit              Workload     Agent      Address     Ports  Message
+application/0*    waiting      idle       10.1.61.72         
+config-server/0*  maintenance  executing  10.1.61.79         Adding shard shard-two to config-server
+config-server/1   active       executing  10.1.61.81         
+config-server/2   active       executing  10.1.61.80         
+shard-one/0*      waiting      executing  10.1.61.88         Waiting for secrets from config-server
+shard-one/1       waiting      executing  10.1.61.93         Waiting for secrets from config-server
+shard-one/2       active       executing  10.1.61.92         
+shard-two/0*      error        idle       10.1.61.96         hook failed: "sharding-relation-changed"
+shard-two/1       waiting      executing  10.1.61.98         Waiting for secrets from config-server
+shard-two/2       waiting      executing  10.1.61.99         Waiting for secrets from config-server
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-0: 01:32:31 ERROR unit.config-server/0.juju-log database-peers:1: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles:[    {\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'clusterAdmin\', \'db\': \'admin\'},   ],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-0/charm/src/charm.py", line 1173, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles:[    {\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'clusterAdmin\', \'db\': \'admin\'},   ],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-config-server-0: 01:32:38 ERROR unit.config-server/0.juju-log database-peers:1: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles:[    {\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'clusterAdmin\', \'db\': \'admin\'},   ],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-0/charm/src/charm.py", line 1173, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles:[    {\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'clusterAdmin\', \'db\': \'admin\'},   ],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-shard-two-0: 01:34:57 ERROR unit.shard-two/0.juju-log sharding:8: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/src/charm.py", line 1870, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 712, in _on_relation_changed
+    self.update_member_auth(event, (key_file_enabled, tls_enabled))
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 642, in update_member_auth
+    self.update_keyfile(key_file_contents=key_file_contents)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/lib/charms/mongodb/v1/shards_interface.py", line 1046, in update_keyfile
+    self.charm.restart_charm_services()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/src/charm.py", line 1475, in restart_charm_services
+    container.replan()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2259, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2129, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-shard-two-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "logrotate" (service start attempt: exited quickly with code 0, will restart)
+----- Logs from task 0 -----
+2025-01-21T01:34:57Z INFO Most recent service output:
+    
+2025-01-21T01:34:57Z ERROR service start attempt: exited quickly with code 0, will restart
+----- Logs from task 2 -----
+2025-01-21T01:34:56Z INFO Service "mongodb_exporter" already started.
+-----
+unit-shard-two-0: 01:34:57 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
