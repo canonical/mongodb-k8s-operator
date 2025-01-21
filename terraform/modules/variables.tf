@@ -4,7 +4,7 @@ variable "model_name" {
 }
 
 variable "app_name" {
-  description = "mongodb app name"
+  description = "MongoDB app name"
   type        = string
   default     = "mongodb-k8s"
 }
