@@ -1,0 +1,73 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:35:10Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application             waiting      1  application             0  10.152.183.75   no       
+config-server           waiting      3  mongodb-k8s  6/edge    61  10.152.183.166  no       installing agent
+shard-one               waiting      3  mongodb-k8s  6/edge    61  10.152.183.175  no       installing agent
+shard-two               waiting      3  mongodb-k8s  6/edge    61  10.152.183.31   no       installing agent
+
+Unit              Workload     Agent      Address     Ports  Message
+application/0*    waiting      idle       10.1.52.72         
+config-server/0*  maintenance  executing  10.1.52.78         Adding shard shard-two to config-server
+config-server/1   active       idle       10.1.52.84         
+config-server/2   active       idle       10.1.52.83         
+shard-one/0*      active       executing  10.1.52.87         
+shard-one/1       waiting      executing  10.1.52.93         Waiting for secrets from config-server
+shard-one/2       waiting      executing  10.1.52.92         Waiting for secrets from config-server
+shard-two/0*      waiting      executing  10.1.52.96         Waiting for secrets from config-server
+shard-two/1       waiting      executing  10.1.52.98         Waiting for secrets from config-server
+shard-two/2       waiting      executing  10.1.52.99         Waiting for secrets from config-server
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-0: 01:34:27 ERROR unit.config-server/0.juju-log config-server:8: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1737509667, 3), 'signature': {'hash': b'\\x0f\\xf4.\\xe9\\x843_\\x13R\\xd2&\\x05\\xb1\\x08\\xa2\\xc1i\\x137\\xe5', 'keyId': 7462546513349050393}}, 'operationTime': Timestamp(1737509667, 3)}")
+unit-config-server-0: 01:34:28 ERROR unit.config-server/0.juju-log config-server:8: shard-one shard does not have the same auth as the config server.
+unit-shard-one-1: 01:34:33 ERROR unit.shard-one/1.juju-log sharding:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1870, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 712, in _on_relation_changed
+    self.update_member_auth(event, (key_file_enabled, tls_enabled))
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 642, in update_member_auth
+    self.update_keyfile(key_file_contents=key_file_contents)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/lib/charms/mongodb/v1/shards_interface.py", line 1046, in update_keyfile
+    self.charm.restart_charm_services()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/./src/charm.py", line 1475, in restart_charm_services
+    container.replan()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/model.py", line 2259, in replan
+    self._pebble.replan_services()
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/pebble.py", line 2129, in replan_services
+    return self._services_action('replan', [], timeout, delay)
+  File "/var/lib/juju/agents/unit-shard-one-1/charm/venv/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "logrotate" (service start attempt: exited quickly with code 0, will restart)
+----- Logs from task 0 -----
+2025-01-22T01:34:33Z INFO Most recent service output:
+    
+2025-01-22T01:34:33Z ERROR service start attempt: exited quickly with code 0, will restart
+----- Logs from task 2 -----
+2025-01-22T01:34:32Z INFO Service "mongodb_exporter" already started.
+-----
+unit-shard-one-1: 01:34:33 ERROR juju.worker.uniter.operation hook "sharding-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-config-server-0: 01:35:04 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1737509703, 2), 'signature': {'hash': b'3\\xc1J\\x80\\x1e\\xa6\\xe0\\x7f\\x00\\nD[`k\\xd7\\xd699\\xe4:', 'keyId': 7462546513349050393}}, 'operationTime': Timestamp(1737509703, 2)}")
+unit-config-server-0: 01:35:05 ERROR unit.config-server/0.juju-log config-server:7: shard-two shard does not have the same auth as the config server.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
