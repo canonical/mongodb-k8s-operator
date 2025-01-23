@@ -9,7 +9,7 @@ concurrency:
 on:
   pull_request:
   schedule:
-    - cron: '53 0 * * *'  # Daily at 00:53 UTC
+    - cron: "53 0 * * *" # Daily at 00:53 UTC
   # Triggered on push to branch "main" by .github/workflows/release.yaml
   workflow_call:
     outputs:
@@ -37,7 +37,7 @@ jobs:
       - name: Check libs
         uses: canonical/charming-actions/check-libraries@2.6.2
         with:
-          charmcraft-channel: latest/candidate  # TODO: remove after charmcraft 3.3 stable release
+          charmcraft-channel: latest/candidate # TODO: remove after charmcraft 3.3 stable release
           credentials: ${{ secrets.CHARMHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           use-labels: false
@@ -76,7 +76,7 @@ jobs:
           terraform fmt
           terraform validate
       - name: lint test charm module
-        working-directory: ./terraform/tests
+        working-directory: ./terraform/modules
         run: |
           terraform init
           terraform fmt
@@ -102,7 +102,7 @@ jobs:
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
           juju add-model test
       - name: Terraform deploy
-        working-directory: ./terraform/tests/
+        working-directory: ./terraform/modules
         run: |
           terraform apply  -var "model_name=test" -target null_resource.simple_deployment_juju_wait_deployment -auto-approve
 
@@ -116,7 +116,7 @@ jobs:
           - tests/integration/ha_tests/application_charm
           - tests/integration/relation_tests/application-charm
     with:
-      charmcraft-snap-channel: latest/candidate  # TODO: remove after charmcraft 3.3 stable release
+      charmcraft-snap-channel: latest/candidate # TODO: remove after charmcraft 3.3 stable release
       path-to-charm-directory: ${{ matrix.path }}
 
   integration-test:
@@ -129,8 +129,8 @@ jobs:
     with:
       artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       cloud: microk8s
-      microk8s-snap-channel: 1.29-strict/stable  # renovate: latest microk8s
-      juju-agent-version: 3.6.1  # renovate: juju-agent-pin-minor
+      microk8s-snap-channel: 1.29-strict/stable # renovate: latest microk8s
+      juju-agent-version: 3.6.1 # renovate: juju-agent-pin-minor
       _beta_allure_report: true
     permissions:
       contents: write # Needed for Allure Report beta
