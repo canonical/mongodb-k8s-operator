@@ -40,7 +40,6 @@ def chaos_mesh(ops_test: OpsTest) -> None:
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest):
-
     await deploy_and_scale_application(ops_test)
 
     db_app_name = await get_app_name(ops_test)
@@ -114,7 +113,11 @@ async def test_preflight_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
     # restore network after test
     remove_instance_isolation(ops_test)
     await ops_test.model.wait_for_idle(
-        apps=[db_app_name], status="active", timeout=1000, idle_period=30, raise_on_error=False
+        apps=[db_app_name],
+        status="active",
+        timeout=1000,
+        idle_period=30,
+        raise_on_error=False,
     )
 
 
@@ -130,10 +133,10 @@ async def test_upgrade_password_change_fail(ops_test: OpsTest):
     await ops_test.model.applications[app_name].refresh(path=new_charm)
 
     action = await ops_test.model.units.get(f"{app_name}/{leader_id}").run_action(
-        "set-password", **{"username": "username", "password": "new-password"}
+        "set-password", **{"username": "operator", "password": "new-password"}
     )
     action = await action.wait()
 
-    assert "Cannot set passwords while an upgrade is in progress." == action.message
+    assert "Cannot set passwords while an upgrade is in progress" == action.message
     after_action_password = await get_password(ops_test, leader_id, app_name=app_name)
     assert current_password == after_action_password

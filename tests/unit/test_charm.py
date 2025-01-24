@@ -1,27 +1,27 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-import json
 import logging
-import re
 import unittest
 from unittest import mock
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-from charms.mongodb.v1.helpers import CONF_DIR, DATA_DIR, KEY_FILE
-from ops.model import ActiveStatus, MaintenanceStatus, ModelError
-from ops.pebble import APIError, ExecError, PathError, ProtocolError
-from ops.testing import Harness
+from ops.model import MaintenanceStatus
+from ops.pebble import PathError, ProtocolError
+from ops.testing import ActionFailed, Harness
 from parameterized import parameterized
-from pymongo.errors import (
-    ConfigurationError,
-    ConnectionFailure,
-    OperationFailure,
-    PyMongoError,
+from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
+from single_kernel_mongo.config.literals import Scope
+from single_kernel_mongo.core.structured_config import MongoDBRoles
+from single_kernel_mongo.exceptions import WorkloadExecError
+from single_kernel_mongo.utils.mongo_connection import NotReadyError
+from single_kernel_mongo.utils.mongodb_users import (
+    BackupUser,
+    MonitorUser,
+    OperatorUser,
 )
-from tenacity import stop_after_attempt, wait_fixed, wait_none
 
-from charm import MongoDBCharm, NotReadyError
+from charm import MongoDBCharm
 
 from .helpers import patch_network_get
 
@@ -37,13 +37,33 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(autouse=True)
 def patch_upgrades(monkeypatch):
-    monkeypatch.setattr("charms.mongodb.v0.upgrade_helpers.AbstractUpgrade.in_progress", False)
-    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.get", lambda *args, **kwargs: 0)
-    monkeypatch.setattr("charm.kubernetes_upgrades._Partition.set", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "single_kernel_mongo.state.charm_state.CharmState.upgrade_in_progress", False
+    )
+    monkeypatch.setattr(
+        "single_kernel_mongo.managers.k8s.K8sManager.get_partition",
+        lambda *args, **kwargs: 0,
+    )
+    monkeypatch.setattr(
+        "single_kernel_mongo.managers.k8s.K8sManager.set_partition",
+        lambda *args, **kwargs: 0,
+    )
+    monkeypatch.setattr(
+        "single_kernel_mongo.managers.k8s.K8sManager.get_pod",
+        lambda *args, **kwargs: 0,
+    )
+
+
+@pytest.fixture(autouse=True)
+def patch_is_ready(mocker):
+    mocker.patch(
+        "single_kernel_mongo.utils.mongo_connection.MongoConnection.is_ready",
+        return_value=True,
+    )
 
 
 class TestCharm(unittest.TestCase):
-    @patch("charm.get_charm_revision")
+    @patch("single_kernel_mongo.managers.mongodb_operator.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
     def setUp(self, *unused):
         self.maxDiff = None
@@ -52,9 +72,12 @@ class TestCharm(unittest.TestCase):
             "registrypath": "mongo:4.4",
         }
         self.harness.add_oci_resource("mongodb-image", mongo_resource)
-        self.harness.begin()
         self.harness.add_relation("database-peers", "mongodb-peers")
         self.harness.add_relation("upgrade-version-a", "upgrade-version-a")
+        self.harness.begin()
+        with self.harness.hooks_disabled():
+            self.harness.add_storage(storage_name="mongodb", count=1, attach=True)
+            self.harness.add_storage(storage_name="mongodb-logs", count=1, attach=True)
         self.harness.set_leader(True)
         self.charm = self.harness.charm
         self.addCleanup(self.harness.cleanup)
@@ -65,14 +88,19 @@ class TestCharm(unittest.TestCase):
 
     def _setup_secrets(self):
         self.harness.set_leader(True)
-        self.harness.charm._generate_secrets()
         self.harness.set_leader(False)
 
-    @patch("charm.MongoDBCharm._pull_licenses")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator._initialise_replica_set")
+    @patch("single_kernel_mongo.core.k8s_workload.KubernetesWorkload.exec")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.handle_licenses")
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._set_data_dir_permissions")
-    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    def test_mongod_pebble_ready(self, connect_exporter, fix_data_dir, defer, pull_licenses):
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.set_permissions")
+    @patch(
+        "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
+    )
+    def test_mongod_pebble_ready(
+        self, connect_exporter, fix_data_dir, defer, pull_licenses, exec, init_repl
+    ):
         # Expected plan after Pebble ready with default config
         expected_plan = {
             "services": {
@@ -92,29 +120,41 @@ class TestCharm(unittest.TestCase):
                     "override": "replace",
                     "summary": "mongod",
                     "command": (
-                        "mongod --bind_ip_all "
-                        "--replSet=mongodb-k8s "
-                        f"--dbpath={DATA_DIR} "
+                        "/usr/bin/mongod --bind_ip_all "
                         "--port=27017 "
+                        "--auth --clusterAuthMode=keyFile "
+                        f"--keyFile={self.harness.charm.workload.paths.keyfile} "
                         "--setParameter processUmask=037 "
                         "--logRotate reopen --logappend --logpath=/var/log/mongodb/mongodb.log "
                         "--auditDestination=file "
                         "--auditFormat=JSON "
                         "--auditPath=/var/log/mongodb/audit.log "
-                        "--auth --clusterAuthMode=keyFile "
-                        f"--keyFile={CONF_DIR}/{KEY_FILE} \n"
+                        "--replSet=mongodb-k8s "
+                        f"--dbpath={self.harness.charm.workload.paths.data_path}"
                     ),
+                    "environment": {
+                        "MONGOD_ARGS": (
+                            "--bind_ip_all "
+                            "--port=27017 "
+                            "--auth --clusterAuthMode=keyFile "
+                            f"--keyFile={self.harness.charm.workload.paths.keyfile} "
+                            "--setParameter processUmask=037 "
+                            "--logRotate reopen --logappend --logpath=/var/log/mongodb/mongodb.log "
+                            "--auditDestination=file "
+                            "--auditFormat=JSON "
+                            "--auditPath=/var/log/mongodb/audit.log "
+                            "--replSet=mongodb-k8s "
+                            f"--dbpath={self.harness.charm.workload.paths.data_path}"
+                        )
+                    },
                     "startup": "enabled",
                 },
             },
         }
-        # Mock storages
-        self.harness.charm.model._storages = {"mongodb": "valid", "mongodb-logs": "valid"}
         # Get the mongod container from the model
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
         container.make_dir("/etc/logrotate.d", make_parents=True)
-        container.exec = mock.Mock()
         # Emit the PebbleReadyEvent carrying the mongod container
         self.harness.charm.on.mongod_pebble_ready.emit(container)
         # Get the plan now we've run PebbleReady
@@ -129,31 +169,7 @@ class TestCharm(unittest.TestCase):
         connect_exporter.assert_called_once()
 
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._push_keyfile_to_workload")
-    def test_pebble_ready_cannot_retrieve_container(
-        self, push_keyfile_to_workload, defer, *unused
-    ):
-        """Test verifies behavior when retrieving container results in ModelError in pebble ready.
-
-        Verifies that when a failure to get a container occurs, that that failure is raised and
-        that no efforts to set keyFile or add/replan layers are made.
-        """
-        # presets
-        self.harness.set_leader(True)
-        mock_container = mock.Mock()
-        mock_container.side_effect = ModelError
-        self.harness.charm.unit.get_container = mock_container
-
-        with self.assertRaises(ModelError):
-            self.harness.charm.on.mongod_pebble_ready.emit(mock_container)
-
-        push_keyfile_to_workload.assert_not_called()
-        mock_container.add_layer.assert_not_called()
-        mock_container.replan.assert_not_called()
-        defer.assert_not_called()
-
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._push_keyfile_to_workload")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.handle_licenses")
     def test_pebble_ready_container_cannot_connect(self, push_keyfile_to_workload, defer, *unused):
         """Test verifies behavior when cannot connect to container in pebble ready function.
 
@@ -162,22 +178,20 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = False
-        self.harness.charm.unit.get_container = mock_container
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, False)
 
         # Emit the PebbleReadyEvent carrying the mongod container
-        self.harness.charm.on.mongod_pebble_ready.emit(mock_container)
+        self.harness.charm.on.mongod_pebble_ready.emit(container)
 
         push_keyfile_to_workload.assert_not_called()
-        mock_container.add_layer.assert_not_called()
-        mock_container.replan.assert_not_called()
         defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._push_keyfile_to_workload")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.handle_licenses")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.set_permissions")
     def test_pebble_ready_push_keyfile_to_workload_failure(
-        self, push_keyfile_to_workload, defer, *unused
+        self, set_perms, push_keyfile_to_workload, defer, *unused
     ):
         """Test verifies behavior when setting keyfile fails.
 
@@ -186,69 +200,40 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        self.harness.charm.unit.get_container = mock_container
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
 
-        for exception in [PathError("kind", "message"), ProtocolError("kind", "message")]:
+        for exception in [
+            PathError("kind", "message"),
+            ProtocolError("kind", "message"),
+        ]:
             push_keyfile_to_workload.side_effect = exception
 
             # Emit the PebbleReadyEvent carrying the mongod container
-            self.harness.charm.on.mongod_pebble_ready.emit(mock_container)
-            mock_container.add_layer.assert_not_called()
-            mock_container.replan.assert_not_called()
+            self.harness.charm.on.mongod_pebble_ready.emit(container)
+
+            set_perms.assert_not_called()
             defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
-    def test_pebble_ready_no_storage_yet(self, defer):
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator._configure_workloads")
+    def test_pebble_ready_no_storage_yet(self, configure, defer):
         """Test to ensure that the pebble ready event is deferred until the storage is ready."""
         # presets
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        self.harness.charm.unit.get_container = mock_container
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
 
         # Mock storages
         self.harness.charm.model._storages = {"mongodb": None, "mongodb-logs": None}
         # Emit the PebbleReadyEvent carrying the mock_container
-        self.harness.charm.on.mongod_pebble_ready.emit(mock_container)
-        mock_container.add_layer.assert_not_called()
-        mock_container.replan.assert_not_called()
+        self.harness.charm.on.mongod_pebble_ready.emit(container)
+        configure.assert_not_called()
         defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBConnection")
-    def test_start_cannot_retrieve_container(
-        self, connection, init_user, provider, defer, *unused
-    ):
-        """Verifies that failures to get container result in a ModelError being raised.
-
-        Further this function verifies that on error no attempts to set up the replica set or
-        database users are made.
-        """
-        # presets
-        self.harness.set_leader(True)
-        mock_container = mock.Mock()
-        mock_container.side_effect = ModelError
-        self.harness.charm.unit.get_container = mock_container
-        with self.assertRaises(ModelError):
-            self.harness.charm.on.start.emit()
-
-        # when cannot retrieve a container we should not set up the replica set or handle users
-        connection.return_value.__enter__.return_value.init_replset.assert_not_called()
-        init_user.assert_not_called()
-        provider.return_value.oversee_users.assert_not_called()
-
-        # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
-        defer.assert_not_called()
-
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBConnection")
-    def test_start_container_cannot_connect(self, connection, init_user, provider, defer, *unused):
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.initialise_replica_set")
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.initialise_charm_admin_users")
+    def test_start_container_cannot_connect(self, init_users, init_replset, defer, *unused):
         """Tests inability to connect results in deferral.
 
         Verifies that if connection is not possible, that there are no attempts to set up the
@@ -256,85 +241,27 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = False
-        self.harness.charm.unit.get_container = mock_container
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, False)
 
         self.harness.charm.on.start.emit()
 
         # when cannot connect to container we should not set up the replica set or handle users
-        connection.return_value.__enter__.return_value.init_replset.assert_not_called()
-        init_user.assert_not_called()
-        provider.return_value.oversee_users.assert_not_called()
+        init_replset.assert_not_called()
+        init_users.assert_not_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+        self.assertEqual(self.harness.charm.operator.state.db_initialised, False)
         defer.assert_called()
 
+    @patch(
+        "single_kernel_mongo.managers.mongodb_operator.MongoDBOperator._configure_workloads",
+        return_value=None,
+    )
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBConnection")
-    def test_start_container_does_not_exist(self, connection, init_user, provider, defer, *unused):
-        """Tests lack of existence of files on container results in deferral.
-
-        Verifies that if files do not exists, that there are no attempts to set up the replica set
-        or handle users.
-        """
-        # presets
-        self.harness.set_leader(True)
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.return_value = False
-        self.harness.charm.unit.get_container = mock_container
-
-        self.harness.charm.on.start.emit()
-
-        # when container does not exist we should not set up the replica set or handle users
-        connection.return_value.__enter__.return_value.init_replset.assert_not_called()
-        init_user.assert_not_called()
-        provider.return_value.oversee_users.assert_not_called()
-
-        # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
-        defer.assert_called()
-
-    @patch("charm.MongoDBCharm._configure_container", return_value=None)
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBConnection")
-    def test_start_container_exists_fails(self, connection, init_user, provider, defer, *unused):
-        """Tests failure in checking file existence on container raises an APIError.
-
-        Verifies that when checking container files raises an API Error, we raise that same error
-        and make no attempts to set up the replica set or handle users.
-        """
-        # presets
-        self.harness.set_leader(True)
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.side_effect = APIError("body", 0, "status", "message")
-        self.harness.charm.unit.get_container = mock_container
-
-        with self.assertRaises(APIError):
-            self.harness.charm.on.start.emit()
-
-        # when container does not exist we should not set up the replica set or handle users
-        connection.return_value.__enter__.return_value.init_replset.assert_not_called()
-        init_user.assert_not_called()
-        provider.return_value.oversee_users.assert_not_called()
-
-        # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
-        defer.assert_not_called()
-
-    @patch("charm.MongoDBCharm._configure_container", return_value=None)
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBConnection")
-    def test_start_already_initialised(self, connection, init_user, provider, defer, *unused):
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.initialise_replica_set")
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.initialise_charm_admin_users")
+    def test_start_already_initialised(self, init_user, init_replset, defer, *unused):
         """Tests that if the replica set has already been set up that we return.
 
         Verifies that if the replica set is already set up that no attempts to set it up again are
@@ -343,27 +270,30 @@ class TestCharm(unittest.TestCase):
         # presets
         self.harness.set_leader(True)
 
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.return_value = True
-        self.harness.charm.unit.get_container = mock_container
-        self.harness.charm.app_peer_data["replica_set_initialised"] = json.dumps(True)
-        self.harness.charm.app_peer_data["users_initialized"] = json.dumps(True)
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
+
+        self.harness.charm.operator.state.db_initialised = True
 
         self.harness.charm.on.start.emit()
 
         # when the database has already been initialised we should not set up the replica set or
         # handle users
-        connection.return_value.__enter__.return_value.init_replset.assert_not_called()
+        init_replset.assert_not_called()
         init_user.assert_not_called()
-        provider.return_value.oversee_users.assert_not_called()
         defer.assert_not_called()
 
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBConnection")
-    def test_start_mongod_not_ready(self, connection, init_user, provider, defer, *unused):
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.handle_licenses")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.set_permissions")
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.initialise_replica_set")
+    @patch(
+        "single_kernel_mongo.utils.mongo_connection.MongoConnection.is_ready",
+        new_callable=mock.PropertyMock(return_value=False),
+    )
+    def test_start_mongod_not_ready(
+        self, is_ready, init_replset, set_perms, handle_licenses, defer
+    ):
         """Tests that if mongod is not ready that we defer and return.
 
         Verifies that if mongod is not ready that no attempts to set up the replica set and set up
@@ -372,29 +302,26 @@ class TestCharm(unittest.TestCase):
         # presets
         self.harness.set_leader(True)
 
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.return_value = True
-        self.harness.charm.unit.get_container = mock_container
-
-        connection.return_value.__enter__.return_value.is_ready = False
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
 
         self.harness.charm.on.start.emit()
 
         # when mongod is not ready we should not set up the replica set or handle users
-        connection.return_value.__enter__.return_value.init_replset.assert_not_called()
-        init_user.assert_not_called()
-        provider.return_value.oversee_users.assert_not_called()
+        init_replset.assert_not_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+        self.assertEqual(self.harness.charm.operator.state.db_initialised, False)
         defer.assert_called()
 
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._initialise_users")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.handle_licenses")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.set_permissions")
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.initialise_charm_admin_users")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.init_replset")
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBConnection")
-    def test_start_mongod_error_initialising_replica_set(self, connection, defer, *unused):
+    def test_start_mongod_error_initialising_replica_set(
+        self, defer, init_replset, init_charm_user, *unused
+    ):
         """Tests that failure to initialise replica set is properly handled.
 
         Verifies that when there is a failure to initialise replica set the defer is called and
@@ -403,26 +330,34 @@ class TestCharm(unittest.TestCase):
         # presets
         self.harness.set_leader(True)
 
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.return_value = True
-        self.harness.charm.unit.get_container = mock_container
-        connection.return_value.__enter__.return_value.is_ready = True
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
 
         for exception, _ in PYMONGO_EXCEPTIONS:
-            connection.return_value.__enter__.return_value.init_replset.side_effect = exception
+            init_replset.side_effect = exception
             self.harness.charm.on.start.emit()
 
             # verify app data
-            self.assertEqual("replica_set_initialised" in self.harness.charm.app_peer_data, False)
+            self.assertEqual(self.harness.charm.operator.state.db_initialised, False)
+            init_charm_user.assert_not_called()
             defer.assert_called()
 
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBConnection")
-    @patch("tenacity.nap.time.sleep", MagicMock())
-    def test_error_initialising_users(self, connection, init_user, provider, defer, *unused):
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.handle_licenses")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.set_permissions")
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.initialise_operator_user")
+    @patch("single_kernel_mongo.managers.mongo.MongoManager.initialise_user")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.init_replset")
+    def test_error_initialising_users(
+        self,
+        init_replset,
+        init_user,
+        init_operator_user,
+        set_perms,
+        handle_licenses,
+        defer,
+        *unused,
+    ):
         """Tests that failure to initialise users set is properly handled.
 
         Verifies that when there is a failure to initialise users that overseeing users is not
@@ -431,35 +366,29 @@ class TestCharm(unittest.TestCase):
         # presets
         self.harness.set_leader(True)
 
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.return_value = True
-        self.harness.charm.unit.get_container = mock_container
-        connection.return_value.__enter__.return_value.is_ready = True
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
 
-        init_user.side_effect = ExecError("command", 0, "stdout", "stderr")
-        self.harness.charm._initialise_users.retry.wait = wait_none()
+        init_operator_user.side_effect = WorkloadExecError("command", 0, "stdout", "stderr")
         self.harness.charm.on.start.emit()
 
-        provider.return_value.oversee_users.assert_not_called()
+        init_user.assert_not_called()
         defer.assert_called()
 
         # verify app data
-        self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+        self.assertEqual(self.harness.charm.operator.state.db_initialised, False)
 
-    @patch("charm.MongoDBCharm._init_operator_user")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.handle_licenses")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.set_permissions")
+    @patch(
+        "single_kernel_mongo.managers.mongo.MongoManager.initialise_replica_set",
+    )
+    @patch(
+        "single_kernel_mongo.managers.mongo.MongoManager.initialise_charm_admin_users",
+    )
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider")
-    @patch("charm.MongoDBConnection")
-    @patch("tenacity.nap.time.sleep", MagicMock())
-    @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
-    @patch("charm.USER_CREATION_COOLDOWN", 1)
-    @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
-    @patch("charm.wait_fixed")
-    @patch("charm.stop_after_attempt")
-    def test_start_mongod_error_overseeing_users(
-        self, retry_stop, retry_wait, connection, provider, defer, *unused
-    ):
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.user_exists")
+    def test_start_mongod_error_overseeing_users(self, user_exists, defer, *unused):
         """Tests failures related to pymongo are properly handled when overseeing users.
 
         Verifies that when there is a failure to oversee users that we defer and do not set the
@@ -468,27 +397,24 @@ class TestCharm(unittest.TestCase):
         # presets
         self.harness.set_leader(True)
 
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.return_value = True
-        self.harness.charm.unit.get_container = mock_container
-        connection.return_value.__enter__.return_value.is_ready = True
-        retry_stop.return_value = stop_after_attempt(1)
-        retry_wait.return_value = wait_fixed(1)
-        self.harness.charm._initialise_users.retry.wait = wait_none()
+        container = self.harness.model.unit.get_container("mongod")
+        self.harness.set_can_connect(container, True)
+
+        self.harness.charm.operator.state.app_peer_data.role = MongoDBRoles.REPLICATION
+
+        self.harness.add_relation("database", "client-app")
 
         for exception, _ in PYMONGO_EXCEPTIONS:
-            provider.side_effect = exception
+            user_exists.side_effect = exception
             self.harness.charm.on.start.emit()
 
-            provider.return_value.oversee_users.assert_not_called()
             defer.assert_called()
 
             # verify app data
-            self.assertEqual("db_initialised" in self.harness.charm.app_peer_data, False)
+            self.assertEqual(self.harness.charm.operator.state.db_initialised, False)
 
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBConnection")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection")
     def test_reconfigure_not_already_initialised(self, connection, defer, *unused):
         """Tests reconfigure does not execute when database has not been initialised.
 
@@ -527,10 +453,16 @@ class TestCharm(unittest.TestCase):
 
             defer.assert_not_called()
 
-    @patch("charms.mongodb.v0.mongo.MongoClient")
+    @patch(
+        "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
+    )
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBConnection")
-    def test_reconfigure_get_members_failure(self, connection, defer, *unused):
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.get_replset_members")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.add_replset_member")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.remove_replset_member")
+    def test_reconfigure_get_members_failure(
+        self, remove_replset, add_replset, get_replset, defer, *unused
+    ):
         """Tests reconfigure does not execute when unable to get the replica set members.
 
         Verifies in case of relation_joined and relation departed, that when the the database
@@ -539,13 +471,11 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
+        self.harness.charm.operator.state.db_initialised = True
         rel = self.harness.charm.model.get_relation("database-peers")
 
         for exception, _ in PYMONGO_EXCEPTIONS:
-            connection.return_value.__enter__.return_value.get_replset_members.side_effect = (
-                exception
-            )
+            get_replset.side_effect = exception
 
             # test both relation events
             for departed in [False, True]:
@@ -558,15 +488,28 @@ class TestCharm(unittest.TestCase):
                     self.harness.update_relation_data(rel.id, "mongodb-k8s/1", PEER_ADDR)
 
                 if departed:
-                    connection.return_value.__enter__.return_value.add_replset_member.assert_not_called()
+                    add_replset.assert_not_called()
                 else:
-                    connection.return_value.__enter__.return_value.remove_replset_member.assert_not_called()
+                    remove_replset.assert_not_called()
 
                 defer.assert_called()
 
+    @patch(
+        "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
+    )
+    @patch("single_kernel_mongo.managers.config.BackupConfigManager.configure_and_restart")
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBConnection")
-    def test_reconfigure_remove_member_failure(self, connection, defer, *unused):
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.get_replset_members")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.add_replset_member")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.remove_replset_member")
+    def test_reconfigure_remove_member_failure(
+        self,
+        remove_replset_member,
+        add_replset_member,
+        get_replset_members,
+        defer,
+        *unused,
+    ):
         """Tests reconfigure does not proceed when unable to remove a member.
 
         Verifies in relation departed events, that when the database cannot remove a member that
@@ -574,8 +517,8 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
-        connection.return_value.__enter__.return_value.get_replset_members.return_value = {
+        self.harness.charm.operator.state.db_initialised = True
+        get_replset_members.return_value = {
             "mongodb-k8s-0.mongodb-k8s-endpoints",
             "mongodb-k8s-1.mongodb-k8s-endpoints",
         }
@@ -584,9 +527,7 @@ class TestCharm(unittest.TestCase):
         exceptions = PYMONGO_EXCEPTIONS
         exceptions.append((NotReadyError, None))
         for exception, _ in exceptions:
-            connection.return_value.__enter__.return_value.remove_replset_member.side_effect = (
-                exception
-            )
+            remove_replset_member.side_effect = exception
 
             # simulate 2nd MongoDB unit joining( need a unit to join before removing a unit)
             self.harness.add_relation_unit(rel.id, "mongodb-k8s/1")
@@ -595,14 +536,26 @@ class TestCharm(unittest.TestCase):
             # simulate removing 2nd MongoDB unit
             self.harness.remove_relation_unit(rel.id, "mongodb-k8s/1")
 
-            connection.return_value.__enter__.return_value.remove_replset_member.assert_called()
+            remove_replset_member.assert_called()
             defer.assert_called()
 
-    @patch("charms.mongodb.v0.set_status.get_charm_revision")
-    @patch("charm.CrossAppVersionChecker.is_local_charm")
+    @patch(
+        "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
+    )
+    @patch(
+        "single_kernel_mongo.utils.mongo_connection.MongoConnection.is_ready",
+        new_callable=mock.PropertyMock(return_value=False),
+    )
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBConnection")
-    def test_reconfigure_peer_not_ready(self, connection, defer, *unused):
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.get_replset_members")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.add_replset_member")
+    def test_reconfigure_peer_not_ready(
+        self,
+        add_replset_member,
+        get_replset_members,
+        defer,
+        *unused,
+    ):
         """Tests reconfigure does not proceed when the adding member is not ready.
 
         Verifies in relation joined events, that when the adding member is not ready that the event
@@ -610,23 +563,24 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
-        connection.return_value.__enter__.return_value.get_replset_members.return_value = {
-            "mongodb-k8s-0.mongodb-k8s-endpoints"
-        }
-        connection.return_value.__enter__.return_value.is_ready = False
+        self.harness.charm.operator.state.db_initialised = True
+        get_replset_members.return_value = {"mongodb-k8s-0.mongodb-k8s-endpoints"}
 
         # simulate 2nd MongoDB unit joining( need a unit to join before removing a unit)
         rel = self.harness.charm.model.get_relation("database-peers")
         self.harness.add_relation_unit(rel.id, "mongodb-k8s/1")
         self.harness.update_relation_data(rel.id, "mongodb-k8s/1", PEER_ADDR)
 
-        connection.return_value.__enter__.return_value.add_replset_member.assert_not_called()
+        add_replset_member.assert_not_called()
         defer.assert_called()
 
+    @patch(
+        "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
+    )
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBConnection")
-    def test_reconfigure_add_member_failure(self, connection, defer, *unused):
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.get_replset_members")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.add_replset_member")
+    def test_reconfigure_add_member_failure(self, add_replset, get_replset, defer, *unused):
         """Tests reconfigure does not proceed when unable to add a member.
 
         Verifies in relation joined events, that when the database cannot add a member that the
@@ -634,351 +588,189 @@ class TestCharm(unittest.TestCase):
         """
         # presets
         self.harness.set_leader(True)
-        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
-        connection.return_value.__enter__.return_value.get_replset_members.return_value = {
-            "mongodb-k8s-0.mongodb-k8s-endpoints"
-        }
+        self.harness.charm.operator.state.db_initialised = True
+        get_replset.return_value = {"mongodb-k8s-0.mongodb-k8s-endpoints"}
         rel = self.harness.charm.model.get_relation("database-peers")
 
         exceptions = PYMONGO_EXCEPTIONS
         exceptions.append((NotReadyError, None))
         for exception, _ in exceptions:
-            connection.return_value.__enter__.return_value.add_replset_member.side_effect = (
-                exception
-            )
+            add_replset.side_effect = exception
 
             # simulate 2nd MongoDB unit joining( need a unit to join before removing a unit)
             self.harness.add_relation_unit(rel.id, "mongodb-k8s/1")
             self.harness.update_relation_data(rel.id, "mongodb-k8s/1", PEER_ADDR)
 
-            connection.return_value.__enter__.return_value.add_replset_member.assert_called()
+            add_replset.assert_called()
             defer.assert_called()
 
-    @patch("charm.MongoDBCharm._configure_container", return_value=None)
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBProvider.oversee_users")
-    @patch("charm.MongoDBConnection")
-    def test_start_init_operator_user_after_second_call(
-        self, connection, oversee_users, defer, *unused
-    ):
-        """Tests that the creation of the admin user is only performed once.
-
-        Verifies that if the user is already set up, that no attempts to set it up again are
-        made when a failure happens causing an event deferring calling the init_user again
-        """
-        self.harness.charm.USER_CREATING_MAX_ATTEMPTS = 1
-        self.harness.charm.USER_CREATION_COOLDOWN = 1
-        self.harness.charm._initialise_users.retry.wait = wait_none()
-
-        mock_container = mock.Mock()
-        mock_container.return_value.can_connect.return_value = True
-        mock_container.return_value.exists.return_value = True
-        mock_container.return_value.exec.return_value = mock.Mock()
-        mock_container.return_value.exec.return_value.wait_output.return_value = ("Success", None)
-
-        self.harness.charm.unit.get_container = mock_container
-
-        connection.return_value.__enter__.return_value.is_ready = True
-
-        oversee_users.side_effect = PyMongoError()
-
-        self.harness.charm.app_peer_data["replica_set_initialised"] = json.dumps(True)
-        self.harness.charm.on.start.emit()
-        self.assertEqual("operator-user-created" in self.harness.charm.app_peer_data, True)
-        defer.assert_called()
-
-        # the second call to init user should fail if "exec" is called, but shouldn't happen
-        oversee_users.side_effect = None
-        defer.reset_mock()
-        mock_container.return_value.exec.reset_mock()
-        mock_container.return_value.exec.side_effect = ExecError([], 1, "", "Dummy Error")
-
-        # re-run the start method without a failing oversee_users
-        self.harness.charm.on.start.emit()
-
-        # _init_operator_user should have returned before reaching the "exec" call
-        mock_container.return_value.exec.assert_not_called()
-
-        defer.assert_not_called()
-
-    def test_get_password(self, *unused):
-        self._setup_secrets()
-        assert isinstance(self.harness.charm.get_secret("app", "monitor-password"), str)
-        assert self.harness.charm.get_secret("app", "non-existing-secret") is None
-
-        self.harness.charm.set_secret("unit", "somekey", "bla")
-        assert isinstance(self.harness.charm.get_secret("unit", "somekey"), str)
-        assert self.harness.charm.get_secret("unit", "non-existing-secret") is None
-
-    def test_set_reset_existing_password_app(self, *unused):
-        """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
-        self._setup_secrets()
+    def test_get_password(self):
         self.harness.set_leader(True)
 
-        # Getting current password
-        self.harness.charm.set_secret("app", "monitor-password", "bla")
-        assert self.harness.charm.get_secret("app", "monitor-password") == "bla"
+        assert isinstance(
+            self.harness.charm.operator.state.secrets.get_for_key(Scope.APP, "monitor-password"),
+            str,
+        )
+        assert (
+            self.harness.charm.operator.state.secrets.get_for_key(Scope.APP, "non-existing")
+            is None
+        )
 
-        self.harness.charm.set_secret("app", "monitor-password", "blablabla")
-        assert self.harness.charm.get_secret("app", "monitor-password") == "blablabla"
+        self.harness.charm.operator.state.secrets.set("somekey", "bla", Scope.UNIT)
+        assert isinstance(
+            self.harness.charm.operator.state.secrets.get_for_key(Scope.UNIT, "somekey"),
+            str,
+        )
+        assert (
+            self.harness.charm.operator.state.secrets.get_for_key(Scope.APP, "non-existing")
+            is None
+        )
 
-    def test_set_reset_existing_password_app_nonleader(self, *unused):
+    def test_delete_password_non_leader(self):
         self._setup_secrets()
         self.harness.set_leader(False)
-
-        # Getting current password
+        assert self.harness.charm.operator.state.get_user_password(MonitorUser)
         with self.assertRaises(RuntimeError):
-            self.harness.charm.set_secret("app", "monitor-password", "bla")
+            self.harness.charm.operator.state.secrets.remove(Scope.APP, "monitor-password")
 
-    @parameterized.expand([("app"), ("unit")])
-    def test_set_secret_returning_secret_id(self, scope):
-        secret_id = self.harness.charm.set_secret(scope, "somekey", "bla")
-        assert re.match(f"mongodb-k8s.{scope}", secret_id)
-
-    @parameterized.expand([("app"), ("unit")])
-    def test_set_reset_new_secret(self, scope, *unused):
-        if scope == "app":
-            self.harness.set_leader(True)
-
-        # Getting current password
-        self.harness.charm.set_secret(scope, "new-secret", "bla")
-        assert self.harness.charm.get_secret(scope, "new-secret") == "bla"
-
-        # Reset new secret
-        self.harness.charm.set_secret(scope, "new-secret", "blablabla")
-        assert self.harness.charm.get_secret(scope, "new-secret") == "blablabla"
-
-        # Set another new secret
-        self.harness.charm.set_secret(scope, "new-secret2", "blablabla")
-        assert self.harness.charm.get_secret(scope, "new-secret2") == "blablabla"
-
-    def test_set_reset_new_secret_non_leader(self, *unused):
-        self.harness.set_leader(True)
-
-        # Getting current password
-        self.harness.charm.set_secret("app", "new-secret", "bla")
-        assert self.harness.charm.get_secret("app", "new-secret") == "bla"
-
-        # Reset new secret
-        self.harness.set_leader(False)
-        with self.assertRaises(RuntimeError):
-            self.harness.charm.set_secret("app", "new-secret", "blablabla")
-
-        # Set another new secret
-        with self.assertRaises(RuntimeError):
-            self.harness.charm.set_secret("app", "new-secret2", "blablabla")
-
-    @parameterized.expand([("app"), ("unit")])
+    @parameterized.expand([(Scope.APP), (Scope.UNIT)])
     def test_invalid_secret(self, scope):
         with self.assertRaises(TypeError):
-            self.harness.charm.set_secret("unit", "somekey", 1)
+            self.harness.charm.operator.state.secrets.set("somekey", 1, Scope.UNIT)
 
-        self.harness.charm.set_secret("unit", "somekey", "")
-        assert self.harness.charm.get_secret(scope, "somekey") is None
+        self.harness.charm.operator.state.secrets.remove(Scope.UNIT, "somekey")
+        assert self.harness.charm.operator.state.secrets.get_for_key(scope, "somekey") is None
 
     @pytest.mark.usefixtures("use_caplog")
-    def test_delete_password(self, *unused):
-        self._setup_secrets()
+    def test_delete_password(self):
         self.harness.set_leader(True)
 
-        assert self.harness.charm.get_secret("app", "monitor-password")
-        self.harness.charm.remove_secret("app", "monitor-password")
-        assert self.harness.charm.get_secret("app", "monitor-password") is None
+        assert self.harness.charm.operator.state.get_user_password(MonitorUser)
+        self.harness.charm.operator.state.secrets.remove(Scope.APP, "monitor-password")
+        assert self.harness.charm.operator.state.get_user_password(MonitorUser) == ""
 
-        assert self.harness.charm.set_secret("unit", "somekey", "somesecret")
-        self.harness.charm.remove_secret("unit", "somekey")
-        assert self.harness.charm.get_secret("unit", "somekey") is None
+        assert self.harness.charm.operator.state.secrets.set("somekey", "somesecret", Scope.UNIT)
+        self.harness.charm.operator.state.secrets.remove(Scope.UNIT, "somekey")
+        assert self.harness.charm.operator.state.secrets.get_for_key(Scope.UNIT, "somekey") is None
 
         with self._caplog.at_level(logging.ERROR):
-            self.harness.charm.remove_secret("app", "monitor-password")
+            self.harness.charm.operator.state.secrets.remove(Scope.APP, "monitor-password")
             assert (
                 "Non-existing secret app:monitor-password was attempted to be removed."
                 in self._caplog.text
             )
 
-            self.harness.charm.remove_secret("unit", "somekey")
+            self.harness.charm.operator.state.secrets.remove(Scope.UNIT, "somekey")
             assert (
                 "Non-existing secret unit:somekey was attempted to be removed."
                 in self._caplog.text
             )
 
-            self.harness.charm.remove_secret("app", "non-existing-secret")
+            self.harness.charm.operator.state.secrets.remove(Scope.APP, "non-existing-secret")
             assert (
                 "Non-existing secret app:non-existing-secret was attempted to be removed."
                 in self._caplog.text
             )
 
-            self.harness.charm.remove_secret("unit", "non-existing-secret")
+            self.harness.charm.operator.state.secrets.remove(Scope.UNIT, "non-existing-secret")
             assert (
                 "Non-existing secret unit:non-existing-secret was attempted to be removed."
                 in self._caplog.text
             )
 
-    def test_delete_password_non_leader(self, *unused):
-        self._setup_secrets()
-        self.harness.set_leader(False)
-        assert self.harness.charm.get_secret("app", "monitor-password")
-        with self.assertRaises(RuntimeError):
-            self.harness.charm.remove_secret("app", "monitor-password")
-
-    @parameterized.expand([("app"), ("unit")])
-    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    def test_on_secret_changed(self, scope, connect_exporter):
+    @parameterized.expand([(Scope.APP), (Scope.UNIT)])
+    @patch("single_kernel_mongo.status.StatusManager.process_and_share_statuses")
+    @patch("single_kernel_mongo.managers.config.BackupConfigManager.configure_and_restart")
+    @patch(
+        "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
+    )
+    def test_on_secret_changed(self, scope, connect_exporter, connect_backup, *unused):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
-        secret_label = self.harness.charm.set_secret(scope, "new-secret", "bla")
-        secret = self.harness.charm.model.get_secret(label=secret_label)
+        secret = self.harness.charm.operator.state.secrets.set("new-secret", "bla", scope)
+        secret = self.harness.charm.model.get_secret(label=secret.label)
 
-        event = mock.Mock()
-        event.secret = secret
-        secret_label = self.harness.charm._on_secret_changed(event)
+        self.harness.charm.on.secret_changed.emit(label=secret.label, id=secret.id)
         connect_exporter.assert_called()
+        connect_backup.assert_called()
 
-    @parameterized.expand([("app"), ("unit")])
+    @parameterized.expand([(Scope.APP), (Scope.UNIT)])
     @pytest.mark.usefixtures("use_caplog")
-    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
+    @patch(
+        "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
+    )
     def test_on_other_secret_changed(self, scope, connect_exporter):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
-        # "Hack": creating a secret outside of the normal MongoDBCharm.set_secret workflow
-        scope_obj = self.harness.charm._scope_opj(scope)
+        # "Hack": creating a secret outside of the normal MongodbOperatorCharm.set_secret workflow
+        scope_obj = self.harness.charm.app if scope == Scope.APP else self.harness.charm.unit
         secret = scope_obj.add_secret({"key": "value"})
 
-        event = mock.Mock()
-        event.secret = secret
-
         with self._caplog.at_level(logging.DEBUG):
-            self.harness.charm._on_secret_changed(event)
+            self.harness.charm.on.secret_changed.emit(label=secret.label, id=secret.id)
             assert f"Secret {secret.id} changed, but it's unknown" in self._caplog.text
 
         connect_exporter.assert_not_called()
 
-    @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBCharm._pull_licenses")
-    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    def test_connect_to_mongo_exporter_on_set_password(self, connect_exporter, *unused):
-        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user."""
-        container = self.harness.model.unit.get_container("mongod")
-        self.harness.set_can_connect(container, True)
-        self.harness.charm.on.mongod_pebble_ready.emit(container)
-        self.harness.set_leader(True)
-
-        action_event = mock.Mock()
-        action_event.params = {"username": "monitor"}
-        self.harness.charm._on_set_password(action_event)
-        connect_exporter.assert_called()
-
-    @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups.get_pbm_status")
-    @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    def test_event_set_password_secrets(
-        self, connect_exporter, has_backup_service, get_pbm_status, *unused
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
+    @patch(
+        "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
+    )
+    def test_connect_to_mongo_exporter_on_set_password(
+        self, connect_exporter, mock_set_user_password
     ):
-        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
-
-        Furthermore: in Juju 3.x we want to use secrets
-        """
-        pw = "bla"
-        has_backup_service.return_value = True
-        get_pbm_status.return_value = ActiveStatus()
+        """Test _connect_mongodb_exporter is called when the password is set for 'monitor' user."""
         self.harness.set_leader(True)
 
-        action_event = mock.Mock()
-        action_event.set_results = MagicMock()
-        action_event.params = {"username": "monitor", "password": pw}
-        self.harness.charm._on_set_password(action_event)
+        self.harness.run_action("set-password", {"username": "monitor"})
         connect_exporter.assert_called()
 
-        action_event.set_results.assert_called()
-        args_pw_set = action_event.set_results.call_args.args[0]
-        assert "secret-id" in args_pw_set
-
-        action_event.params = {"username": "monitor"}
-        self.harness.charm._on_get_password(action_event)
-        args_pw = action_event.set_results.call_args.args[0]
-        assert "password" in args_pw
-        assert args_pw["password"] == pw
-
-    @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBBackups.get_pbm_status")
-    @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
+    @patch_network_get(private_address="1.1.1.1")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
+    @patch(
+        "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
+    )
     def test_event_auto_reset_password_secrets_when_no_pw_value_shipped(
-        self, connect_exporter, has_backup_service, get_pbm_status, *unused
+        self, connect_exporter, set_user_password
     ):
         """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
 
         Furthermore: in Juju 3.x we want to use secrets
         """
-        has_backup_service.return_value = True
-        get_pbm_status.return_value = ActiveStatus()
-        self._setup_secrets()
         self.harness.set_leader(True)
-
-        action_event = mock.Mock()
-        action_event.set_results = MagicMock()
 
         # Getting current password
-        action_event.params = {"username": "monitor"}
-        self.harness.charm._on_get_password(action_event)
-        args_pw = action_event.set_results.call_args.args[0]
-        assert "password" in args_pw
-        pw1 = args_pw["password"]
+        params = {"username": "monitor"}
+        output = self.harness.run_action("set-password", params)
+        assert output.results["password"]
+        pw1 = output.results["password"]
 
-        # No password value was shipped
-        action_event.params = {"username": "monitor"}
-        self.harness.charm._on_set_password(action_event)
         connect_exporter.assert_called()
 
         # New password was generated
-        action_event.params = {"username": "monitor"}
-        self.harness.charm._on_get_password(action_event)
-        args_pw = action_event.set_results.call_args.args[0]
-        assert "password" in args_pw
-        pw2 = args_pw["password"]
+        params = {"username": "monitor"}
+        output = self.harness.run_action("set-password", params)
+        assert output.results["password"]
+        pw2 = output.results["password"]
 
         # a new password was created
         assert pw1 != pw2
 
-    @patch("charm.MongoDBConnection")
-    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    def test_event_any_unit_can_get_password_secrets(self, *unused):
-        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
-
-        Furthermore: in Juju 3.x we want to use secrets
-        """
-        self._setup_secrets()
-
-        action_event = mock.Mock()
-        action_event.set_results = MagicMock()
-
-        # Getting current password
-        action_event.params = {"username": "monitor"}
-        self.harness.charm._on_get_password(action_event)
-        args_pw = action_event.set_results.call_args.args[0]
-        assert "password" in args_pw
-        assert args_pw["password"]
-
-    @patch("charm.MongoDBCharm._pull_licenses")
+    @patch("single_kernel_mongo.core.k8s_workload.KubernetesWorkload.exec")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.handle_licenses")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.set_permissions")
     @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._set_data_dir_permissions")
-    @patch("charm.MongoDBConnection")
-    def test__connect_mongodb_exporter_success(
-        self, connection, fix_data_dir, defer, pull_licenses
-    ):
+    def test__connect_mongodb_exporter_success(self, defer, *unused):
         """Tests the _connect_mongodb_exporter method has been called."""
-        # Mock storages
-        self.harness.charm.model._storages = {"mongodb": "valid", "mongodb-logs": "valid"}
         # Get container
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
-        container.exec = mock.Mock()
         container.make_dir("/etc/logrotate.d", make_parents=True)
 
-        self.harness.set_can_connect(container, True)
-        self.harness.charm.app_peer_data["db_initialised"] = json.dumps(True)
+        self.harness.charm.operator.state.db_initialised = True
         self.harness.charm.on.mongod_pebble_ready.emit(container)
 
-        password = self.harness.charm.get_secret("app", "monitor-password")
+        password = self.harness.charm.operator.state.get_user_password(MonitorUser)
 
         uri_template = "mongodb://monitor:{password}@mongodb-k8s-0.mongodb-k8s-endpoints:27017/admin?replicaSet=mongodb-k8s"
 
@@ -993,81 +785,53 @@ class TestCharm(unittest.TestCase):
         }
 
         container_plan = self.harness.get_container_pebble_plan("mongod").to_dict()
-        exporter_config = container_plan.get("services").get("mongodb_exporter")
+        exporter_config = container_plan.get("services").get("mongodb-exporter")
         self.assertEqual(expected_config, exporter_config)
 
-        service = self.harness.model.unit.get_container("mongod").get_service("mongodb_exporter")
+        service = self.harness.model.unit.get_container("mongod").get_service("mongodb-exporter")
         assert service.is_running()
 
-        action_event = mock.Mock()
-        action_event.params = {"username": "monitor", "password": "mongo123"}
-        self.harness.charm._on_set_password(action_event)
-        password = self.harness.charm.get_secret("app", "monitor-password")
+        params = {"username": "monitor", "password": "mongo123"}
+        self.harness.run_action("set-password", params)
+
+        password = self.harness.charm.operator.state.get_user_password(MonitorUser)
 
         updated_plan = self.harness.get_container_pebble_plan("mongod").to_dict()
         new_uri = (
             updated_plan.get("services")
-            .get("mongodb_exporter")
+            .get("mongodb-exporter")
             .get("environment")
             .get("MONGODB_URI")
         )
         expected_uri = uri_template.format(password="mongo123")
         self.assertEqual(expected_uri, new_uri)
 
-    @patch("tenacity.nap.time.sleep", MagicMock())
-    @patch("charm.USER_CREATING_MAX_ATTEMPTS", 1)
-    @patch("charm.USER_CREATION_COOLDOWN", 1)
-    @patch("charm.REPLICA_SET_INIT_CHECK_TIMEOUT", 1)
-    @patch("charm.MongoDBCharm._configure_container", return_value=None)
-    @patch("charm.MongoDBCharm._init_operator_user")
-    @patch("charm.MongoDBCharm._init_monitor_user")
-    @patch("charm.MongoDBCharm._connect_mongodb_exporter")
-    @patch("ops.model.Container.exists")
-    @patch("charm.MongoDBCharm._pull_licenses")
-    @patch("ops.framework.EventBase.defer")
-    @patch("charm.MongoDBCharm._set_data_dir_permissions")
-    @patch("charm.MongoDBConnection")
-    def test_backup_user_created(self, *unused):
-        """Tests what backup user was created."""
-        self.harness.charm._initialise_users.retry.wait = wait_none()
-        container = self.harness.model.unit.get_container("mongod")
-        self.harness.charm.app_peer_data["replica_set_initialised"] = json.dumps(True)
-        self.harness.set_can_connect(container, True)
-        self.harness.charm.on.start.emit()
-        password = self.harness.charm.get_secret("app", "backup-password")
-        self.harness.charm._initialise_users.retry.wait = wait_none()
-        self.assertIsNotNone(password)  # verify the password is set
-
-    @patch("charm.MongoDBConnection")
+    @patch("single_kernel_mongo.core.k8s_workload.KubernetesWorkload.exec")
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.handle_licenses")
+    @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.set_permissions")
     def test_set_password_provided(self, *unused):
         """Tests that a given password is set as the new mongodb password for backup user."""
-        container = self.harness.model.unit.get_container("mongod")
         self.harness.set_leader(True)
-        self.harness.set_can_connect(container, True)
-        self.harness.charm.on.start.emit()
-        action_event = mock.Mock()
-        action_event.params = {"password": "canonical123", "username": "backup"}
-        self.harness.charm._on_set_password(action_event)
-        new_password = self.harness.charm.get_secret("app", "backup-password")
+        self.harness.charm.operator.state.db_initialised = True
+        params = {"password": "canonical123", "username": "backup"}
+        self.harness.run_action("set-password", params)
+        new_password = self.harness.charm.operator.state.get_user_password(BackupUser)
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
 
     @patch_network_get(private_address="1.1.1.1")
-    @patch("charm.MongoDBCharm.has_backup_service")
-    @patch("charm.MongoDBBackups.get_pbm_status")
-    def test_set_backup_password_pbm_busy(self, pbm_status, has_backup_service, *unused):
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    def test_set_backup_password_pbm_busy(self, pbm_status):
         """Tests changes to passwords fail when pbm is restoring/backing up."""
         self.harness.set_leader(True)
-        original_password = "pass123"
-        action_event = mock.Mock()
-        has_backup_service.return_value = True
 
-        for username in ["backup", "monitor", "operator"]:
-            self.harness.charm.app_peer_data[f"{username}-password"] = original_password
-            action_event.params = {"username": username}
-            pbm_status.return_value = MaintenanceStatus("pbm")
-            self.harness.charm._on_set_password(action_event)
-            current_password = self.harness.charm.app_peer_data[f"{username}-password"]
-            action_event.fail.assert_called()
+        pbm_status.return_value = MaintenanceStatus("pbm")
+
+        for user in [BackupUser, MonitorUser, OperatorUser]:
+            original_password = self.harness.charm.operator.state.get_user_password(user)
+            with pytest.raises(ActionFailed):
+                self.harness.run_action("set-password", {"username": user.username})
+            current_password = self.harness.charm.operator.state.get_user_password(user)
             self.assertEqual(current_password, original_password)

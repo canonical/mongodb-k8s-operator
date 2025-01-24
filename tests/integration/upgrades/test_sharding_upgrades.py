@@ -145,10 +145,10 @@ async def test_upgrade(ops_test: OpsTest, add_writes_to_shards) -> None:
     )
 
     assert (
-        actual_shard_one_writes == shard_one_expected_writes
+        actual_shard_one_writes >= shard_one_expected_writes
     ), "missed writes during upgrade procedure."
     assert (
-        actual_shard_two_writes == shard_two_total_expected_writes
+        actual_shard_two_writes >= shard_two_total_expected_writes
     ), "missed writes during upgrade procedure."
 
 

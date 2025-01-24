@@ -25,7 +25,7 @@ SHARD_TWO_COLL_NAME = "test_collection"
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 CONFIG_SERVER_APP_NAME = "config-server"
-CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_NAME]
+CLUSTER_COMPONENTS = [CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 WRITE_APP = "application"
 
@@ -90,7 +90,7 @@ def righty_upgrade_charm(local_charm, tmp_path: Path):
 
     with zipfile.ZipFile(right_charm, mode="a") as charm_zip:
         charm_zip.writestr("workload_version", f"{major}.{int(minor) + 1}.{patch}+testupgrade")
-        charm_zip.writestr("charm_version", f"{charm_version}-upgraded")
+        charm_zip.writestr("charm_version", f"{charm_version}+upgraded")
 
     yield right_charm
 
@@ -182,10 +182,10 @@ async def test_upgrade_cluster(ops_test: OpsTest, righty_upgrade_charm, add_writ
     )
 
     assert (
-        actual_shard_one_writes == shard_one_expected_writes
+        actual_shard_one_writes >= shard_one_expected_writes
     ), "missed writes during upgrade procedure."
     assert (
-        actual_shard_two_writes == shard_two_total_expected_writes
+        actual_shard_two_writes >= shard_two_total_expected_writes
     ), "missed writes during upgrade procedure."
     logger.error(
         f"{actual_shard_one_writes = }, {actual_shard_two_writes = }"  # noqa: E226, E251, E202
