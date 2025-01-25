@@ -1,0 +1,79 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/1 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:57:42Z
+
+App                Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+config-server-one           active      2  mongodb-k8s             0  10.152.183.221  no       
+shard-one                   active      2  mongodb-k8s             1  10.152.183.115  no       
+shard-three                 active      2  mongodb-k8s             3  10.152.183.101  no       
+shard-two                   active    2/1  mongodb-k8s             2  10.152.183.51   no       
+
+Unit                  Workload  Agent      Address      Ports  Message
+config-server-one/0*  active    idle       10.1.79.140         Primary
+config-server-one/1   active    idle       10.1.79.141         
+shard-one/0*          active    idle       10.1.79.147         Primary
+shard-one/1           active    idle       10.1.79.151         
+shard-three/0*        active    idle       10.1.79.158         Primary
+shard-three/1         active    idle       10.1.79.159         
+shard-two/0           active    idle       10.1.79.157         
+shard-two/1*          active    executing  10.1.79.155         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-one-0: 01:36:34 ERROR unit.config-server-one/0.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1737768993, 2), \'signature\': {\'hash\': b\'\\x99a\\xbdB\\x06h\\x8f\\xb9\\x01M\\xc1L\\xf4\\x97\\xea\\xb8FQ\\x9cy\', \'keyId\': 7463659584188579841}}, \'operationTime\': Timestamp(1737768993, 2)}')
+unit-config-server-one-0: 01:36:34 ERROR unit.config-server-one/0.juju-log config-server:10: Failed to add shard-one to cluster
+unit-config-server-one-0: 01:36:34 ERROR unit.config-server-one/0.juju-log config-server:10: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-one, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-one\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1737768993, 2), \'signature\': {\'hash\': b\'\\x99a\\xbdB\\x06h\\x8f\\xb9\\x01M\\xc1L\\xf4\\x97\\xea\\xb8FQ\\x9cy\', \'keyId\': 7463659584188579841}}, \'operationTime\': Timestamp(1737768993, 2)}')
+unit-config-server-one-0: 01:36:44 ERROR unit.config-server-one/0.juju-log config-server:8: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1737769003, 5), 'signature': {'hash': b'-\\xad\\x9a\\xe5\\x11\\xd0\\x87!n\\xa0\\xee1\\xf9\\xcekw\\x86\\xaa\\x04#', 'keyId': 7463659584188579841}}, 'operationTime': Timestamp(1737769003, 5)}")
+unit-config-server-one-0: 01:36:44 ERROR unit.config-server-one/0.juju-log config-server:8: shard-three shard does not have the same auth as the config server.
+unit-config-server-one-0: 01:37:12 ERROR unit.config-server-one/0.juju-log config-server:10: Failed to add shard shard-two to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1737769031, 1), \'signature\': {\'hash\': b"\\x16\\x04\\x13T\\xd5\\xc8\\x04T\\x05{\\x8a\\xf2\\xb0\\r\'B\\x92\'\\xb9\\xf0", \'keyId\': 7463659584188579841}}, \'operationTime\': Timestamp(1737769031, 1)}')
+unit-config-server-one-0: 01:37:12 ERROR unit.config-server-one/0.juju-log config-server:10: shard-two shard does not have the same auth as the config server.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

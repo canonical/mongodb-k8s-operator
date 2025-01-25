@@ -1,0 +1,32 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: Primary
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:11:15Z
+
+App            Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             active       1  application                   0  10.152.183.184  no       
+mongodb-k8s             waiting      3  mongodb-k8s                   0  10.152.183.113  no       installing agent
+s3-integrator           active       1  s3-integrator  latest/edge  106  10.152.183.206  no       
+
+Unit              Workload     Agent  Address     Ports  Message
+application/0*    active       idle   10.1.0.210         
+mongodb-k8s/0*    maintenance  idle   10.1.0.205         backup started/running, backup id:'2025-01-25T02:11:09Z'
+mongodb-k8s/1     active       idle   10.1.0.207         
+mongodb-k8s/2     active       idle   10.1.0.208         
+s3-integrator/0*  active       idle   10.1.0.209         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+controller-0: 01:55:32 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-aws": finding filesystem info for new-mongodb-aws-mongodb-logs-b8c9cba5: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-aws-mongodb-logs-b8c9cba5-new-mongodb-aws-1" not found
+unit-new-mongodb-gcp-2: 02:03:15 ERROR unit.new-mongodb-gcp/2.juju-log s3-credentials:11: Failed to get pbm status: non-zero exit code 1 executing ['/usr/bin/pbm', 'status', '-o', 'json'], stdout='{"Error":"get status of backups: get storage: storage undefined"}\n', stderr=''
+controller-0: 02:10:01 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-gcp": finding filesystem info for new-mongodb-gcp-mongodb-logs-7fb00c39: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-gcp-mongodb-logs-7fb00c39-new-mongodb-gcp-2" not found
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
