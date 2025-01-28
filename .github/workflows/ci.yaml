@@ -37,7 +37,6 @@ jobs:
       - name: Check libs
         uses: canonical/charming-actions/check-libraries@2.6.2
         with:
-          charmcraft-channel: latest/candidate # TODO: remove after charmcraft 3.3 stable release
           credentials: ${{ secrets.CHARMHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           use-labels: false
@@ -57,7 +56,7 @@ jobs:
       - name: Run tests
         run: tox run -e unit
 
-    terraform-lint:
+  terraform-lint:
     name: Terraform - Lint
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -126,22 +125,22 @@ jobs:
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
       - name: Terraform deploy ${{ matrix.module.name }}
         working-directory: ${{ matrix.module.working_directory }}
+
         run: |
           juju add-model ${{ matrix.module.model_name }}
           terraform init
           terraform apply  -var "model_name=${{ matrix.module.model_name }}" -target null_resource.juju_wait_deployment -auto-approve
 
   build:
-    name: Build charm | ${{ matrix.path }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
     strategy:
       matrix:
         path:
           - .
           - tests/integration/ha_tests/application_charm
           - tests/integration/relation_tests/application-charm
+    name: Build charm | ${{ matrix.path }}
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
     with:
-      charmcraft-snap-channel: latest/candidate # TODO: remove after charmcraft 3.3 stable release
       path-to-charm-directory: ${{ matrix.path }}
 
   integration-test:
