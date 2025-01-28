@@ -81,7 +81,7 @@ resource "juju_integration" "mongodb_mongos-integration" {
   depends_on = [
     juju_application.mongos-k8s,
     module.mongodb-k8s,
-    juju_integration.data-integrator_mongos-k8s-integration
+    juju_integration.data-integrator_mongos-integration
   ]
 
 }
@@ -128,25 +128,6 @@ resource "juju_integration" "s3-integrator_mongodb-integration" {
     juju_integration.config-server_integrations,
   ]
 
-}
-
-resource "juju_integration" "grafana_agent_mongodb_integration" {
-  for_each = local.mongodb_apps
-
-  model = var.model_name
-
-  application {
-    name = juju_application.grafana-agent.name
-  }
-
-  application {
-    name = each.value.app_name
-  }
-
-  depends_on = [
-    juju_application.grafana-agent,
-    module.mongodb-k8s
-  ]
 }
 
 resource "null_resource" "juju_wait_deployment" {
