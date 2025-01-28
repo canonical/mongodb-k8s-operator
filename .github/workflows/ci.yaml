@@ -37,7 +37,6 @@ jobs:
       - name: Check libs
         uses: canonical/charming-actions/check-libraries@2.6.2
         with:
-          charmcraft-channel: latest/candidate # TODO: remove after charmcraft 3.3 stable release
           credentials: ${{ secrets.CHARMHUB_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           use-labels: false
@@ -107,16 +106,15 @@ jobs:
           terraform apply  -var "model_name=test" -target null_resource.simple_deployment_juju_wait_deployment -auto-approve
 
   build:
-    name: Build charm | ${{ matrix.path }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
     strategy:
       matrix:
         path:
           - .
           - tests/integration/ha_tests/application_charm
           - tests/integration/relation_tests/application-charm
+    name: Build charm | ${{ matrix.path }}
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
     with:
-      charmcraft-snap-channel: latest/candidate # TODO: remove after charmcraft 3.3 stable release
       path-to-charm-directory: ${{ matrix.path }}
 
   integration-test:
