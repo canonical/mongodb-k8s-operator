@@ -12,7 +12,7 @@ variable "config_server_app_name" {
 variable "config_server_replicas" {
   description = "Node count"
   type        = number
-  default     = 1
+  default     = 3
 }
 
 variable "shards" {
@@ -22,8 +22,8 @@ variable "shards" {
     replicas = number
   }))
   default = [
-    { name = "shard0", replicas = 2 },
-    { name = "shard1", replicas = 1 }
+    { name = "shard0", replicas = 3 },
+    { name = "shard1", replicas = 3 }
   ]
 }
 
