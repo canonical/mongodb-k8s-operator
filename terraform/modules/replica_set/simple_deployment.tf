@@ -1,5 +1,5 @@
 module "mongodb-k8s" {
-  source   = "../"
+  source   = "../../"
   app_name = var.app_name
   model    = var.model_name
   units    = var.simple_mongodb_units

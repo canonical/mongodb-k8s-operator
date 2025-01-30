@@ -56,10 +56,10 @@ jobs:
       - name: Run tests
         run: tox run -e unit
 
-  terraform-test:
-    name: Terraform - Lint and Simple Deployment
+  terraform-lint:
+    name: Terraform - Lint
     runs-on: ubuntu-22.04
-    timeout-minutes: 120
+    timeout-minutes: 10
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -80,7 +80,31 @@ jobs:
           terraform init
           terraform fmt
           terraform validate
-      - name: run checks - prepare
+
+  terraform-test:
+    name: Terraform - Run terraform tests
+    needs:
+      - terraform-lint
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    strategy:
+      matrix:
+        module:
+          - name: replica set tests
+            working_directory: terraform/modules/replica_set
+            model_name: test-rs
+          - name: sharded tests
+            working_directory: terraform/modules/sharded_cluster
+            model_name: test-sc
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install terraform snap
+        run: |
+          sudo snap install terraform --channel=latest/stable --classic
+      - name: juju set up
         run: |
           sudo snap install juju --channel=3.6/beta --classic
           sudo snap install juju-wait --channel=latest/stable --classic
@@ -99,11 +123,13 @@ jobs:
         run: |
           sg 'lxd' -c "juju bootstrap 'localhost' --config model-logs-size=10G"
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
-          juju add-model test
-      - name: Terraform deploy
-        working-directory: ./terraform/modules
+      - name: Terraform deploy ${{ matrix.module.name }}
+        working-directory: ${{ matrix.module.working_directory }}
+
         run: |
-          terraform apply  -var "model_name=test" -target null_resource.simple_deployment_juju_wait_deployment -auto-approve
+          juju add-model ${{ matrix.module.model_name }}
+          terraform init
+          terraform apply  -var "model_name=${{ matrix.module.model_name }}" -target null_resource.juju_wait_deployment -auto-approve
 
   build:
     strategy:
