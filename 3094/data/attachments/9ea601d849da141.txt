@@ -1,0 +1,44 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:33:54Z
+
+App                Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application                 active       1  application                   0  10.152.183.65   no       
+config-server-one           waiting      1  mongodb-k8s                   1  10.152.183.242  no       installing agent
+config-server-two           active       1  mongodb-k8s                   2  10.152.183.161  no       
+replication                 waiting      1  mongodb-k8s                   0  10.152.183.74   no       installing agent
+s3-integrator               blocked      1  s3-integrator  latest/edge  118  10.152.183.51   no       Missing parameters: ['access-key', 'secret-key']
+shard                       waiting      1  mongodb-k8s                   3  10.152.183.98   no       installing agent
+
+Unit                  Workload  Agent      Address       Ports  Message
+application/0*        active    idle       10.1.126.200         
+config-server-one/0*  error     idle       10.1.126.206         hook failed: "config-server-relation-joined"
+config-server-two/0*  active    idle       10.1.126.209         
+replication/0*        blocked   idle       10.1.126.203         sharding interface cannot be used by replicas
+s3-integrator/0*      blocked   executing  10.1.126.212         Missing parameters: ['access-key', 'secret-key']
+shard/0*              blocked   executing  10.1.126.213         Relation to s3-integrator is not supported, config role must be config-server
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-one-0: 01:32:37 ERROR unit.config-server-one/0.juju-log database:11: Charm is in sharding role: config-server. Does not support database interface.
+unit-config-server-one-0: 01:32:38 ERROR unit.config-server-one/0.juju-log database:11: Charm is in sharding role: config-server. Does not support database interface.
+unit-shard-0: 01:32:38 ERROR unit.shard/0.juju-log database:10: Charm is in sharding role: shard. Does not support database interface.
+unit-shard-0: 01:32:38 ERROR unit.shard/0.juju-log database:10: Charm is in sharding role: shard. Does not support database interface.
+unit-config-server-one-0: 01:32:40 ERROR unit.config-server-one/0.juju-log database:11: Charm is in sharding role: config-server. Does not support database interface.
+unit-shard-0: 01:32:40 ERROR unit.shard/0.juju-log database:10: Charm is in sharding role: shard. Does not support database interface.
+unit-config-server-one-0: 01:32:42 ERROR unit.config-server-one/0.juju-log database:11: Charm is in sharding role: config-server. Does not support database interface.
+unit-shard-0: 01:32:42 ERROR unit.shard/0.juju-log database:10: Charm is in sharding role: shard. Does not support database interface.
+unit-replication-0: 01:33:05 ERROR unit.replication/0.juju-log sharding:12: Charm is in sharding role: replication. Does not support sharding interface.
+unit-config-server-one-0: 01:33:05 ERROR juju.worker.uniter.context cannot apply changes: granting secrets access: cannot change access to "secret://ecca9d85-afa1-41d2-8aa2-94a09ad6352b/cufcmkc4m7kc7bcl5q7g" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+unit-config-server-one-0: 01:33:05 ERROR juju.worker.uniter.operation hook "config-server-relation-joined" (via hook dispatching script: dispatch) failed: granting secrets access: cannot change access to "secret://ecca9d85-afa1-41d2-8aa2-94a09ad6352b/cufcmkc4m7kc7bcl5q7g" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+unit-replication-0: 01:33:06 ERROR unit.replication/0.juju-log sharding:12: Charm is in sharding role: replication. Does not support sharding interface.
+unit-replication-0: 01:33:08 ERROR unit.replication/0.juju-log sharding:12: Charm is in sharding role: replication. Does not support sharding interface.
+unit-config-server-one-0: 01:33:11 ERROR juju.worker.uniter.context cannot apply changes: creating secrets: secret with label "config-server.12.extra.secret" already exists
+unit-config-server-one-0: 01:33:11 ERROR juju.worker.uniter.operation hook "config-server-relation-joined" (via hook dispatching script: dispatch) failed: creating secrets: secret with label "config-server.12.extra.secret" already exists
+unit-config-server-one-0: 01:33:22 ERROR juju.worker.uniter.context cannot apply changes: creating secrets: secret with label "config-server.12.extra.secret" already exists
+unit-config-server-one-0: 01:33:22 ERROR juju.worker.uniter.operation hook "config-server-relation-joined" (via hook dispatching script: dispatch) failed: creating secrets: secret with label "config-server.12.extra.secret" already exists
+unit-config-server-one-0: 01:33:43 ERROR juju.worker.uniter.context cannot apply changes: creating secrets: secret with label "config-server.12.extra.secret" already exists
+unit-config-server-one-0: 01:33:43 ERROR juju.worker.uniter.operation hook "config-server-relation-joined" (via hook dispatching script: dispatch) failed: creating secrets: secret with label "config-server.12.extra.secret" already exists
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

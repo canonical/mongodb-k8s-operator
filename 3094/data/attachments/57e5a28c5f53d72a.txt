@@ -1,0 +1,240 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:54:24Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application             waiting      1  application             0  10.152.183.235  no       
+config-server           active       3  mongodb-k8s             2  10.152.183.247  no       
+shard-one               waiting      3  mongodb-k8s             0  10.152.183.165  no       waiting for units to settle down
+shard-two               waiting      3  mongodb-k8s             1  10.152.183.244  no       waiting for units to settle down
+
+Unit              Workload  Agent  Address     Ports  Message
+application/0*    waiting   idle   10.1.4.200         
+config-server/0*  active    idle   10.1.4.236         
+config-server/1   active    idle   10.1.4.235         
+config-server/2   active    idle   10.1.4.234         
+shard-one/0*      blocked   idle   10.1.4.230         Charm revision (1+2553976-dirty-locally built) is not up-to date with config-server (61).
+shard-one/1       blocked   idle   10.1.4.229         Charm revision (1+2553976-dirty-locally built) is not up-to date with config-server (61).
+shard-one/2       blocked   idle   10.1.4.228         Charm revision (1+2553976-dirty-locally built) is not up-to date with config-server (61).
+shard-two/0*      active    idle   10.1.4.233         
+shard-two/1       blocked   idle   10.1.4.232         Charm revision (1+2553976-dirty-locally built) is not up-to date with config-server (61).
+shard-two/2       active    idle   10.1.4.231         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-0: 01:32:26 ERROR unit.config-server/0.juju-log upgrade-version-a:2: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles:[    {\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'clusterAdmin\', \'db\': \'admin\'},   ],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-0/charm/./src/charm.py", line 1173, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles:[    {\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'clusterAdmin\', \'db\': \'admin\'},   ],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-config-server-0: 01:32:33 ERROR unit.config-server/0.juju-log upgrade-version-a:2: Failed to create the operator user: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles:[    {\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'clusterAdmin\', \'db\': \'admin\'},   ],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-0/charm/./src/charm.py", line 1173, in _init_operator_user
+    process.wait_output()
+  File "/var/lib/juju/agents/unit-config-server-0/charm/venv/ops/pebble.py", line 1771, in wait_output
+    raise ExecError[AnyStr](self._command, exit_code, out_value, err_value)
+ops.pebble.ExecError: non-zero exit code 1 executing ['/usr/bin/mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles:[    {\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'},     {\'role\': \'clusterAdmin\', \'db\': \'admin\'},   ],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout='Enter password\n********************************', stderr='MongoServerError: not primary\n'
+unit-config-server-0: 01:34:32 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-one to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1738460072, 1), \'signature\': {\'hash\': b\'\\xbc_Y\\x0ea\\x83\\xc4\\x8e}\\xc2|\\x03\\xdb\\xe6\\xafvk\\xe1\\xa2"\', \'keyId\': 7466628647835664408}}, \'operationTime\': Timestamp(1738460072, 1)}')
+unit-config-server-0: 01:34:33 ERROR unit.config-server/0.juju-log config-server:7: shard-one shard does not have the same auth as the config server.
+unit-config-server-0: 01:35:09 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1738460108, 5), 'signature': {'hash': b'\\tF6\\xe4\\x8clp\\x14&\\xa8\\xec\\x01\\x1d\\xadd\\xb4t\\xbf\\xf3\\xe1', 'keyId': 7466628647835664408}}, 'operationTime': Timestamp(1738460108, 5)}")
+unit-config-server-0: 01:35:10 ERROR unit.config-server/0.juju-log config-server:7: shard-two shard does not have the same auth as the config server.
+unit-config-server-0: 01:35:27 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard shard-two to the config server, error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1738460127, 1), \'signature\': {\'hash\': b\'\\xa7MA\\xe3\\x8e/Y\\xc4b\\xf4\\xd3\\xd4G\\xab\\xe6@\\x8b..4\', \'keyId\': 7466628647835664408}}, \'operationTime\': Timestamp(1738460127, 1)}')
+unit-config-server-0: 01:35:27 ERROR unit.config-server/0.juju-log config-server:7: Failed to add shard-two to cluster
+unit-config-server-0: 01:35:27 ERROR unit.config-server/0.juju-log config-server:7: Deferring _on_relation_event for shards interface since: error=OperationFailure('Could not find host matching read preference { mode: "primary" } for set shard-two, full error: {\'ok\': 0.0, \'errmsg\': \'Could not find host matching read preference { mode: "primary" } for set shard-two\', \'code\': 133, \'codeName\': \'FailedToSatisfyReadPreference\', \'$clusterTime\': {\'clusterTime\': Timestamp(1738460127, 1), \'signature\': {\'hash\': b\'\\xa7MA\\xe3\\x8e/Y\\xc4b\\xf4\\xd3\\xd4G\\xab\\xe6@\\x8b..4\', \'keyId\': 7466628647835664408}}, \'operationTime\': Timestamp(1738460127, 1)}')
+unit-config-server-1: 01:51:26 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:27 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:29 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:30 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:31 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:32 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:34 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:35 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:36 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:37 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:37 ERROR unit.config-server/1.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-config-server-1: 01:51:39 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:40 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:42 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:43 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:45 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:46 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:47 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:48 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:50 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:51 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:51 ERROR unit.config-server/1.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-config-server-1: 01:51:53 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:54 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:56 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:57 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:51:58 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:00 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:01 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:02 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:03 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:05 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:05 ERROR unit.config-server/1.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-config-server-1: 01:52:09 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:17 ERROR unit.config-server/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-config-server-1/charm/src/charm.py", line 1870, in <module>
+    main(MongoDBCharm)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 516, in _emit
+    self.framework.reemit()
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 870, in reemit
+    self._reemit()
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/src/upgrades/mongodb_upgrades.py", line 155, in run_post_app_upgrade_task
+    self.run_post_upgrade_checks(event, finished_whole_cluster=False)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/src/upgrades/mongodb_upgrades.py", line 248, in run_post_upgrade_checks
+    if not self.is_cluster_able_to_read_write():
+  File "/var/lib/juju/agents/unit-config-server-1/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 523, in is_cluster_able_to_read_write
+    return self.is_sharded_cluster_able_to_read_write()
+  File "/var/lib/juju/agents/unit-config-server-1/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 546, in is_sharded_cluster_able_to_read_write
+    self.clear_db_collection(mongos_config, db_name)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/lib/charms/mongodb/v0/upgrade_helpers.py", line 581, in clear_db_collection
+    mongos.client.drop_database(db_name)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/_csot.py", line 119, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/synchronous/mongo_client.py", line 2236, in drop_database
+    with self._conn_for_writes(session, operation=_Op.DROP_DATABASE) as conn:
+  File "/usr/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/synchronous/mongo_client.py", line 1593, in _checkout
+    with server.checkout(handler=err_handler) as conn:
+  File "/usr/lib/python3.10/contextlib.py", line 135, in __enter__
+    return next(self.gen)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/synchronous/pool.py", line 1336, in checkout
+    conn = self._get_conn(checkout_started_time, handler=handler)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/synchronous/pool.py", line 1495, in _get_conn
+    conn = self.connect(handler=handler)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/synchronous/pool.py", line 1291, in connect
+    conn.hello()
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/synchronous/pool.py", line 379, in hello
+    return self._hello(None, None, None)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/synchronous/pool.py", line 425, in _hello
+    doc = self.command("admin", cmd, publish_events=False, exhaust_allowed=awaitable)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/synchronous/helpers.py", line 45, in inner
+    return func(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/synchronous/pool.py", line 538, in command
+    return command(
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/synchronous/network.py", line 218, in command
+    helpers_shared._check_command_response(
+  File "/var/lib/juju/agents/unit-config-server-1/charm/venv/lib/python3.10/site-packages/pymongo/helpers_shared.py", line 234, in _check_command_response
+    raise NotPrimaryError(errmsg, response)
+pymongo.errors.NotPrimaryError: Mongos is in quiesce mode and will shut down, full error: {'ok': 0.0, 'errmsg': 'Mongos is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 14813, '$clusterTime': {'clusterTime': Timestamp(1738461137, 7), 'signature': {'hash': b'\xd0\xca\x84\xee\x13\xb8\xe2H\xd7\xf0\xec\x07\x1fs\xd7\xbcc\xa9:\x1b', 'keyId': 7466628647835664408}}, 'operationTime': Timestamp(1738461137, 7), 'topologyVersion': {'processId': ObjectId('679ecb1e9856e8f24f82f34a'), 'counter': 1}}
+unit-config-server-1: 01:52:18 ERROR juju.worker.uniter.operation hook "leader-settings-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-config-server-1: 01:52:24 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:25 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:26 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:27 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:28 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:29 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:30 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:32 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:33 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:34 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:34 ERROR unit.config-server/1.juju-log Cluster is not healthy after refreshing unit. Will retry next juju event.
+unit-config-server-1: 01:52:36 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:37 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:38 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:39 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:40 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:41 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-1: 01:52:42 ERROR unit.config-server/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:52:43 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:52:44 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:52:46 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:52:47 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-application-0: 01:53:18 ERROR unit.application/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-application-0/charm/./src/charm.py", line 222, in <module>
+    main(ContinuousWritesApplication)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-application-0/charm/./src/charm.py", line 189, in _on_clear_continuous_writes_action
+    test_collection.drop()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/collection.py", line 1234, in drop
+    dbo.drop_collection(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/_csot.py", line 108, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/database.py", line 1249, in drop_collection
+    return self._drop_helper(name, session, comment)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/database.py", line 1163, in _drop_helper
+    with self.__client._conn_for_writes(session, operation=_Op.DROP) as connection:
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/mongo_client.py", line 1333, in _conn_for_writes
+    server = self._select_server(writable_server_selector, session, operation)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/mongo_client.py", line 1316, in _select_server
+    server = topology.select_server(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 368, in select_server
+    server = self._select_server(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 346, in _select_server
+    servers = self.select_servers(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 253, in select_servers
+    server_descriptions = self._select_servers_loop(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 303, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: 10.1.4.211:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),10.1.4.212:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),10.1.4.205:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 679ecff0d4f4447d04d6c453, topology_type: Unknown, servers: [<ServerDescription ('10.1.4.205', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.4.205:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('10.1.4.211', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.4.211:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('10.1.4.212', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.4.212:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+unit-application-0: 01:53:53 ERROR unit.application/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-application-0/charm/./src/charm.py", line 222, in <module>
+    main(ContinuousWritesApplication)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-application-0/charm/./src/charm.py", line 189, in _on_clear_continuous_writes_action
+    test_collection.drop()
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/collection.py", line 1234, in drop
+    dbo.drop_collection(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/_csot.py", line 108, in csot_wrapper
+    return func(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/database.py", line 1249, in drop_collection
+    return self._drop_helper(name, session, comment)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/database.py", line 1163, in _drop_helper
+    with self.__client._conn_for_writes(session, operation=_Op.DROP) as connection:
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/mongo_client.py", line 1333, in _conn_for_writes
+    server = self._select_server(writable_server_selector, session, operation)
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/mongo_client.py", line 1316, in _select_server
+    server = topology.select_server(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 368, in select_server
+    server = self._select_server(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 346, in _select_server
+    servers = self.select_servers(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 253, in select_servers
+    server_descriptions = self._select_servers_loop(
+  File "/var/lib/juju/agents/unit-application-0/charm/venv/pymongo/topology.py", line 303, in _select_servers_loop
+    raise ServerSelectionTimeoutError(
+pymongo.errors.ServerSelectionTimeoutError: 10.1.4.205:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),10.1.4.211:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),10.1.4.212:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 679ed013ce167e4e1c0e3a19, topology_type: Unknown, servers: [<ServerDescription ('10.1.4.205', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.4.205:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('10.1.4.211', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.4.211:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('10.1.4.212', 27018) server_type: Unknown, rtt: None, error=NetworkTimeout('10.1.4.212:27018: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
