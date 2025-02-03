@@ -1,0 +1,45 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [idle] active: 
+  config-server-one/1 [idle] active: Primary
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: Primary
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:53:13Z
+
+App                Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+config-server-one           active      2  mongodb-k8s             0  10.152.183.57   no       
+shard-one                   active      2  mongodb-k8s             1  10.152.183.226  no       
+shard-three                 active      2  mongodb-k8s             3  10.152.183.104  no       
+
+Unit                  Workload  Agent  Address     Ports  Message
+config-server-one/0   active    idle   10.1.91.76         
+config-server-one/1*  active    idle   10.1.91.77         Primary
+shard-one/0*          active    idle   10.1.91.82         
+shard-one/1           active    idle   10.1.91.83         Primary
+shard-three/0*        active    idle   10.1.91.94         Primary
+shard-three/1         active    idle   10.1.91.95         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-one-1: 01:35:40 ERROR unit.config-server-one/1.juju-log config-server:8: Failed to add shard shard-one to the config server, error=OperationFailure('Authentication failed., full error: {\'ok\': 0.0, \'errmsg\': \'Authentication failed.\', \'code\': 18, \'codeName\': \'AuthenticationFailed\', \'$clusterTime\': {\'clusterTime\': Timestamp(1738546538, 4), \'signature\': {\'hash\': b"Y)c\\xfe\\xe8\\x02\'\\x9b\\xc5\\xffs\\xff\\x86p\\xde\\tv\\xd5/\\xf3", \'keyId\': 7466999187549192217}}, \'operationTime\': Timestamp(1738546538, 4)}')
+unit-config-server-one-1: 01:35:40 ERROR unit.config-server-one/1.juju-log config-server:8: shard-one shard does not have the same auth as the config server.
+unit-config-server-one-1: 01:36:00 ERROR unit.config-server-one/1.juju-log config-server:8: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1738546560, 1), 'signature': {'hash': b'\\xa1\\xd3D)+\\x18\\xc0\\xba\\xab\\x90\\x0b\\xd6\\x95\\xd3\\x80\\xdb\\x9f\\xc9\\xc1\\xf1', 'keyId': 7466999187549192217}}, 'operationTime': Timestamp(1738546560, 1)}")
+unit-config-server-one-1: 01:36:01 ERROR unit.config-server-one/1.juju-log config-server:8: shard-two shard does not have the same auth as the config server.
+unit-config-server-one-1: 01:36:29 ERROR unit.config-server-one/1.juju-log config-server:8: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1738546588, 4), 'signature': {'hash': b'\\x8cl\\xf4;(\\xb5\\xb1\\x00\\xbe\\xc3f\\x86\\xbf\\x93\\x06u1TM\\xe3', 'keyId': 7466999187549192217}}, 'operationTime': Timestamp(1738546588, 4)}")
+unit-config-server-one-1: 01:36:29 ERROR unit.config-server-one/1.juju-log config-server:8: shard-three shard does not have the same auth as the config server.
+unit-shard-two-1: 01:51:14 ERROR unit.shard-two/1.juju-log Unable to access primary due to: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67a02111d6a176326c6841ad, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: RSGhost, rtt: 0.0006441149998863693>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
