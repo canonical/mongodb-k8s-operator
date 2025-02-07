@@ -1,7 +1,6 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-import calendar
 import json
 import logging
 import os
@@ -459,7 +458,7 @@ async def check_db_stepped_down(ops_test: OpsTest, sigterm_time: float, app_name
         for log in filtered_logs:
             item = json.loads(log)
             step_down_time = convert_time(item["t"]["$date"])
-            logger.warning(f"{step_down_time} ? {sigterm_time}")
+            logger.warning(f"{step_down_time=} ? {sigterm_time=}")
             if step_down_time >= sigterm_time:
                 return True
 
@@ -812,12 +811,12 @@ def filter_logs_by_startup(log):
     return True if '"newState":"STARTUP2","oldState":"REMOVED"' in log else False
 
 
-def convert_time(time_as_str: str) -> int:
+def convert_time(time_as_str: str) -> float:
     """Converts a string time representation to an integer time representation."""
     # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM'
     d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f%z")
 
-    return calendar.timegm(d.timetuple())
+    return d.timestamp()
 
 
 def get_highest_unit(ops_test: OpsTest, app_name: str) -> Unit:
