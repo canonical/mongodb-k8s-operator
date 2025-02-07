@@ -103,9 +103,6 @@ jobs:
           fetch-depth: 0
       - name: (GitHub hosted) Free up disk space
         timeout-minutes: 1
-        # If not (IS hosted or Data Platform hosted)
-        # `inputs.architecture == 'arm64' && matrix.groups.runner == null` means Data Platform hosted (default runner)
-        if: ${{ !(matrix.groups.is_hosted || matrix.groups.data_platform_hosted || (inputs.architecture == 'arm64' && matrix.groups.runner == null)) }}
         run: |
           printf '\nDisk usage before cleanup\n'
           df --human-readable
@@ -115,9 +112,6 @@ jobs:
           df --human-readable
       - name: (self hosted) Disk usage
         timeout-minutes: 1
-        # If IS hosted or Data Platform hosted
-        # `inputs.architecture == 'arm64' && matrix.groups.runner == null` means Data Platform hosted (default runner)
-        if: ${{ matrix.groups.is_hosted || matrix.groups.data_platform_hosted || (inputs.architecture == 'arm64' && matrix.groups.runner == null) }}
         run: df --human-readable
       - name: Install terraform snap
         run: |
@@ -139,6 +133,7 @@ jobs:
           sudo iptables -P FORWARD ACCEPT
       - name: Juju setup
         run: |
+          mkdir -p ~/.local/share/juju # Workaround for juju 3 strict snap
           sg 'lxd' -c "juju bootstrap 'localhost' --config model-logs-size=10G"
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
       - name: Terraform deploy ${{ matrix.module.name }}
