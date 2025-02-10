@@ -18,7 +18,7 @@ class MongoDBCharm(AbstractMongoCharm[MongoDBCharmConfig, MongoDBOperator]):
     operator_type = MongoDBOperator
     substrate = Substrates.K8S
     peer_rel_name = PeerRelationNames.PEERS
-    name = "mongodb-k8s-test"
+    name = "mongodb-k8s"
 
 
 if __name__ == "__main__":
