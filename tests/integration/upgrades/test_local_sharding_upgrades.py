@@ -125,7 +125,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         timeout=TIMEOUT,
     )
     # configure write app to use mongos uri
-    mongos_uri = await mongodb_uri(ops_test, app_name=CONFIG_SERVER_APP_NAME, port=MONGOS_PORT)
+    mongos_uri = await mongodb_uri(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, port=MONGOS_PORT, hostnames=True
+    )
     await ops_test.model.applications[WRITE_APP].set_config({"mongos-uri": mongos_uri})
 
 

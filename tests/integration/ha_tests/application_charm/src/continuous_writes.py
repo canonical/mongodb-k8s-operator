@@ -2,10 +2,11 @@
 # See LICENSE file for licensing details.
 
 """This file is meant to run in the background continuously writing entries to MongoDB."""
+
 import signal
 import sys
 
-from pymongo import MongoClient
+from pymongo import ASCENDING, MongoClient
 from pymongo.errors import PyMongoError
 from pymongo.write_concern import WriteConcern
 
@@ -27,6 +28,17 @@ def continous_writes(
     coll_name: str,
 ):
     write_value = starting_number
+
+    # First, create a unique index to avoid duplicate writes on upsert
+    # https://www.mongodb.com/docs/manual/reference/method/db.collection.update/#upsert-with-duplicate-values
+    client = MongoClient(
+        connection_string,
+        socketTimeoutMS=5000,
+    )
+    db = client[db_name]
+    test_collection = db[coll_name]
+    test_collection.create_index([("number", ASCENDING)], unique=True)
+    client.close()
 
     while run:
         client = MongoClient(

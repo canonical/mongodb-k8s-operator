@@ -162,11 +162,17 @@ async def mongodb_uri(
     app_name: str = APP_NAME,
     username: str = "operator",
     password: str | None = None,
+    hostnames: bool = False,
 ) -> str:
     if unit_ids is None:
         unit_ids = range(0, len(ops_test.model.applications[app_name].units))
 
-    addresses = [await get_address_of_unit(ops_test, unit_id, app_name) for unit_id in unit_ids]
+    if not hostnames:
+        addresses = [
+            await get_address_of_unit(ops_test, unit_id, app_name) for unit_id in unit_ids
+        ]
+    else:
+        addresses = [f"{app_name}-{unit_id}.{app_name}-endpoints" for unit_id in unit_ids]
     hosts = [f"{host}:{port}" for host in addresses]
     hosts = ",".join(hosts)
 
@@ -207,7 +213,10 @@ async def run_mongo_op(
     logger.info("Running mongo command: %r", mongo_cmd)
 
     create_pod_if_not_exists(
-        ops_test.model_name, HELPER_MONGO_POD_NAME, "mongo", f"mongo:{HELPER_MONGO_VERSION}"
+        ops_test.model_name,
+        HELPER_MONGO_POD_NAME,
+        "mongo",
+        f"mongo:{HELPER_MONGO_VERSION}",
     )
 
     while not is_pod_ready(ops_test.model_name, HELPER_MONGO_POD_NAME):
@@ -306,7 +315,9 @@ async def check_if_test_documents_stored(
     query_filter = json.dumps({"$or": [{"uid": test_doc["uid"]} for test_doc in o_test_docs]})
 
     count_documents = await run_mongo_op(
-        ops_test, f"db.{collection}.countDocuments({query_filter})", **run_mongo_op_kwargs
+        ops_test,
+        f"db.{collection}.countDocuments({query_filter})",
+        **run_mongo_op_kwargs,
     )
     assert count_documents.succeeded and count_documents.data == 2
 
