@@ -171,7 +171,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 
     # Force delete the leader and scale down
     await kubectl_delete(ops_test, leader_unit, False)
-    await scale_application(ops_test, app, expected_units)
+    await scale_application(ops_test, app, expected_units, raise_on_blocked=False)
 
     # grab unit hosts
     hostnames = await get_units_hostnames(ops_test)

@@ -263,7 +263,7 @@ async def test_multi_backup(ops_test: OpsTest, github_secrets, continuous_writes
     }
     await ops_test.model.applications[S3_APP_NAME].set_config(configuration_parameters)
 
-    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=20)
+    await ops_test.model.wait_for_idle(apps=[db_app_name], status="active", idle_period=40)
 
     # create a backup as soon as possible. might not be immediately possible since only one backup
     # can happen at a time.

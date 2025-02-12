@@ -86,7 +86,11 @@ async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
 
 
 async def scale_application(
-    ops_test: OpsTest, application_name: str, desired_count: int, wait: bool = True
+    ops_test: OpsTest,
+    application_name: str,
+    desired_count: int,
+    wait: bool = True,
+    raise_on_blocked: bool = True,
 ) -> None:
     """Scale a given application to the desired unit count.
 
@@ -96,6 +100,7 @@ async def scale_application(
         desired_count: The number of units to scale to
         wait: Boolean indicating whether to wait until units
             reach desired count
+        raise_on_blocked: Should the wait raise on blocked?
     """
     if len(ops_test.model.applications[application_name].units) == desired_count:
         return
@@ -109,9 +114,8 @@ async def scale_application(
                 status="active",
                 timeout=TIMEOUT,
                 wait_for_exact_units=desired_count,
-                # Can be temporarily blocked on scale down because of post upgrade checks
-                raise_on_blocked=False,
                 raise_on_error=False,
+                raise_on_blocked=raise_on_blocked,
             )
 
     assert len(ops_test.model.applications[application_name].units) == desired_count
