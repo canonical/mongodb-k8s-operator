@@ -1,0 +1,59 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] waiting: Waiting for secrets from config-server
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] waiting: Waiting for secrets from config-server
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] waiting: Waiting for secrets from config-server
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] waiting: Waiting for secrets from config-server
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [idle] active: Primary
+  config-server-one/1 [idle] active: 
+  shard-one/0 [idle] active: Primary
+  shard-one/1 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:17:10Z
+
+App                Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+config-server-one           active      2  mongodb-k8s             0  10.152.183.141  no       
+shard-one                   active      2  mongodb-k8s             1  10.152.183.131  no       
+shard-three                 active      2  mongodb-k8s             3  10.152.183.50   no       
+
+Unit                  Workload  Agent  Address      Ports  Message
+config-server-one/0*  active    idle   10.1.76.141         
+config-server-one/1   active    idle   10.1.76.140         
+shard-one/0*          active    idle   10.1.76.146         Primary
+shard-one/1           active    idle   10.1.76.147         
+shard-three/0*        active    idle   10.1.76.158         Primary
+shard-three/1         active    idle   10.1.76.159         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-one-0: 01:57:43 ERROR unit.config-server-one/0.juju-log config-server:9: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1739325462, 3), 'signature': {'hash': b'o%4\\xd9\\xba\\x0c\\x95\\xfb\\x06\\xaea\\xf4\\xad\\x90\\xc2\\x84\\x15\\xc4HR', 'keyId': 7470344954187874328}}, 'operationTime': Timestamp(1739325462, 3)}")
+unit-config-server-one-0: 01:57:43 ERROR unit.config-server-one/0.juju-log config-server:9: shard-one shard does not have the same auth as the config server.
+unit-config-server-one-0: 01:57:46 ERROR unit.config-server-one/0.juju-log config-server:10: Failed to add shard shard-three to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1739325466, 3), 'signature': {'hash': b'\\xe4d.\\xc4\\x17_J\\xc9B\\xde\\x8aF@.=N\\x81\\x0f\\x10M', 'keyId': 7470344954187874328}}, 'operationTime': Timestamp(1739325466, 3)}")
+unit-config-server-one-0: 01:57:47 ERROR unit.config-server-one/0.juju-log config-server:10: Failed to add shard shard-one to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1739325466, 3), 'signature': {'hash': b'\\xe4d.\\xc4\\x17_J\\xc9B\\xde\\x8aF@.=N\\x81\\x0f\\x10M', 'keyId': 7470344954187874328}}, 'operationTime': Timestamp(1739325466, 3)}")
+unit-config-server-one-0: 01:57:47 ERROR unit.config-server-one/0.juju-log config-server:10: shard-one shard does not have the same auth as the config server.
+unit-config-server-one-0: 01:58:16 ERROR unit.config-server-one/0.juju-log config-server:8: Failed to add shard shard-two to the config server, error=OperationFailure("Authentication failed., full error: {'ok': 0.0, 'errmsg': 'Authentication failed.', 'code': 18, 'codeName': 'AuthenticationFailed', '$clusterTime': {'clusterTime': Timestamp(1739325495, 3), 'signature': {'hash': b'\\x8f%\\x0b_\\x83h\\xaeS\\x9c[p\\xf89~Y[I\\x13Z\\x92', 'keyId': 7470344954187874328}}, 'operationTime': Timestamp(1739325495, 3)}")
+unit-config-server-one-0: 01:58:16 ERROR unit.config-server-one/0.juju-log config-server:8: shard-two shard does not have the same auth as the config server.
+unit-shard-two-0: 02:05:03 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "63f09220-3844-4282-8c52-e1405f7df54a:r#9#config-server-one": settings 63f09220-3844-4282-8c52-e1405f7df54a:r#9#config-server-one not found (not found)
+unit-shard-two-1: 02:15:12 ERROR unit.shard-two/1.juju-log Unable to access primary due to: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67ac042f78b43b4b867dce40, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: RSGhost, rtt: 0.0007083039999997709>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
