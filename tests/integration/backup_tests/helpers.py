@@ -1,6 +1,8 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+from logging import getLogger
+
 import ops
 from pytest_operator.plugin import OpsTest
 from tenacity import RetryError, Retrying, stop_after_attempt, wait_fixed
@@ -14,6 +16,7 @@ from ..ha_tests.helpers import (
 
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 10 * 60
+logger = getLogger()
 
 
 async def create_and_verify_backup(ops_test: OpsTest) -> None:
@@ -66,9 +69,11 @@ async def count_logical_backups(db_unit: ops.model.Unit) -> int:
     list_result = await action.wait()
     list_result = list_result.results["backups"]
     list_result = list_result.split("\n")
+    logger.info(f"Count logical backups: {list_result=}")
     backups = 0
     for res in list_result:
-        backups += 1 if "logical" in res else 0
+        if "logical" in res:
+            backups += 1
 
     return backups
 
@@ -81,7 +86,8 @@ async def count_failed_backups(db_unit: ops.model.Unit) -> int:
     list_result = list_result.split("\n")
     failed_backups = 0
     for res in list_result:
-        failed_backups += 1 if "failed" in res else 0
+        if "failed" in res:
+            failed_backups += 1
 
     return failed_backups
 

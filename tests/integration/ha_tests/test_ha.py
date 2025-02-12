@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 
 import pytest
 from pytest_operator.plugin import OpsTest
+from tenacity import RetryError, Retrying, stop_after_delay, wait_fixed
 
 from ..helpers import APP_NAME, check_or_scale_app
 from .helpers import (
@@ -94,14 +95,20 @@ async def test_storage_re_use(ops_test, continuous_writes):
     current_number_units = len(ops_test.model.applications[app].units)
     await scale_application(ops_test, app, current_number_units - 1)
     await ops_test.model.wait_for_idle(
-        apps=[app], status="active", timeout=1000, wait_for_exact_units=(current_number_units - 1)
+        apps=[app],
+        status="active",
+        timeout=1000,
+        wait_for_exact_units=(current_number_units - 1),
     )
 
     # k8s will automatically use the old storage from the storage pool
     removal_time = datetime.now(timezone.utc).timestamp()
     await scale_application(ops_test, app, current_number_units)
     await ops_test.model.wait_for_idle(
-        apps=[app], status="active", timeout=1000, wait_for_exact_units=(current_number_units)
+        apps=[app],
+        status="active",
+        timeout=1000,
+        wait_for_exact_units=(current_number_units),
     )
 
     # for this test, we only scaled up the application by one unit. So it the highest unit will be
@@ -109,7 +116,7 @@ async def test_storage_re_use(ops_test, continuous_writes):
     new_unit = get_highest_unit(ops_test, app)
     assert await reused_storage(
         ops_test, new_unit, removal_time
-    ), "attached storage not properly re-used by MongoDB."
+    ), "attached storage not properly reused by MongoDB."
 
     # verify presence of primary, replica set member configuration, and number of primaries
     hostnames = await get_units_hostnames(ops_test)
@@ -164,7 +171,7 @@ async def test_scale_down_capablities(ops_test: OpsTest, continuous_writes) -> N
 
     # Force delete the leader and scale down
     await kubectl_delete(ops_test, leader_unit, False)
-    await scale_application(ops_test, app, expected_units)
+    await scale_application(ops_test, app, expected_units, raise_on_blocked=False)
 
     # grab unit hosts
     hostnames = await get_units_hostnames(ops_test)
@@ -365,8 +372,7 @@ async def test_restart_db_process(ops_test, continuous_writes):
     old_primary = await get_replica_set_primary(ops_test)
 
     # send SIGTERM
-    my_tem = datetime.now(timezone.utc)
-    sig_term_time = my_tem.timestamp()
+    sig_term_time = datetime.now(timezone.utc).timestamp()
     await send_signal_to_pod_container_process(
         ops_test,
         old_primary.name,
@@ -377,7 +383,15 @@ async def test_restart_db_process(ops_test, continuous_writes):
     # verify that a stepdown was performed on restart. SIGTERM should send a graceful restart and
     # send a replica step down signal. Pipes k8s logs output to see if any of the pods received a
     # stepdown request. Must be done early otherwise continuous writes may flood the logs
-    await check_db_stepped_down(ops_test, sig_term_time)
+    try:
+        for attempt in Retrying(stop=stop_after_delay(30), wait=wait_fixed(3)):
+            with attempt:
+                assert await check_db_stepped_down(
+                    ops_test,
+                    sig_term_time,
+                ), "old primary departed without stepping down"
+    except RetryError:
+        assert False, "old primary departed without stepping down."
 
     # sleep for twice the median election time
     time.sleep(MEDIAN_REELECTION_TIME * 2)
@@ -425,7 +439,11 @@ async def test_full_cluster_crash(ops_test: OpsTest, continuous_writes):
     await asyncio.gather(
         *[
             send_signal_to_pod_container_process(
-                ops_test, unit.name, MONGODB_CONTAINER_NAME, MONGOD_PROCESS_NAME, "SIGKILL"
+                ops_test,
+                unit.name,
+                MONGODB_CONTAINER_NAME,
+                MONGOD_PROCESS_NAME,
+                "SIGKILL",
             )
             for unit in ops_test.model.applications[mongodb_application_name].units
         ]
@@ -496,7 +514,11 @@ async def test_full_cluster_restart(ops_test: OpsTest, continuous_writes):
     await asyncio.gather(
         *[
             send_signal_to_pod_container_process(
-                ops_test, unit.name, MONGODB_CONTAINER_NAME, MONGOD_PROCESS_NAME, "SIGTERM"
+                ops_test,
+                unit.name,
+                MONGODB_CONTAINER_NAME,
+                MONGOD_PROCESS_NAME,
+                "SIGTERM",
             )
             for unit in ops_test.model.applications[mongodb_application_name].units
         ]

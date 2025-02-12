@@ -34,7 +34,11 @@ CONFIG_SERVER_APP_NAME = "config-server"
 CONFIG_SERVER_APP_NAME_NEW = "config-server-new"
 SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 CLUSTER_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_NAME]
-CLUSTER_APPS_NEW = [SHARD_ONE_APP_NAME_NEW, SHARD_TWO_APP_NAME_NEW, CONFIG_SERVER_APP_NAME_NEW]
+CLUSTER_APPS_NEW = [
+    SHARD_ONE_APP_NAME_NEW,
+    SHARD_TWO_APP_NAME_NEW,
+    CONFIG_SERVER_APP_NAME_NEW,
+]
 SHARD_REL_NAME = "sharding"
 CONFIG_SERVER_REL_NAME = "config-server"
 S3_REL_NAME = "s3-credentials"
@@ -234,6 +238,11 @@ async def test_rotate_backup_password(ops_test: OpsTest) -> None:
             backups = await backup_helpers.count_logical_backups(leader_unit)
             assert backups == 2, "Backup not created after password rotation."
 
+    # Wait for backup finished.
+    await ops_test.model.wait_for_idle(
+        apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
+    )
+
 
 @pytest.mark.group(1)
 @pytest.mark.abort_on_fail
@@ -261,7 +270,7 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
     prev_backups = await backup_helpers.count_logical_backups(leader_unit)
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
-    ),
+    )
     action = await leader_unit.run_action(action_name="create-backup")
     first_backup = await action.wait()
     assert first_backup.status == "completed", "First backup not started."
@@ -274,7 +283,7 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
 
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
-    ),
+    )
 
     # add writes to be cleared after restoring the backup.
     await add_and_verify_unwanted_writes(ops_test, cluster_writes)
@@ -291,7 +300,7 @@ async def test_restore_backup(ops_test: OpsTest, add_writes_to_shards) -> None:
 
     await ops_test.model.wait_for_idle(
         apps=[CONFIG_SERVER_APP_NAME], status="active", idle_period=20
-    ),
+    )
 
     await verify_writes_restored(ops_test, cluster_writes)
 

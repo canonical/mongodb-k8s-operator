@@ -38,7 +38,12 @@ BACKUP_USERNAME = "backup"
 PASSWORD = "operator-password"
 DIFFERENT_PASSWORD = "shard-set-password"
 CONFIG_SERVER_NEEDS_SHARD_STATUS = "missing relation to shard(s)"
-SHARD_NEEDS_CONFIG_SERVER_STATUS = "missing relation to config server"
+SHARD_NEEDS_CONFIG_SERVER_STATUS = "Missing relation to config-server."
+
+# for now we have a large timeout due to the slow drainage of the `config.system.sessions`
+# collection. More info here:
+# https://stackoverflow.com/questions/77364840/mongodb-slow-chunk-migration-for-collection-config-system-sessions-with-remov
+TIMEOUT = 30 * 60
 
 
 @pytest.mark.group(1)
@@ -97,16 +102,28 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
 
     # verify that Charmed MongoDB is blocked and reports incorrect credentials
     await wait_for_mongodb_units_blocked(
-        ops_test, CONFIG_SERVER_APP_NAME, status=CONFIG_SERVER_NEEDS_SHARD_STATUS, timeout=300
+        ops_test,
+        CONFIG_SERVER_APP_NAME,
+        status=CONFIG_SERVER_NEEDS_SHARD_STATUS,
+        timeout=300,
     )
     await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_ONE_APP_NAME, status=SHARD_NEEDS_CONFIG_SERVER_STATUS, timeout=300
+        ops_test,
+        SHARD_ONE_APP_NAME,
+        status=SHARD_NEEDS_CONFIG_SERVER_STATUS,
+        timeout=300,
     )
     await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_TWO_APP_NAME, status=SHARD_NEEDS_CONFIG_SERVER_STATUS, timeout=300
+        ops_test,
+        SHARD_TWO_APP_NAME,
+        status=SHARD_NEEDS_CONFIG_SERVER_STATUS,
+        timeout=300,
     )
     await wait_for_mongodb_units_blocked(
-        ops_test, SHARD_THREE_APP_NAME, status=SHARD_NEEDS_CONFIG_SERVER_STATUS, timeout=300
+        ops_test,
+        SHARD_THREE_APP_NAME,
+        status=SHARD_NEEDS_CONFIG_SERVER_STATUS,
+        timeout=300,
     )
 
 
@@ -223,11 +240,13 @@ async def test_set_operator_password(ops_test: OpsTest, username):
         password=PASSWORD,
     )
 
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_APPS,
-        status="active",
-        idle_period=30,
-    ),
+    (
+        await ops_test.model.wait_for_idle(
+            apps=CLUSTER_APPS,
+            status="active",
+            idle_period=30,
+        ),
+    )
     # verify that the password was set across the cluster
     for cluster_app_name in CLUSTER_APPS:
         operator_password = await get_password(
@@ -283,11 +302,13 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
     await ops_test.model.wait_for_idle(
         apps=[
             CONFIG_SERVER_APP_NAME,
-            SHARD_THREE_APP_NAME,
+            SHARD_ONE_APP_NAME,
+            SHARD_TWO_APP_NAME,
             SHARD_THREE_APP_NAME,
         ],
         idle_period=15,
         status="active",
+        timeout=TIMEOUT,
     )
 
     # verify that config server turned back on the balancer
@@ -325,6 +346,7 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
         ],
         idle_period=15,
         status="active",
+        timeout=TIMEOUT,
         raise_on_error=False,
     )
 
@@ -337,6 +359,7 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME],
         idle_period=15,
         status="active",
+        timeout=TIMEOUT,
         raise_on_error=False,
     )
 
@@ -374,6 +397,7 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
         apps=[SHARD_TWO_APP_NAME],
         idle_period=15,
         status="active",
+        timeout=TIMEOUT,
         raise_on_error=False,
     )
 
@@ -382,6 +406,7 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
         apps=[SHARD_TWO_APP_NAME],
         idle_period=15,
         status="active",
+        timeout=TIMEOUT,
         raise_on_error=False,
     )
 
@@ -391,6 +416,7 @@ async def test_unconventual_shard_removal(ops_test: OpsTest):
         apps=[CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME],
         idle_period=15,
         status="active",
+        timeout=TIMEOUT,
         raise_on_error=False,
     )
 

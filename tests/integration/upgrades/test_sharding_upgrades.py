@@ -23,7 +23,7 @@ SHARD_TWO_COLL_NAME = "test_collection"
 SHARD_ONE_APP_NAME = "shard-one"
 SHARD_TWO_APP_NAME = "shard-two"
 CONFIG_SERVER_APP_NAME = "config-server"
-CLUSTER_COMPONENTS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME, CONFIG_SERVER_APP_NAME]
+CLUSTER_COMPONENTS = [CONFIG_SERVER_APP_NAME, SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 SHARD_APPS = [SHARD_ONE_APP_NAME, SHARD_TWO_APP_NAME]
 WRITE_APP = "application"
 TIMEOUT = 15 * 60
@@ -96,7 +96,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
     # configure write app to use mongos uri
-    mongos_uri = await mongodb_uri(ops_test, app_name=CONFIG_SERVER_APP_NAME, port=MONGOS_PORT)
+    mongos_uri = await mongodb_uri(
+        ops_test, app_name=CONFIG_SERVER_APP_NAME, port=MONGOS_PORT, hostnames=True
+    )
     await ops_test.model.applications[WRITE_APP].set_config({"mongos-uri": mongos_uri})
 
 

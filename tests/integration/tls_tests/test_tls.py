@@ -45,7 +45,10 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             )
             # TODO: remove raise_on_error when we move to juju 3.5 (DPE-4996)
             await ops_test.model.wait_for_idle(
-                apps=[app_name], status="active", timeout=DEPLOYMENT_TIMEOUT, raise_on_error=False
+                apps=[app_name],
+                status="active",
+                timeout=DEPLOYMENT_TIMEOUT,
+                raise_on_error=False,
             )
 
     tls_app_deployed = False
@@ -59,10 +62,15 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         async with ops_test.fast_forward():
             config = {"ca-common-name": "Test CA"}
             await ops_test.model.deploy(
-                TLS_CERTIFICATES_APP_NAME, channel="stable", config=config, series="jammy"
+                TLS_CERTIFICATES_APP_NAME,
+                channel="stable",
+                config=config,
+                series="jammy",
             )
             await ops_test.model.wait_for_idle(
-                apps=[TLS_CERTIFICATES_APP_NAME], status="active", timeout=DEPLOYMENT_TIMEOUT
+                apps=[TLS_CERTIFICATES_APP_NAME],
+                status="active",
+                timeout=DEPLOYMENT_TIMEOUT,
             )
 
 

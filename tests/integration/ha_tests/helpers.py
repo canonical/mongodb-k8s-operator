@@ -8,7 +8,6 @@ import string
 import subprocess
 import tarfile
 import tempfile
-import time
 from asyncio import gather
 from datetime import datetime
 from pathlib import Path
@@ -87,7 +86,11 @@ async def get_application_name(ops_test: OpsTest, application_name: str) -> str:
 
 
 async def scale_application(
-    ops_test: OpsTest, application_name: str, desired_count: int, wait: bool = True
+    ops_test: OpsTest,
+    application_name: str,
+    desired_count: int,
+    wait: bool = True,
+    raise_on_blocked: bool = True,
 ) -> None:
     """Scale a given application to the desired unit count.
 
@@ -97,6 +100,7 @@ async def scale_application(
         desired_count: The number of units to scale to
         wait: Boolean indicating whether to wait until units
             reach desired count
+        raise_on_blocked: Should the wait raise on blocked?
     """
     if len(ops_test.model.applications[application_name].units) == desired_count:
         return
@@ -110,8 +114,8 @@ async def scale_application(
                 status="active",
                 timeout=TIMEOUT,
                 wait_for_exact_units=desired_count,
-                raise_on_blocked=True,
                 raise_on_error=False,
+                raise_on_blocked=raise_on_blocked,
             )
 
     assert len(ops_test.model.applications[application_name].units) == desired_count
@@ -441,9 +445,8 @@ async def get_units_hostnames(ops_test: OpsTest) -> List[str]:
     ]
 
 
-async def check_db_stepped_down(ops_test: OpsTest, sigterm_time: datetime):
+async def check_db_stepped_down(ops_test: OpsTest, sigterm_time: float, app_name: str = APP_NAME):
     # loop through all units that aren't the old primary
-    app_name = await get_app_name(ops_test)
     for unit in ops_test.model.applications[app_name].units:
         # these log files can get quite large. According to the Juju team the 'run' command
         # cannot be used for more than 16MB of data so it is best to use juju ssh or juju scp.
@@ -459,10 +462,11 @@ async def check_db_stepped_down(ops_test: OpsTest, sigterm_time: datetime):
         for log in filtered_logs:
             item = json.loads(log)
             step_down_time = convert_time(item["t"]["$date"])
+            logger.warning(f"{step_down_time=} ? {sigterm_time=}")
             if step_down_time >= sigterm_time:
-                return
+                return True
 
-    assert False, "primary departed without stepping down."
+    return False
 
 
 async def set_log_level(ops_test: OpsTest, level: int, component: str = None) -> None:
@@ -647,12 +651,18 @@ def isolate_instance_from_cluster(ops_test: OpsTest, unit_name: str) -> None:
         # Apply the generated manifest, chaosmesh would then make the pod inaccessible
         env = os.environ
         env["KUBECONFIG"] = os.path.expanduser("~/.kube/config")
-        command_result = subprocess.check_output(
-            " ".join(["microk8s", "kubectl", "apply", "-f", temp_file.name]),
-            shell=True,
-            env=env,
-            stderr=subprocess.STDOUT,
-        )
+        try:
+            command_result = subprocess.check_output(
+                " ".join(["microk8s", "kubectl", "apply", "-f", temp_file.name]),
+                shell=True,
+                env=env,
+                stderr=subprocess.STDOUT,
+            )
+        except subprocess.CalledProcessError as err:
+            logger.error(
+                f"Failed to apply network isolation: [{err.returncode}] {err.stderr=}, {err.stdout=}"
+            )
+            raise
         logger.info("Result of isolating unit from cluster is '%s'", command_result)
 
 
@@ -769,7 +779,7 @@ async def reused_storage(ops_test: OpsTest, reused_unit: Unit, removal_time: dat
     MongoDB startup message indicates storage reuse:
         If member transitions to STARTUP2 from STARTUP then it is syncing/getting data from
         primary.
-        If member transitions to STARTUP2 from REMOVED then it is re-using the storage we
+        If member transitions to STARTUP2 from REMOVED then it is reusing the storage we
         provided.
     """
     cat_cmd = [
@@ -805,15 +815,12 @@ def filter_logs_by_startup(log):
     return True if '"newState":"STARTUP2","oldState":"REMOVED"' in log else False
 
 
-def convert_time(time_as_str: str) -> int:
+def convert_time(time_as_str: str) -> float:
     """Converts a string time representation to an integer time representation."""
-    # Remove the timezone information (the +00:00 part) for simplicity
-    time_as_str = time_as_str[:-6]
-
     # parse time representation, provided in this format: 'YYYY-MM-DDTHH:MM:SS.MMM'
-    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f")
+    d = datetime.strptime(time_as_str, "%Y-%m-%dT%H:%M:%S.%f%z")
 
-    return time.mktime(d.timetuple()) + d.microsecond / 1_000_000
+    return d.timestamp()
 
 
 def get_highest_unit(ops_test: OpsTest, app_name: str) -> Unit:

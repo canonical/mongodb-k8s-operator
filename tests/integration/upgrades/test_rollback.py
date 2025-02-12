@@ -93,10 +93,12 @@ async def test_rollback(ops_test: OpsTest, local_charm, faulty_upgrade_charm) ->
     logger.info("Re-refresh the charm")
     await mongodb_application.refresh(path=local_charm)
     # sleep to ensure that active status from before re-refresh does not affect below check
+
     time.sleep(15)
     await ops_test.model.block_until(
         lambda: all(unit.workload_status == "active" for unit in mongodb_application.units)
-        and all(unit.agent_status == "idle" for unit in mongodb_application.units)
+        and all(unit.agent_status == "idle" for unit in mongodb_application.units),
+        wait_period=15,
     )
 
     logger.info("Running resume-refresh on the leader unit")
