@@ -17,7 +17,7 @@ from single_kernel_mongo.exceptions import (
 )
 from tenacity import Future, RetryError
 
-from charm import MongoDBCharm
+from charm import MongoDBK8sCharm
 
 from .helpers import patch_network_get
 
@@ -45,7 +45,7 @@ class TestUpgrades(unittest.TestCase):
     @patch("single_kernel_mongo.managers.mongodb_operator.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
     def setUp(self, *unused):
-        self.harness = Harness(MongoDBCharm)
+        self.harness = Harness(MongoDBK8sCharm)
         self.addCleanup(self.harness.cleanup)
         mongo_resource = {
             "registrypath": "mongo:4.4",

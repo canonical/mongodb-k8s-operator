@@ -10,7 +10,7 @@ from ops.testing import Harness
 from parameterized import parameterized
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 
-from charm import MongoDBCharm
+from charm import MongoDBK8sCharm
 
 from .helpers import patch_network_get
 
@@ -51,7 +51,7 @@ class TestMongoProvider(unittest.TestCase):
     @patch("single_kernel_mongo.managers.mongodb_operator.get_charm_revision")
     @patch_network_get(private_address="1.1.1.1")
     def setUp(self, *unused):
-        self.harness = Harness(MongoDBCharm)
+        self.harness = Harness(MongoDBK8sCharm)
         mongo_resource = {
             "registrypath": "mongo:4.4",
         }
