@@ -1,0 +1,21 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:45:46Z
+
+App          Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application           waiting      1  application             0  10.152.183.149  no       
+mongodb-k8s  6.0.6    error        3  mongodb-k8s  6/edge    62  10.152.183.85   no       create Pod mongodb-k8s-2 in StatefulSet mongodb-k8s failed error: failed to create PVC mongodb-k8s-mongodb-logs-0dd26...
+
+Unit            Workload     Agent      Address      Ports  Message
+application/0*  waiting      idle       10.1.29.136         
+mongodb-k8s/0*  maintenance  executing  10.1.29.141         starting MongoDB
+mongodb-k8s/1   maintenance  executing  10.1.29.144         starting MongoDB
+mongodb-k8s/2   maintenance  executing  10.1.29.145         installing charm software
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:45:37 ERROR unit.mongodb-k8s/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:45:39 ERROR unit.mongodb-k8s/0.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
