@@ -12,8 +12,6 @@ from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailu
 
 from charm import MongoDBK8sCharm
 
-from .helpers import patch_network_get
-
 PYMONGO_EXCEPTIONS = [
     (ConnectionFailure("error message"), ConnectionFailure),
     (ConfigurationError("error message"), ConfigurationError),
@@ -49,7 +47,6 @@ def patch_upgrades(monkeypatch):
 
 class TestMongoProvider(unittest.TestCase):
     @patch("single_kernel_mongo.managers.mongodb_operator.get_charm_revision")
-    @patch_network_get(private_address="1.1.1.1")
     def setUp(self, *unused):
         self.harness = Harness(MongoDBK8sCharm)
         mongo_resource = {
@@ -106,7 +103,6 @@ class TestMongoProvider(unittest.TestCase):
         oversee_users.assert_not_called()
         defer.assert_not_called()
 
-    @patch_network_get(private_address="1.1.1.1")
     @patch("single_kernel_mongo.managers.mongodb_operator.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
     @patch("single_kernel_mongo.managers.mongo.MongoManager.reconcile_mongo_users_and_dbs")
@@ -131,7 +127,6 @@ class TestMongoProvider(unittest.TestCase):
             defer.assert_called()
 
     # oversee_users raises AssertionError when unable to attain users from relation
-    @patch_network_get(private_address="1.1.1.1")
     @patch("single_kernel_mongo.managers.mongodb_operator.get_charm_revision")
     @patch("ops.framework.EventBase.defer")
     @patch("single_kernel_mongo.managers.mongo.MongoManager.reconcile_mongo_users_and_dbs")
@@ -156,7 +151,6 @@ class TestMongoProvider(unittest.TestCase):
                 else:
                     self.harness.remove_relation_unit(relation_id, "consumer/0")
 
-    @patch_network_get(private_address="1.1.1.1")
     @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.user_exists")
     def test_oversee_users_get_users_failure(self, mock_user_exists):
         """Verifies that when unable to retrieve users from mongod an exception is raised."""
@@ -178,7 +172,6 @@ class TestMongoProvider(unittest.TestCase):
                         relation_changed=True,
                     )
 
-    @patch_network_get(private_address="1.1.1.1")
     @patch(
         "single_kernel_mongo.utils.mongo_connection.MongoConnection.user_exists",
         return_value=False,
@@ -209,7 +202,6 @@ class TestMongoProvider(unittest.TestCase):
                     )
                 set_credentials.assert_not_called()
 
-    @patch_network_get(private_address="1.1.1.1")
     @patch("single_kernel_mongo.managers.mongo.MongoManager.add_user")
     @patch("single_kernel_mongo.managers.mongo.MongoManager.update_user")
     @patch("single_kernel_mongo.managers.mongo.MongoManager.remove_user")
@@ -231,7 +223,6 @@ class TestMongoProvider(unittest.TestCase):
         )
         drop_db.assert_not_called()
 
-    @patch_network_get(private_address="1.1.1.1")
     @patch("single_kernel_mongo.managers.mongo.MongoManager.add_user")
     @patch("single_kernel_mongo.managers.mongo.MongoManager.update_user")
     @patch("single_kernel_mongo.managers.mongo.MongoManager.remove_user")
@@ -269,7 +260,6 @@ class TestMongoProvider(unittest.TestCase):
             ["database", True, False],
         ]
     )
-    @patch_network_get(private_address="1.1.1.1")
     @patch(
         "single_kernel_mongo.lib.charms.data_platform_libs.v0.data_interfaces.DatabaseProviderData.set_credentials"
     )

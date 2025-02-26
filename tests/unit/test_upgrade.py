@@ -19,8 +19,6 @@ from tenacity import Future, RetryError
 
 from charm import MongoDBK8sCharm
 
-from .helpers import patch_network_get
-
 
 @pytest.fixture(autouse=True)
 def patch_upgrades(monkeypatch):
@@ -43,7 +41,6 @@ def patch_upgrades(monkeypatch):
 
 class TestUpgrades(unittest.TestCase):
     @patch("single_kernel_mongo.managers.mongodb_operator.get_charm_revision")
-    @patch_network_get(private_address="1.1.1.1")
     def setUp(self, *unused):
         self.harness = Harness(MongoDBK8sCharm)
         self.addCleanup(self.harness.cleanup)

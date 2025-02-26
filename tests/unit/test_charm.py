@@ -23,8 +23,6 @@ from single_kernel_mongo.utils.mongodb_users import (
 
 from charm import MongoDBK8sCharm
 
-from .helpers import patch_network_get
-
 PYMONGO_EXCEPTIONS = [
     (ConnectionFailure("error message"), ConnectionFailure),
     (ConfigurationError("error message"), ConfigurationError),
@@ -64,7 +62,6 @@ def patch_is_ready(mocker):
 
 class TestCharm(unittest.TestCase):
     @patch("single_kernel_mongo.managers.mongodb_operator.get_charm_revision")
-    @patch_network_get(private_address="1.1.1.1")
     def setUp(self, *unused):
         self.maxDiff = None
         self.harness = Harness(MongoDBK8sCharm)
@@ -710,7 +707,6 @@ class TestCharm(unittest.TestCase):
 
         connect_exporter.assert_not_called()
 
-    @patch_network_get(private_address="1.1.1.1")
     @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
     @patch(
         "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
@@ -724,7 +720,6 @@ class TestCharm(unittest.TestCase):
         self.harness.run_action("set-password", {"username": "monitor"})
         connect_exporter.assert_called()
 
-    @patch_network_get(private_address="1.1.1.1")
     @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
     @patch(
         "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
@@ -821,7 +816,6 @@ class TestCharm(unittest.TestCase):
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
 
-    @patch_network_get(private_address="1.1.1.1")
     @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
     def test_set_backup_password_pbm_busy(self, pbm_status):
         """Tests changes to passwords fail when pbm is restoring/backing up."""
