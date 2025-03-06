@@ -1,0 +1,73 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: Primary
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] blocked: PBM error
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] blocked: PBM error
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] blocked: PBM error
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] blocked: PBM error
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] blocked: PBM error
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] blocked: PBM error
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] blocked: PBM error
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] blocked: PBM error
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] blocked: PBM error
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] blocked: PBM error
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:06:57Z
+
+App            Version  Status  Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             active      1  application                   0  10.152.183.177  no       
+mongodb-k8s    6.0.6    active      3  mongodb-k8s                   0  10.152.183.124  no       
+s3-integrator           active      1  s3-integrator  latest/edge  139  10.152.183.30   no       
+
+Unit              Workload     Agent  Address     Ports  Message
+application/0*    active       idle   10.1.3.146         
+mongodb-k8s/0     active       idle   10.1.3.141         
+mongodb-k8s/1     active       idle   10.1.3.144         
+mongodb-k8s/2*    maintenance  idle   10.1.3.143         backup started/running, backup id: '2025-03-06T02:06:51Z'
+s3-integrator/0*  active       idle   10.1.3.145         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-new-mongodb-aws-1: 01:52:36 ERROR unit.new-mongodb-aws/1.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67c8ffe3becf615aba1c6882, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-1.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.0014228810000531666>]>
+unit-new-mongodb-aws-0: 01:52:39 ERROR unit.new-mongodb-aws/0.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67c8ffe6c1f234e376d695f3, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-0.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.0006322849999378377>]>
+controller-0: 01:53:45 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-aws": finding filesystem info for new-mongodb-aws-mongodb-e1b305b2: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-aws-mongodb-e1b305b2-new-mongodb-aws-2" not found
+unit-new-mongodb-gcp-2: 02:00:07 ERROR unit.new-mongodb-gcp/2.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67c901a6c46c708cdc156bcb, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-gcp-2.new-mongodb-gcp-endpoints', 27017) server_type: RSGhost, rtt: 0.0005412760001490824>]>
+unit-new-mongodb-gcp-0: 02:00:09 ERROR unit.new-mongodb-gcp/0.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67c901a8aa5c248af9f9af6d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-gcp-0.new-mongodb-gcp-endpoints', 27017) server_type: RSGhost, rtt: 0.0005502139997588529>]>
+controller-0: 02:01:14 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-gcp": finding filesystem info for new-mongodb-gcp-mongodb-0f59d676: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-gcp-mongodb-0f59d676-new-mongodb-gcp-2" not found
+unit-mongodb-k8s-2: 02:01:54 ERROR unit.mongodb-k8s/2.juju-log Failed to get pbm status: cmd failed (1) - cmd=['/usr/bin//pbm', 'status', '-o', 'json'], stdout={"Error":"connect to mongodb: create mongo connection: ping: connection() error occurred during connection handshake: auth error: unable to authenticate using mechanism \"SCRAM-SHA-256\": (AuthenticationFailed) Authentication failed."}
+, stderr=
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
