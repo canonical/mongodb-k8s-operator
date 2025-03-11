@@ -49,6 +49,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await ops_test.model.deploy(
         MONGOS_APP_NAME,
         channel="6/edge",
+        trust=True,
     )
 
     await ops_test.model.wait_for_idle(
