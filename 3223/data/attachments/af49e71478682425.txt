@@ -1,0 +1,69 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:666 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:590 Primary instance mongodb-k8s/0 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:595 Waiting until Mongodb detects primary instance mongodb-k8s/0 is not reachable
+[31m[1mERROR   [0m integration.helpers:helpers.py:543 get-password command returned non 0 exit code: b'Running operation 259 with 1 task\n  - task 260 on unit-mongodb-k8s-0\n\nWaiting for task 260...\nERROR timed out waiting for results from: unit mongodb-k8s/0\n'
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:601 Validating writes are continuing to DB
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/1, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/1, True
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: Primary
+  mongodb-k8s/2 [idle] waiting: Waiting for primary re-election.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: Primary
+  mongodb-k8s/2 [idle] waiting: Waiting for primary re-election.
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/1, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/1, True
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:05:24Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database  6.0.6    active      1  mongodb-k8s             1  10.152.183.179  no       
+application                active      1  application             0  10.152.183.136  no       
+mongodb-k8s       6.0.6    active      3  mongodb-k8s             0  10.152.183.146  no       
+
+Unit                 Workload  Agent  Address      Ports  Message
+another-database/0*  active    idle   10.1.183.28         Primary
+application/0*       active    idle   10.1.183.17         
+mongodb-k8s/0        active    idle   10.1.183.25         
+mongodb-k8s/1        active    idle   10.1.183.16         Primary
+mongodb-k8s/2*       active    idle   10.1.183.18         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-2: 01:33:05 ERROR unit.mongodb-k8s/2.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67cf92d038a21232252741de, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0010123320000161584>]>
+unit-mongodb-k8s-4: 01:39:57 ERROR unit.mongodb-k8s/4.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67cf946ba011d76733b7b768, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-4.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.001855407999983072>]>
+unit-mongodb-k8s-0: 01:39:57 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:39:58 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:40:00 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:40:01 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:40:02 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:40:04 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:40:05 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:40:06 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:40:07 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-3: 01:40:08 ERROR unit.mongodb-k8s/3.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67cf94770ca86d0038593f2b, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0006470590000162701>]>
+unit-mongodb-k8s-0: 01:40:09 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:40:09 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit.. Will retry next juju event.
+unit-mongodb-k8s-0: 01:40:33 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:40:57 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:41:37 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:42:08 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:42:31 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:42:56 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:43:20 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:43:43 ERROR unit.mongodb-k8s/0.juju-log database:3: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:44:06 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 02:00:05 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [904c50] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 02:00:12 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [904c50] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 02:00:18 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [904c50] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 02:00:26 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [904c50] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 02:00:34 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [904c50] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 02:00:43 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [904c50] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 02:00:54 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [904c50] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

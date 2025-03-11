@@ -1,0 +1,33 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:35:59Z
+
+App            Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             waiting      1  application                   0  10.152.183.50   no       
+config-server  6.0.6    active       2  mongodb-k8s                   0  10.152.183.201  no       
+s3-integrator           active       1  s3-integrator  latest/edge  139  10.152.183.132  no       
+shard-one      6.0.6    active       2  mongodb-k8s                   1  10.152.183.169  no       
+shard-two      6.0.6    active       1  mongodb-k8s                   2  10.152.183.206  no       
+
+Unit              Workload  Agent  Address       Ports  Message
+application/0*    waiting   idle   10.1.158.200         
+config-server/0*  active    idle   10.1.158.205         
+config-server/1   active    idle   10.1.158.206         
+s3-integrator/0*  active    idle   10.1.158.215         
+shard-one/0       active    idle   10.1.158.211         
+shard-one/1*      active    idle   10.1.158.212         Primary
+shard-two/0*      active    idle   10.1.158.216         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-0: 01:33:16 ERROR unit.config-server/0.juju-log config-server:10: Failed to get pbm status: cmd failed (1) - cmd=['/usr/bin//pbm', 'status', '-o', 'json'], stdout={"Error":"get status of pitr: unable check PITR config status: get config: missed config"}
+, stderr=
+unit-config-server-0: 01:33:17 ERROR unit.config-server/0.juju-log config-server:10: Failed to get pbm status: cmd failed (1) - cmd=['/usr/bin//pbm', 'status', '-o', 'json'], stdout={"Error":"get status of pitr: unable check PITR config status: get config: missed config"}
+, stderr=
+unit-shard-one-1: 01:34:19 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67cf931a193d6b3e86364225, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0024197689999709837>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.002205538999987766>]>
+unit-shard-one-1: 01:34:23 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67cf931e193d6b3e86364226, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0010854810000182624>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0015799750000269341>]>
+unit-shard-one-1: 01:34:27 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67cf9322193d6b3e86364227, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0008292489999348618>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0005324850000079095>]>
+unit-shard-one-1: 01:34:54 ERROR unit.shard-one/1.juju-log database-peers:4: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67cf933d2e1feabba7c521be, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006957000000511471>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006532810000408062>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
