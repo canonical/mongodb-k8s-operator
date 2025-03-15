@@ -1,0 +1,179 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:04:31Z
+
+App          Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application           waiting      1  application             0  10.152.183.152  no       
+mongodb-k8s  6.0.6    waiting      3  mongodb-k8s  6/edge    63  10.152.183.125  no       installing agent
+
+Unit            Workload  Agent  Address       Ports  Message
+application/0*  waiting   idle   10.1.148.136         
+mongodb-k8s/0*  waiting   idle   10.1.148.142         waiting to initialize replica set
+mongodb-k8s/1   active    idle   10.1.148.144         
+mongodb-k8s/2   active    idle   10.1.148.145         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:31:15 ERROR unit.mongodb-k8s/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:31:17 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-1: 01:31:18 ERROR unit.mongodb-k8s/1.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:31:20 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-1: 01:31:20 ERROR unit.mongodb-k8s/1.juju-log database-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:31:21 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-1: 01:31:22 ERROR unit.mongodb-k8s/1.juju-log database-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:31:24 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-1: 01:31:24 ERROR unit.mongodb-k8s/1.juju-log database-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-2: 01:31:24 ERROR unit.mongodb-k8s/2.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:31:29 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:31:29 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:31:40 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:31:40 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:31:48 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:31:48 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:31:57 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:31:57 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:05 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:05 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:14 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:14 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:22 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:22 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:31 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:31 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:39 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:39 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:48 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:48 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:56 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:32:56 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:1: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:33:05 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:33:05 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:33:13 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:33:13 ERROR unit.mongodb-k8s/0.juju-log database-peers:2: Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:35:50 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:35:50 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:35:58 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:35:58 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:41:22 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:41:22 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:41:30 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:41:30 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:47:01 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:47:01 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:47:08 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:47:08 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:51:21 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:51:21 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:51:29 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:51:29 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:56:38 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:56:38 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:56:46 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 01:56:46 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 02:02:29 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 02:02:29 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 02:02:37 ERROR unit.mongodb-k8s/0.juju-log Deferring on start: error=cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+unit-mongodb-k8s-0: 02:02:37 ERROR unit.mongodb-k8s/0.juju-log Deferring because of WorkloadExecError cmd failed (1) - cmd=['/usr/bin//mongosh', 'mongodb://localhost/admin', '--quiet', '--eval', '"db.createUser({  user: \'operator\',  pwd: passwordPrompt(),  roles: [{\'role\': \'userAdminAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'readWriteAnyDatabase\', \'db\': \'admin\'}, {\'role\': \'clusterAdmin\', \'db\': \'admin\'}],  mechanisms: [\'SCRAM-SHA-256\'],  passwordDigestor: \'server\',})"'], stdout=Enter password
+********************************MongoServerError: not primary
+, stderr=
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
