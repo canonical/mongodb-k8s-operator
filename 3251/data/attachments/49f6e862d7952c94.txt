@@ -1,0 +1,71 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:34:36Z
+
+App                Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application                 active       1  application                   0  10.152.183.81   no       
+config-server-one  6.0.6    waiting      1  mongodb-k8s                   1  10.152.183.54   no       installing agent
+config-server-two  6.0.6    active       1  mongodb-k8s                   2  10.152.183.228  no       
+replication        6.0.6    waiting      1  mongodb-k8s                   0  10.152.183.17   no       installing agent
+s3-integrator               blocked      1  s3-integrator  latest/edge  141  10.152.183.102  no       Missing parameters: ['access-key', 'secret-key']
+shard              6.0.6    waiting      1  mongodb-k8s                   3  10.152.183.35   no       installing agent
+
+Unit                  Workload  Agent      Address       Ports  Message
+application/0*        active    idle       10.1.241.200         
+config-server-one/0*  error     idle       10.1.241.206         hook failed: "config-server-relation-changed"
+config-server-two/0*  active    idle       10.1.241.209         
+replication/0*        blocked   idle       10.1.241.203         sharding interface cannot be used by replicas
+s3-integrator/0*      blocked   executing  10.1.241.212         Missing parameters: ['access-key', 'secret-key']
+shard/0*              blocked   executing  10.1.241.213         Relation to s3-integrator is not supported, config role must be config-server.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-replication-0: 01:30:52 ERROR unit.replication/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-replication-0: 01:30:53 ERROR unit.replication/0.juju-log database-peers:0: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-replication-0: 01:30:55 ERROR unit.replication/0.juju-log upgrade-version-a:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-one-0: 01:31:03 ERROR unit.config-server-one/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-one-0: 01:31:05 ERROR unit.config-server-one/0.juju-log database-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-one-0: 01:31:07 ERROR unit.config-server-one/0.juju-log upgrade-version-a:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-two-0: 01:31:12 ERROR unit.config-server-two/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-two-0: 01:31:14 ERROR unit.config-server-two/0.juju-log upgrade-version-a:5: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-two-0: 01:31:15 ERROR unit.config-server-two/0.juju-log database-peers:4: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-0: 01:31:19 ERROR unit.shard/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-0: 01:31:20 ERROR unit.shard/0.juju-log database-peers:6: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-0: 01:31:22 ERROR unit.shard/0.juju-log upgrade-version-a:7: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-0: 01:31:43 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-shard-0: 01:31:44 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-shard-0: 01:31:48 ERROR unit.shard/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-0: 01:31:48 ERROR unit.shard/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-one-0: 01:31:52 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "8c5877cc-2c01-425e-8c43-ee96394f4190:r#9#shard": settings 8c5877cc-2c01-425e-8c43-ee96394f4190:r#9#shard not found (not found)
+unit-config-server-one-0: 01:31:55 ERROR unit.config-server-one/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-one-0: 01:31:55 ERROR unit.config-server-one/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-one-0: 01:33:14 ERROR unit.config-server-one/0.juju-log database:11: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-config-server-one-0: 01:33:14 ERROR unit.config-server-one/0.juju-log database:11: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-shard-0: 01:33:14 ERROR unit.shard/0.juju-log database:10: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-shard-0: 01:33:14 ERROR unit.shard/0.juju-log database:10: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-shard-0: 01:33:17 ERROR unit.shard/0.juju-log database:10: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:33:17 ERROR unit.config-server-one/0.juju-log database:11: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-shard-0: 01:33:19 ERROR unit.shard/0.juju-log database:10: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:33:19 ERROR unit.config-server-one/0.juju-log database:11: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-replication-0: 01:33:43 ERROR unit.replication/0.juju-log sharding:12: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-config-server-one-0: 01:33:45 ERROR juju.worker.uniter.context cannot apply changes: granting secrets access: cannot change access to "secret://8c5877cc-2c01-425e-8c43-ee96394f4190/cvec3ufh4obc7bfr4gcg" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+cannot change access to "secret://8c5877cc-2c01-425e-8c43-ee96394f4190/cvec3ufh4obc7bfr4gd0" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+unit-config-server-one-0: 01:33:45 ERROR juju.worker.uniter.operation hook "config-server-relation-changed" (via hook dispatching script: dispatch) failed: granting secrets access: cannot change access to "secret://8c5877cc-2c01-425e-8c43-ee96394f4190/cvec3ufh4obc7bfr4gcg" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+cannot change access to "secret://8c5877cc-2c01-425e-8c43-ee96394f4190/cvec3ufh4obc7bfr4gd0" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+unit-replication-0: 01:33:45 ERROR unit.replication/0.juju-log sharding:12: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-replication-0: 01:33:48 ERROR unit.replication/0.juju-log sharding:12: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-config-server-one-0: 01:33:52 ERROR juju.worker.uniter.context cannot apply changes: creating secrets: secret with label "config-server.12.extra.secret" already exists
+secret with label "config-server.12.user.secret" already exists
+unit-config-server-one-0: 01:33:52 ERROR juju.worker.uniter.operation hook "config-server-relation-changed" (via hook dispatching script: dispatch) failed: creating secrets: secret with label "config-server.12.extra.secret" already exists
+secret with label "config-server.12.user.secret" already exists
+unit-config-server-one-0: 01:34:03 ERROR juju.worker.uniter.context cannot apply changes: creating secrets: secret with label "config-server.12.extra.secret" already exists
+secret with label "config-server.12.user.secret" already exists
+unit-config-server-one-0: 01:34:03 ERROR juju.worker.uniter.operation hook "config-server-relation-changed" (via hook dispatching script: dispatch) failed: creating secrets: secret with label "config-server.12.extra.secret" already exists
+secret with label "config-server.12.user.secret" already exists
+unit-config-server-one-0: 01:34:24 ERROR juju.worker.uniter.context cannot apply changes: creating secrets: secret with label "config-server.12.extra.secret" already exists
+secret with label "config-server.12.user.secret" already exists
+unit-config-server-one-0: 01:34:24 ERROR juju.worker.uniter.operation hook "config-server-relation-changed" (via hook dispatching script: dispatch) failed: creating secrets: secret with label "config-server.12.extra.secret" already exists
+secret with label "config-server.12.user.secret" already exists
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
