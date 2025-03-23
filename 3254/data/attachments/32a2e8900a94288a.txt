@@ -1,0 +1,84 @@
+[32mINFO    [0m root:helpers.py:72 Count logical backups: list_result=['backup-id             | backup-type  | backup-status', '----------------------------------------------------', '2025-03-23T01:36:27Z  | logical      | finished', '2025-03-23T01:43:09Z  | logical      | finished']
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] active: Primary
+  config-server/1 [idle] active: 
+[32mINFO    [0m root:helpers.py:72 Count logical backups: list_result=['backup-id             | backup-type  | backup-status', '----------------------------------------------------', '2025-03-23T01:36:27Z  | logical      | finished', '2025-03-23T01:43:09Z  | logical      | finished', '2025-03-23T01:48:17Z  | logical      | in progress']
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id: '2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id: '2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id: '2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id: '2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id: '2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: backup started/running, backup id: '2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] active: Primary
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2025-03-23T01:48:17Z'
+  config-server/1 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] maintenance: restore started/running, backup id:'2025-03-23T01:48:17Z'
+  config-server/1 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:56:06Z
+
+App            Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             waiting      1  application                   0  10.152.183.194  no       
+config-server  6.0.6    active       2  mongodb-k8s                   0  10.152.183.84   no       
+s3-integrator           active       1  s3-integrator  latest/edge  143  10.152.183.89   no       
+shard-one      6.0.6    active       2  mongodb-k8s                   1  10.152.183.247  no       
+shard-two      6.0.6    active       1  mongodb-k8s                   2  10.152.183.48   no       
+
+Unit              Workload  Agent  Address      Ports  Message
+application/0*    waiting   idle   10.1.16.200         
+config-server/0*  active    idle   10.1.16.205         Primary
+config-server/1   active    idle   10.1.16.206         
+s3-integrator/0*  active    idle   10.1.16.215         
+shard-one/0       active    idle   10.1.16.211         
+shard-one/1*      active    idle   10.1.16.212         Primary
+shard-two/0*      active    idle   10.1.16.216         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-shard-one-1: 01:33:40 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67df64f2bb96d63b5d226fa1, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.000780232000010983>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0009833840000510463>]>
+unit-shard-one-1: 01:33:44 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67df64f7bb96d63b5d226fa2, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0011293879999811907>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.001724803999991309>]>
+unit-shard-one-1: 01:33:48 ERROR unit.shard-one/1.juju-log sharding:9: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67df64fbbb96d63b5d226fa3, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006685229999447984>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0004386330000443195>]>
+unit-shard-one-1: 01:34:14 ERROR unit.shard-one/1.juju-log database-peers:3: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67df651546083fe780ad6a6d, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.00045919100000446633>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0005985320000263528>]>
+unit-shard-one-1: 01:36:36 ERROR unit.shard-one/1.juju-log Backup failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-1: 01:36:38 ERROR unit.shard-one/1.juju-log List-backups failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-shard-one-1: 01:36:40 ERROR unit.shard-one/1.juju-log Restore failed: Relation with s3-integrator charm missing, cannot restore from a backup.
+unit-config-server-0: 01:37:43 ERROR unit.config-server/0.juju-log Failed to get pbm status: cmd failed (1) - cmd=['/usr/bin//pbm', 'status', '-o', 'json'], stdout={"Error":"connect to mongodb: create mongo connection: ping: connection() error occurred during connection handshake: auth error: unable to authenticate using mechanism \"SCRAM-SHA-256\": (AuthenticationFailed) Authentication failed."}
+, stderr=
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
