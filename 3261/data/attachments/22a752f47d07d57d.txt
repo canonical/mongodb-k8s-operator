@@ -1,0 +1,140 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:666 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:590 Primary instance mongodb-k8s/0 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:595 Waiting until Mongodb detects primary instance mongodb-k8s/0 is not reachable
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:601 Validating writes are continuing to DB
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: Primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:06:56Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database  6.0.6    active      1  mongodb-k8s             1  10.152.183.249  no       
+application                active      1  application             0  10.152.183.139  no       
+mongodb-k8s       6.0.6    active      3  mongodb-k8s             0  10.152.183.231  no       
+
+Unit                 Workload  Agent  Address      Ports  Message
+another-database/0*  active    idle   10.1.68.220         Primary
+application/0*       active    idle   10.1.68.209         
+mongodb-k8s/0        active    idle   10.1.68.206         
+mongodb-k8s/1*       active    idle   10.1.68.217         
+mongodb-k8s/2        active    idle   10.1.68.210         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:34:30 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: cannot perform the following tasks:
+- Start service "pbm-agent" (service start attempt: exited quickly with code 1, will restart)
+----- Logs from task 0 -----
+2025-03-28T01:34:29Z INFO Service "pbm-agent" has never been started.
+----- Logs from task 1 -----
+2025-03-28T01:34:30Z INFO Most recent service output:
+    2025/03/28 01:34:30 Exit: connect to the node: ping: connection() error occurred during connection handshake: auth error: sasl conversation error: unable to authenticate using mechanism "SCRAM-SHA-1": (AuthenticationFailed) Authentication failed.
+2025-03-28T01:34:30Z ERROR service start attempt: exited quickly with code 1, will restart
+-----
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 68, in restart
+    self.container.restart(self.service)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2274, in restart
+    self._pebble.restart_services(service_names)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2201, in restart_services
+    return self._services_action('restart', services, timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "pbm-agent" (service start attempt: exited quickly with code 1, will restart)
+----- Logs from task 0 -----
+2025-03-28T01:34:29Z INFO Service "pbm-agent" has never been started.
+----- Logs from task 1 -----
+2025-03-28T01:34:30Z INFO Most recent service output:
+    2025/03/28 01:34:30 Exit: connect to the node: ping: connection() error occurred during connection handshake: auth error: sasl conversation error: unable to authenticate using mechanism "SCRAM-SHA-1": (AuthenticationFailed) Authentication failed.
+2025-03-28T01:34:30Z ERROR service start attempt: exited quickly with code 1, will restart
+-----
+unit-mongodb-k8s-0: 01:34:30 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: Failed to restart pbm-agent: cannot perform the following tasks:
+- Start service "pbm-agent" (service start attempt: exited quickly with code 1, will restart)
+unit-mongodb-k8s-0: 01:34:30 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 68, in restart
+    self.container.restart(self.service)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2274, in restart
+    self._pebble.restart_services(service_names)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2201, in restart_services
+    return self._services_action('restart', services, timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "pbm-agent" (service start attempt: exited quickly with code 1, will restart)
+----- Logs from task 0 -----
+2025-03-28T01:34:29Z INFO Service "pbm-agent" has never been started.
+----- Logs from task 1 -----
+2025-03-28T01:34:30Z INFO Most recent service output:
+    2025/03/28 01:34:30 Exit: connect to the node: ping: connection() error occurred during connection handshake: auth error: sasl conversation error: unable to authenticate using mechanism "SCRAM-SHA-1": (AuthenticationFailed) Authentication failed.
+2025-03-28T01:34:30Z ERROR service start attempt: exited quickly with code 1, will restart
+-----
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/src/charm.py", line 25, in <module>
+    main(MongoDBK8sCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/events/lifecycle.py", line 165, in on_relation_changed
+    self.dependent.on_relation_changed()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/mongodb_operator.py", line 429, in on_relation_changed
+    self.backup_manager.configure_and_restart()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/config.py", line 113, in configure_and_restart
+    self.workload.start()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 48, in start
+    self.restart()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 71, in restart
+    raise WorkloadServiceError(e.err) from e
+single_kernel_mongo.exceptions.WorkloadServiceError: cannot perform the following tasks:
+- Start service "pbm-agent" (service start attempt: exited quickly with code 1, will restart)
+unit-mongodb-k8s-0: 01:34:30 ERROR juju.worker.uniter.operation hook "database-peers-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-2: 01:36:35 ERROR unit.mongodb-k8s/2.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67e5fd2211c4a4a78888c2aa, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.003984108999929958>]>
+unit-mongodb-k8s-4: 01:43:08 ERROR unit.mongodb-k8s/4.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67e5feab45352ee866e8f7eb, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-4.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0008382219999703011>]>
+unit-mongodb-k8s-1: 01:43:12 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:43:13 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:43:15 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:43:16 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:43:18 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:43:19 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:43:20 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-3: 01:43:21 ERROR unit.mongodb-k8s/3.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67e5feb852b215a8fdfb574c, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0004652979999946183>]>
+unit-mongodb-k8s-1: 01:43:22 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:43:23 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:43:46 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:44:10 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:44:33 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:45:12 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:45:44 ERROR unit.mongodb-k8s/1.juju-log database-peers:0: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:46:09 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:46:32 ERROR unit.mongodb-k8s/1.juju-log database:3: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:46:58 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:1: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 02:03:17 ERROR juju.worker.dependency "leadership-tracker" manifold worker returned unexpected error: error while mongodb-k8s/0 waiting for mongodb-k8s leadership release: error blocking on leadership release: connection is shut down
+unit-mongodb-k8s-0: 02:03:17 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: api connection broken unexpectedly
+unit-mongodb-k8s-0: 02:03:17 ERROR juju.worker.caasunitterminationworker error while terminating unit: connection is shut down
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
