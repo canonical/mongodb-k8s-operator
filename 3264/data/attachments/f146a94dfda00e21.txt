@@ -1,0 +1,177 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [idle] active: Primary
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server-one/0 [idle] active: Primary
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:38:53Z
+
+App                Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+config-server-one  6.0.6    active      1  mongodb-k8s             0  10.152.183.190  no       
+mongos-k8s         6.0.6    active      1  mongos-k8s   6/edge    29  10.152.183.155  no       
+shard-one          6.0.6    active      1  mongodb-k8s             1  10.152.183.218  no       
+
+Unit                  Workload  Agent  Address      Ports  Message
+config-server-one/0*  active    idle   10.1.115.10         Primary
+mongos-k8s/0*         active    idle   10.1.115.13         
+shard-one/0*          active    idle   10.1.115.14         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongos-k8s-0: 01:31:47 ERROR unit.mongos-k8s/0.juju-log Deferring because of ContainerNotReadyError 
+unit-mongos-k8s-0: 01:31:48 ERROR unit.mongos-k8s/0.juju-log upgrade-version-a:5: Deferring because of ContainerNotReadyError 
+unit-mongos-k8s-0: 01:31:50 ERROR unit.mongos-k8s/0.juju-log router-peers:4: Deferring because of ContainerNotReadyError 
+unit-mongos-k8s-0: 01:33:21 ERROR unit.mongos-k8s/0.juju-log cluster:7: Deferring because of ContainerNotReadyError 
+unit-mongos-k8s-0: 01:33:23 ERROR unit.mongos-k8s/0.juju-log cluster:7: Deferring because of ContainerNotReadyError 
+unit-mongos-k8s-0: 01:33:24 ERROR unit.mongos-k8s/0.juju-log cluster:7: Deferring because of ContainerNotReadyError 
+unit-mongos-k8s-0: 01:33:25 ERROR unit.mongos-k8s/0.juju-log cluster:7: Deferring because of ContainerNotReadyError 
+unit-mongos-k8s-0: 01:33:26 ERROR unit.mongos-k8s/0.juju-log cluster:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/src/charm.py", line 26, in <module>
+    main(MongosK8sCharm)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/events/cluster.py", line 151, in _on_relation_changed
+    self.manager.update_mongos_and_restart()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/cluster.py", line 235, in update_mongos_and_restart
+    updated_keyfile = self.dependent.update_keyfile(key_file_contents)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/mongos_operator.py", line 427, in update_keyfile
+    current_key_file_lines = self.workload.read(self.workload.paths.keyfile)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 89, in read
+    if not self.container.exists(path):
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2726, in exists
+    self._pebble.list_files(str(path), itself=True)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2600, in list_files
+    resp = self._request('GET', '/v1/files', query)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 1995, in _request
+    response = self._request_raw(method, path, query, headers, data)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2048, in _request_raw
+    raise ConnectionError(
+ops.pebble.ConnectionError: Could not connect to Pebble: socket not found at '/charm/containers/mongos/pebble.socket' (container restarted?)
+unit-mongos-k8s-0: 01:33:26 ERROR juju.worker.uniter.operation hook "cluster-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongos-k8s-0: 01:33:32 ERROR unit.mongos-k8s/0.juju-log cluster:7: Deferring because of ContainerNotReadyError 
+unit-mongos-k8s-0: 01:33:32 ERROR unit.mongos-k8s/0.juju-log cluster:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/src/charm.py", line 26, in <module>
+    main(MongosK8sCharm)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/events/cluster.py", line 151, in _on_relation_changed
+    self.manager.update_mongos_and_restart()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/cluster.py", line 235, in update_mongos_and_restart
+    updated_keyfile = self.dependent.update_keyfile(key_file_contents)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/mongos_operator.py", line 427, in update_keyfile
+    current_key_file_lines = self.workload.read(self.workload.paths.keyfile)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 89, in read
+    if not self.container.exists(path):
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2726, in exists
+    self._pebble.list_files(str(path), itself=True)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2600, in list_files
+    resp = self._request('GET', '/v1/files', query)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 1995, in _request
+    response = self._request_raw(method, path, query, headers, data)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2048, in _request_raw
+    raise ConnectionError(
+ops.pebble.ConnectionError: Could not connect to Pebble: socket not found at '/charm/containers/mongos/pebble.socket' (container restarted?)
+unit-mongos-k8s-0: 01:33:33 ERROR juju.worker.uniter.operation hook "cluster-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongos-k8s-0: 01:33:43 ERROR unit.mongos-k8s/0.juju-log cluster:7: Deferring because of ContainerNotReadyError 
+unit-mongos-k8s-0: 01:33:44 ERROR unit.mongos-k8s/0.juju-log cluster:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/src/charm.py", line 26, in <module>
+    main(MongosK8sCharm)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/events/cluster.py", line 151, in _on_relation_changed
+    self.manager.update_mongos_and_restart()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/cluster.py", line 235, in update_mongos_and_restart
+    updated_keyfile = self.dependent.update_keyfile(key_file_contents)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/mongos_operator.py", line 427, in update_keyfile
+    current_key_file_lines = self.workload.read(self.workload.paths.keyfile)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 89, in read
+    if not self.container.exists(path):
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2726, in exists
+    self._pebble.list_files(str(path), itself=True)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2600, in list_files
+    resp = self._request('GET', '/v1/files', query)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 1995, in _request
+    response = self._request_raw(method, path, query, headers, data)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2048, in _request_raw
+    raise ConnectionError(
+ops.pebble.ConnectionError: Could not connect to Pebble: socket not found at '/charm/containers/mongos/pebble.socket' (container restarted?)
+unit-mongos-k8s-0: 01:33:44 ERROR juju.worker.uniter.operation hook "cluster-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongos-k8s-0: 01:34:05 ERROR unit.mongos-k8s/0.juju-log cluster:7: Deferring because of ContainerNotReadyError 
+unit-mongos-k8s-0: 01:34:05 ERROR unit.mongos-k8s/0.juju-log cluster:7: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/src/charm.py", line 26, in <module>
+    main(MongosK8sCharm)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/events/cluster.py", line 151, in _on_relation_changed
+    self.manager.update_mongos_and_restart()
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/cluster.py", line 235, in update_mongos_and_restart
+    updated_keyfile = self.dependent.update_keyfile(key_file_contents)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/mongos_operator.py", line 427, in update_keyfile
+    current_key_file_lines = self.workload.read(self.workload.paths.keyfile)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 89, in read
+    if not self.container.exists(path):
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2726, in exists
+    self._pebble.list_files(str(path), itself=True)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2600, in list_files
+    resp = self._request('GET', '/v1/files', query)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 1995, in _request
+    response = self._request_raw(method, path, query, headers, data)
+  File "/var/lib/juju/agents/unit-mongos-k8s-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2048, in _request_raw
+    raise ConnectionError(
+ops.pebble.ConnectionError: Could not connect to Pebble: socket not found at '/charm/containers/mongos/pebble.socket' (container restarted?)
+unit-mongos-k8s-0: 01:34:05 ERROR juju.worker.uniter.operation hook "cluster-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
