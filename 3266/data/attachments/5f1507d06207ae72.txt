@@ -1,0 +1,142 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  application/0 [idle] active: received database credentials of the second database
+  application/1 [idle] active: received database credentials of the second database
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [executing] active: 
+  another-database/0 [idle] active: 
+  another-database/1 [idle] active: 
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [executing] active: 
+[32mINFO    [0m integration.helpers:helpers.py:213 Running mongo command: 'mongosh --quiet --eval \'db.runCommand({ replSetGetStatus : 1 });\' "mongodb://relation-4:IFefyJQuPRGVGZErmmA4olxPqfCj5aJI@mongodb-k8s-0.mongodb-k8s-endpoints:27017,mongodb-k8s-1.mongodb-k8s-endpoints:27017/application_first_database?replicaSet=mongodb-k8s&authSource=admin"'
+[32mINFO    [0m integration.helpers:helpers.py:460 Checking or creating helper mongo pod ...
+[32mINFO    [0m integration.helpers:helpers.py:465 pod 'mongodb-helper' in namespace 'test' already exists.
+[32mINFO    [0m integration.helpers:helpers.py:504 Checking pod mongodb-helper is ready...
+[1m[31mERROR   [0m integration.helpers:helpers.py:244 code 1; stdout ''; stderr: 'MongoServerError: Authentication failed.\ncommand terminated with exit code 1\n'
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:44:52Z
+
+App                  Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-application           active      1  application             1  10.152.183.185  no       received database credentials of the first database
+another-database     6.0.6    active      2  mongodb-k8s             1  10.152.183.165  no       
+application                   active      2  application             0  10.152.183.174  no       received database credentials of the second database
+mongodb-k8s          6.0.6    active      2  mongodb-k8s             0  10.152.183.164  no       
+
+Unit                    Workload  Agent  Address       Ports  Message
+another-application/0*  active    idle   10.1.254.157         received database credentials of the first database
+another-database/0      active    idle   10.1.254.148         
+another-database/1*     active    idle   10.1.254.149         
+application/0*          active    idle   10.1.254.142         received database credentials of the second database
+application/1           active    idle   10.1.254.143         received database credentials of the second database
+mongodb-k8s/0*          active    idle   10.1.254.140         
+mongodb-k8s/1           active    idle   10.1.254.141         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-another-database-0: 01:31:39 ERROR unit.another-database/0.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3187, in _run
+    result = subprocess.run(args, **kwargs)  # type: ignore
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '('/var/lib/juju/tools/unit-another-database-0/secret-get', '--label', 'database-peers.another-database.app', '--format=json')' returned non-zero exit status 1.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3552, in secret_get
+    result = self._run('secret-get', *args, return_output=True, use_json=True)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3189, in _run
+    raise ModelError(e.stderr) from e
+ops.model.ModelError: ERROR consumer label "database-peers.another-database.app" not found
+
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 638, in meta
+    self._secret_meta = self._model.get_secret(label=self.label)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 291, in get_secret
+    content = self._backend.secret_get(id=id, label=label)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3555, in secret_get
+    raise SecretNotFoundError() from e
+ops.model.SecretNotFoundError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3187, in _run
+    result = subprocess.run(args, **kwargs)  # type: ignore
+  File "/usr/lib/python3.10/subprocess.py", line 526, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '('/var/lib/juju/tools/unit-another-database-0/secret-get', '--label', 'another-database.app', '--format=json')' returned non-zero exit status 1.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-another-database-0/charm/src/charm.py", line 25, in <module>
+    main(MongoDBK8sCharm)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 549, in main
+    manager = _Manager(charm_class, use_juju_for_storage=use_juju_for_storage)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 432, in __init__
+    self.charm = self._make_charm(self.framework, self.dispatcher)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/main.py", line 435, in _make_charm
+    charm = self._charm_class(framework)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/abstract_charm.py", line 68, in __init__
+    self.operator = self.operator_type(self)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/mongodb_operator.py", line 178, in __init__
+    self.observability_manager = ObservabilityManager(self, self.state, self.substrate)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/observability.py", line 62, in __init__
+    jobs=self.mongo_scrape_config(),
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/observability.py", line 89, in mongo_scrape_config
+    "cluster": self.state.config_server_name or self.charm.app.name,
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/state/charm_state.py", line 598, in config_server_name
+    self.app_peer_data.role,
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/state/app_peer_state.py", line 81, in role
+    if not (databag_role := self.relation_data.get(AppPeerDataKeys.ROLE.value)):
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 943, in get
+    if result := self[key]:
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 876, in __getitem__
+    result = self.relation_data.fetch_my_relation_field(self.relation_id, key)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 1393, in fetch_my_relation_field
+    if relation_data := self.fetch_my_relation_data([relation_id], [field], relation_name):
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 1382, in fetch_my_relation_data
+    data[relation.id] = self._fetch_my_specific_relation_data(relation, fields)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 532, in wrapper
+    return f(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 2329, in _fetch_my_specific_relation_data
+    self.component, self.secret_fields, relation, fields
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 1966, in secret_fields
+    self.static_secret_fields if self.static_secret_fields else self.current_secret_fields
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 1985, in current_secret_fields
+    if content := self._get_group_secret_contents(relation, group):
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 2316, in _get_group_secret_contents
+    result = super()._get_group_secret_contents(relation, group, secret_fields)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 1119, in _get_group_secret_contents
+    if (secret := self._get_relation_secret(relation.id, group)) and (
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 504, in wrapper
+    return f(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 2303, in _get_relation_secret
+    return self.secrets.get(
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 808, in get
+    if secret.meta:
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 641, in meta
+    self._legacy_compat_find_secret_by_old_label()
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 555, in wrapper
+    return f(self, *args, **kwargs)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/lib/charms/data_platform_libs/v0/data_interfaces.py", line 676, in _legacy_compat_find_secret_by_old_label
+    self._secret_meta = self._model.get_secret(label=label)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 291, in get_secret
+    content = self._backend.secret_get(id=id, label=label)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3552, in secret_get
+    result = self._run('secret-get', *args, return_output=True, use_json=True)
+  File "/var/lib/juju/agents/unit-another-database-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 3189, in _run
+    raise ModelError(e.stderr) from e
+ops.model.ModelError: ERROR permission denied
+
+unit-another-database-0: 01:31:40 ERROR juju.worker.uniter.operation hook "leader-settings-changed" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-3: 01:38:16 ERROR unit.mongodb-k8s/3.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67e9f2074527b97059d911e9, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0008236889999579944>]>
+unit-mongodb-k8s-2: 01:39:39 ERROR unit.mongodb-k8s/2.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67e9f25a982212665d52effe, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0009209909999299271>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
