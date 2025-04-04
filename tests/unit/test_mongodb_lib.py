@@ -62,7 +62,7 @@ class TestMongoServer(unittest.TestCase):
                 config.replset = "my-replset"
                 with MongoConnection(config) as mongo:
                     mock_client.return_value.admin.command.side_effect = exception
-                    mongo.init_replset()
+                    mongo.init_replset(host="blah")
 
             # verify we close connection
             (mock_client.return_value.close).assert_called()
