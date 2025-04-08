@@ -1,0 +1,146 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/1, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/1, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:666 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:590 Primary instance mongodb-k8s/1 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:595 Waiting until Mongodb detects primary instance mongodb-k8s/1 is not reachable
+[1m[31mERROR   [0m integration.helpers:helpers.py:543 get-password command returned non 0 exit code: b'Running operation 259 with 1 task\n  - task 260 on unit-mongodb-k8s-1\n\nWaiting for task 260...\nERROR timed out waiting for results from: unit mongodb-k8s/1\n'
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:601 Validating writes are continuing to DB
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: Primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:08:30Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database  6.0.6    active      1  mongodb-k8s             1  10.152.183.237  no       
+application                active      1  application             0  10.152.183.53   no       
+mongodb-k8s       6.0.6    active      3  mongodb-k8s             0  10.152.183.83   no       
+
+Unit                 Workload  Agent  Address     Ports  Message
+another-database/0*  active    idle   10.1.31.28         Primary
+application/0*       active    idle   10.1.31.17         
+mongodb-k8s/0        active    idle   10.1.31.16         
+mongodb-k8s/1        active    idle   10.1.31.25         
+mongodb-k8s/2*       active    idle   10.1.31.18         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-2: 01:40:02 ERROR unit.mongodb-k8s/2.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67f47e70f348c1ad0e4900ab, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0005051030000231549>]>
+unit-mongodb-k8s-1: 01:46:46 ERROR unit.mongodb-k8s/1.juju-log cannot perform the following tasks:
+- Start service "logrotate" (service start attempt: exited quickly with code 0, will restart)
+----- Logs from task 0 -----
+2025-04-08T01:46:45Z INFO Service "logrotate" has never been started.
+----- Logs from task 1 -----
+2025-04-08T01:46:46Z INFO Most recent service output:
+    error: error creating stub state file /var/lib/logrotate/status: Permission denied
+2025-04-08T01:46:46Z ERROR service start attempt: exited quickly with code 0, will restart
+-----
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 68, in restart
+    self.container.restart(self.service)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2274, in restart
+    self._pebble.restart_services(service_names)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2201, in restart_services
+    return self._services_action('restart', services, timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "logrotate" (service start attempt: exited quickly with code 0, will restart)
+----- Logs from task 0 -----
+2025-04-08T01:46:45Z INFO Service "logrotate" has never been started.
+----- Logs from task 1 -----
+2025-04-08T01:46:46Z INFO Most recent service output:
+    error: error creating stub state file /var/lib/logrotate/status: Permission denied
+2025-04-08T01:46:46Z ERROR service start attempt: exited quickly with code 0, will restart
+-----
+unit-mongodb-k8s-1: 01:46:46 ERROR unit.mongodb-k8s/1.juju-log Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 68, in restart
+    self.container.restart(self.service)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2274, in restart
+    self._pebble.restart_services(service_names)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2201, in restart_services
+    return self._services_action('restart', services, timeout, delay)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "logrotate" (service start attempt: exited quickly with code 0, will restart)
+----- Logs from task 0 -----
+2025-04-08T01:46:45Z INFO Service "logrotate" has never been started.
+----- Logs from task 1 -----
+2025-04-08T01:46:46Z INFO Most recent service output:
+    error: error creating stub state file /var/lib/logrotate/status: Permission denied
+2025-04-08T01:46:46Z ERROR service start attempt: exited quickly with code 0, will restart
+-----
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/src/charm.py", line 25, in <module>
+    main(MongoDBK8sCharm)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/events/upgrades.py", line 98, in _on_upgrade_charm
+    self.manager.on_upgrade_charm()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/upgrade.py", line 58, in on_upgrade_charm
+    self._on_kubernetes_upgrade()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/upgrade.py", line 67, in _on_kubernetes_upgrade
+    self.dependent._configure_workloads()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/mongodb_operator.py", line 849, in _configure_workloads
+    self.logrotate_config_manager.configure_and_restart()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/config.py", line 152, in configure_and_restart
+    self.workload.start()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 48, in start
+    self.restart()
+  File "/var/lib/juju/agents/unit-mongodb-k8s-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 71, in restart
+    raise WorkloadServiceError(e.err) from e
+single_kernel_mongo.exceptions.WorkloadServiceError: cannot perform the following tasks:
+- Start service "logrotate" (service start attempt: exited quickly with code 0, will restart)
+unit-mongodb-k8s-1: 01:46:47 ERROR juju.worker.uniter.operation hook "upgrade-charm" (via hook dispatching script: dispatch) failed: exit status 1
+unit-mongodb-k8s-4: 01:46:56 ERROR unit.mongodb-k8s/4.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 67f4800f02a5f68e74288c17, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-4.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0005088389999627907>]>
+unit-mongodb-k8s-1: 01:46:57 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:46:58 ERROR unit.mongodb-k8s/1.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-1: 01:47:21 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:47:50 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:48:13 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:48:34 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:48:58 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:49:20 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:50:00 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:50:20 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:50:51 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:51:12 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:0: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:51:35 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:51:56 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:52:21 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:53:00 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:03:46 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d7e5ab] "unit-mongodb-k8s-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-1: 02:03:52 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d7e5ab] "unit-mongodb-k8s-1" cannot open api: try was stopped
+unit-mongodb-k8s-1: 02:03:58 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d7e5ab] "unit-mongodb-k8s-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-1: 02:04:06 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d7e5ab] "unit-mongodb-k8s-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-1: 02:04:14 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d7e5ab] "unit-mongodb-k8s-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-1: 02:04:24 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d7e5ab] "unit-mongodb-k8s-1" cannot open api: try was stopped
+unit-mongodb-k8s-1: 02:04:34 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d7e5ab] "unit-mongodb-k8s-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
