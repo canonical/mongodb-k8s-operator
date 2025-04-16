@@ -43,7 +43,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     await deploy_cluster_components(ops_test)
 
     # deploy the self-signed-certificates charm
-    await ops_test.model.deploy(CERTS_APP_NAME, channel="stable")
+    await ops_test.model.deploy(CERTS_APP_NAME, channel="latest/stable", base="ubuntu@22.04")
 
     await ops_test.model.wait_for_idle(
         apps=[
@@ -129,7 +129,10 @@ async def test_tls_then_build_cluster(ops_test: OpsTest) -> None:
 @pytest.mark.abort_on_fail
 async def test_tls_inconsistent_rels(ops_test: OpsTest) -> None:
     await ops_test.model.deploy(
-        CERTS_APP_NAME, application_name=DIFFERENT_CERTS_APP_NAME, channel="stable"
+        CERTS_APP_NAME,
+        application_name=DIFFERENT_CERTS_APP_NAME,
+        channel="latest/stable",
+        base="ubuntu@22.04",
     )
 
     # CASE 1: Config-server has TLS enabled - but shard does not

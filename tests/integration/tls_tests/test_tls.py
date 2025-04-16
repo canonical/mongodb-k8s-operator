@@ -63,9 +63,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
             config = {"ca-common-name": "Test CA"}
             await ops_test.model.deploy(
                 TLS_CERTIFICATES_APP_NAME,
-                channel="stable",
+                channel="latest/stable",
                 config=config,
-                series="jammy",
+                base="ubuntu@22.04",
             )
             await ops_test.model.wait_for_idle(
                 apps=[TLS_CERTIFICATES_APP_NAME],
