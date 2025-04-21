@@ -1,0 +1,22 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:37:51Z
+
+App          Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application           waiting      1  application             0  10.152.183.127  no       
+mongodb-k8s           waiting      3  mongodb-k8s  6/edge    63  10.152.183.250  no       installing agent
+
+Unit            Workload     Agent      Address      Ports  Message
+application/0*  waiting      idle       10.1.92.200         
+mongodb-k8s/0*  unknown      executing  10.1.92.205         
+mongodb-k8s/1   maintenance  executing  10.1.92.209         installing charm software
+mongodb-k8s/2   maintenance  executing  10.1.92.208         installing charm software
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:37:42 ERROR unit.mongodb-k8s/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:37:44 ERROR unit.mongodb-k8s/0.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:37:47 ERROR unit.mongodb-k8s/0.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
