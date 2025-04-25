@@ -116,34 +116,8 @@ class TestCharm(unittest.TestCase):
                     "group": "mongodb",
                     "override": "replace",
                     "summary": "mongod",
-                    "command": (
-                        "/usr/bin/mongod --bind_ip_all "
-                        "--port=27017 "
-                        "--auth --clusterAuthMode=keyFile "
-                        f"--keyFile={self.harness.charm.workload.paths.keyfile} "
-                        "--setParameter processUmask=037 "
-                        "--logRotate reopen --logappend --logpath=/var/log/mongodb/mongodb.log "
-                        "--auditDestination=file "
-                        "--auditFormat=JSON "
-                        "--auditPath=/var/log/mongodb/audit.log "
-                        "--replSet=mongodb-k8s "
-                        f"--dbpath={self.harness.charm.workload.paths.data_path}"
-                    ),
-                    "environment": {
-                        "MONGOD_ARGS": (
-                            "--bind_ip_all "
-                            "--port=27017 "
-                            "--auth --clusterAuthMode=keyFile "
-                            f"--keyFile={self.harness.charm.workload.paths.keyfile} "
-                            "--setParameter processUmask=037 "
-                            "--logRotate reopen --logappend --logpath=/var/log/mongodb/mongodb.log "
-                            "--auditDestination=file "
-                            "--auditFormat=JSON "
-                            "--auditPath=/var/log/mongodb/audit.log "
-                            "--replSet=mongodb-k8s "
-                            f"--dbpath={self.harness.charm.workload.paths.data_path}"
-                        )
-                    },
+                    "command": "/bin/bash /bin/start-mongod.sh",
+                    "environment": {"MONGOD_ARGS": ""},
                     "startup": "enabled",
                 },
             },
