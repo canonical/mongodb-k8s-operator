@@ -632,14 +632,14 @@ test-randomorder = ["pytest-randomly"]
 
 [[package]]
 name = "dacite"
-version = "1.8.0"
+version = "1.9.2"
 description = "Simple creation of data classes from dictionaries."
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
 groups = ["main", "integration", "unit"]
 files = [
-    {file = "dacite-1.8.0-py3-none-any.whl", hash = "sha256:f7b1205cc5d9b62835aac8cbc1e6e37c1da862359a401f1edbe2ae08fbdc6193"},
-    {file = "dacite-1.8.0.tar.gz", hash = "sha256:6257a5e505b61a8cafee7ef3ad08cf32ee9b885718f42395d017e0a9b4c6af65"},
+    {file = "dacite-1.9.2-py3-none-any.whl", hash = "sha256:053f7c3f5128ca2e9aceb66892b1a3c8936d02c686e707bee96e19deef4bc4a0"},
+    {file = "dacite-1.9.2.tar.gz", hash = "sha256:6ccc3b299727c7aa17582f0021f6ae14d5de47c7227932c47fec4cdfefd26f09"},
 ]
 
 [package.extras]
@@ -675,6 +675,21 @@ files = [
     {file = "decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186"},
     {file = "decorator-5.1.1.tar.gz", hash = "sha256:637996211036b6385ef91435e4fae22989472f9d571faba8927ba8253acbc330"},
 ]
+
+[[package]]
+name = "deepmerge"
+version = "2.0"
+description = "A toolset for deeply merging Python dictionaries."
+optional = false
+python-versions = ">=3.8"
+groups = ["main", "integration", "unit"]
+files = [
+    {file = "deepmerge-2.0-py3-none-any.whl", hash = "sha256:6de9ce507115cff0bed95ff0ce9ecc31088ef50cbdf09bc90a09349a318b3d00"},
+    {file = "deepmerge-2.0.tar.gz", hash = "sha256:5c3d86081fbebd04dd5de03626a0607b809a98fb6ccba5770b62466fe940ff20"},
+]
+
+[package.extras]
+dev = ["black", "build", "mypy", "pytest", "pyupgrade", "twine", "validate-pyproject[all]"]
 
 [[package]]
 name = "dnspython"
@@ -1129,6 +1144,21 @@ websocket-client = ">=0.32.0,<0.40.0 || >0.40.0,<0.41.dev0 || >=0.43.dev0"
 adal = ["adal (>=1.0.2)"]
 
 [[package]]
+name = "ldap3"
+version = "2.9.1"
+description = "A strictly RFC 4510 conforming LDAP V3 pure Python client library"
+optional = false
+python-versions = "*"
+groups = ["main", "integration", "unit"]
+files = [
+    {file = "ldap3-2.9.1-py2.py3-none-any.whl", hash = "sha256:5869596fc4948797020d3f03b7939da938778a0f9e2009f7a072ccf92b8e8d70"},
+    {file = "ldap3-2.9.1.tar.gz", hash = "sha256:f3e7fc4718e3f09dda568b57100095e0ce58633bcabbed8667ce3f8fbaa4229f"},
+]
+
+[package.dependencies]
+pyasn1 = ">=0.4.6"
+
+[[package]]
 name = "lightkube"
 version = "0.15.8"
 description = "Lightweight kubernetes client library"
@@ -1280,23 +1310,23 @@ files = [
 
 [[package]]
 name = "mongo-charms-single-kernel"
-version = "0.0.4"
+version = "0.0.6"
 description = "Shared and reusable code for Mongo-related charms"
 optional = false
-python-versions = "<4.0,>=3.10"
+python-versions = ">=3.10,<4.0"
 groups = ["main", "integration", "unit"]
-files = [
-    {file = "mongo_charms_single_kernel-0.0.4-py3-none-any.whl", hash = "sha256:2cd8c277509bb3c086cb9796c2e6036b9840859e511a686c79385407f4ba3ef3"},
-    {file = "mongo_charms_single_kernel-0.0.4.tar.gz", hash = "sha256:6186e631153bb94af0d2c80da7df6d4f55019f35c928ab2d77fa644c00b2b57c"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 cosl = "*"
 cryptography = ">=42.0.5,<42.1.0"
-dacite = ">=1.8.0,<1.9.0"
+dacite = ">=1.9.0,<1.10.0"
 data-platform-helpers = ">=0.1.4,<0.2.0"
+deepmerge = ">=2.0"
 jinja2 = "*"
 jsonschema = ">=4.22.0,<4.23.0"
+ldap3 = "*"
 lightkube = "*"
 ops = ">=2.15.0,<2.16.0"
 overrides = ">=7.7.0,<7.8.0"
@@ -1307,6 +1337,12 @@ pymongo = "*"
 pyOpenSSL = ">=24.2.1,<24.3.0"
 pyyaml = ">=6.0.1,<6.1.0"
 tenacity = ">=8.2.3,<8.3.0"
+
+[package.source]
+type = "git"
+url = "https://github.com/canonical/mongo-single-kernel-library.git"
+reference = "feat/ldap-integration-testing"
+resolved_reference = "185bf1e05aa6dc3b4efbfb4d49dc2fdbc1cc2795"
 
 [[package]]
 name = "more-itertools"
@@ -1603,7 +1639,7 @@ version = "0.6.1"
 description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
 optional = false
 python-versions = ">=3.8"
-groups = ["integration"]
+groups = ["main", "integration", "unit"]
 files = [
     {file = "pyasn1-0.6.1-py3-none-any.whl", hash = "sha256:0d632f46f2ba09143da3a8afe9e33fb6f92fa2320ab7e886e2d0f7672af84629"},
     {file = "pyasn1-0.6.1.tar.gz", hash = "sha256:6f580d2bdd84365380830acf45550f2511469f673cb4a5ae3857a3170128b034"},
@@ -2774,4 +2810,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10.12"
-content-hash = "8a7fc3b4923fce58b4d6dc79d27fd0b9cf1f8971a6ee4a3f1d3bafc8797036db"
+content-hash = "cc2101e38c4dd7d6b3eef813bf94182cfbd45ea767976af89f9f3affd52d948a"

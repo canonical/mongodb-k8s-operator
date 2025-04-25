@@ -23,6 +23,9 @@ peers:
     interface: mongodb-peers
   upgrade-version-a:
     interface: upgrade
+  ldap-peers:
+    # Stores the data for the ldap relation.
+    interface: ldap-peers
 
 provides:
   database:
@@ -52,6 +55,14 @@ requires:
     interface: shards
     # shards can only relate to one config-server
     limit: 1
+  ldap:
+    interface: ldap
+    limit: 1
+    optional: true
+  ldap-certificate-transfer:
+    interface: certificate_transfer
+    limit: 1
+    optional: true
 
 containers:
   mongod:
@@ -64,7 +75,7 @@ resources:
     type: oci-image
     description: OCI image for mongodb
     # TODO: Update sha whenever upstream rock changes
-    upstream-source: ghcr.io/canonical/charmed-mongodb@sha256:c24916ddf111da240dd3d5508ba8d42f611e9167bb9be67a3acc392a25883047
+    upstream-source: ghcr.io/canonical/charmed-mongodb@sha256:7ddb80a3b5ddffa95704a8980fc11037ba1a23273a9805214bc42be9f507107f
 storage:
   mongodb:
     type: filesystem
