@@ -80,7 +80,9 @@ async def test_enable_tls(ops_test: OpsTest) -> None:
     # Relate it to the MongoDB to enable TLS.
     app_name = await get_app_name(ops_test)
     # check if relation exists
-    await ops_test.model.integrate(app_name, TLS_CERTIFICATES_APP_NAME)
+    await ops_test.model.integrate(
+        f"{app_name}:certificates", f"{TLS_CERTIFICATES_APP_NAME}:certificates"
+    )
 
     async with ops_test.fast_forward():
         await ops_test.model.wait_for_idle(status="active", timeout=1000)
