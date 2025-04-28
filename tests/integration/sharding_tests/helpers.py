@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
+import time
 from typing import List, Optional, Tuple
 
 from pymongo import MongoClient
@@ -43,7 +44,9 @@ async def get_related_username_password(
 
 
 async def deploy_cluster_components(
-    ops_test: OpsTest, num_units_cluster_config: dict | None = None, channel: str | None = None
+    ops_test: OpsTest,
+    num_units_cluster_config: dict | None = None,
+    channel: str | None = None,
 ) -> None:
     if not num_units_cluster_config:
         num_units_cluster_config = {
@@ -62,44 +65,92 @@ async def deploy_cluster_components(
         if channel
         else {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     )
-    await ops_test.model.deploy(
-        my_charm,
-        resources=resources,
-        num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
-        config={"role": "config-server"},
-        application_name=CONFIG_SERVER_APP_NAME,
-        channel=channel,
-        series="jammy",
-        trust=True,
-    )
-    await ops_test.model.deploy(
-        my_charm,
-        resources=resources,
-        num_units=num_units_cluster_config[SHARD_ONE_APP_NAME],
-        config={"role": "shard"},
-        application_name=SHARD_ONE_APP_NAME,
-        channel=channel,
-        series="jammy",
-        trust=True,
-    )
-    await ops_test.model.deploy(
-        my_charm,
-        resources=resources,
-        num_units=num_units_cluster_config[SHARD_TWO_APP_NAME],
-        config={"role": "shard"},
-        application_name=SHARD_TWO_APP_NAME,
-        channel=channel,
-        series="jammy",
-        trust=True,
-    )
+    if not channel:
+        await ops_test.model.deploy(
+            my_charm,
+            resources=resources,
+            num_units=num_units_cluster_config[CONFIG_SERVER_APP_NAME],
+            config={"role": "config-server"},
+            application_name=CONFIG_SERVER_APP_NAME,
+            channel=channel,
+            series="jammy",
+            trust=True,
+        )
+        await ops_test.model.deploy(
+            my_charm,
+            resources=resources,
+            num_units=num_units_cluster_config[SHARD_ONE_APP_NAME],
+            config={"role": "shard"},
+            application_name=SHARD_ONE_APP_NAME,
+            channel=channel,
+            series="jammy",
+            trust=True,
+        )
+        await ops_test.model.deploy(
+            my_charm,
+            resources=resources,
+            num_units=num_units_cluster_config[SHARD_TWO_APP_NAME],
+            config={"role": "shard"},
+            application_name=SHARD_TWO_APP_NAME,
+            channel=channel,
+            series="jammy",
+            trust=True,
+        )
 
-    await ops_test.model.wait_for_idle(
-        apps=CLUSTER_COMPONENTS,
-        idle_period=20,
-        timeout=TIMEOUT,
-        raise_on_blocked=False,
-        raise_on_error=False,
-    )
+        await ops_test.model.wait_for_idle(
+            apps=CLUSTER_COMPONENTS,
+            idle_period=20,
+            timeout=TIMEOUT,
+            raise_on_blocked=False,
+            raise_on_error=False,
+        )
+    # FIXME: (revert this) Deploy 1 and scale up due to silly bug fixed but unreleased
+    else:
+        await ops_test.model.deploy(
+            my_charm,
+            resources=resources,
+            num_units=1,
+            config={"role": "config-server"},
+            application_name=CONFIG_SERVER_APP_NAME,
+            channel=channel,
+            series="jammy",
+            trust=True,
+        )
+        await ops_test.model.deploy(
+            my_charm,
+            resources=resources,
+            num_units=1,
+            config={"role": "shard"},
+            application_name=SHARD_ONE_APP_NAME,
+            channel=channel,
+            series="jammy",
+            trust=True,
+        )
+        await ops_test.model.deploy(
+            my_charm,
+            resources=resources,
+            num_units=1,
+            config={"role": "shard"},
+            application_name=SHARD_TWO_APP_NAME,
+            channel=channel,
+            series="jammy",
+            trust=True,
+        )
+        # Wait a bit before scaling up
+        time.sleep(20)
+        if num_units_cluster_config[CONFIG_SERVER_APP_NAME] != 1:
+            await ops_test.model.applications[CONFIG_SERVER_APP_NAME].scale(
+                num_units_cluster_config[CONFIG_SERVER_APP_NAME]
+            )
+
+        if num_units_cluster_config[SHARD_ONE_APP_NAME] != 1:
+            await ops_test.model.applications[SHARD_ONE_APP_NAME].scale(
+                num_units_cluster_config[SHARD_ONE_APP_NAME]
+            )
+        if num_units_cluster_config[SHARD_TWO_APP_NAME] != 1:
+            await ops_test.model.applications[SHARD_TWO_APP_NAME].scale(
+                num_units_cluster_config[SHARD_TWO_APP_NAME]
+            )
 
 
 async def integrate_cluster(ops_test: OpsTest) -> None:
