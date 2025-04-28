@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-import time
 from typing import List, Optional, Tuple
 
 from pymongo import MongoClient
@@ -65,7 +64,7 @@ async def deploy_cluster_components(
         if channel
         else {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     )
-    if not channel:
+    if channel is None:
         await ops_test.model.deploy(
             my_charm,
             resources=resources,
@@ -137,7 +136,13 @@ async def deploy_cluster_components(
             trust=True,
         )
         # Wait a bit before scaling up
-        time.sleep(20)
+        await ops_test.model.wait_for_idle(
+            apps=CLUSTER_COMPONENTS,
+            idle_period=20,
+            timeout=TIMEOUT,
+            raise_on_blocked=False,
+            raise_on_error=False,
+        )
         if num_units_cluster_config[CONFIG_SERVER_APP_NAME] != 1:
             await ops_test.model.applications[CONFIG_SERVER_APP_NAME].scale(
                 num_units_cluster_config[CONFIG_SERVER_APP_NAME]
@@ -151,6 +156,13 @@ async def deploy_cluster_components(
             await ops_test.model.applications[SHARD_TWO_APP_NAME].scale(
                 num_units_cluster_config[SHARD_TWO_APP_NAME]
             )
+        await ops_test.model.wait_for_idle(
+            apps=CLUSTER_COMPONENTS,
+            idle_period=20,
+            timeout=TIMEOUT,
+            raise_on_blocked=False,
+            raise_on_error=False,
+        )
 
 
 async def integrate_cluster(ops_test: OpsTest) -> None:

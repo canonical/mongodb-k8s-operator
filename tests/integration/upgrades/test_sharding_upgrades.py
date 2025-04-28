@@ -78,7 +78,9 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     }
     await deploy_and_scale_application(ops_test)
 
-    await deploy_cluster_components(ops_test, num_units_cluster_config, channel="6/edge")
+    await deploy_cluster_components(
+        ops_test, num_units_cluster_config=num_units_cluster_config, channel="6/edge"
+    )
 
     await ops_test.model.wait_for_idle(
         apps=CLUSTER_COMPONENTS,
@@ -192,6 +194,8 @@ async def test_pre_upgrade_check_failure(ops_test: OpsTest, chaos_mesh) -> None:
         if unit.name != leader_unit.name:
             non_leader_unit = unit
             break
+
+    assert non_leader_unit, "No non leader unit found"
 
     isolate_instance_from_cluster(ops_test, non_leader_unit.name)
     await wait_until_unit_in_status(
