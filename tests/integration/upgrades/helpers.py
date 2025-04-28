@@ -24,9 +24,10 @@ async def assert_successful_run_upgrade_sequence(
 
     logger.info(f"Upgrading {app_name}")
 
+    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.applications[app_name].refresh(
         path=new_charm,
-        resources=METADATA["resources"],  # We add resources in case the rock changed.
+        resources=resources,  # We add resources in case the rock changed.
     )
     # TODO future work, resolve flickering status of app
     await ops_test.model.wait_for_idle(apps=[app_name], timeout=1000, idle_period=90)
