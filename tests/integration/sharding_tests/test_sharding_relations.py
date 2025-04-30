@@ -163,7 +163,7 @@ async def test_replication_config_server_relation(ops_test: OpsTest):
     await wait_for_mongodb_units_blocked(
         ops_test,
         REPLICATION_APP_NAME,
-        status="sharding interface cannot be used by replicas",
+        status="Sharding interface cannot be used by replicas.",
         timeout=300,
     )
 
@@ -193,7 +193,7 @@ async def test_replication_shard_relation(ops_test: OpsTest):
     await wait_for_mongodb_units_blocked(
         ops_test,
         REPLICATION_APP_NAME,
-        status="sharding interface cannot be used by replicas",
+        status="Sharding interface cannot be used by replicas.",
         timeout=300,
     )
 

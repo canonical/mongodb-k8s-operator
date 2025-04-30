@@ -37,7 +37,7 @@ OPERATOR_USERNAME = "operator"
 BACKUP_USERNAME = "backup"
 PASSWORD = "operator-password"
 DIFFERENT_PASSWORD = "shard-set-password"
-CONFIG_SERVER_NEEDS_SHARD_STATUS = "missing relation to shard(s)"
+CONFIG_SERVER_NEEDS_SHARD_STATUS = "Missing relation to shard(s)."
 SHARD_NEEDS_CONFIG_SERVER_STATUS = "Missing relation to config-server."
 
 # for now we have a large timeout due to the slow drainage of the `config.system.sessions`
