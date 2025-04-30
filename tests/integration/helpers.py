@@ -110,7 +110,10 @@ async def get_address_of_unit(ops_test: OpsTest, unit_id: int, app_name: str = A
 
 
 async def get_password(
-    ops_test: OpsTest, unit_id: int = 0, username: str = "operator", app_name: str = APP_NAME
+    ops_test: OpsTest,
+    unit_id: int = 0,
+    username: str = "operator",
+    app_name: str = APP_NAME,
 ) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
@@ -670,8 +673,9 @@ async def check_all_units_blocked_with_status(
             unit.workload_status.value == "blocked"
         ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
         if status:
+            # We can have extra info but we care for the most important status
             assert (
-                unit.workload_status.message == status
+                status in unit.workload_status.message
             ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
 
 
