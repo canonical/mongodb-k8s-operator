@@ -1,0 +1,23 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:00:17Z
+
+App            Version  Status  Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             active      1  application                   0  10.152.183.130  no       
+mongodb-k8s    6.0.6    active      3  mongodb-k8s                   0  10.152.183.56   no       
+s3-integrator           active      1  s3-integrator  latest/edge  153  10.152.183.92   no       
+
+Unit              Workload  Agent  Address     Ports  Message
+application/0*    active    idle   10.1.16.18         
+mongodb-k8s/0*    active    idle   10.1.16.13         Primary
+mongodb-k8s/1     active    idle   10.1.16.15         
+mongodb-k8s/2     active    idle   10.1.16.16         
+s3-integrator/0*  active    idle   10.1.16.17         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:56:53 ERROR unit.mongodb-k8s/0.juju-log s3-credentials:5: Failed to get pbm status: cmd failed (1) - cmd=['/usr/bin//pbm', 'status', '-o', 'json'], stdout={"Error":"get status of backups: get storage: storage undefined"}
+, stderr=
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
