@@ -24,7 +24,7 @@ module "mongodb-k8s" {
   units    = each.value.units
   channel  = "6/edge"
   config = {
-    role =  each.value.role
+    role = each.value.role
   }
 }
 
@@ -100,12 +100,12 @@ resource "juju_integration" "tls-operator_mongodb-integration" {
   model = var.model_name
 
   application {
-    name = juju_application.self-signed-certificates.name
+    name     = juju_application.self-signed-certificates.name
     endpoint = "certificates"
   }
 
   application {
-    name = each.value.app_name
+    name     = each.value.app_name
     endpoint = "certificates"
   }
 
