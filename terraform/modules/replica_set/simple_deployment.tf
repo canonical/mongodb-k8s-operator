@@ -11,9 +11,11 @@ resource "juju_integration" "tls-operator_mongodb-integration" {
 
   application {
     name = juju_application.self-signed-certificates.name
+    endpoint = "certificates"
   }
   application {
     name = var.app_name
+    endpoint = "certificates"
   }
   depends_on = [
     juju_application.self-signed-certificates,
