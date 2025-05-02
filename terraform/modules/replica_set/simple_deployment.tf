@@ -10,10 +10,12 @@ resource "juju_integration" "tls-operator_mongodb-integration" {
   model = var.model_name
 
   application {
-    name = juju_application.self-signed-certificates.name
+    name     = juju_application.self-signed-certificates.name
+    endpoint = "certificates"
   }
   application {
-    name = var.app_name
+    name     = var.app_name
+    endpoint = "certificates"
   }
   depends_on = [
     juju_application.self-signed-certificates,
