@@ -48,14 +48,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
         await check_or_scale_app(ops_test, db_app_name, required_units=3)
         return
     else:
-        # FIXME: (revert this) Deploy 1 and scale up due to silly bug fixed but unreleased.
-        await ops_test.model.deploy(MONGODB_CHARM_NAME, channel="6/edge", num_units=1, trust=True)
-
-        await ops_test.model.wait_for_idle(
-            apps=[MONGODB_CHARM_NAME], status="active", timeout=DEPLOYMENT_TIMEOUT
-        )
-
-        await ops_test.model.applications[MONGODB_CHARM_NAME].scale(3)
+        await ops_test.model.deploy(MONGODB_CHARM_NAME, channel="6/edge", num_units=3, trust=True)
 
     db_app_name = await get_app_name(ops_test)
     await ops_test.model.wait_for_idle(
