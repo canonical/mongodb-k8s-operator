@@ -1,0 +1,22 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:43:05Z
+
+App          Version  Status       Scale  Charm        Channel  Rev  Address        Exposed  Message
+application           active           1  application             0  10.152.183.17  no       
+mongodb-k8s  6.0.6    maintenance      3  mongodb-k8s             0  10.152.183.64  no       Refreshing. To rollback, `juju refresh` to the previous revision
+
+Unit            Workload     Agent  Address       Ports  Message
+application/0*  active       idle   10.1.124.200         
+mongodb-k8s/0   active       idle   10.1.124.208         MongoDB 6.0.6 running (restart pending); Charm revision 1+7b0cc5a-dirty
+mongodb-k8s/1*  maintenance  idle   10.1.124.211         starting MongoDB
+mongodb-k8s/2   active       idle   10.1.124.210         MongoDB 6.0.6 running;  Charm revision 1+7b0cc5a-dirty
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:36:25 ERROR unit.mongodb-k8s/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-1: 01:36:25 ERROR unit.mongodb-k8s/1.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:36:26 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
