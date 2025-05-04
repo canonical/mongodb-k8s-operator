@@ -1,0 +1,38 @@
+[32mINFO    [0m integration.upgrades.test_rollback:test_rollback.py:81 Wait for refresh to fail
+[32mINFO    [0m integration.upgrades.test_rollback:test_rollback.py:93 Re-refresh the charm
+[32mINFO    [0m integration.upgrades.test_rollback:test_rollback.py:104 Running resume-refresh on the leader unit
+[32mINFO    [0m integration.upgrades.test_rollback:test_rollback.py:110 Wait for the charm to be rolled back
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: MongoDB 6.0.6 running (restart pending); Charm revision 1+7b0cc5a-dirty
+  mongodb-k8s/1 [executing] maintenance: stopping charm software
+  mongodb-k8s/2 [executing] active: MongoDB 6.0.6 running;  Charm revision 1+7b0cc5a-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] maintenance: stopping charm software
+  mongodb-k8s/1 [executing] active: MongoDB 6.0.6 running;  Charm revision 1+7b0cc5a-dirty
+  mongodb-k8s/2 [idle] active: MongoDB 6.0.6 running;  Charm revision 1+7b0cc5a-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:41:44Z
+
+App          Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+mongodb-k8s  6.0.6    active      3  mongodb-k8s             2  10.152.183.215  no       
+
+Unit            Workload  Agent  Address       Ports  Message
+mongodb-k8s/0*  active    idle   10.1.122.212         
+mongodb-k8s/1   active    idle   10.1.122.211         
+mongodb-k8s/2   active    idle   10.1.122.210         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:40:37 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
