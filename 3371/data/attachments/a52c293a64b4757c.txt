@@ -1,0 +1,26 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:42:31Z
+
+App          Version  Status       Scale  Charm        Channel  Rev  Address         Exposed  Message
+application           active           1  application             0  10.152.183.129  no       
+mongodb-k8s  6.0.6    maintenance      3  mongodb-k8s             0  10.152.183.243  no       Refreshing. To rollback, `juju refresh` to the previous revision
+
+Unit            Workload  Agent      Address       Ports  Message
+application/0*  active    idle       10.1.242.136         
+mongodb-k8s/0   active    idle       10.1.242.144         MongoDB 6.0.6 running (restart pending); Charm revision 1+7b0cc5a-dirty
+mongodb-k8s/1*  active    executing  10.1.242.147         (start) MongoDB 6.0.6 running;  Charm revision 1+7b0cc5a-dirty
+mongodb-k8s/2   active    idle       10.1.242.146         MongoDB 6.0.6 running;  Charm revision 1+7b0cc5a-dirty
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-1: 01:35:41 ERROR unit.mongodb-k8s/1.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:35:42 ERROR unit.mongodb-k8s/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-1: 01:35:43 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:35:43 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:35:45 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-1: 01:35:46 ERROR unit.mongodb-k8s/1.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:35:47 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
