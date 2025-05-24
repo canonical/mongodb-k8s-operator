@@ -1,0 +1,43 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:666 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:590 Primary instance mongodb-k8s/0 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:595 Waiting until Mongodb detects primary instance mongodb-k8s/0 is not reachable
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:601 Validating writes are continuing to DB
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: Primary
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:08:01Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database  6.0.6    active      1  mongodb-k8s             1  10.152.183.119  no       
+application                active      1  application             0  10.152.183.147  no       
+mongodb-k8s       6.0.6    active      3  mongodb-k8s             0  10.152.183.103  no       
+
+Unit                 Workload  Agent  Address      Ports  Message
+another-database/0*  active    idle   10.1.249.28         Primary
+application/0*       active    idle   10.1.249.17         
+mongodb-k8s/0        active    idle   10.1.249.13         
+mongodb-k8s/1*       active    idle   10.1.249.25         
+mongodb-k8s/2        active    idle   10.1.249.18         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-2: 01:38:23 ERROR unit.mongodb-k8s/2.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6831230e9dbf54179b8f1f85, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0009797900000876325>]>
+unit-mongodb-k8s-3: 01:45:38 ERROR unit.mongodb-k8s/3.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683124c13613c45220b0fa0b, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0003387900001143862>]>
+unit-mongodb-k8s-4: 01:45:41 ERROR unit.mongodb-k8s/4.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 683124c4d7abd68fcdd412c7, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-4.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0039660859999912645>]>
+unit-mongodb-k8s-1: 01:46:12 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:46:35 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:46:59 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:47:38 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
