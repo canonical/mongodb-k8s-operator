@@ -1,0 +1,109 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: Primary
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: 
+  shard-one/2 [idle] active: Primary
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+  shard-two/2 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:666 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: Primary
+  shard-two/1 [idle] active: 
+  shard-two/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: Primary
+  shard-two/1 [idle] active: 
+  shard-two/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:06:22Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application             waiting      1  application             0  10.152.183.168  no       
+config-server  6.0.6    active       3  mongodb-k8s             0  10.152.183.174  no       
+shard-one      6.0.6    active       3  mongodb-k8s             1  10.152.183.145  no       
+shard-two      6.0.6    active       3  mongodb-k8s             2  10.152.183.67   no       
+
+Unit              Workload  Agent  Address      Ports  Message
+application/0*    waiting   idle   10.1.249.8          
+config-server/0*  active    idle   10.1.249.38         Primary
+config-server/1   active    idle   10.1.249.37         
+config-server/2   active    idle   10.1.249.36         
+shard-one/0*      active    idle   10.1.249.41         
+shard-one/1       active    idle   10.1.249.40         
+shard-one/2       active    idle   10.1.249.39         Primary
+shard-two/0*      active    idle   10.1.249.44         Primary
+shard-two/1       active    idle   10.1.249.43         
+shard-two/2       active    idle   10.1.249.42         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-0: 01:34:00 ERROR unit.config-server/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-0: 01:37:54 ERROR unit.shard-one/0.juju-log sharding:10: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6833c5f1c44011ebd51bdda3, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.001190475000043989>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.02377467999997407>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.003673904999914157>]>
+unit-shard-one-0: 01:37:59 ERROR unit.shard-one/0.juju-log sharding:10: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6833c5f6c44011ebd51bdda4, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.01382836999994197>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.008064210999918942>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0041088340000214885>]>
+unit-shard-one-0: 01:38:04 ERROR unit.shard-one/0.juju-log sharding:10: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6833c5fbc44011ebd51bdda5, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.006667413999934979>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6833c5eba8a72e6abeee9fe0'), 'counter': 9}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 11173}")>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6833c5eb8795cdc1bf45b4ba'), 'counter': 5}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 10522}")>]>
+unit-shard-one-0: 01:38:09 ERROR unit.shard-one/0.juju-log sharding:10: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6833c600c44011ebd51bdda6, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0009963229999812029>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.012778307000075984>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.002159558000016659>]>
+unit-shard-two-0: 01:38:34 ERROR unit.shard-two/0.juju-log sharding:11: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6833c6190b3b1a9b36c2c02e, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-two-0.shard-two-endpoints', 27017) server_type: RSSecondary, rtt: 0.0007324030000290804>, <ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: RSSecondary, rtt: 0.0007207800000514908>, <ServerDescription ('shard-two-2.shard-two-endpoints', 27017) server_type: RSSecondary, rtt: 0.0019680409999409676>]>
+unit-shard-one-0: 01:38:57 ERROR unit.shard-one/0.juju-log sharding:10: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6833c6300b9836fa68e7c026, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.011009456000010687>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6833c62a6bca98d9752becfa'), 'counter': 5}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 14977, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748223535, 1), 'signature': {'hash': b'7\\x7f\\xcc?dw(J\\x1fP0\\x01\\xffnQ\\xf6\\x84\\xba\\xe7w', 'keyId': 7508561684856832018}}, 'operationTime': Timestamp(1748223516, 1)}")>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6833c62981115eea09d38481'), 'counter': 5}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 13951, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748223535, 1), 'signature': {'hash': b'7\\x7f\\xcc?dw(J\\x1fP0\\x01\\xffnQ\\xf6\\x84\\xba\\xe7w', 'keyId': 7508561684856832018}}, 'operationTime': Timestamp(1748223516, 1)}")>]>
+unit-shard-one-0: 01:39:01 ERROR unit.shard-one/0.juju-log sharding:10: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6833c6340b9836fa68e7c027, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0013593889999583553>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6833c62a6bca98d9752becfa'), 'counter': 5}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 10809, 'lastCommittedOpTime': Timestamp(0, 0), '$clusterTime': {'clusterTime': Timestamp(1748223535, 1), 'signature': {'hash': b'7\\x7f\\xcc?dw(J\\x1fP0\\x01\\xffnQ\\xf6\\x84\\xba\\xe7w', 'keyId': 7508561684856832018}}, 'operationTime': Timestamp(1748223516, 1)}")>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('shard-one-2.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>
+unit-shard-one-0: 01:39:06 ERROR unit.shard-one/0.juju-log sharding:10: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6833c6380b9836fa68e7c028, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.00628863999997975>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.003217335000044841>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0018341019999752461>]>
+unit-config-server-0: 01:44:58 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:44:59 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:45:00 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:45:02 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:45:03 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:45:04 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:45:06 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:45:07 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:45:09 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:47:54 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:47:55 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:47:56 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:47:57 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:47:59 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:48:00 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:48:01 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:48:03 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:48:04 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:48:05 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-2: 01:48:05 ERROR unit.shard-one/2.juju-log Cluster is not healthy after refreshing unit.. Will retry next juju event.
+unit-shard-one-2: 01:48:11 ERROR unit.shard-one/2.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-0: 01:51:45 ERROR unit.shard-one/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-0: 01:51:46 ERROR unit.shard-one/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-0: 01:51:48 ERROR unit.shard-one/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-0: 01:51:49 ERROR unit.shard-one/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-one-0: 01:51:50 ERROR unit.shard-one/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-two-0: 01:57:59 ERROR unit.shard-two/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-two-0: 01:58:00 ERROR unit.shard-two/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-two-0: 01:58:01 ERROR unit.shard-two/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-shard-two-0: 01:58:03 ERROR unit.shard-two/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:17 ERROR unit.config-server/0.juju-log config-server:11: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:18 ERROR unit.config-server/0.juju-log config-server:11: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:20 ERROR unit.config-server/0.juju-log config-server:11: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:21 ERROR unit.config-server/0.juju-log config-server:11: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:23 ERROR unit.config-server/0.juju-log config-server:11: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:24 ERROR unit.config-server/0.juju-log config-server:11: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:25 ERROR unit.config-server/0.juju-log config-server:11: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:26 ERROR unit.config-server/0.juju-log config-server:11: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:28 ERROR unit.config-server/0.juju-log config-server:11: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:29 ERROR unit.config-server/0.juju-log config-server:11: Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 01:58:29 ERROR unit.config-server/0.juju-log config-server:11: Cluster is not healthy after refreshing sharded cluster. Will retry next juju event.
+unit-config-server-0: 02:00:14 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 02:00:16 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 02:00:17 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 02:00:19 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 02:00:20 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 02:00:21 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 02:00:23 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 02:00:24 ERROR unit.config-server/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-config-server-0: 02:04:23 ERROR unit.config-server/0.juju-log Cluster cannot read/write to replicas
+unit-shard-one-0: 02:04:50 ERROR unit.shard-one/0.juju-log Cluster cannot read/write to replicas
+unit-shard-two-1: 02:05:08 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [52e552] "unit-shard-two-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-shard-two-1: 02:05:16 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [52e552] "unit-shard-two-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-shard-two-0: 02:05:18 ERROR unit.shard-two/0.juju-log Cluster cannot read/write to replicas
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
