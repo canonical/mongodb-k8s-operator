@@ -1,0 +1,29 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:55:32Z
+
+App          Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application           active       1  application             0  10.152.183.150  no       
+mongodb-k8s  6.0.6    waiting    2/3  mongodb-k8s             1  10.152.183.133  no       waiting for units to settle down
+
+Unit            Workload  Agent  Address      Ports  Message
+application/0*  active    idle   10.1.249.8          
+mongodb-k8s/0   active    idle   10.1.249.20         MongoDB 6.0.6 running (restart pending); Charm revision 1+7b0cc5a-dirty
+mongodb-k8s/1   active    idle   10.1.249.19         MongoDB 6.0.6 running (restart pending); Charm revision 1+7b0cc5a-dirty
+mongodb-k8s/2*  unknown   lost   10.1.249.18         agent lost, see 'juju show-status-log mongodb-k8s/2'
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:39:13 ERROR unit.mongodb-k8s/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-2: 01:48:19 ERROR unit.mongodb-k8s/2.juju-log Cannot proceed with refresh. Failed to check cluster health, error: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68390e628e228a231c5bc9e6, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.000766510000062226>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0005816279999635299>]>
+unit-mongodb-k8s-2: 01:48:22 ERROR unit.mongodb-k8s/2.juju-log Cannot proceed with refresh. Failed to check cluster health, error: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68390e648e228a231c5bc9e8, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006987880000224322>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006529979999641>]>
+unit-mongodb-k8s-2: 01:48:24 ERROR unit.mongodb-k8s/2.juju-log Cannot proceed with refresh. Failed to check cluster health, error: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68390e678e228a231c5bc9ea, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006741150000380003>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0005566979999684918>]>
+unit-mongodb-k8s-0: 01:50:59 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d65c67] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 01:51:06 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d65c67] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 01:51:13 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d65c67] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-0: 01:51:22 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [d65c67] "unit-mongodb-k8s-0" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-mongodb-k8s-2: 01:51:28 ERROR unit.mongodb-k8s/2.juju-log Cluster failed to move primary before re-election.
+unit-mongodb-k8s-2: 01:55:23 ERROR unit.mongodb-k8s/2.juju-log Set-password failed: Cannot set passwords while an upgrade is in progress
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
