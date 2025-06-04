@@ -50,15 +50,9 @@ parts:
     source: .
     after:
       - poetry-deps
-<<<<<<< HEAD
-    poetry-export-extra-args: ['--only', 'main,charm-libs']
+    poetry-export-extra-args: ['--without-hashes', '--only', 'main,charm-libs']
     build-environment:
       - PIP_CONSTRAINT: constraints.txt # Workaround for typing-extensions / pydantic-core incompatibility
-||||||| parent of a2c78a95f (fix: tls + charmcraft)
-    poetry-export-extra-args: ['--only', 'main,charm-libs']
-=======
-    poetry-export-extra-args: ['--without-hashes', '--only', 'main,charm-libs']
->>>>>>> a2c78a95f (fix: tls + charmcraft)
     build-packages:
       - git
       - libffi-dev  # Needed to build Python dependencies with Rust from source
