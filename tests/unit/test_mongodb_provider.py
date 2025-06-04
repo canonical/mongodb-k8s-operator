@@ -5,6 +5,7 @@ import unittest
 from unittest.mock import patch
 
 import pytest
+from data_platform_helpers.advanced_statuses.utils import as_status
 from ops import BlockedStatus
 from ops.testing import Harness
 from parameterized import parameterized
@@ -76,9 +77,11 @@ class TestMongoProvider(unittest.TestCase):
         self.harness.add_relation_unit(relation_id, "consumer/0")
         self.harness.update_relation_data(relation_id, "consumer/0", PEER_ADDR)
 
-        statuses = self.harness.charm.operator.component_statuses.get(scope="unit")
+        statuses = self.harness.charm.operator.state.statuses.get(scope="unit", component="mongod")
         status = next(iter(statuses), None)
-        assert status.status == BlockedStatus("Sharding roles do not support database interface.")
+        assert as_status(status) == BlockedStatus(
+            "Sharding roles do not support database interface."
+        )
         oversee_users.assert_not_called()
 
     @patch("single_kernel_mongo.managers.mongodb_operator.get_charm_revision")

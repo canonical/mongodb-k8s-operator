@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 import pytest
 from data_platform_helpers.advanced_statuses.models import StatusObject
-from ops.model import MaintenanceStatus
 from ops.pebble import PathError, ProtocolError
 from ops.testing import ActionFailed, Harness
 from parameterized import parameterized
@@ -790,12 +789,12 @@ class TestCharm(unittest.TestCase):
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
 
-    @patch("single_kernel_mongo.managers.backups.BackupManager.compute_statuses")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
     def test_set_backup_password_pbm_busy(self, pbm_status):
         """Tests changes to passwords fail when pbm is restoring/backing up."""
         self.harness.set_leader(True)
 
-        pbm_status.return_value = [StatusObject(status=MaintenanceStatus("pbm"))]
+        pbm_status.return_value = [StatusObject(status="maintenance", message="pbm")]
 
         for user in [BackupUser, MonitorUser, OperatorUser]:
             original_password = self.harness.charm.operator.state.get_user_password(user)

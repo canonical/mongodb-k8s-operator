@@ -7,7 +7,7 @@ import httpx
 import pytest
 from data_platform_helpers.advanced_statuses.models import StatusObject
 from lightkube import ApiError
-from ops.model import ActiveStatus, Relation
+from ops.model import Relation
 from ops.testing import ActionFailed, Harness
 from parameterized import parameterized
 from single_kernel_mongo.config.literals import UnitState
@@ -97,7 +97,7 @@ class TestUpgrades(unittest.TestCase):
         def mock_shard_role(role_name: str):
             return role_name != "shard"
 
-        mock_pbm_status = Mock(return_value=[StatusObject(status=ActiveStatus())])
+        mock_pbm_status = Mock(return_value=[StatusObject(status="active", message="")])
         self.harness.charm.is_role = mock_shard_role
         mock_upgrade.return_value = True
         self.harness.charm.operator.backup_manager.compute_statuses = mock_pbm_status
@@ -155,8 +155,8 @@ class TestUpgrades(unittest.TestCase):
         _app_version.return_value = app_version
 
         status = self.harness.charm.operator.upgrade_manager._upgrade._get_unit_healthy_status()
-        assert isinstance(status.status, ActiveStatus)
-        assert ("(restart pending)" in status.status.message) == outdated_in_status
+        assert status.status == "active"
+        assert ("(restart pending)" in status.message) == outdated_in_status
 
     @parameterized.expand(
         [
