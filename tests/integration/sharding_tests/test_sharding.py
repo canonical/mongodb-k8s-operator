@@ -220,6 +220,7 @@ async def test_sharding(ops_test: OpsTest) -> None:
 
 @pytest.mark.group(1)
 @pytest.mark.parametrize("username", [OPERATOR_USERNAME, BACKUP_USERNAME])
+@pytest.mark.abort_on_fail
 async def test_set_operator_password(ops_test: OpsTest, username):
     """Tests that the cluster can safely set the operator password."""
     for cluster_app_name in CLUSTER_APPS:
@@ -273,6 +274,7 @@ async def test_set_operator_password(ops_test: OpsTest, username):
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_shard_removal(ops_test: OpsTest) -> None:
     """Test shard removal.
 
@@ -329,6 +331,7 @@ async def test_shard_removal(ops_test: OpsTest) -> None:
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_removal_of_non_primary_shard(ops_test: OpsTest):
     """Tests safe removal of a shard that is not primary."""
     # add back a shard so we can safely remove a shard.
@@ -381,6 +384,7 @@ async def test_removal_of_non_primary_shard(ops_test: OpsTest):
 
 
 @pytest.mark.group(1)
+@pytest.mark.abort_on_fail
 async def test_unconventual_shard_removal(ops_test: OpsTest):
     """Tests that removing a shard application safely drains data.
 
