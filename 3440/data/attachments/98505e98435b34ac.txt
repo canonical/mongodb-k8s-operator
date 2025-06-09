@@ -1,0 +1,64 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/1, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/1, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:666 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:590 Primary instance mongodb-k8s/1 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:595 Waiting until Mongodb detects primary instance mongodb-k8s/1 is not reachable
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:601 Validating writes are continuing to DB
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/2, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/2. Target unit name: mongodb-k8s/2, True
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:14:40Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database  6.0.6    active      1  mongodb-k8s             1  10.152.183.57   no       
+application                active      1  application             0  10.152.183.246  no       
+mongodb-k8s       6.0.6    active      3  mongodb-k8s             0  10.152.183.81   no       
+
+Unit                 Workload  Agent  Address      Ports  Message
+another-database/0*  active    idle   10.1.249.28         Primary
+application/0*       active    idle   10.1.249.17         
+mongodb-k8s/0*       active    idle   10.1.249.25         
+mongodb-k8s/1        active    idle   10.1.249.16         
+mongodb-k8s/2        active    idle   10.1.249.18         Primary
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-2: 01:44:00 ERROR unit.mongodb-k8s/2.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68463c5fe67dccff1bb07dae, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0020409580000659844>]>
+unit-mongodb-k8s-0: 01:51:28 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:29 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:31 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:32 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:33 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:35 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:36 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-3: 01:51:36 ERROR unit.mongodb-k8s/3.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68463e2783e186172a1f5ef3, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.001717342999995708>]>
+unit-mongodb-k8s-0: 01:51:37 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:39 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:40 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:40 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit.. Will retry next juju event.
+unit-mongodb-k8s-0: 01:51:44 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:45 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:46 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-4: 01:51:46 ERROR unit.mongodb-k8s/4.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68463e31bd3c90560c8b3e2a, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-4.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0004590050000388146>]>
+unit-mongodb-k8s-0: 01:51:47 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:51:49 ERROR unit.mongodb-k8s/0.juju-log Cannot proceed with refresh. Status of charm units do not show active / waiting for refresh.
+unit-mongodb-k8s-0: 01:52:11 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:52:35 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:53:14 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:53:45 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:54:08 ERROR unit.mongodb-k8s/0.juju-log database-peers:0: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:54:33 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 01:54:56 ERROR unit.mongodb-k8s/0.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-0: 02:05:53 ERROR unit.mongodb-k8s/0.juju-log Deferring process_unremoved_units: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6846418096123c9257e236bc, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'mongodb-k8s-0.mongodb-k8s-endpoints\', 27017) server_type: RSSecondary, rtt: 0.0008591410000917676>, <ServerDescription (\'mongodb-k8s-1.mongodb-k8s-endpoints\', 27017) server_type: RSSecondary, rtt: 0.0012025070000163396>, <ServerDescription (\'mongodb-k8s-2.mongodb-k8s-endpoints\', 27017) server_type: Unknown, rtt: None, error=AutoReconnect(\'mongodb-k8s-2.mongodb-k8s-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)\')>]>')
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
