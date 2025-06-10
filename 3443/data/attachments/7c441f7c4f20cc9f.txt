@@ -1,0 +1,37 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: Primary
+  mongodb-k8s/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:56:00Z
+
+App                       Version  Status  Scale  Charm                     Channel        Rev  Address         Exposed  Message
+mongodb-k8s               6.0.6    active      3  mongodb-k8s                                0  10.152.183.30   no       
+self-signed-certificates           active      1  self-signed-certificates  latest/stable  264  10.152.183.236  no       
+
+Unit                         Workload  Agent  Address      Ports  Message
+mongodb-k8s/0                active    idle   10.1.249.12         
+mongodb-k8s/1                active    idle   10.1.249.16         Primary
+mongodb-k8s/2*               active    idle   10.1.249.15         
+self-signed-certificates/0*  active    idle   10.1.249.17         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-1: 01:49:01 ERROR unit.mongodb-k8s/1.juju-log certificates:3: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-k8s-0: 01:49:01 ERROR unit.mongodb-k8s/0.juju-log certificates:3: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-k8s-2: 01:49:01 ERROR unit.mongodb-k8s/2.juju-log certificates:3: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-k8s-1: 01:49:01 ERROR unit.mongodb-k8s/1.juju-log certificates:3: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-k8s-0: 01:49:02 ERROR unit.mongodb-k8s/0.juju-log certificates:3: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-k8s-2: 01:49:02 ERROR unit.mongodb-k8s/2.juju-log certificates:3: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-k8s-2: 01:49:28 ERROR unit.mongodb-k8s/2.juju-log database-peers:0: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68478f277826ab643f2b70ba, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0010974209999403683>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.000847785000132717>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0012431109998942702>]>
+unit-mongodb-k8s-2: 01:49:32 ERROR unit.mongodb-k8s/2.juju-log database-peers:0: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68478f2a9baa4d5c6b916fb2, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0014809260001129587>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0010270359998685308>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0011885280000569765>]>
+unit-mongodb-k8s-2: 01:49:33 ERROR unit.mongodb-k8s/2.juju-log database-peers:0: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68478f2c9baa4d5c6b916fb4, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0005641459999878862>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0008096500000647211>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0003859100002046034>]>
+unit-mongodb-k8s-2: 01:55:21 ERROR unit.mongodb-k8s/2.juju-log Deferring process_unremoved_units: error=ServerSelectionTimeoutError('No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68479088e44f28038207891f, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription (\'mongodb-k8s-0.mongodb-k8s-endpoints\', 27017) server_type: RSSecondary, rtt: 0.001153778999878341>, <ServerDescription (\'mongodb-k8s-1.mongodb-k8s-endpoints\', 27017) server_type: RSSecondary, rtt: 0.0010788780000439147>, <ServerDescription (\'mongodb-k8s-2.mongodb-k8s-endpoints\', 27017) server_type: RSSecondary, rtt: 0.001121377999879769>]>')
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
