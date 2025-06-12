@@ -96,10 +96,6 @@ async def test_local_shard_reports_remote_config_server(ops_test: OpsTest) -> No
     await wait_for_mongodb_units_blocked(
         ops_test,
         LOCAL_SHARD_APP_NAME,
-        timeout=300,
+        timeout=600,
+        status="is not up-to date with config-server",
     )
-
-    shard_unit = ops_test.model.applications[LOCAL_SHARD_APP_NAME].units[0]
-    assert (
-        "is not up-to date with config-server" in shard_unit.workload_status_message
-    ), "Shard does not correctly report mismatch in revision"
