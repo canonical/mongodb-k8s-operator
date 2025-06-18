@@ -1439,13 +1439,15 @@ files = [
 
 [[package]]
 name = "mongo-charms-single-kernel"
-version = "0.0.0"
+version = "0.0.9"
 description = "Shared and reusable code for Mongo-related charms"
 optional = false
-python-versions = ">=3.10,<4.0"
+python-versions = "<4.0,>=3.10"
 groups = ["main", "integration", "unit"]
-files = []
-develop = false
+files = [
+    {file = "mongo_charms_single_kernel-0.0.9-py3-none-any.whl", hash = "sha256:310ab87e8514af21d953da69aa0dcd9fbe8af0f232b4185dc652c7e2c05efc0b"},
+    {file = "mongo_charms_single_kernel-0.0.9.tar.gz", hash = "sha256:df6736e6695a583806de0f27c5f2ab4431be93fdc2d8b762333f15fb604aa3fe"},
+]
 
 [package.dependencies]
 cosl = "*"
@@ -1466,12 +1468,6 @@ pymongo = "*"
 pyOpenSSL = ">=24.2.1,<24.3.0"
 pyyaml = ">=6.0.1,<6.1.0"
 tenacity = ">=8.2.3,<8.3.0"
-
-[package.source]
-type = "git"
-url = "https://github.com/canonical/mongo-single-kernel-library.git"
-reference = "feat/DPE-6800-use-shared-lib-statuses"
-resolved_reference = "c5fd1396b7c1863a283e09644d1672cedf1f2faa"
 
 [[package]]
 name = "more-itertools"
@@ -2853,14 +2849,14 @@ typing-extensions = ">=4.12.0"
 
 [[package]]
 name = "urllib3"
-version = "2.4.0"
+version = "2.5.0"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.9"
 groups = ["integration"]
 files = [
-    {file = "urllib3-2.4.0-py3-none-any.whl", hash = "sha256:4e16665048960a0900c702d4a66415956a584919c03361cac9f1df5c5dd7e813"},
-    {file = "urllib3-2.4.0.tar.gz", hash = "sha256:414bc6535b787febd7567804cc015fee39daab8ad86268f1310a9250697de466"},
+    {file = "urllib3-2.5.0-py3-none-any.whl", hash = "sha256:e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc"},
+    {file = "urllib3-2.5.0.tar.gz", hash = "sha256:3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760"},
 ]
 
 [package.extras]
@@ -2980,4 +2976,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10.12"
-content-hash = "79a7a936de95f2ad2d0673a86f745fedb824e78affccf800698f0d8160c96ec2"
+content-hash = "793a8df11078f75fc0c959d4f16c090ac5811623be1db4190e5f8217334366cb"
