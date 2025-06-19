@@ -146,7 +146,6 @@ async def test_blocked_incorrect_creds(ops_test: OpsTest) -> None:
     # set incorrect s3 credentials
     s3_integrator_unit = ops_test.model.applications[S3_APP_NAME].units[0]
     parameters = {"access-key": "user", "secret-key": "doesnt-exist"}
-    breakpoint()
     action = await s3_integrator_unit.run_action(action_name="sync-s3-credentials", **parameters)
     await action.wait()
 
