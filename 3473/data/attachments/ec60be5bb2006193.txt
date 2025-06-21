@@ -1,0 +1,56 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:46:45Z
+
+App                Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application                 active       1  application                   0  10.152.183.245  no       
+config-server-one  6.0.6    waiting      1  mongodb-k8s                   1  10.152.183.251  no       installing agent
+config-server-two  6.0.6    active       1  mongodb-k8s                   2  10.152.183.43   no       
+replication        6.0.6    waiting      1  mongodb-k8s                   0  10.152.183.214  no       installing agent
+s3-integrator               blocked      1  s3-integrator  latest/edge  158  10.152.183.29   no       Missing parameters: ['access-key', 'secret-key']
+shard              6.0.6    waiting      1  mongodb-k8s                   3  10.152.183.202  no       installing agent
+
+Unit                  Workload  Agent      Address      Ports  Message
+application/0*        active    idle       10.1.36.200         
+config-server-one/0*  error     idle       10.1.36.206         hook failed: "config-server-relation-changed"
+config-server-two/0*  active    idle       10.1.36.209         
+replication/0*        blocked   idle       10.1.36.203         sharding interface cannot be used by replicas
+s3-integrator/0*      blocked   executing  10.1.36.212         Missing parameters: ['access-key', 'secret-key']
+shard/0*              blocked   executing  10.1.36.213         Relation to s3-integrator is not supported, config role must be config-server.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-one-0: 01:44:20 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-config-server-one-0: 01:44:20 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-shard-0: 01:45:09 ERROR unit.shard/0.juju-log database:14: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-shard-0: 01:45:09 ERROR unit.shard/0.juju-log database:14: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:45:09 ERROR unit.config-server-one/0.juju-log database:15: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-config-server-one-0: 01:45:09 ERROR unit.config-server-one/0.juju-log database:15: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-config-server-one-0: 01:45:12 ERROR unit.config-server-one/0.juju-log database:15: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-shard-0: 01:45:12 ERROR unit.shard/0.juju-log database:14: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:45:15 ERROR unit.config-server-one/0.juju-log database:15: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-shard-0: 01:45:15 ERROR unit.shard/0.juju-log database:14: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-application-0: 01:45:15 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "4b402a0f-fcbb-4aaa-8518-d3d80634b69f:r#14#provider#shard/0": settings 4b402a0f-fcbb-4aaa-8518-d3d80634b69f:r#14#provider#shard/0 not found (not found)
+unit-shard-0: 01:45:15 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: relation scope id "4b402a0f-fcbb-4aaa-8518-d3d80634b69f:r#14#application": settings 4b402a0f-fcbb-4aaa-8518-d3d80634b69f:r#14#application not found (not found)
+unit-replication-0: 01:45:52 ERROR unit.replication/0.juju-log sharding:16: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-config-server-one-0: 01:45:54 ERROR juju.worker.uniter.context cannot apply changes: granting secrets access: cannot change access to "secret://4b402a0f-fcbb-4aaa-8518-d3d80634b69f/d1b0tkc4jssc7bg5gd4g" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+cannot change access to "secret://4b402a0f-fcbb-4aaa-8518-d3d80634b69f/d1b0tkc4jssc7bg5gd50" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+unit-config-server-one-0: 01:45:54 ERROR juju.worker.uniter.operation hook "config-server-relation-changed" (via hook dispatching script: dispatch) failed: granting secrets access: cannot change access to "secret://4b402a0f-fcbb-4aaa-8518-d3d80634b69f/d1b0tkc4jssc7bg5gd4g" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+cannot change access to "secret://4b402a0f-fcbb-4aaa-8518-d3d80634b69f/d1b0tkc4jssc7bg5gd50" for "application-replication": cannot grant access to secret in scope of "relation-replication.sharding#config-server-one.config-server" which is not alive
+unit-replication-0: 01:45:54 ERROR unit.replication/0.juju-log sharding:16: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-replication-0: 01:45:57 ERROR unit.replication/0.juju-log sharding:16: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-config-server-one-0: 01:46:01 ERROR juju.worker.uniter.context cannot apply changes: creating secrets: secret with label "config-server.16.extra.secret" already exists
+secret with label "config-server.16.user.secret" already exists
+unit-config-server-one-0: 01:46:01 ERROR juju.worker.uniter.operation hook "config-server-relation-changed" (via hook dispatching script: dispatch) failed: creating secrets: secret with label "config-server.16.extra.secret" already exists
+secret with label "config-server.16.user.secret" already exists
+unit-config-server-one-0: 01:46:12 ERROR juju.worker.uniter.context cannot apply changes: creating secrets: secret with label "config-server.16.user.secret" already exists
+secret with label "config-server.16.extra.secret" already exists
+unit-config-server-one-0: 01:46:12 ERROR juju.worker.uniter.operation hook "config-server-relation-changed" (via hook dispatching script: dispatch) failed: creating secrets: secret with label "config-server.16.user.secret" already exists
+secret with label "config-server.16.extra.secret" already exists
+unit-config-server-one-0: 01:46:34 ERROR juju.worker.uniter.context cannot apply changes: creating secrets: secret with label "config-server.16.extra.secret" already exists
+secret with label "config-server.16.user.secret" already exists
+unit-config-server-one-0: 01:46:34 ERROR juju.worker.uniter.operation hook "config-server-relation-changed" (via hook dispatching script: dispatch) failed: creating secrets: secret with label "config-server.16.extra.secret" already exists
+secret with label "config-server.16.user.secret" already exists
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
