@@ -5,7 +5,12 @@ import pytest
 from juju.errors import JujuAPIError
 from pytest_operator.plugin import OpsTest
 
-from ..helpers import DEPLOYMENT_TIMEOUT, METADATA, wait_for_mongodb_units_blocked
+from ..helpers import (
+    DEPLOYMENT_TIMEOUT,
+    METADATA,
+    check_status_detail,
+    wait_for_mongodb_units_blocked,
+)
 
 S3_APP_NAME = "s3-integrator"
 SHARD_ONE_APP_NAME = "shard"
@@ -255,8 +260,14 @@ async def test_shard_mongos_relation(ops_test: OpsTest) -> None:
     await wait_for_mongodb_units_blocked(
         ops_test,
         SHARD_ONE_APP_NAME,
-        status="Relation to mongos not supported, config role must be config-server",
+        status="Relation to mongos not supported",
         timeout=300,
+    )
+    await check_status_detail(
+        ops_test,
+        SHARD_ONE_APP_NAME,
+        status="blocked",
+        message="Relation to mongos not supported, config role must be config-server.",
     )
 
     # clean up relations
@@ -287,6 +298,12 @@ async def test_shard_s3_relation(ops_test: OpsTest) -> None:
         SHARD_ONE_APP_NAME,
         status="Relation to s3-integrator is not support",
         timeout=300,
+    )
+    await check_status_detail(
+        ops_test,
+        SHARD_ONE_APP_NAME,
+        status="blocked",
+        message="Relation to s3-integrator is not supported, config role must be config-server.",
     )
 
     # clean up relations
