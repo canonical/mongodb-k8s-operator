@@ -6,7 +6,7 @@ from unittest import mock
 from unittest.mock import patch
 
 import pytest
-from ops.model import MaintenanceStatus
+from data_platform_helpers.advanced_statuses.models import StatusObject
 from ops.pebble import PathError, ProtocolError
 from ops.testing import ActionFailed, Harness
 from parameterized import parameterized
@@ -650,12 +650,11 @@ class TestCharm(unittest.TestCase):
             )
 
     @parameterized.expand([(Scope.APP), (Scope.UNIT)])
-    @patch("single_kernel_mongo.status.StatusManager.process_and_share_statuses")
     @patch("single_kernel_mongo.managers.config.BackupConfigManager.configure_and_restart")
     @patch(
         "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
     )
-    def test_on_secret_changed(self, scope, connect_exporter, connect_backup, *unused):
+    def test_on_secret_changed(self, scope, connect_exporter, connect_backup):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         secret = self.harness.charm.operator.state.secrets.set("new-secret", "bla", scope)
         secret = self.harness.charm.model.get_secret(label=secret.label)
@@ -790,12 +789,12 @@ class TestCharm(unittest.TestCase):
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
 
-    @patch("single_kernel_mongo.managers.backups.BackupManager.get_status")
+    @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
     def test_set_backup_password_pbm_busy(self, pbm_status):
         """Tests changes to passwords fail when pbm is restoring/backing up."""
         self.harness.set_leader(True)
 
-        pbm_status.return_value = MaintenanceStatus("pbm")
+        pbm_status.return_value = [StatusObject(status="maintenance", message="pbm")]
 
         for user in [BackupUser, MonitorUser, OperatorUser]:
             original_password = self.harness.charm.operator.state.get_user_password(user)

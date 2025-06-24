@@ -110,7 +110,10 @@ async def get_address_of_unit(ops_test: OpsTest, unit_id: int, app_name: str = A
 
 
 async def get_password(
-    ops_test: OpsTest, unit_id: int = 0, username: str = "operator", app_name: str = APP_NAME
+    ops_test: OpsTest,
+    unit_id: int = 0,
+    username: str = "operator",
+    app_name: str = APP_NAME,
 ) -> str:
     """Use the charm action to retrieve the password from provided unit.
 
@@ -670,8 +673,9 @@ async def check_all_units_blocked_with_status(
             unit.workload_status.value == "blocked"
         ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
         if status:
+            # We can have extra info but we care for the most important status
             assert (
-                unit.workload_status.message == status
+                status in unit.workload_status.message
             ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
 
 
@@ -691,6 +695,20 @@ async def wait_for_mongodb_units_blocked(
                 await check_all_units_blocked_with_status(ops_test, db_app_name, status)
     finally:
         await ops_test.model.set_config({hook_interval_key: old_interval})
+
+
+async def check_status_detail(ops_test: OpsTest, app_name: str, status: str, message: str) -> None:
+    """Checks that the first status returned by status-detail is the one expected."""
+    for unit in ops_test.model.applications[app_name].units:
+        action = await unit.run_action("status-detail")
+        action = await action.wait()
+        result = action.results["json-output"]
+
+        # juju messes up the string formatting here.
+        unit_statuses = json.loads(result["unit"].replace("'", '"'))
+
+        assert unit_statuses[0]["Status"].lower() == status
+        assert unit_statuses[0]["Message"] == message
 
 
 def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) -> bool:

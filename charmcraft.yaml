@@ -51,8 +51,6 @@ parts:
     after:
       - poetry-deps
     poetry-export-extra-args: ['--only', 'main,charm-libs']
-    build-environment:
-      - PIP_CONSTRAINT: constraints.txt # Workaround for typing-extensions / pydantic-core incompatibility
     build-packages:
       - libffi-dev  # Needed to build Python dependencies with Rust from source
       - libssl-dev  # Needed to build Python dependencies with Rust from source
