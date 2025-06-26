@@ -32,31 +32,40 @@ peers:
 provides:
   database:
     interface: mongodb_client
+    optional: true
   obsolete:
     interface: mongodb
+    optional: true
   metrics-endpoint:
     interface: prometheus_scrape
+    optional: true
   grafana-dashboard:
     interface: grafana_dashboard
+    optional: true
   config-server:
     interface: shards
+    optional: true
   cluster:
     interface: config-server
+    optional: true
 
 requires:
   certificates:
     interface: tls-certificates
     limit: 1
+    optional: true
   logging:
     interface: loki_push_api
     limit: 1
     optional: true
   s3-credentials:
     interface: s3
+    optional: true
   sharding:
     interface: shards
     # shards can only relate to one config-server
     limit: 1
+    optional: true
   ldap:
     interface: ldap
     limit: 1
