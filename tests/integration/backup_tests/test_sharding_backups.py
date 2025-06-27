@@ -23,6 +23,7 @@ from ..helpers import (
     set_password,
 )
 from ..sharding_tests import writes_helpers
+from . import helpers
 
 S3_APP_NAME = "s3-integrator"
 WRITE_APP = "application"
@@ -48,6 +49,8 @@ SHARD_ONE_COLL_NAME = "test_collection"
 SHARD_TWO_DB_NAME = "new-db-2"
 SHARD_TWO_COLL_NAME = "test_collection"
 TIMEOUT = 10 * 60
+
+pytestmark = pytest.mark.skipif(not helpers.has_github_secrets(), reason="No access to secrets")
 
 
 @pytest.fixture()

@@ -42,6 +42,8 @@ NUM_UNITS = 3
 
 logger = logging.getLogger(__name__)
 
+pytestmark = pytest.mark.skipif(not helpers.has_github_secrets(), reason="No access to secrets")
+
 
 @pytest_asyncio.fixture
 async def continuous_writes_to_db(ops_test: OpsTest):

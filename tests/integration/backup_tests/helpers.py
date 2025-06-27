@@ -1,6 +1,8 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
+import ast
+import os
 from logging import getLogger
 
 import ops
@@ -17,6 +19,28 @@ from ..ha_tests.helpers import (
 S3_APP_NAME = "s3-integrator"
 TIMEOUT = 10 * 60
 logger = getLogger()
+
+
+def has_github_secrets() -> bool:
+    """Helper function to decide if we should run the test module or not."""
+    secrets_str = os.environ.get("SECRETS_FROM_GITHUB")
+    if secrets_str is None:
+        return False
+    elif secrets_str == "":
+        return False
+    try:
+        secrets = ast.literal_eval(secrets_str)
+    except (SyntaxError, ValueError):
+        secrets = None
+    if not isinstance(secrets, dict):
+        return False
+    for secret_name, secret in secrets.items():
+        if not (isinstance(secret_name, str) and isinstance(secret, str)):
+            return False
+    if set(secrets.values()) == {""}:
+        logger.warning("No GitHub secrets available: skipping tests that require GitHub secrets")
+        return False
+    return True
 
 
 async def create_and_verify_backup(ops_test: OpsTest) -> None:
