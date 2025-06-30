@@ -1,0 +1,40 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:47:33Z
+
+App                Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application                 active       1  application                   0  10.152.183.106  no       
+config-server-one  6.0.6    waiting      1  mongodb-k8s                   1  10.152.183.130  no       installing agent
+config-server-two  6.0.6    active       1  mongodb-k8s                   2  10.152.183.75   no       
+replication        6.0.6    active       1  mongodb-k8s                   0  10.152.183.114  no       
+s3-integrator               blocked      1  s3-integrator  latest/edge  158  10.152.183.21   no       Missing parameters: ['access-key', 'secret-key']
+shard              6.0.6    waiting      1  mongodb-k8s                   3  10.152.183.60   no       installing agent
+
+Unit                  Workload  Agent      Address     Ports  Message
+application/0*        active    idle       10.1.32.72         
+config-server-one/0*  blocked   executing  10.1.32.78         Missing relation to shard(s).
+config-server-two/0*  active    idle       10.1.32.81         
+replication/0*        active    idle       10.1.32.75         Primary.
+s3-integrator/0*      blocked   executing  10.1.32.84         Missing parameters: ['access-key', 'secret-key']
+shard/0*              blocked   executing  10.1.32.85         Relation to s3-integrator is not support... Run `status-detail`: 0 action required; 2 additional statuses.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-shard-0: 01:43:45 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-shard-0: 01:43:45 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-shard-0: 01:44:21 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-shard-0: 01:44:21 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:44:21 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-config-server-one-0: 01:44:21 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-shard-0: 01:44:24 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:44:24 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-shard-0: 01:44:27 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:44:27 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-replication-0: 01:44:51 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-replication-0: 01:44:54 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-replication-0: 01:44:56 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-replication-0: 01:45:45 ERROR unit.replication/0.juju-log Cannot use a replica as a shard.
+unit-replication-0: 01:45:49 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
