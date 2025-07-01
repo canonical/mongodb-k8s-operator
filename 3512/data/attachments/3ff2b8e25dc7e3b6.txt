@@ -1,0 +1,50 @@
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/1, False
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/1. Target unit name: mongodb-k8s/1, True
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:666 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:590 Primary instance mongodb-k8s/1 isolated from cluster
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:595 Waiting until Mongodb detects primary instance mongodb-k8s/1 is not reachable
+[31m[1mERROR   [0m integration.helpers:helpers.py:546 get-password command returned non 0 exit code: b'Running operation 259 with 1 task\n  - task 260 on unit-mongodb-k8s-1\n\nWaiting for task 260...\nERROR timed out waiting for results from: unit mongodb-k8s/1\n'
+[32mINFO    [0m integration.ha_tests.test_ha:test_ha.py:601 Validating writes are continuing to DB
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary.
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:352 Unit name: mongodb-k8s/0. Target unit name: mongodb-k8s/0, True
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:26:11Z
+
+App               Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+another-database  6.0.6    active      1  mongodb-k8s             1  10.152.183.84   no       
+application                active      1  application             0  10.152.183.37   no       
+mongodb-k8s       6.0.6    active      3  mongodb-k8s             0  10.152.183.245  no       
+
+Unit                 Workload  Agent  Address     Ports  Message
+another-database/0*  active    idle   10.1.32.92         Primary.
+application/0*       active    idle   10.1.32.81         
+mongodb-k8s/0        active    idle   10.1.32.76         Primary.
+mongodb-k8s/1        active    idle   10.1.32.89         
+mongodb-k8s/2*       active    idle   10.1.32.82         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-2: 01:49:02 ERROR unit.mongodb-k8s/2.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68633e8db2d31d04035cee6f, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0006320400000277004>]>
+unit-mongodb-k8s-3: 01:58:59 ERROR unit.mongodb-k8s/3.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686340e2503f504834bc4cc2, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-3.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0018956799999614304>]>
+unit-mongodb-k8s-1: 01:59:03 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-4: 01:59:12 ERROR unit.mongodb-k8s/4.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686340eef138b1c4a2974d08, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-4.mongodb-k8s-endpoints', 27017) server_type: RSGhost, rtt: 0.0007651070000065374>]>
+unit-mongodb-k8s-1: 01:59:29 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 01:59:53 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:00:33 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:01:05 ERROR unit.mongodb-k8s/1.juju-log status-peers:1: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:01:28 ERROR unit.mongodb-k8s/1.juju-log ldap-peers:0: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:01:52 ERROR unit.mongodb-k8s/1.juju-log ldap-peers:0: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:02:16 ERROR unit.mongodb-k8s/1.juju-log status-peers:1: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:02:39 ERROR unit.mongodb-k8s/1.juju-log status-peers:1: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:03:03 ERROR unit.mongodb-k8s/1.juju-log database-peers:2: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:03:28 ERROR unit.mongodb-k8s/1.juju-log Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:03:52 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:3: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+unit-mongodb-k8s-1: 02:04:16 ERROR unit.mongodb-k8s/1.juju-log upgrade-version-a:3: Cluster is not healthy after refreshing unit., writes not propagated throughout cluster. Deferring post refresh check.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

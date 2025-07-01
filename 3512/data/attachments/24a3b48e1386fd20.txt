@@ -1,0 +1,21 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:58:31Z
+
+App          Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application           active       1  application             0  10.152.183.63   no       
+mongodb-k8s  6.0.6    blocked    2/3  mongodb-k8s             1  10.152.183.186  no       Refreshing. Verify highest unit is healthy & run `resume-refresh` action. To rollback, `juju refresh` to last revision
+
+Unit            Workload  Agent  Address     Ports  Message
+application/0*  active    idle   10.1.32.72         
+mongodb-k8s/0*  active    idle   10.1.32.84         
+mongodb-k8s/1   active    idle   10.1.32.83         MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+mongodb-k8s/2   unknown   lost   10.1.32.82         agent lost, see 'juju show-status-log mongodb-k8s/2'
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:57:05 ERROR unit.mongodb-k8s/0.juju-log Cluster cannot read/write to replicas
+unit-mongodb-k8s-0: 01:58:21 ERROR unit.mongodb-k8s/0.juju-log Set-password failed: Cannot set passwords while an upgrade is in progress
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
