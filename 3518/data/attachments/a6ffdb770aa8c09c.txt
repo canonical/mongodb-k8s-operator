@@ -1,0 +1,29 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:54:15Z
+
+App          Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application           active       1  application             0  10.152.183.160  no       
+mongodb-k8s  6.0.6    blocked    2/3  mongodb-k8s             1  10.152.183.76   no       Refreshing. Verify highest unit is healthy & run `resume-refresh` action. To rollback, `juju refresh` to last revision
+
+Unit            Workload  Agent  Address     Ports  Message
+application/0*  active    idle   10.1.32.72         
+mongodb-k8s/0*  active    idle   10.1.32.84         
+mongodb-k8s/1   active    idle   10.1.32.83         MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+mongodb-k8s/2   unknown   lost   10.1.32.82         agent lost, see 'juju show-status-log mongodb-k8s/2'
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:42:09 ERROR unit.mongodb-k8s/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:42:11 ERROR unit.mongodb-k8s/0.juju-log status-peers:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:42:13 ERROR unit.mongodb-k8s/0.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:42:15 ERROR unit.mongodb-k8s/0.juju-log status-peers:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:42:17 ERROR unit.mongodb-k8s/0.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-2: 01:42:17 ERROR unit.mongodb-k8s/2.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-1: 01:42:17 ERROR unit.mongodb-k8s/1.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:49:52 ERROR unit.mongodb-k8s/0.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6865e1bfde1c002119bfb7d8, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6865e0103625484d9328990a'), 'counter': 13}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 13093, '$clusterTime': {'clusterTime': Timestamp(1751507391, 3), 'signature': {'hash': b'(\\xeb\\x9c\\xd6\\x95\\xdf\\xce4\\x974]\\xcd\\xbb\\xabiX\\xbb\\xc2\\xb0\\x9a', 'keyId': 7522665034606968839}}, 'operationTime': Timestamp(1751507391, 3)}")>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6865e1b5638e36a5199cf1c0'), 'counter': 9}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 13774, '$clusterTime': {'clusterTime': Timestamp(1751507391, 3), 'signature': {'hash': b'(\\xeb\\x9c\\xd6\\x95\\xdf\\xce4\\x974]\\xcd\\xbb\\xabiX\\xbb\\xc2\\xb0\\x9a', 'keyId': 7522665034606968839}}, 'operationTime': Timestamp(1751507391, 3)}")>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0009081499999865628>]>
+unit-mongodb-k8s-0: 01:52:45 ERROR unit.mongodb-k8s/0.juju-log Cluster cannot read/write to replicas
+unit-mongodb-k8s-0: 01:54:03 ERROR unit.mongodb-k8s/0.juju-log Set-password failed: Cannot set passwords while an upgrade is in progress
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

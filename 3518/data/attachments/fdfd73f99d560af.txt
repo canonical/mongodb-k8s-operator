@@ -1,0 +1,38 @@
+[32mINFO    [0m integration.upgrades.test_local_upgrades:test_local_upgrades.py:83 Wait for refresh to stall
+[32mINFO    [0m integration.upgrades.test_local_upgrades:test_local_upgrades.py:101 Running resume-refresh on the leader unit
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [executing] maintenance: stopping charm software
+  mongodb-k8s/2 [idle] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [executing] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/2 [executing] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/2 [idle] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [idle] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/2 [idle] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:46:07Z
+
+App          Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+mongodb-k8s  ...      active      3  mongodb-k8s             1  10.152.183.176  no       
+
+Unit            Workload  Agent  Address     Ports  Message
+mongodb-k8s/0*  active    idle   10.1.32.83         
+mongodb-k8s/1   active    idle   10.1.32.82         MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+mongodb-k8s/2   active    idle   10.1.32.81         MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:44:37 ERROR unit.mongodb-k8s/0.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6865e083bd5e13cd822224fa, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6865dfff35f0d8381c4fda2c'), 'counter': 14}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 13137, '$clusterTime': {'clusterTime': Timestamp(1751507074, 2), 'signature': {'hash': b'\\x9f\\x88\\x84\\x82\\xba\\xac\\xbf\\x8d\\x10\\n\\x9e\\x0bz\\x92\\r\\xf0ia\\xb25', 'keyId': 7522664961592524807}}, 'operationTime': Timestamp(1751507074, 2)}")>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6865e07c4f31f275bdd14759'), 'counter': 9}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 14286, '$clusterTime': {'clusterTime': Timestamp(1751507074, 2), 'signature': {'hash': b'\\x9f\\x88\\x84\\x82\\xba\\xac\\xbf\\x8d\\x10\\n\\x9e\\x0bz\\x92\\r\\xf0ia\\xb25', 'keyId': 7522664961592524807}}, 'operationTime': Timestamp(1751507074, 2)}")>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0005522239999891099>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
