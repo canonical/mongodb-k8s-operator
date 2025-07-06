@@ -1,0 +1,32 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary.
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: Primary.
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:37:43Z
+
+App            Version  Status  Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             active      1  application                   0  10.152.183.25   no       
+mongodb-k8s    6.0.6    active      3  mongodb-k8s                   0  10.152.183.165  no       
+s3-integrator           active      1  s3-integrator  latest/edge  160  10.152.183.200  no       
+
+Unit              Workload  Agent      Address     Ports  Message
+application/0*    active    idle       10.1.32.82         
+mongodb-k8s/0*    active    idle       10.1.32.78         Primary.
+mongodb-k8s/1     active    executing  10.1.32.79         
+mongodb-k8s/2     active    executing  10.1.32.80         
+s3-integrator/0*  active    idle       10.1.32.81         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-new-mongodb-aws-1: 02:24:31 ERROR unit.new-mongodb-aws/1.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6869de5e1709d7b58b9b4c14, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-1.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.000659804999941116>]>
+unit-new-mongodb-aws-2: 02:24:43 ERROR unit.new-mongodb-aws/2.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6869de6aca492b38d05051ab, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-2.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.0006197370003064862>]>
+controller-0: 02:25:51 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-aws": finding filesystem info for new-mongodb-aws-mongodb-1de25d92: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-aws-mongodb-1de25d92-new-mongodb-aws-2" not found
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
