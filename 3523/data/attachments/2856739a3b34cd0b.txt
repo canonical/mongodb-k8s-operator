@@ -1,0 +1,31 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:46:27Z
+
+App            Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             waiting      1  application                   0  10.152.183.177  no       
+config-server  6.0.6    active       2  mongodb-k8s                   0  10.152.183.65   no       
+s3-integrator           active       1  s3-integrator  latest/edge  160  10.152.183.157  no       
+shard-one      6.0.6    active       2  mongodb-k8s                   1  10.152.183.133  no       
+shard-two      6.0.6    active       1  mongodb-k8s                   2  10.152.183.146  no       
+
+Unit              Workload  Agent  Address     Ports  Message
+application/0*    waiting   idle   10.1.32.72         
+config-server/0*  active    idle   10.1.32.77         
+config-server/1   active    idle   10.1.32.78         
+s3-integrator/0*  active    idle   10.1.32.87         
+shard-one/0       active    idle   10.1.32.83         
+shard-one/1*      active    idle   10.1.32.84         
+shard-two/0*      active    idle   10.1.32.88         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-shard-one-1: 01:45:13 ERROR unit.shard-one/1.juju-log sharding:15: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686b26a8ae320b853bfd62ac, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0014372839999623466>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0009016519999249795>]>
+unit-shard-one-1: 01:45:17 ERROR unit.shard-one/1.juju-log sharding:15: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686b26acae320b853bfd62ad, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0014925680000033026>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0014506720000326823>]>
+unit-shard-one-1: 01:45:22 ERROR unit.shard-one/1.juju-log sharding:15: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686b26b1ae320b853bfd62ae, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0009245670000836981>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0008277299999690513>]>
+unit-shard-one-1: 01:45:40 ERROR unit.shard-one/1.juju-log sharding:15: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686b26c38f75cc8a715bf02f, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0004678849999208978>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0007139549999237715>]>
+unit-shard-one-1: 01:45:44 ERROR unit.shard-one/1.juju-log sharding:15: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686b26c78f75cc8a715bf030, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0005410820000406602>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006985890000805739>]>
+unit-shard-one-1: 01:45:48 ERROR unit.shard-one/1.juju-log sharding:15: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686b26cb8f75cc8a715bf031, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006439069999260028>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006913309999845296>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

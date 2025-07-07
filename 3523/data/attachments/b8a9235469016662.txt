@@ -1,0 +1,137 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] maintenance: Backup started/running, backup id: '2025-07-07T02:19:21Z'
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] maintenance: Backup started/running, backup id: '2025-07-07T02:19:21Z'
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] maintenance: Backup started/running, backup id: '2025-07-07T02:19:21Z'
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] maintenance: Backup started/running, backup id: '2025-07-07T02:19:21Z'
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] maintenance: Backup started/running, backup id: '2025-07-07T02:19:21Z'
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: Primary.
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active: Primary.
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:23:59Z
+
+App              Version  Status  Scale  Charm          Channel      Rev  Address         Exposed  Message
+application               active      1  application                   0  10.152.183.79   no       
+mongodb-k8s      6.0.6    active      3  mongodb-k8s                   0  10.152.183.194  no       
+new-mongodb-gcp  6.0.6    active      3  mongodb-k8s                   1  10.152.183.195  no       
+s3-integrator             active      1  s3-integrator  latest/edge  160  10.152.183.43   no       
+
+Unit                Workload  Agent      Address      Ports  Message
+application/0*      active    idle       10.1.32.82          
+mongodb-k8s/0       active    executing  10.1.32.79          
+mongodb-k8s/1       active    executing  10.1.32.80          
+mongodb-k8s/2*      active    idle       10.1.32.77          Primary.
+new-mongodb-gcp/0*  active    idle       10.1.32.99          
+new-mongodb-gcp/1   active    idle       10.1.32.100         
+new-mongodb-gcp/2   active    idle       10.1.32.101         
+s3-integrator/0*    active    idle       10.1.32.81          
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-new-mongodb-aws-0: 02:16:16 ERROR unit.new-mongodb-aws/0.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686b2defef44ff552019b89e, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-0.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.0005705379999199067>]>
+unit-new-mongodb-aws-1: 02:16:27 ERROR unit.new-mongodb-aws/1.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686b2dfa79033fea9c920fca, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('new-mongodb-aws-1.new-mongodb-aws-endpoints', 27017) server_type: RSGhost, rtt: 0.0006753349998689373>]>
+controller-0: 02:17:25 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-aws": finding filesystem info for new-mongodb-aws-mongodb-logs-7b668206: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-aws-mongodb-logs-7b668206-new-mongodb-aws-2" not found
+unit-new-mongodb-gcp-1: 02:20:34 ERROR unit.new-mongodb-gcp/1.juju-log database-peers:14: cannot perform the following tasks:
+- Start service "pbm-agent" (service start attempt: exited quickly with code 1, will restart)
+----- Logs from task 0 -----
+2025-07-07T02:20:33Z INFO Service "pbm-agent" has never been started.
+----- Logs from task 1 -----
+2025-07-07T02:20:34Z INFO Most recent service output:
+    2025/07/07 02:20:34 Exit: connect to the node: ping: connection() error occurred during connection handshake: auth error: sasl conversation error: unable to authenticate using mechanism "SCRAM-SHA-1": (AuthenticationFailed) Authentication failed.
+2025-07-07T02:20:34Z ERROR service start attempt: exited quickly with code 1, will restart
+-----
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 68, in restart
+    self.container.restart(self.service)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2274, in restart
+    self._pebble.restart_services(service_names)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2201, in restart_services
+    return self._services_action('restart', services, timeout, delay)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "pbm-agent" (service start attempt: exited quickly with code 1, will restart)
+----- Logs from task 0 -----
+2025-07-07T02:20:33Z INFO Service "pbm-agent" has never been started.
+----- Logs from task 1 -----
+2025-07-07T02:20:34Z INFO Most recent service output:
+    2025/07/07 02:20:34 Exit: connect to the node: ping: connection() error occurred during connection handshake: auth error: sasl conversation error: unable to authenticate using mechanism "SCRAM-SHA-1": (AuthenticationFailed) Authentication failed.
+2025-07-07T02:20:34Z ERROR service start attempt: exited quickly with code 1, will restart
+-----
+unit-new-mongodb-gcp-1: 02:20:34 ERROR unit.new-mongodb-gcp/1.juju-log database-peers:14: Failed to restart pbm-agent: cannot perform the following tasks:
+- Start service "pbm-agent" (service start attempt: exited quickly with code 1, will restart)
+unit-new-mongodb-gcp-1: 02:20:34 ERROR unit.new-mongodb-gcp/1.juju-log database-peers:14: Uncaught exception while in charm code:
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 68, in restart
+    self.container.restart(self.service)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2274, in restart
+    self._pebble.restart_services(service_names)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2201, in restart_services
+    return self._services_action('restart', services, timeout, delay)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "pbm-agent" (service start attempt: exited quickly with code 1, will restart)
+----- Logs from task 0 -----
+2025-07-07T02:20:33Z INFO Service "pbm-agent" has never been started.
+----- Logs from task 1 -----
+2025-07-07T02:20:34Z INFO Most recent service output:
+    2025/07/07 02:20:34 Exit: connect to the node: ping: connection() error occurred during connection handshake: auth error: sasl conversation error: unable to authenticate using mechanism "SCRAM-SHA-1": (AuthenticationFailed) Authentication failed.
+2025-07-07T02:20:34Z ERROR service start attempt: exited quickly with code 1, will restart
+-----
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/src/charm.py", line 25, in <module>
+    main(MongoDBK8sCharm)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 551, in main
+    manager.run()
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 530, in run
+    self._emit()
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 519, in _emit
+    _emit_charm_event(self.charm, self.dispatcher.event_name)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/main.py", line 147, in _emit_charm_event
+    event_to_emit.emit(*args, **kwargs)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 348, in emit
+    framework._emit(event)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 860, in _emit
+    self._reemit(event_path)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/ops/framework.py", line 950, in _reemit
+    custom_handler(event)
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/events/lifecycle.py", line 185, in on_relation_changed
+    self.dependent.on_relation_changed()
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/mongodb_operator.py", line 513, in on_relation_changed
+    self.backup_manager.configure_and_restart()
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/managers/config.py", line 154, in configure_and_restart
+    self.workload.start()
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 48, in start
+    self.restart()
+  File "/var/lib/juju/agents/unit-new-mongodb-gcp-1/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 71, in restart
+    raise WorkloadServiceError(e.err) from e
+single_kernel_mongo.exceptions.WorkloadServiceError: cannot perform the following tasks:
+- Start service "pbm-agent" (service start attempt: exited quickly with code 1, will restart)
+unit-new-mongodb-gcp-1: 02:20:34 ERROR juju.worker.uniter.operation hook "database-peers-relation-changed" (via hook dispatching script: dispatch) failed: exit status 1
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
