@@ -1,0 +1,38 @@
+[32mINFO    [0m integration.upgrades.test_local_upgrades:test_local_upgrades.py:83 Wait for refresh to stall
+[32mINFO    [0m integration.upgrades.test_local_upgrades:test_local_upgrades.py:101 Running resume-refresh on the leader unit
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [executing] maintenance: stopping charm software
+  mongodb-k8s/2 [idle] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [executing] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/2 [executing] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [executing] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/2 [idle] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [idle] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/2 [idle] active: MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:48:24Z
+
+App          Version  Status  Scale  Charm        Channel  Rev  Address         Exposed  Message
+mongodb-k8s  ...      active      3  mongodb-k8s             1  10.152.183.109  no       
+
+Unit            Workload  Agent  Address     Ports  Message
+mongodb-k8s/0*  active    idle   10.1.32.83         
+mongodb-k8s/1   active    idle   10.1.32.82         MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+mongodb-k8s/2   active    idle   10.1.32.81         MongoDB 6.1.6+testupgrade running;  Charm revision 1+f3aecd1-dirty
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:46:53 ERROR unit.mongodb-k8s/0.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686c788ccc22b2c830f7d172, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError('The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'686c780436bc15a91cbcfb81\'), \'counter\': 14}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 13103, \'$clusterTime\': {\'clusterTime\': Timestamp(1751939211, 2), \'signature\': {\'hash\': b"\\x17\\xb4\\x90\'\\xc9C\\x8ev\\xc3\\xcd\\x91\\x03\\xa1\\x9a\\x8b\\xef\\x8a\\xb9td", \'keyId\': 7524520954400079878}}, \'operationTime\': Timestamp(1751939211, 2)}')>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError('The server is in quiesce mode and will shut down, full error: {\'topologyVersion\': {\'processId\': ObjectId(\'686c7884ba6c1391b07b9786\'), \'counter\': 9}, \'ok\': 0.0, \'errmsg\': \'The server is in quiesce mode and will shut down\', \'code\': 91, \'codeName\': \'ShutdownInProgress\', \'remainingQuiesceTimeMillis\': 13990, \'$clusterTime\': {\'clusterTime\': Timestamp(1751939211, 2), \'signature\': {\'hash\': b"\\x17\\xb4\\x90\'\\xc9C\\x8ev\\xc3\\xcd\\x91\\x03\\xa1\\x9a\\x8b\\xef\\x8a\\xb9td", \'keyId\': 7524520954400079878}}, \'operationTime\': Timestamp(1751939211, 2)}')>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0007723730000179785>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
