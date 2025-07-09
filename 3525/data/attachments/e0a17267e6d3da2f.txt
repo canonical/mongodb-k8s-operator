@@ -1,0 +1,24 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:54:56Z
+
+App          Version  Status   Scale  Charm        Channel  Rev  Address        Exposed  Message
+application           active       1  application             0  10.152.183.43  no       
+mongodb-k8s  6.0.6    blocked    2/3  mongodb-k8s             1  10.152.183.19  no       Refreshing. Verify highest unit is healthy & run `resume-refresh` action. To rollback, `juju refresh` to last revision
+
+Unit            Workload  Agent  Address       Ports  Message
+application/0*  active    idle   10.1.169.136         
+mongodb-k8s/0*  active    idle   10.1.169.148         
+mongodb-k8s/1   active    idle   10.1.169.147         MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+mongodb-k8s/2   unknown   lost   10.1.169.146         agent lost, see 'juju show-status-log mongodb-k8s/2'
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:42:43 ERROR unit.mongodb-k8s/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:42:44 ERROR unit.mongodb-k8s/0.juju-log upgrade-version-a:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-mongodb-k8s-0: 01:50:46 ERROR unit.mongodb-k8s/0.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 686dcaf5080b39bb87c6421f, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('686dc9255ea7d1f3b5186c81'), 'counter': 14}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 13050, '$clusterTime': {'clusterTime': Timestamp(1752025844, 4), 'signature': {'hash': b'\\x8d?\\xd4\\xcc\\x86\\xb6\\x16f\\xd89Ov\\xd9\\xc8%\\xc7\\x8e\\xfc\\xc9T', 'keyId': 7524891661617332231}}, 'operationTime': Timestamp(1752025844, 4)}")>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('686dcaebb7866a4b3096d29b'), 'counter': 9}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 13754, '$clusterTime': {'clusterTime': Timestamp(1752025844, 4), 'signature': {'hash': b'\\x8d?\\xd4\\xcc\\x86\\xb6\\x16f\\xd89Ov\\xd9\\xc8%\\xc7\\x8e\\xfc\\xc9T', 'keyId': 7524891661617332231}}, 'operationTime': Timestamp(1752025844, 4)}")>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0008634680000341177>]>
+unit-mongodb-k8s-0: 01:53:30 ERROR unit.mongodb-k8s/0.juju-log Cluster cannot read/write to replicas
+unit-mongodb-k8s-0: 01:54:46 ERROR unit.mongodb-k8s/0.juju-log Set-password failed: Cannot set passwords while an upgrade is in progress
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
