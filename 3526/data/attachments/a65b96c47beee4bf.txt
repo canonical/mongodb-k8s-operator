@@ -1,0 +1,43 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:50:11Z
+
+App                Version  Status   Scale  Charm          Channel      Rev  Address         Exposed  Message
+application                 active       1  application                   0  10.152.183.68   no       
+config-server-one  6.0.6    active       1  mongodb-k8s                   1  10.152.183.208  no       
+config-server-two  6.0.6    waiting      1  mongodb-k8s                   2  10.152.183.188  no       installing agent
+replication        6.0.6    waiting      1  mongodb-k8s                   0  10.152.183.99   no       installing agent
+s3-integrator               blocked      1  s3-integrator  latest/edge  162  10.152.183.169  no       Missing parameters: ['access-key', 'secret-key']
+shard              6.0.6    waiting      1  mongodb-k8s                   3  10.152.183.253  no       installing agent
+
+Unit                  Workload  Agent      Address       Ports  Message
+application/0*        active    idle       10.1.169.136         
+config-server-one/0*  active    idle       10.1.169.142         Primary.
+config-server-two/0*  blocked   idle       10.1.169.145         Missing relation to shard(s).
+replication/0*        blocked   idle       10.1.169.139         Sharding interface cannot be used by replicas.
+s3-integrator/0*      blocked   executing  10.1.169.148         Missing parameters: ['access-key', 'secret-key']
+shard/0*              blocked   executing  10.1.169.149         Relation to s3-integrator is not support... Run `status-detail`: 0 action required; 1 additional statuses.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-one-0: 01:46:46 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-shard-0: 01:46:46 ERROR juju.worker.uniter resolver loop error: permission denied
+unit-config-server-one-0: 01:46:46 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-shard-0: 01:46:46 ERROR juju.worker.dependency "uniter" manifold worker returned unexpected error: permission denied
+unit-shard-0: 01:47:35 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-shard-0: 01:47:35 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:47:36 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-config-server-one-0: 01:47:36 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-shard-0: 01:47:39 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:47:39 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-shard-0: 01:47:43 ERROR unit.shard/0.juju-log database:18: Charm is in sharding role: MongoDBRoles.SHARD. Does not support database interface.
+unit-config-server-one-0: 01:47:43 ERROR unit.config-server-one/0.juju-log database:19: Charm is in sharding role: MongoDBRoles.CONFIG_SERVER. Does not support database interface.
+unit-replication-0: 01:48:07 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-replication-0: 01:48:10 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-replication-0: 01:48:12 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+unit-replication-0: 01:49:11 ERROR unit.replication/0.juju-log Cannot use a replica as a shard.
+unit-config-server-one-0: 01:49:12 ERROR unit.config-server-one/0.juju-log replication shard does not have the same auth as the config server.
+unit-replication-0: 01:49:16 ERROR unit.replication/0.juju-log sharding:20: Charm is in replication role: MongoDBRoles.REPLICATION. Does not support RelationNames.SHARDING interface.
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
