@@ -1,0 +1,50 @@
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:52:57Z
+
+App                   Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+local-config-server   6.0.6    waiting      1  mongodb-k8s             0  10.152.183.203  no       installing agent
+local-shard           6.0.6    waiting      1  mongodb-k8s             1  10.152.183.220  no       installing agent
+remote-config-server  6.0.6    waiting      1  mongodb-k8s  6/edge    68  10.152.183.241  no       installing agent
+remote-shard          6.0.6    waiting      1  mongodb-k8s  6/edge    68  10.152.183.102  no       installing agent
+
+Unit                     Workload  Agent  Address      Ports  Message
+local-config-server/0*   waiting   idle   10.1.63.208         Waiting for shards to upgrade/downgrade to revision 1+f3aecd1-dirty-locally built.
+local-shard/0*           blocked   idle   10.1.63.211         Charm revision (1+f3aecd1-dirty-locally built) is not up-to date with config-server (68).
+remote-config-server/0*  waiting   idle   10.1.63.205         Waiting for shards to upgrade/downgrade to revision 68.
+remote-shard/0*          blocked   idle   10.1.63.203         Charm revision (68) is not up-to date with config-server (1+f3aecd1-dirty-locally built).
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-remote-config-server-0: 01:46:07 ERROR unit.remote-config-server/0.juju-log cannot perform the following tasks:
+- Start service "logrotate" (service start attempt: exited quickly with code 0, will restart)
+----- Logs from task 0 -----
+2025-07-13T01:46:06Z INFO Service "logrotate" has never been started.
+----- Logs from task 1 -----
+2025-07-13T01:46:07Z INFO Most recent service output:
+    error: error creating stub state file /var/lib/logrotate/status: Permission denied
+2025-07-13T01:46:07Z ERROR service start attempt: exited quickly with code 0, will restart
+-----
+Traceback (most recent call last):
+  File "/var/lib/juju/agents/unit-remote-config-server-0/charm/venv/lib/python3.10/site-packages/single_kernel_mongo/core/k8s_workload.py", line 68, in restart
+    self.container.restart(self.service)
+  File "/var/lib/juju/agents/unit-remote-config-server-0/charm/venv/lib/python3.10/site-packages/ops/model.py", line 2274, in restart
+    self._pebble.restart_services(service_names)
+  File "/var/lib/juju/agents/unit-remote-config-server-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2201, in restart_services
+    return self._services_action('restart', services, timeout, delay)
+  File "/var/lib/juju/agents/unit-remote-config-server-0/charm/venv/lib/python3.10/site-packages/ops/pebble.py", line 2226, in _services_action
+    raise ChangeError(change.err, change)
+ops.pebble.ChangeError: cannot perform the following tasks:
+- Start service "logrotate" (service start attempt: exited quickly with code 0, will restart)
+----- Logs from task 0 -----
+2025-07-13T01:46:06Z INFO Service "logrotate" has never been started.
+----- Logs from task 1 -----
+2025-07-13T01:46:07Z INFO Most recent service output:
+    error: error creating stub state file /var/lib/logrotate/status: Permission denied
+2025-07-13T01:46:07Z ERROR service start attempt: exited quickly with code 0, will restart
+-----
+unit-remote-config-server-0: 01:46:07 ERROR unit.remote-config-server/0.juju-log Deferring because of WorkloadServiceError cannot perform the following tasks:
+- Start service "logrotate" (service start attempt: exited quickly with code 0, will restart)
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...

@@ -1,0 +1,36 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary.
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: 
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: Primary.
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:00:28Z
+
+App                       Version  Status  Scale  Charm                     Channel        Rev  Address         Exposed  Message
+mongodb-k8s               6.0.6    active      3  mongodb-k8s                                0  10.152.183.168  no       
+self-signed-certificates           active      1  self-signed-certificates  latest/stable  264  10.152.183.220  no       
+
+Unit                         Workload  Agent  Address      Ports  Message
+mongodb-k8s/0*               active    idle   10.1.63.205         
+mongodb-k8s/1                active    idle   10.1.63.208         
+mongodb-k8s/2                active    idle   10.1.63.207         Primary.
+self-signed-certificates/0*  active    idle   10.1.63.209         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-2: 01:47:41 ERROR unit.mongodb-k8s/2.juju-log certificates:4: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-k8s-1: 01:47:41 ERROR unit.mongodb-k8s/1.juju-log certificates:4: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-k8s-2: 01:47:41 ERROR unit.mongodb-k8s/2.juju-log certificates:4: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-k8s-0: 01:47:41 ERROR unit.mongodb-k8s/0.juju-log certificates:4: Non-existing secret unit:int-cert-secret was attempted to be removed.
+unit-mongodb-k8s-1: 01:47:42 ERROR unit.mongodb-k8s/1.juju-log certificates:4: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-k8s-0: 01:47:42 ERROR unit.mongodb-k8s/0.juju-log certificates:4: Non-existing secret unit:ext-cert-secret was attempted to be removed.
+unit-mongodb-k8s-0: 01:48:12 ERROR unit.mongodb-k8s/0.juju-log database-peers:1: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6873105b1d45ffb088a1ee3e, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0007257699999740908>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006425040000408444>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0007912000000374064>]>
+unit-mongodb-k8s-0: 01:50:26 ERROR unit.mongodb-k8s/0.juju-log database-peers:1: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 687310e00929c2818fcf63df, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0008019130000320729>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0009738240000842779>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('687310d9abfb7f7f4b8fd986'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 10420}")>]>
+unit-mongodb-k8s-0: 01:56:19 ERROR unit.mongodb-k8s/0.juju-log database-peers:1: Not reconfiguring: error=No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 68731242c0d39b328c4279cd, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.00038219499992919737>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0006071980000115218>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6873123b3e77ce64019a9dde'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 10094}")>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
