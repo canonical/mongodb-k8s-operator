@@ -1,0 +1,110 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/0 [idle] active: 
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: Primary.
+  shard-one/0 [idle] active: 
+  shard-one/1 [idle] active: Primary.
+  shard-one/2 [idle] active: 
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+  shard-two/2 [idle] active: MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  config-server/1 [idle] active: 
+  config-server/2 [idle] active: Primary.
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+[32mINFO    [0m integration.ha_tests.helpers:helpers.py:666 Result of isolating unit from cluster is 'b'networkchaos.chaos-mesh.org/network-loss-primary created\n''
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+  shard-two/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  shard-two/0 [idle] active: 
+  shard-two/1 [idle] active: 
+  shard-two/2 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:18:59Z
+
+App            Version  Status   Scale  Charm        Channel  Rev  Address         Exposed  Message
+application             waiting      1  application             0  10.152.183.191  no       
+config-server  6.0.6    active       3  mongodb-k8s             0  10.152.183.154  no       
+shard-one      6.0.6    active       3  mongodb-k8s             1  10.152.183.181  no       
+shard-two      6.0.6    active       3  mongodb-k8s             2  10.152.183.103  no       
+
+Unit              Workload  Agent  Address      Ports  Message
+application/0*    waiting   idle   10.1.63.200         
+config-server/0*  active    idle   10.1.63.230         Primary.
+config-server/1   active    idle   10.1.63.229         
+config-server/2   active    idle   10.1.63.228         
+shard-one/0*      active    idle   10.1.63.233         Primary.
+shard-one/1       active    idle   10.1.63.232         
+shard-one/2       active    idle   10.1.63.231         
+shard-two/0*      active    idle   10.1.63.236         
+shard-two/1       active    idle   10.1.63.235         
+shard-two/2       active    idle   10.1.63.234         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-config-server-0: 01:42:44 ERROR unit.config-server/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:42:48 ERROR unit.config-server/0.juju-log ldap-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:42:52 ERROR unit.config-server/0.juju-log status-peers:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:42:56 ERROR unit.config-server/0.juju-log ldap-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:43:02 ERROR unit.config-server/0.juju-log status-peers:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-2: 01:43:03 ERROR unit.config-server/2.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:43:06 ERROR unit.config-server/0.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-2: 01:43:08 ERROR unit.config-server/2.juju-log status-peers:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-1: 01:43:10 ERROR unit.config-server/1.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:43:13 ERROR unit.config-server/0.juju-log status-peers:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-2: 01:43:13 ERROR unit.config-server/2.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-1: 01:43:15 ERROR unit.config-server/1.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:43:17 ERROR unit.config-server/0.juju-log ldap-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-0: 01:43:19 ERROR unit.shard-one/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-2: 01:43:19 ERROR unit.config-server/2.juju-log upgrade-version-a:4: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-1: 01:43:22 ERROR unit.config-server/1.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:43:22 ERROR unit.config-server/0.juju-log status-peers:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-0: 01:43:24 ERROR unit.shard-one/0.juju-log upgrade-version-a:5: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-2: 01:43:25 ERROR unit.config-server/2.juju-log upgrade-version-a:4: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-1: 01:43:28 ERROR unit.config-server/1.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:43:28 ERROR unit.config-server/0.juju-log status-peers:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-2: 01:43:30 ERROR unit.config-server/2.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-0: 01:43:31 ERROR unit.shard-one/0.juju-log database-peers:6: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:43:33 ERROR unit.config-server/0.juju-log ldap-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-1: 01:43:33 ERROR unit.config-server/1.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-2: 01:43:35 ERROR unit.config-server/2.juju-log status-peers:3: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-2: 01:43:36 ERROR unit.shard-one/2.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-1: 01:43:38 ERROR unit.config-server/1.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:43:38 ERROR unit.config-server/0.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-0: 01:43:39 ERROR unit.shard-one/0.juju-log ldap-peers:7: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-1: 01:43:39 ERROR unit.shard-one/1.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-2: 01:43:40 ERROR unit.config-server/2.juju-log ldap-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-2: 01:43:41 ERROR unit.shard-one/2.juju-log database-peers:6: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-two-0: 01:43:42 ERROR unit.shard-two/0.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-1: 01:43:44 ERROR unit.shard-one/1.juju-log upgrade-version-a:5: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-1: 01:43:44 ERROR unit.config-server/1.juju-log ldap-peers:2: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-two-1: 01:43:44 ERROR unit.shard-two/1.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-0: 01:43:44 ERROR unit.shard-one/0.juju-log database-peers:6: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-2: 01:43:46 ERROR unit.config-server/2.juju-log database-peers:1: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-two-2: 01:43:47 ERROR unit.shard-two/2.juju-log Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-one-2: 01:43:48 ERROR unit.shard-one/2.juju-log ldap-peers:7: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-config-server-0: 01:43:48 ERROR unit.config-server/0.juju-log upgrade-version-a:4: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-two-0: 01:43:48 ERROR unit.shard-two/0.juju-log database-peers:10: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-two-1: 01:43:50 ERROR unit.shard-two/1.juju-log database-peers:10: Deferring because of ContainerNotReadyError Mongo DB installation not ready yet
+unit-shard-two-0: 01:47:04 ERROR unit.shard-two/0.juju-log sharding:14: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6875b3163d729fa729ee79e5, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-two-0.shard-two-endpoints', 27017) server_type: RSSecondary, rtt: 0.016482640000049287>, <ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: RSSecondary, rtt: 0.0005878270000039265>, <ServerDescription ('shard-two-2.shard-two-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6875b310b714c9d11c2b38e9'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 14999}")>]>
+unit-shard-two-0: 01:47:08 ERROR unit.shard-two/0.juju-log sharding:14: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6875b31b3d729fa729ee79e6, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-two-0.shard-two-endpoints', 27017) server_type: RSSecondary, rtt: 0.0007819019999715238>, <ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: RSSecondary, rtt: 0.001140713000040705>, <ServerDescription ('shard-two-2.shard-two-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6875b310b714c9d11c2b38e9'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 10963}")>]>
+unit-shard-one-0: 01:47:12 ERROR unit.shard-one/0.juju-log sharding:13: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6875b31f8dbbc0d005d85360, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0012540969999008666>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.006014081999978771>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0016189560000157144>]>
+unit-shard-two-0: 01:47:46 ERROR unit.shard-two/0.juju-log sharding:14: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6875b3410a4a91faeb8865da, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-two-0.shard-two-endpoints', 27017) server_type: RSSecondary, rtt: 0.0013446949999433855>, <ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6875b3370ed340b16a4fe3d1'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 14874}")>, <ServerDescription ('shard-two-2.shard-two-endpoints', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('shard-two-2.shard-two-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>]>
+unit-shard-two-0: 01:47:51 ERROR unit.shard-two/0.juju-log sharding:14: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6875b3450a4a91faeb8865db, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-two-0.shard-two-endpoints', 27017) server_type: RSSecondary, rtt: 0.00411407500007499>, <ServerDescription ('shard-two-1.shard-two-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6875b3370ed340b16a4fe3d1'), 'counter': 4}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 10696}")>, <ServerDescription ('shard-two-2.shard-two-endpoints', 27017) server_type: RSSecondary, rtt: 0.0036283700000012686>]>
+unit-shard-one-0: 01:48:05 ERROR unit.shard-one/0.juju-log sharding:13: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6875b3535c514da4899b9926, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.005915615999924739>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=AutoReconnect('shard-one-1.shard-one-endpoints:27017: [Errno 111] Connection refused (configured timeouts: socketTimeoutMS: 2000.0ms, connectTimeoutMS: 2000.0ms)')>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.010587478000047668>]>
+unit-shard-one-0: 01:48:09 ERROR unit.shard-one/0.juju-log sharding:13: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6875b3585c514da4899b9927, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.00746958000001996>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.002203877999932047>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.001960893999921609>]>
+unit-shard-one-0: 01:48:13 ERROR unit.shard-one/0.juju-log sharding:13: Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6875b35c5c514da4899b9928, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0017477889999781837>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0012121009999646049>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0009777129999974932>]>
+unit-shard-one-0: 02:02:06 ERROR unit.shard-one/0.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6875b69d68bacb2ce9f071d3, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('shard-one-0.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6875b36d169b22e224dc7d65'), 'counter': 11}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 11921, 'lastCommittedOpTime': Timestamp(1752544923, 11), '$clusterTime': {'clusterTime': Timestamp(1752544923, 31), 'signature': {'hash': b'\\xee\\x83\\xafT\\xb1\\xd7\\x81#\\xfd\\xbf~R}\\x9b\\x99\\x8b@^\\t7', 'keyId': 7527118490491158553}}, 'operationTime': Timestamp(1752544923, 11)}")>, <ServerDescription ('shard-one-1.shard-one-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6875b68a450a60cea5521eb6'), 'counter': 9}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 13292, 'lastCommittedOpTime': Timestamp(1752544923, 11), '$clusterTime': {'clusterTime': Timestamp(1752544923, 31), 'signature': {'hash': b'\\xee\\x83\\xafT\\xb1\\xd7\\x81#\\xfd\\xbf~R}\\x9b\\x99\\x8b@^\\t7', 'keyId': 7527118490491158553}}, 'operationTime': Timestamp(1752544923, 11)}")>, <ServerDescription ('shard-one-2.shard-one-endpoints', 27017) server_type: RSSecondary, rtt: 0.0012870440000369854>]>
+unit-config-server-0: 02:16:58 ERROR unit.config-server/0.juju-log Cluster cannot read/write to replicas
+unit-shard-one-0: 02:17:27 ERROR unit.shard-one/0.juju-log Cluster cannot read/write to replicas
+unit-shard-two-1: 02:17:42 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [3a4066] "unit-shard-two-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-shard-two-1: 02:17:48 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [3a4066] "unit-shard-two-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-shard-two-1: 02:17:56 ERROR juju.worker.dependency "api-caller" manifold worker returned unexpected error: [3a4066] "unit-shard-two-1" cannot open api: cannot resolve "controller-service.controller-microk8s-localhost.svc.cluster.local": lookup controller-service.controller-microk8s-localhost.svc.cluster.local: i/o timeout
+unit-shard-two-0: 02:17:58 ERROR unit.shard-two/0.juju-log Cluster cannot read/write to replicas
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
