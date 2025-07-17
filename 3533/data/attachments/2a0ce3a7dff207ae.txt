@@ -1,0 +1,31 @@
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: Primary.
+  mongodb-k8s/1 [idle] active: 
+  mongodb-k8s/2 [idle] active: 
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: Primary.
+  mongodb-k8s/1 [executing] active: 
+  mongodb-k8s/2 [executing] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  02:42:52Z
+
+App            Version  Status  Scale  Charm          Channel      Rev  Address         Exposed  Message
+application             active      1  application                   0  10.152.183.231  no       
+mongodb-k8s    6.0.6    active      3  mongodb-k8s                   0  10.152.183.230  no       
+s3-integrator           active      1  s3-integrator  latest/edge  177  10.152.183.150  no       
+
+Unit              Workload  Agent      Address      Ports  Message
+application/0*    active    idle       10.1.63.210         
+mongodb-k8s/0*    active    idle       10.1.63.206         Primary.
+mongodb-k8s/1     active    executing  10.1.63.208         
+mongodb-k8s/2     active    executing  10.1.63.207         
+s3-integrator/0*  active    idle       10.1.63.209         
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+controller-0: 02:27:08 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-aws": finding filesystem info for new-mongodb-aws-mongodb-21b3a897: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-aws-mongodb-21b3a897-new-mongodb-aws-2" not found
+controller-0: 02:41:34 ERROR juju.worker.caasapplicationprovisioner.runner exited "new-mongodb-gcp": finding filesystem info for new-mongodb-gcp-mongodb-5c61a0e4: unable to get persistent volume claim: k8s: persistentvolumeclaims "new-mongodb-gcp-mongodb-5c61a0e4-new-mongodb-gcp-1" not found
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
