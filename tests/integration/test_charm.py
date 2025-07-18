@@ -5,6 +5,7 @@
 import logging
 
 import pytest
+from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 
 from .helpers import (
@@ -13,6 +14,7 @@ from .helpers import (
     METADATA,
     UNIT_IDS,
     check_or_scale_app,
+    get_address_of_unit,
     get_app_name,
 )
 
@@ -58,3 +60,12 @@ async def test_build_and_deploy(ops_test: OpsTest):
 
     # effectively disable the update status from firing
     await ops_test.model.set_config({"update-status-hook-interval": "60m"})
+
+
+@pytest.mark.group(1)
+@pytest.mark.abort_on_fail
+@pytest.mark.parametrize("unit_id", UNIT_IDS)
+async def test_application_is_up(ops_test: OpsTest, unit_id: int):
+    address = await get_address_of_unit(ops_test, unit_id=unit_id)
+    response = MongoClient(address, directConnection=True).admin.command("ping")
+    assert response["ok"] == 1

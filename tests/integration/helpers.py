@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import yaml
 from dateutil.parser import parse
+from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
 from tenacity import Retrying, stop_after_delay, wait_fixed
 
@@ -190,3 +191,80 @@ async def wait_for_mongodb_units_blocked(
                 await check_all_units_blocked_with_status(ops_test, db_app_name, status)
     finally:
         await ops_test.model.set_config({hook_interval_key: old_interval})
+
+
+async def get_address_of_unit(ops_test: OpsTest, unit_id: int, app_name: str = APP_NAME) -> str:
+    """Retrieves the address of the unit based on provided id."""
+    status = await ops_test.model.get_status()
+    return status["applications"][app_name]["units"][f"{app_name}/{unit_id}"]["address"]
+
+
+async def get_direct_mongo_client(
+    ops_test: OpsTest,
+    app_name: str,
+    mongos: bool = False,
+) -> MongoClient:
+    """Returns a direct mongodb client potentially passing over some of the units."""
+    port = "27018"
+    mongodb_name = app_name or await get_app_name(ops_test, APP_NAME)
+
+    for unit in ops_test.model.applications[mongodb_name].units:
+        if unit.workload_status == "active":
+            url = await mongodb_uri(
+                ops_test,
+                [int(unit.name.split("/")[1])],
+                app_name=mongodb_name,
+                port=port,
+            )
+            return MongoClient(url, directConnection=True)
+    assert False, "No fitting unit could be found"
+
+
+async def get_password(
+    ops_test: OpsTest,
+    unit_id: int = 0,
+    username: str = "operator",
+    app_name: str = APP_NAME,
+) -> str:
+    """Use the charm action to retrieve the password from provided unit.
+
+    Returns:
+        String with the password stored on the peer relation databag.
+    """
+    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action(
+        "get-password", **{"username": username}
+    )
+    action = await action.wait()
+    return action.results["password"]
+
+
+async def mongodb_uri(
+    ops_test: OpsTest,
+    unit_ids: list[int] | None = None,
+    port: str = "27017",
+    app_name: str = APP_NAME,
+    username: str = "operator",
+) -> str:
+    if unit_ids is None:
+        unit_ids = range(0, len(ops_test.model.applications[app_name].units))
+
+    addresses = [await get_address_of_unit(ops_test, unit_id, app_name) for unit_id in unit_ids]
+    hosts = [f"{host}:{port}" for host in addresses]
+    hosts = ",".join(hosts)
+
+    password = await get_password(ops_test, 0, username=username, app_name=app_name)
+
+    return f"mongodb://{username}:{password}@{hosts}/admin"
+
+
+def get_cluster_shards(mongos_client: MongoClient) -> set:
+    """Returns a set of the shard members."""
+    shard_list = mongos_client.admin.command("listShards")
+    curr_members = [member["host"].split("/")[0] for member in shard_list["shards"]]
+    return set(curr_members)
+
+
+def has_correct_shards(mongos_client: MongoClient, expected_shards: list[str]) -> bool:
+    """Returns true if the cluster config has the expected shards."""
+    shard_names = get_cluster_shards(mongos_client)
+    return shard_names == set(expected_shards)
