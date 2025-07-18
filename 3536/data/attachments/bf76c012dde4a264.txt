@@ -1,0 +1,40 @@
+[32mINFO    [0m integration.upgrades.test_rollback:test_rollback.py:81 Wait for refresh to fail
+[32mINFO    [0m integration.upgrades.test_rollback:test_rollback.py:93 Re-refresh the charm
+[32mINFO    [0m integration.upgrades.test_rollback:test_rollback.py:104 Running resume-refresh on the leader unit
+[32mINFO    [0m integration.upgrades.test_rollback:test_rollback.py:110 Wait for the charm to be rolled back
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active: MongoDB 6.0.6 running (restart pending);  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/1 [executing] maintenance: stopping charm software
+  mongodb-k8s/2 [idle] active: MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: MongoDB 6.0.6 running (restart pending);  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/1 [executing] active: MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/2 [executing] active: MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: Primary.
+  mongodb-k8s/1 [executing] active: MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/2 [executing] active: MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [executing] active: 
+  mongodb-k8s/1 [idle] active: MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+  mongodb-k8s/2 [idle] active: MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+[32mINFO    [0m juju.model:__init__.py:3254 Waiting for model:
+  mongodb-k8s/0 [idle] active:
+[32mINFO    [0m pytest_operator.plugin:plugin.py:903 Model status:
+
+Model  Controller          Cloud/Region        Version  SLA          Timestamp
+test   microk8s-localhost  microk8s/localhost  3.6.1    unsupported  01:57:11Z
+
+App          Version  Status  Scale  Charm        Channel  Rev  Address        Exposed  Message
+mongodb-k8s  ...      active      3  mongodb-k8s             2  10.152.183.99  no       
+
+Unit            Workload  Agent  Address      Ports  Message
+mongodb-k8s/0*  active    idle   10.1.63.212         
+mongodb-k8s/1   active    idle   10.1.63.211         MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+mongodb-k8s/2   active    idle   10.1.63.210         MongoDB 6.0.6 running;  Charm revision 1+f3aecd1-dirty
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:909 Juju error logs:
+
+unit-mongodb-k8s-0: 01:55:40 ERROR unit.mongodb-k8s/0.juju-log Unable to get primary: No replica set members match selector "Primary()", Timeout: 1.0s, Topology Description: <TopologyDescription id: 6879a99b76622e05b225adf1, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('mongodb-k8s-0.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6879a7d7110e582d3936434f'), 'counter': 14}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 13024, '$clusterTime': {'clusterTime': Timestamp(1752803737, 4), 'signature': {'hash': b'\\xce8\\x16w\\x89he\\xb7 C\\xaf\\xa5\\xbc6\\xca\\xf3\\x18\\xc9M\\x85', 'keyId': 7528232712381923335}}, 'operationTime': Timestamp(1752803737, 4)}")>, <ServerDescription ('mongodb-k8s-1.mongodb-k8s-endpoints', 27017) server_type: Unknown, rtt: None, error=NotPrimaryError("The server is in quiesce mode and will shut down, full error: {'topologyVersion': {'processId': ObjectId('6879a992ff8bf96ad16825bc'), 'counter': 9}, 'ok': 0.0, 'errmsg': 'The server is in quiesce mode and will shut down', 'code': 91, 'codeName': 'ShutdownInProgress', 'remainingQuiesceTimeMillis': 14217, '$clusterTime': {'clusterTime': Timestamp(1752803737, 4), 'signature': {'hash': b'\\xce8\\x16w\\x89he\\xb7 C\\xaf\\xa5\\xbc6\\xca\\xf3\\x18\\xc9M\\x85', 'keyId': 7528232712381923335}}, 'operationTime': Timestamp(1752803737, 4)}")>, <ServerDescription ('mongodb-k8s-2.mongodb-k8s-endpoints', 27017) server_type: RSSecondary, rtt: 0.0012590619999173214>]>
+
+[32mINFO    [0m pytest_operator.plugin:plugin.py:991 Forgetting model main...
