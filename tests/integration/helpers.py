@@ -3,50 +3,21 @@
 
 import json
 import logging
-import math
-import re
-import subprocess
-import time
-from datetime import datetime
 from pathlib import Path
-from random import choices
-from string import ascii_lowercase, digits
-from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 import yaml
 from dateutil.parser import parse
-from more_itertools import one
+from pymongo import MongoClient
 from pytest_operator.plugin import OpsTest
-from tenacity import Retrying, retry, stop_after_attempt, stop_after_delay, wait_fixed
+from tenacity import Retrying, stop_after_delay, wait_fixed
 
 METADATA = yaml.safe_load(Path("./metadata.yaml").read_text())
 APP_NAME = METADATA["name"]
 UNIT_IDS = [0, 1, 2]
-MONGOS_PORT = 27018
-MONGOD_PORT = 27017
 DEPLOYMENT_TIMEOUT = 2000
-TEST_DOCUMENTS = """[
-    {
-        \"uid\": 123,
-        \"label\": \"Lorem\",
-        \"price\": 2.3,
-        \"currency\": \"eur\",
-        \"exp_date\": \"2022-12-12\"
-    },
-    {
-        \"uid\": 3456,
-        \"label\": \"Ipsum\",
-        \"price\": 18,
-        \"currency\": \"usd\",
-        \"exp_date\": \"2023-01-13\"
-    }
-]"""
 
 SERIES = "jammy"
-
-HELPER_MONGO_VERSION = "6.0.11"
-HELPER_MONGO_POD_NAME = "mongodb-helper"
 
 
 logger = logging.getLogger(__name__)
@@ -92,472 +63,6 @@ class Unit:
         return result
 
 
-async def get_leader_id(ops_test: OpsTest, app_name: str = APP_NAME) -> int:
-    """Returns the unit number of the juju leader unit."""
-    for unit in ops_test.model.applications[app_name].units:
-        if await unit.is_leader_from_status():
-            return int(unit.entity_id.split("/")[-1])
-
-    assert (
-        False
-    ), f"Failed to find unit leader for {app_name} using 'unit.is_leader_from_status()' !!!"
-
-
-async def get_address_of_unit(ops_test: OpsTest, unit_id: int, app_name: str = APP_NAME) -> str:
-    """Retrieves the address of the unit based on provided id."""
-    status = await ops_test.model.get_status()
-    return status["applications"][app_name]["units"][f"{app_name}/{unit_id}"]["address"]
-
-
-async def get_password(
-    ops_test: OpsTest,
-    unit_id: int = 0,
-    username: str = "operator",
-    app_name: str = APP_NAME,
-) -> str:
-    """Use the charm action to retrieve the password from provided unit.
-
-    Returns:
-        String with the password stored on the peer relation databag.
-    """
-    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action(
-        "get-password", **{"username": username}
-    )
-    action = await action.wait()
-    return action.results["password"]
-
-
-async def set_password(
-    ops_test: OpsTest,
-    unit_id: int,
-    username: str = "operator",
-    password: str = "secret",
-    app_name: str = APP_NAME,
-) -> str:
-    """Use the charm action to retrieve the password from provided unit.
-
-    Returns:
-        String with the password stored on the peer relation databag.
-    """
-    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action(
-        "set-password", **{"username": username, "password": password}
-    )
-    action = await action.wait()
-    return action.results
-
-
-async def get_mongo_cmd(ops_test: OpsTest, unit_name: str):
-    complete_command = f"ssh --container mongod {unit_name} ls /usr/bin/mongosh"
-    ls_code, _, stderr = await ops_test.juju(*complete_command.split())
-    match ls_code:
-        case 0:
-            return "/usr/bin/mongosh"
-        case _:
-            logger.info(f"mongosh not found. Reason: '{stderr}'. Using /usr/bin/mongo")
-            return "/usr/bin/mongo"
-
-
-async def mongodb_uri(
-    ops_test: OpsTest,
-    unit_ids: List[int] | None = None,
-    use_subprocess_to_get_password=False,
-    port=MONGOD_PORT,
-    app_name: str = APP_NAME,
-    username: str = "operator",
-    password: str | None = None,
-    hostnames: bool = False,
-) -> str:
-    if unit_ids is None:
-        unit_ids = range(0, len(ops_test.model.applications[app_name].units))
-
-    if not hostnames:
-        addresses = [
-            await get_address_of_unit(ops_test, unit_id, app_name) for unit_id in unit_ids
-        ]
-    else:
-        addresses = [f"{app_name}-{unit_id}.{app_name}-endpoints" for unit_id in unit_ids]
-    hosts = [f"{host}:{port}" for host in addresses]
-    hosts = ",".join(hosts)
-
-    # If password is chosen, always keep it, otherwise check on `use_subprocess_to_get_password`
-    match (password, use_subprocess_to_get_password):
-        case (None, True):
-            password = get_password_using_subprocess(
-                ops_test, username=username, app_name=app_name
-            )
-        case (None, False):
-            password = await get_password(ops_test, 0, username=username, app_name=app_name)
-        case _:
-            pass
-
-    return f"mongodb://{username}:{password}@{hosts}/admin"
-
-
-# useful, as sometimes, the mongo request returns nothing on the first try
-@retry(stop=stop_after_attempt(3), wait=wait_fixed(3), reraise=True)
-async def run_mongo_op(
-    ops_test: OpsTest,
-    mongo_op: str,
-    mongo_uri: str = None,
-    suffix: str = "",
-    expecting_output: bool = True,
-    stringify: bool = True,
-    expect_json_load: bool = True,
-) -> SimpleNamespace():
-    """Runs provided MongoDB operation in a separate container."""
-    if mongo_uri is None:
-        mongo_uri = await mongodb_uri(ops_test)
-
-    if stringify:
-        mongo_cmd = f"mongosh --quiet --eval 'EJSON.stringify({mongo_op})' {mongo_uri}{suffix}"
-    else:
-        mongo_cmd = f"mongosh --quiet --eval '{mongo_op}' {mongo_uri}{suffix}"
-
-    logger.info("Running mongo command: %r", mongo_cmd)
-
-    create_pod_if_not_exists(
-        ops_test.model_name,
-        HELPER_MONGO_POD_NAME,
-        "mongo",
-        f"mongo:{HELPER_MONGO_VERSION}",
-    )
-
-    while not is_pod_ready(ops_test.model_name, HELPER_MONGO_POD_NAME):
-        logger.info("Waiting for pod to be ready...")
-        time.sleep(5)
-
-    kubectl_cmd = (
-        "microk8s",
-        "kubectl",
-        "exec",
-        "-i",
-        "-n",
-        ops_test.model_name,
-        HELPER_MONGO_POD_NAME,
-        "--",
-        "sh",
-        "-c",
-        mongo_cmd,
-    )
-
-    output = SimpleNamespace(failed=False, succeeded=False, data=None)
-
-    ret_code, stdout, stderr = await ops_test.run(*kubectl_cmd)
-    if ret_code != 0:
-        logger.error("code %r; stdout %r; stderr: %r", ret_code, stdout, stderr)
-        output.failed = True
-        output.data = {
-            "code": ret_code,
-            "stdout": stdout,
-            "stderr": stderr,
-        }
-        return output
-
-    output.succeeded = True
-    if expecting_output:
-        output.data = _process_mongo_operation_result(stdout, stderr, expect_json_load)
-    logger.info("Done: '%s'", output)
-    return output
-
-
-def _process_mongo_operation_result(stdout, stderr, expect_json_load):
-    try:
-        return json.loads(stdout)
-    except Exception:
-        logger.error(
-            "Could not serialize the output into json.{}{}".format(
-                f"\n\tSTDOUT:\n\t {stdout}" if stdout else "",
-                f"\n\tSTDERR:\n\t {stderr}" if stderr else "",
-            )
-        )
-        logger.error(f"Failed to load operation result: {stdout} to json")
-        if expect_json_load:
-            raise
-        else:
-            try:
-                logger.info("Attempt to cast to python dict manually")
-                # cast to python dict
-                dict_string = re.sub(r"(\w+)(\s*:\s*)", r'"\1"\2', stdout)
-                dict_string = (
-                    dict_string.replace("true", "True")
-                    .replace("false", "False")
-                    .replace("null", "None")
-                )
-                return eval(dict_string)
-            except Exception:
-                logger.error(f"Failed to cast response to python dict. Returning stdout: {stdout}")
-                return stdout
-
-
-def primary_host(rs_status_data: dict) -> Optional[str]:
-    """Returns the primary host in the replica set or None if none was elected."""
-    primary_list = [
-        member["name"]
-        for member in rs_status_data["members"]
-        if member["stateStr"].upper() == "PRIMARY"
-    ]
-
-    if not primary_list:
-        return None
-
-    return primary_list[0]
-
-
-async def check_if_test_documents_stored(
-    ops_test: OpsTest, collection: str, mongo_uri: str = None
-) -> None:
-    # decide whether to pass a mongo_uri or replication set to the "run_mongo_op" function
-    run_mongo_op_kwargs = {"suffix": f"?replicaSet={APP_NAME}"}
-    if mongo_uri is not None:
-        run_mongo_op_kwargs["mongo_uri"] = mongo_uri
-
-    # serialize the str test documents into json
-    o_test_docs = json.loads(TEST_DOCUMENTS)
-
-    # query filter
-    query_filter = json.dumps({"$or": [{"uid": test_doc["uid"]} for test_doc in o_test_docs]})
-
-    count_documents = await run_mongo_op(
-        ops_test,
-        f"db.{collection}.countDocuments({query_filter})",
-        **run_mongo_op_kwargs,
-    )
-    assert count_documents.succeeded and count_documents.data == 2
-
-    # descending order to match insertion order of the test documents
-    find_documents = await run_mongo_op(
-        ops_test,
-        f"db.{collection}.find({query_filter}).sort({{uid: 1}}).toArray()",
-        **run_mongo_op_kwargs,
-    )
-    assert find_documents.succeeded and len(find_documents.data) == 2
-
-    for index, test_doc in zip(range(len(o_test_docs)), o_test_docs):
-        db_doc = find_documents.data[index]
-
-        for key, val in test_doc.items():
-            assert db_doc[key] == val
-
-
-async def secondary_mongo_uris_with_sync_delay(ops_test: OpsTest, rs_status_data):
-    """Returns the list of secondaries and their sync delay with the master.
-
-    Returns the ascending list of Secondaries, the first secondary is the
-    one with the lowest data sync delay.
-    """
-    primary_optime_date = [
-        datetime.strptime(member["optimeDate"], "%Y-%m-%dT%H:%M:%S.%fZ")
-        for member in rs_status_data["members"]
-        if member["stateStr"].upper() == "PRIMARY"
-    ][0]
-
-    secondaries = []
-    for member in rs_status_data["members"]:
-        if member["stateStr"].upper() != "SECONDARY":
-            continue
-
-        unit_id = member["name"].split(".")[0].split("-")[-1]
-        member_optime_date = datetime.strptime(member["optimeDate"], "%Y-%m-%dT%H:%M:%S.%fZ")
-
-        host = await mongodb_uri(ops_test, [unit_id])
-        delay_seconds = (primary_optime_date - member_optime_date).total_seconds()
-
-        secondaries.append({"uri": host, "delay": math.fabs(delay_seconds)})
-
-    secondaries.sort(key=lambda o: o["delay"])
-
-    return secondaries
-
-
-def generate_collection_id() -> str:
-    new_id = "".join(choices(ascii_lowercase + digits, k=4)).replace("_", "")
-    return f"collection_{new_id}"
-
-
-async def get_application_relation_data(
-    ops_test: OpsTest,
-    application_name: str,
-    relation_name: str,
-    key: str,
-    relation_id: str = None,
-    relation_alias: str = None,
-) -> Optional[str]:
-    """Get relation data for an application.
-
-    Args:
-        ops_test: The ops test framework instance
-        application_name: The name of the application
-        relation_name: name of the relation to get connection data from
-        key: key of data to be retrieved
-        relation_id: id of the relation to get connection data from
-        relation_alias: alias of the relation (like a connection name)
-            to get connection data from
-    Returns:
-        the that that was requested or None
-            if no data in the relation
-    Raises:
-        ValueError if it's not possible to get application unit data
-            or if there is no data for the particular relation endpoint
-            and/or alias.
-    """
-    unit_name = f"{application_name}/0"
-    raw_data = (await ops_test.juju("show-unit", unit_name))[1]
-
-    if not raw_data:
-        raise ValueError(f"no unit info could be grabbed for {unit_name}")
-    data = yaml.safe_load(raw_data)
-
-    # Filter the data based on the relation name.
-    relation_data = [v for v in data[unit_name]["relation-info"] if v["endpoint"] == relation_name]
-
-    if relation_id:
-        # Filter the data based on the relation id.
-        relation_data = [v for v in relation_data if v["relation-id"] == relation_id]
-
-    if relation_alias:
-        # Filter the data based on the cluster/relation alias.
-        relation_data = [
-            v
-            for v in relation_data
-            if json.loads(v["application-data"]["data"])["alias"] == relation_alias
-        ]
-
-    if len(relation_data) == 0:
-        raise ValueError(
-            f"no relation data could be grabbed on relation with endpoint {relation_name} and alias {relation_alias}"
-        )
-
-    return relation_data[0]["application-data"].get(key)
-
-
-async def get_secret_id(ops_test, app_or_unit: Optional[str] = None) -> str:
-    """Retrieve secret ID for an app or unit."""
-    complete_command = "list-secrets"
-
-    if app_or_unit:
-        prefix = "unit" if app_or_unit[-1].isdigit() else "application"
-        formated_app_or_unit = f"{prefix}-{app_or_unit}"
-        if prefix == "unit":
-            formated_app_or_unit = formated_app_or_unit.replace("/", "-")
-        complete_command += f" --owner {formated_app_or_unit}"
-
-    _, stdout, _ = await ops_test.juju(*complete_command.split())
-    output_lines_split = [line.split() for line in stdout.strip().split("\n")]
-    if app_or_unit:
-        return [line[0] for line in output_lines_split if app_or_unit in line][0]
-
-    return output_lines_split[1][0]
-
-
-async def get_secret_content(ops_test, secret_id) -> Dict[str, str]:
-    """Retrieve contents of a Juju Secret."""
-    secret_id = secret_id.split("/")[-1]
-    complete_command = f"show-secret {secret_id} --reveal --format=json"
-    _, stdout, _ = await ops_test.juju(*complete_command.split())
-    data = json.loads(stdout)
-    return data[secret_id]["content"]["Data"]
-
-
-def create_pod_if_not_exists(namespace, pod_name, container_name, image_name):
-    """Create a pod if not already exists."""
-    logger.info("Checking or creating helper mongo pod ...")
-    get_pod_cmd = f"kubectl get pod {pod_name} -n {namespace} -o json"
-    result = subprocess.run(get_pod_cmd, shell=True, capture_output=True, text=True)
-
-    if result.returncode == 0:
-        logger.info(f"pod '{pod_name}' in namespace '{namespace}' already exists.")
-        return
-
-    if "NotFound" in result.stderr:
-        pod_manifest = {
-            "apiVersion": "v1",
-            "kind": "Pod",
-            "metadata": {"name": pod_name, "namespace": namespace},
-            "spec": {
-                "restartPolicy": "Never",
-                "containers": [
-                    {
-                        "name": container_name,
-                        "image": image_name,
-                        "command": ["/bin/bash"],
-                        "stdin": True,
-                        "tty": True,
-                    }
-                ],
-            },
-        }
-
-        pod_manifest_json = json.dumps(pod_manifest)
-
-        create_pod_cmd = f"echo '{pod_manifest_json}' | kubectl apply -f -"
-        create_result = subprocess.run(create_pod_cmd, shell=True, capture_output=True, text=True)
-
-        if create_result.returncode == 0:
-            logger.info(f"pod '{pod_name}' created in namespace '{namespace}'.")
-        else:
-            logger.error(f"Failed to create pod: {create_result.stderr}")
-    else:
-        logger.error(f"Failed to check pod existence: {result.stderr}")
-
-
-def is_pod_ready(namespace, pod_name):
-    """Checks that the pod is ready."""
-    get_pod_cmd = f"kubectl get pod {pod_name} -n {namespace} -o json"
-    result = subprocess.run(get_pod_cmd, shell=True, capture_output=True, text=True)
-    logger.info(f"Checking pod {pod_name} is ready...")
-    if result.returncode != 0:
-        return False
-
-    pod_info = json.loads(result.stdout)
-    for condition in pod_info["status"].get("conditions", []):
-        if condition["type"] == "Ready" and condition["status"] == "True":
-            return True
-    return False
-
-
-def get_password_using_subprocess(
-    ops_test: OpsTest, username="operator", app_name=APP_NAME
-) -> str:
-    """Use the charm action to retrieve the password from provided unit.
-
-    Returns:
-        String with the password stored on the peer relation databag.
-    """
-    cmd = ["juju", "switch", ops_test.model_name]
-    result = subprocess.run(cmd, capture_output=True)
-    if result.returncode != 0:
-        logger.error(
-            "Failed to get password. Can't switch to juju model: '%s'. Error '%s'",
-            ops_test.model_name,
-            result.stderr,
-        )
-        raise Exception(f"Failed to get password: {result.stderr}")
-    cmd = [
-        "juju",
-        "run",
-        f"{app_name}/leader",
-        "get-password",
-        f"username={username}",
-        "--format",
-        "json",
-    ]
-    result = subprocess.run(cmd, capture_output=True)
-    if result.returncode != 0:
-        logger.error("get-password command returned non 0 exit code: %s", result.stderr)
-        raise Exception(f"get-password command returned non 0 exit code: {result.stderr}")
-    try:
-        data = one(json.loads(result.stdout).values())
-        if data["status"] == "failed":
-            raise Exception(data["message"])
-        elif not data["results"].get("password"):
-            raise Exception(f"No password in result: {data}")
-        password = data["results"]["password"]
-    except Exception as e:
-        logger.error("Failed to get password: %s", e)
-        raise Exception(f"Failed to get password: {e}")
-    return password
-
-
 async def get_app_name(ops_test: OpsTest, test_deployments: List[str] = []) -> str:
     """Returns the name of the cluster running MongoDB.
 
@@ -596,15 +101,6 @@ async def check_or_scale_app(ops_test: OpsTest, user_app_name: str, required_uni
     await ops_test.model.wait_for_idle(
         apps=[user_app_name], status="active", raise_on_error=False, timeout=2000
     )
-
-
-def audit_log_line_sanity_check(entry) -> bool:
-    fields = ["atype", "ts", "local", "remote", "users", "roles", "param", "result"]
-    for field in fields:
-        if entry.get(field) is None:
-            logger.error("Field '%s' not found in audit log entry \"%s\"", field, entry)
-            return False
-    return True
 
 
 async def get_unit_hostname(ops_test: OpsTest, unit_id: int, app: str) -> str:
@@ -697,55 +193,78 @@ async def wait_for_mongodb_units_blocked(
         await ops_test.model.set_config({hook_interval_key: old_interval})
 
 
-async def check_status_detail(ops_test: OpsTest, app_name: str, status: str, message: str) -> None:
-    """Checks that the first status returned by status-detail is the one expected."""
-    for unit in ops_test.model.applications[app_name].units:
-        action = await unit.run_action("status-detail")
-        action = await action.wait()
-        result = action.results["json-output"]
-
-        # juju messes up the string formatting here.
-        unit_statuses = json.loads(result["unit"].replace("'", '"'))
-
-        assert unit_statuses[0]["Status"].lower() == status
-        assert unit_statuses[0]["Message"] == message
+async def get_address_of_unit(ops_test: OpsTest, unit_id: int, app_name: str = APP_NAME) -> str:
+    """Retrieves the address of the unit based on provided id."""
+    status = await ops_test.model.get_status()
+    return status["applications"][app_name]["units"][f"{app_name}/{unit_id}"]["address"]
 
 
-def is_relation_joined(ops_test: OpsTest, endpoint_one: str, endpoint_two: str) -> bool:
-    """Check if a relation is joined.
+async def get_direct_mongo_client(
+    ops_test: OpsTest,
+    app_name: str,
+    mongos: bool = False,
+) -> MongoClient:
+    """Returns a direct mongodb client potentially passing over some of the units."""
+    port = "27018"
+    mongodb_name = app_name or await get_app_name(ops_test, APP_NAME)
 
-    Args:
-        ops_test: The ops test object passed into every test case
-        endpoint_one: The first endpoint of the relation
-        endpoint_two: The second endpoint of the relation
+    for unit in ops_test.model.applications[mongodb_name].units:
+        if unit.workload_status == "active":
+            url = await mongodb_uri(
+                ops_test,
+                [int(unit.name.split("/")[1])],
+                app_name=mongodb_name,
+                port=port,
+            )
+            return MongoClient(url, directConnection=True)
+    assert False, "No fitting unit could be found"
+
+
+async def get_password(
+    ops_test: OpsTest,
+    unit_id: int = 0,
+    username: str = "operator",
+    app_name: str = APP_NAME,
+) -> str:
+    """Use the charm action to retrieve the password from provided unit.
+
+    Returns:
+        String with the password stored on the peer relation databag.
     """
-    for rel in ops_test.model.relations:
-        endpoints = [endpoint.name for endpoint in rel.endpoints]
-        if endpoint_one in endpoints and endpoint_two in endpoints:
-            return True
-    return False
-
-
-async def destroy_cluster(ops_test: OpsTest, applications: list[str]) -> None:
-    """Destroy cluster in a forceful way."""
-    for app in applications:
-        await ops_test.model.applications[app].destroy(
-            destroy_storage=True, force=True, no_wait=False
-        )
-
-    # destroy does not wait for applications to be removed, perform this check manually
-    for attempt in Retrying(stop=stop_after_attempt(100), wait=wait_fixed(10), reraise=True):
-        with attempt:
-            # pytest_operator has a bug where the number of applications does not get correctly
-            # updated. Wrapping the call with `fast_forward` resolves this
-            async with ops_test.fast_forward():
-                finished = all((item not in ops_test.model.applications for item in applications))
-            # This case we don't raise an error in the context manager which fails to restore the
-            # `update-status-hook-interval` value to it's former state.
-            assert finished, "old cluster not destroyed successfully"
-
-
-def get_juju_status(model_name: str, app_name: str) -> str:
-    return subprocess.check_output(f"juju status --model {model_name} {app_name}".split()).decode(
-        "utf-8"
+    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action(
+        "get-password", **{"username": username}
     )
+    action = await action.wait()
+    return action.results["password"]
+
+
+async def mongodb_uri(
+    ops_test: OpsTest,
+    unit_ids: list[int] | None = None,
+    port: str = "27017",
+    app_name: str = APP_NAME,
+    username: str = "operator",
+) -> str:
+    if unit_ids is None:
+        unit_ids = range(0, len(ops_test.model.applications[app_name].units))
+
+    addresses = [await get_address_of_unit(ops_test, unit_id, app_name) for unit_id in unit_ids]
+    hosts = [f"{host}:{port}" for host in addresses]
+    hosts = ",".join(hosts)
+
+    password = await get_password(ops_test, 0, username=username, app_name=app_name)
+
+    return f"mongodb://{username}:{password}@{hosts}/admin"
+
+
+def get_cluster_shards(mongos_client: MongoClient) -> set:
+    """Returns a set of the shard members."""
+    shard_list = mongos_client.admin.command("listShards")
+    curr_members = [member["host"].split("/")[0] for member in shard_list["shards"]]
+    return set(curr_members)
+
+
+def has_correct_shards(mongos_client: MongoClient, expected_shards: list[str]) -> bool:
+    """Returns true if the cluster config has the expected shards."""
+    shard_names = get_cluster_shards(mongos_client)
+    return shard_names == set(expected_shards)
