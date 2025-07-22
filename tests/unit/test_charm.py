@@ -101,16 +101,6 @@ class TestCharm(unittest.TestCase):
         # Expected plan after Pebble ready with default config
         expected_plan = {
             "services": {
-                "logrotate": {
-                    "summary": "log rotate",
-                    "startup": "enabled",
-                    "override": "replace",
-                    "command": "sh -c 'logrotate /etc/logrotate.d/mongodb; sleep 1'",
-                    "user": "mongodb",
-                    "group": "mongodb",
-                    "backoff-delay": "1m0s",
-                    "backoff-factor": 1,
-                },
                 "mongod": {
                     "user": "mongodb",
                     "group": "mongodb",
@@ -225,6 +215,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.operator.state.db_initialised, False)
         defer.assert_called()
 
+    @patch("single_kernel_mongo.managers.config.LogRotateConfigManager.configure_and_restart")
     @patch(
         "single_kernel_mongo.managers.mongodb_operator.MongoDBOperator._configure_workloads",
         return_value=None,
