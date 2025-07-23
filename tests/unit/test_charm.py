@@ -101,16 +101,6 @@ class TestCharm(unittest.TestCase):
         # Expected plan after Pebble ready with default config
         expected_plan = {
             "services": {
-                "logrotate": {
-                    "summary": "log rotate",
-                    "startup": "enabled",
-                    "override": "replace",
-                    "command": "sh -c 'logrotate /etc/logrotate.d/mongodb; sleep 1'",
-                    "user": "mongodb",
-                    "group": "mongodb",
-                    "backoff-delay": "1m0s",
-                    "backoff-factor": 1,
-                },
                 "mongod": {
                     "user": "mongodb",
                     "group": "mongodb",
@@ -225,6 +215,7 @@ class TestCharm(unittest.TestCase):
         self.assertEqual(self.harness.charm.operator.state.db_initialised, False)
         defer.assert_called()
 
+    @patch("single_kernel_mongo.managers.config.LogRotateConfigManager.configure_and_restart")
     @patch(
         "single_kernel_mongo.managers.mongodb_operator.MongoDBOperator._configure_workloads",
         return_value=None,
@@ -650,11 +641,15 @@ class TestCharm(unittest.TestCase):
             )
 
     @parameterized.expand([(Scope.APP), (Scope.UNIT)])
+    @patch(
+        "single_kernel_mongo.core.k8s_workload.KubernetesWorkload.active",
+        return_value=True,
+    )
     @patch("single_kernel_mongo.managers.config.BackupConfigManager.configure_and_restart")
     @patch(
         "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
     )
-    def test_on_secret_changed(self, scope, connect_exporter, connect_backup):
+    def test_on_secret_changed(self, scope, connect_exporter, connect_backup, *unused):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         secret = self.harness.charm.operator.state.secrets.set("new-secret", "bla", scope)
         secret = self.harness.charm.model.get_secret(label=secret.label)

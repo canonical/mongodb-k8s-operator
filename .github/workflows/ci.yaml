@@ -149,8 +149,6 @@ jobs:
       matrix:
         path:
           - .
-          - tests/integration/ha_tests/application_charm
-          - tests/integration/relation_tests/application-charm
     name: Build charm | ${{ matrix.path }}
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
     with:
@@ -172,9 +170,3 @@ jobs:
       _beta_allure_report: true
     permissions:
       contents: write # Needed for Allure Report beta
-    secrets:
-      integration-test: |
-        {  "AWS_ACCESS_KEY": "${{ secrets.AWS_ACCESS_KEY }}",
-          "AWS_SECRET_KEY": "${{ secrets.AWS_SECRET_KEY }}",
-          "GCP_ACCESS_KEY": "${{ secrets.GCP_ACCESS_KEY }}",
-          "GCP_SECRET_KEY": "${{ secrets.GCP_SECRET_KEY }}", }
