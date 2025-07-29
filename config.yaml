@@ -14,3 +14,21 @@ options:
       config-server, or as a replica set.
     type: string
     default: replication
+  ldap-user-to-dn-mapping:
+    default: ''
+    type: string
+    description: |
+      A quote-enclosed JSON-string representing an ordered array of documents. Each document contains a regular expression match and either a substitution or ldapQuery template used for transforming the incoming username. Since the list is ordered, this order can be used to provide fine-grained tuning for building the right DN or the right ldapQuery for the user.
+      example: '[{
+        match : "([^@]+)@([^@\\.]+)\\.example\\.com",
+        substitution: "CN={0},CN=Users,DC={1},DC=example,DC=com"
+      }]'
+  ldap-query-template:
+    default: ''
+    type: string
+    description: |
+      A RFC4516 formatted LDAP query URL template, which is used for authorization.
+      It must contain either `{USER}` representing the authenticated user, or `{PROVIDED_USER}` representing the supplied username (before authentication or LDAP transformation).
+      `{PROVIDED_USER}` should be used only if no value in the `ldap-user-to-do-mapping` config option is provided.
+      If this configuration is not provided, a default string will be computed based on the base_dn returned by the GLAuth k8s charm.
+      example: “dc=example,dc=com??sub?(&(objectClass=groupOfNames)(member={USER}))"
