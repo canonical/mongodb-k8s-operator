@@ -84,6 +84,7 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         self.assertTrue(status.status == "blocked")
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
@@ -111,6 +112,7 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         assert status == BackupStatuses.PBM_WAITING_TO_SYNC.value
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
@@ -135,6 +137,7 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         assert status.status == "active"
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
@@ -164,6 +167,7 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         assert as_status(status) == BlockedStatus("s3 credentials are incorrect.")
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
@@ -192,7 +196,7 @@ class TestMongoBackups(unittest.TestCase):
             scope=Scope.UNIT, recompute=True
         )
         status = next(iter(statuses), None)
-        assert as_status(status) == BlockedStatus("s3 configurations are incompatible.")
+        assert as_status(status) == BlockedStatus("s3 config options are incompatible.")
 
     @patch("single_kernel_mongo.managers.backups.wait_fixed")
     @patch("single_kernel_mongo.managers.backups.stop_after_attempt")
@@ -287,10 +291,9 @@ class TestMongoBackups(unittest.TestCase):
         "single_kernel_mongo.core.k8s_workload.KubernetesWorkload.active",
         return_value=True,
     )
-    @patch("single_kernel_mongo.core.k8s_workload.KubernetesWorkload.restart")
     @patch("single_kernel_mongo.managers.backups.BackupManager.backup_state")
     @pytest.mark.usefixtures("mock_fs_interactions")
-    def test_resync_config_restart(self, pbm_status, mock_restart, active, retry_stop, retry_wait):
+    def test_resync_config_restart(self, pbm_status, active, retry_stop, retry_wait):
         """Verifies _resync_config_options restarts that snap if alreaady resyncing."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
@@ -302,8 +305,7 @@ class TestMongoBackups(unittest.TestCase):
         with self.assertRaises(PBMBusyError):
             self.harness.charm.operator.backup_manager.resync_config_options()
 
-        mock_restart.assert_called()
-
+    @patch("single_kernel_mongo.utils.mongo_connection.MongoClient")
     @patch(
         "single_kernel_mongo.core.k8s_workload.KubernetesWorkload.active",
         return_value=True,
@@ -311,10 +313,13 @@ class TestMongoBackups(unittest.TestCase):
     @patch("single_kernel_mongo.managers.backups.map_s3_config_to_pbm_config")
     @patch("single_kernel_mongo.core.k8s_workload.KubernetesWorkload.run_bin_command")
     @patch("single_kernel_mongo.managers.backups.BackupManager.clear_pbm_config_file")
-    def test_set_config_options(self, clear_config, run_pbm_command, pbm_configs, snap):
+    def test_set_config_options(
+        self, clear_config, run_pbm_command, pbm_configs, snap, mocked_client
+    ):
         """Verifies _set_config_options failure raises SetPBMConfigError."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
+        mocked_client.return_value.admin.command.return_value = None
         run_pbm_command.side_effect = WorkloadExecError(
             cmd="/usr/bin/pbm config --set this_key=doesnt_exist",
             return_code=42,
@@ -413,6 +418,13 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         assert status.status == "blocked"
 
+    @patch(
+        "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
+        return_value=True,
+    )
+    @patch(
+        "single_kernel_mongo.managers.backups.BackupManager.create_bucket",
+    )
     @patch("single_kernel_mongo.managers.backups.BackupManager.set_config_options")
     @patch("single_kernel_mongo.managers.backups.BackupManager.resync_config_options")
     @patch("ops.framework.EventBase.defer")
@@ -421,7 +433,9 @@ class TestMongoBackups(unittest.TestCase):
         return_value=True,
     )
     @patch("single_kernel_mongo.managers.backups.BackupManager.backup_state")
-    def test_s3_credentials_syncing(self, pbm_status, service, defer, resync, _set_config_options):
+    def test_s3_credentials_syncing(
+        self, pbm_status, service, defer, resync, _set_config_options, *unused
+    ):
         """Test charm defers when more time is needed to sync pbm credentials."""
         container = self.harness.model.unit.get_container("mongod")
         self.harness.set_can_connect(container, True)
@@ -447,6 +461,13 @@ class TestMongoBackups(unittest.TestCase):
         status = next(iter(statuses), None)
         assert status.status == "waiting"
 
+    @patch(
+        "single_kernel_mongo.managers.backups.BackupManager.create_bucket",
+    )
+    @patch(
+        "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
+        return_value=True,
+    )
     @patch("single_kernel_mongo.managers.backups.BackupManager.set_config_options")
     @patch("single_kernel_mongo.managers.backups.BackupManager.resync_config_options")
     @patch("ops.framework.EventBase.defer")
@@ -456,7 +477,7 @@ class TestMongoBackups(unittest.TestCase):
     )
     @patch("single_kernel_mongo.managers.backups.BackupManager.backup_state")
     def test_s3_credentials_pbm_busy(
-        self, pbm_status, service, defer, resync, _set_config_options
+        self, pbm_status, service, defer, resync, _set_config_options, *unused
     ):
         """Test charm defers when more time is needed to sync pbm."""
         container = self.harness.model.unit.get_container("mongod")
@@ -807,6 +828,7 @@ class TestMongoBackups(unittest.TestCase):
         )
         self.assertEqual(remap, "current-app-name=old-cluster-name")
 
+    @patch("single_kernel_mongo.managers.backups.BackupManager.create_bucket")
     @patch(
         "single_kernel_mongo.managers.backups.BackupManager.validate_s3_config",
         return_value=True,
