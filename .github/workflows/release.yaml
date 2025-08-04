@@ -1,9 +1,9 @@
-name: Release to 6/edge
+name: Release to 8-transition/edge
 
 on:
   push:
     branches:
-      - 6/edge
+      - 8-transition/edge
 
 jobs:
   lib-check:
@@ -39,7 +39,7 @@ jobs:
       - ci-tests
     uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v29.0.0
     with:
-      channel: 6/edge
+      channel: 8-transition/edge
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
