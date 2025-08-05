@@ -35,9 +35,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
     app_name = APP_NAME
     # build and deploy charm from local source folder
     charm = await ops_test.build_charm(".")
-    resources = {
-        "mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]
-    }
+    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         charm,
         resources=resources,
