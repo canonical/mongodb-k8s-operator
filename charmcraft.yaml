@@ -3,7 +3,7 @@
 
 type: charm
 platforms:
-  ubuntu@22.04:amd64:
+  ubuntu@24.04:amd64:
 # Files implicitly created by charmcraft without a part:
 # - dispatch (https://github.com/canonical/charmcraft/pull/1898)
 # - manifest.yaml
@@ -32,7 +32,7 @@ parts:
       then
         # Use first Python version that is >=3.9 and available in an Ubuntu LTS
         # (to reduce the number of Python versions we use)
-        "$HOME/.local/bin/uv" python install 3.10.12  # renovate: charmcraft-python-ubuntu-22.04
+        "$HOME/.local/bin/uv" python install 3.10.12  # renovate: charmcraft-python-ubuntu-24.04
       fi
       "$HOME/.local/bin/uv" tool install --no-python-downloads --python '>=3.9' poetry==2.0.0 --with poetry-plugin-export==1.8.0  # renovate: charmcraft-poetry-latest
 
