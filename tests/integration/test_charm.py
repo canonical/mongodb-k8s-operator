@@ -41,7 +41,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
         resources=resources,
         application_name=app_name,
         num_units=len(UNIT_IDS),
-        series="jammy",
+        series="noble",
         trust=True,
     )
 
