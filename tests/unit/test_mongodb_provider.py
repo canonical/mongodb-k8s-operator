@@ -10,6 +10,7 @@ from ops import BlockedStatus
 from ops.testing import Harness
 from parameterized import parameterized
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
+from single_kernel_mongo.core.structured_config import MongoDBRoles
 
 from charm import MongoDBK8sCharm
 
@@ -70,7 +71,7 @@ class TestMongoProvider(unittest.TestCase):
         def is_config_server_role(role_name: str):
             return role_name == role
 
-        self.harness.charm.operator.state.app_peer_data.role = role
+        self.harness.charm.operator.state.app_peer_data.role = MongoDBRoles(role)
         self.harness.charm.operator.state.db_initialised = True
 
         relation_id = self.harness.add_relation("database", "consumer")
