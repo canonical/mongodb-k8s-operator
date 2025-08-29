@@ -18,9 +18,6 @@ This operator charm deploys and operates MongoDB on Kubernetes. It offers featur
 - Machine is running Ubuntu 22.04(jammy) or later.
 
 ## Config options
-auto-delete - `boolean`; When a relation is removed, auto-delete ensures that any relevant databases
-associated with the relation are also removed. Set with `juju config mongodb-k8s auto-delete=<bool>`.
-
 admin-password - `string`; The password for the database admin user. Set with `juju run-action mongodb-k8s/leader set-admin-password --wait`
 
 tls external key - `string`; TLS external key for encryption outside the cluster. Set with `juju run-action mongodb-k8s/0 set-tls-private-key "external-key=$(base64 -w0 external-key-0.pem)" --wait`
