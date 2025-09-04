@@ -208,56 +208,6 @@ class TestMongoProvider(unittest.TestCase):
                     )
                 set_credentials.assert_not_called()
 
-    @patch("single_kernel_mongo.managers.mongo.MongoManager.add_user")
-    @patch("single_kernel_mongo.managers.mongo.MongoManager.update_user")
-    @patch("single_kernel_mongo.managers.mongo.MongoManager.remove_user")
-    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.drop_database")
-    def test_oversee_users_no_auto_delete(self, drop_db, *unused):
-        """Verifies when no-auto delete is specified databases are not dropped.."""
-        # presets, such that the need to drop a database
-        relation_id = self.harness.add_relation("database", "consumer")
-        self.harness.add_relation_unit(relation_id=relation_id, remote_unit_name="consumer/0")
-        self.harness.update_relation_data(
-            relation_id, "consumer", PEER_ADDR | {"database": "test"}
-        )
-        relation = self.harness.model.get_relation(
-            relation_id=relation_id, relation_name="database"
-        )
-
-        self.harness.charm.operator.mongo_manager.reconcile_mongo_users_and_dbs(
-            relation, relation_departing=True
-        )
-        drop_db.assert_not_called()
-
-    @patch("single_kernel_mongo.managers.mongo.MongoManager.add_user")
-    @patch("single_kernel_mongo.managers.mongo.MongoManager.update_user")
-    @patch("single_kernel_mongo.managers.mongo.MongoManager.remove_user")
-    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.get_databases")
-    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.drop_database")
-    def test_oversee_users_mongo_databases_failure(self, drop_db, get_db, *unused):
-        """Verifies failures in checking for databases with mongod result in raised exceptions."""
-        self.harness.set_leader(True)
-        self.harness.charm.operator.state.db_initialised = True
-        self.harness.update_config({"auto-delete": True})
-
-        relation_id = self.harness.add_relation("database", "consumer")
-        self.harness.add_relation_unit(relation_id=relation_id, remote_unit_name="consumer/0")
-        self.harness.update_relation_data(
-            relation_id, "consumer", PEER_ADDR | {"database": "test"}
-        )
-        relation = self.harness.model.get_relation(
-            relation_id=relation_id, relation_name="database"
-        )
-
-        get_db.return_value = {"test"}
-
-        for exception, expected_raise in PYMONGO_EXCEPTIONS:
-            drop_db.side_effect = exception
-            with self.assertRaises(expected_raise):
-                self.harness.charm.operator.mongo_manager.reconcile_mongo_users_and_dbs(
-                    relation, relation_departing=True
-                )
-
     @parameterized.expand(
         [
             ["config-server", True, True],
@@ -278,7 +228,6 @@ class TestMongoProvider(unittest.TestCase):
 
         self.harness.set_leader(is_leader)
         self.harness.charm.operator.state.db_initialised = db_init
-        self.harness.update_config({"auto-delete": True})
 
         self.harness.charm.operator.state.is_role = mock_role_call
 
