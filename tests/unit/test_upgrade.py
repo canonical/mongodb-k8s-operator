@@ -1,14 +1,13 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 import unittest
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 
 import httpx
 import pytest
-from data_platform_helpers.advanced_statuses.models import StatusObject
 from lightkube import ApiError
 from ops.model import Relation
-from ops.testing import ActionFailed, Harness
+from ops.testing import Harness
 from parameterized import parameterized
 from single_kernel_mongo.config.literals import UnitState
 from single_kernel_mongo.core.kubernetes_upgrades import KubernetesUpgrade

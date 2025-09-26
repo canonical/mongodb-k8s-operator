@@ -8,18 +8,14 @@ from unittest.mock import patch
 import pytest
 from data_platform_helpers.advanced_statuses.models import StatusObject
 from ops.pebble import PathError, ProtocolError
-from ops.testing import ActionFailed, Harness
+from ops.testing import Harness
 from parameterized import parameterized
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from single_kernel_mongo.config.literals import Scope
 from single_kernel_mongo.core.structured_config import MongoDBRoles
 from single_kernel_mongo.exceptions import WorkloadExecError
 from single_kernel_mongo.utils.mongo_connection import NotReadyError
-from single_kernel_mongo.utils.mongodb_users import (
-    BackupUser,
-    MonitorUser,
-    OperatorUser,
-)
+from single_kernel_mongo.utils.mongodb_users import BackupUser, MonitorUser
 
 from charm import MongoDBK8sCharm
 
