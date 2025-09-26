@@ -26,3 +26,12 @@ options:
       `{PROVIDED_USER}` should be used only if no value in the `ldap-user-to-do-mapping` config option is provided.
       If this configuration is not provided, a default string will be computed based on the base_dn returned by the GLAuth k8s charm.
       example: “dc=example,dc=com??sub?(&(objectClass=groupOfNames)(member={USER}))"
+  system-users:
+    type: secret
+    description: |
+      Configure the internal system users and their passwords. The passwords will
+      be auto-generated if this option is not set. It is for internal use only
+      and SHOULD NOT be used by applications. This must be a Juju Secret URI pointing
+      to a secret that contains a map with the following content: `<username>: <password>`.
+      Possible users: `backup`, `logrorate`, `monitor`, `operator`.
+      This option is only compatible with `replication` and `config-server` roles.
