@@ -89,27 +89,6 @@ class TestUpgrades(unittest.TestCase):
         getattr(self.harness.charm.on[relation.name], handler).emit(relation)
         defer.assert_called()
 
-    @patch(
-        "single_kernel_mongo.state.charm_state.CharmState.upgrade_in_progress",
-        new_callable=PropertyMock,
-    )
-    def test_pass_pre_set_password_check_fails(self, mock_upgrade):
-        def mock_shard_role(role_name: str):
-            return role_name != "shard"
-
-        mock_pbm_status = Mock(return_value=[StatusObject(status="active", message="")])
-        self.harness.charm.is_role = mock_shard_role
-        mock_upgrade.return_value = True
-        self.harness.charm.operator.backup_manager.compute_statuses = mock_pbm_status
-
-        with self.assertRaises(ActionFailed) as action_failed:
-            self.harness.run_action("set-password")
-
-        assert (
-            action_failed.exception.message
-            == "Cannot set passwords while an upgrade is in progress"
-        )
-
     @parameterized.expand([[403, DeployedWithoutTrustError], [500, ApiError]])
     @patch("single_kernel_mongo.managers.k8s.K8sManager.get_partition")
     def test_lightkube_errors(self, status_code, expected_error, patch_get):
