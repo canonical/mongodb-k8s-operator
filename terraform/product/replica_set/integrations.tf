@@ -8,57 +8,57 @@
 ## Same model integrations
 
 resource "juju_integration" "mongodb_tls_same_model_integration" {
-  for_each = local.enable_tls && var.self_signed_certificates.model == var.mongodb-k8s.model ? { "integrated" = true } : {}
+  for_each = local.enable_tls && var.self_signed_certificates.model == var.mongodb_k8s.model ? { "integrated" = true } : {}
 
-  model = var.mongodb-k8s.model
+  model = var.mongodb_k8s.model
   application {
-    name     = var.mongodb-k8s.app_name
+    name     = var.mongodb_k8s.app_name
     endpoint = "certificates"
   }
   application {
     name = var.self_signed_certificates.app_name
   }
   depends_on = [
-    module.mongodb-k8s,
+    module.mongodb_k8s,
     juju_application.self-signed-certificates["deployed"],
   ]
 }
 
 resource "juju_integration" "mongodb_s3_same_model_integration" {
-  for_each = var.s3_integrator.model == var.mongodb-k8s.model ? { "integrated" = true } : {}
+  for_each = var.s3_integrator.model == var.mongodb_k8s.model ? { "integrated" = true } : {}
 
-  model = var.mongodb-k8s.model
+  model = var.mongodb_k8s.model
   application {
-    name = var.mongodb-k8s.app_name
+    name = var.mongodb_k8s.app_name
   }
   application {
     name = var.s3_integrator.app_name
   }
   depends_on = [
-    module.mongodb-k8s,
+    module.mongodb_k8s,
     juju_application.s3_integrator,
   ]
 }
 
 resource "juju_integration" "mongodb_data_same_model_integration" {
-  for_each = var.data_integrator.model == var.mongodb-k8s.model ? { "integrated" = true } : {}
-  model    = var.mongodb-k8s.model
+  for_each = var.data_integrator.model == var.mongodb_k8s.model ? { "integrated" = true } : {}
+  model    = var.mongodb_k8s.model
 
   application {
-    name = var.mongodb-k8s.app_name
+    name = var.mongodb_k8s.app_name
   }
   application {
     name = var.data_integrator.app_name
   }
   depends_on = [
-    module.mongodb-k8s,
+    module.mongodb_k8s,
     juju_application.data_integrator,
   ]
 }
 
 ## Cross model integrations
 resource "juju_integration" "mongodb_data_cross_model_integration" {
-  for_each = var.data_integrator.model != var.mongodb-k8s.model ? { "integrated" = true } : {}
+  for_each = var.data_integrator.model != var.mongodb_k8s.model ? { "integrated" = true } : {}
   model    = var.data_integrator.model
 
   application {
@@ -75,35 +75,35 @@ resource "juju_integration" "mongodb_data_cross_model_integration" {
 }
 
 resource "juju_integration" "mongodb_tls_cross_model_integration" {
-  for_each = local.enable_tls && var.self_signed_certificates.model != var.mongodb-k8s.model ? { "integrated" = true } : {}
-  model    = var.mongodb-k8s.model
+  for_each = local.enable_tls && var.self_signed_certificates.model != var.mongodb_k8s.model ? { "integrated" = true } : {}
+  model    = var.mongodb_k8s.model
 
   application {
     offer_url = juju_offer.tls_provider_offer["offered"].url
   }
   application {
-    name     = var.mongodb-k8s.app_name
+    name     = var.mongodb_k8s.app_name
     endpoint = "certificates"
   }
   depends_on = [
-    module.mongodb-k8s,
+    module.mongodb_k8s,
     juju_offer.tls_provider_offer,
   ]
 }
 
 resource "juju_integration" "mongodb_s3_cross_model_integration" {
-  for_each = var.s3_integrator.model != var.mongodb-k8s.model ? { "integrated" = true } : {}
-  model    = var.mongodb-k8s.model
+  for_each = var.s3_integrator.model != var.mongodb_k8s.model ? { "integrated" = true } : {}
+  model    = var.mongodb_k8s.model
 
   application {
     offer_url = juju_offer.s3_integrator_offer["offered"].url
   }
   application {
-    name     = var.mongodb-k8s.app_name
+    name     = var.mongodb_k8s.app_name
     endpoint = "s3-credentials"
   }
   depends_on = [
-    module.mongodb-k8s,
+    module.mongodb_k8s,
     juju_offer.s3_integrator_offer,
   ]
 }

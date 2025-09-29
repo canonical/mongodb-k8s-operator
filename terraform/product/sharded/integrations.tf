@@ -30,7 +30,7 @@ resource "juju_integration" "config_server_mongos_same_model_integration" {
     name = var.mongos_k8s.app_name
   }
   depends_on = [
-    module.mongodb-k8s,
+    module.mongodb_k8s,
     juju_integration.mongos_data_integrator_same_model_integration,
   ]
 }
@@ -47,7 +47,7 @@ resource "juju_integration" "tls_mongo_same_model_integration" {
     name = var.self_signed_certificates.app_name
   }
   depends_on = [
-    module.mongodb-k8s,
+    module.mongodb_k8s,
     juju_application.self-signed-certificates["deployed"],
   ]
 }
@@ -63,7 +63,7 @@ resource "juju_integration" "s3_config_server_same_model_integration" {
     name = var.s3_integrator.app_name
   }
   depends_on = [
-    module.mongodb-k8s,
+    module.mongodb_k8s,
     juju_application.s3_integrator,
   ]
 }
@@ -101,7 +101,7 @@ resource "juju_integration" "tls_mongo_cross_model_integration" {
     endpoint = "certificates"
   }
   depends_on = [
-    module.mongodb-k8s,
+    module.mongodb_k8s,
     juju_offer.tls_provider_offer,
   ]
 }
@@ -118,7 +118,7 @@ resource "juju_integration" "s3_config_server_cross_model_integration" {
     endpoint = "s3-credentials"
   }
   depends_on = [
-    module.mongodb-k8s,
+    module.mongodb_k8s,
     juju_offer.s3_integrator_offer,
   ]
 }

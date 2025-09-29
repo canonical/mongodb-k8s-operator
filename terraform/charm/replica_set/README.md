@@ -19,7 +19,7 @@ No modules.
 
 | Name | Type |
 |------|------|
-| [juju_application.mongodb-k8s](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | resource |
+| [juju_application.mongodb_k8s](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | resource |
 
 ## Inputs
 

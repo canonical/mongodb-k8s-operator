@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-resource "juju_application" "mongodb-k8s" {
+resource "juju_application" "mongodb_k8s" {
   charm {
     name     = "mongodb-k8s"
     channel  = var.channel

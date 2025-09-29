@@ -11,7 +11,7 @@ resource "juju_offer" "config_server_mongos_offer" {
   model            = var.config_server.model
   application_name = var.config_server.app_name
   endpoints        = ["cluster"]
-  depends_on       = [module.mongodb-k8s]
+  depends_on       = [module.mongodb_k8s]
 }
 
 resource "juju_offer" "tls_provider_offer" {

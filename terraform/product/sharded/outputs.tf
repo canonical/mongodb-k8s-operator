@@ -4,7 +4,7 @@
 output "app_names" {
   description = "Names of of all deployed applications."
   value = merge(
-    module.mongodb-k8s.app_names,
+    module.mongodb_k8s.app_names,
     {
       "data_integrator" : juju_application.data_integrator.name
       "s3_integrator" : juju_application.s3_integrator.name
@@ -44,7 +44,7 @@ output "requires" {
 output "offers" {
   description = "List of offers URLs."
   value = merge(
-    module.mongodb-k8s.offers,
+    module.mongodb_k8s.offers,
     {
       "config_server_mongos" : try(juju_offer.config_server_mongos_offer["offered"].url, null),
       "tls_provider" : try(juju_offer.tls_provider_offer["offered"].url, null),

@@ -4,7 +4,7 @@
 output "app_names" {
   description = "Names of of all deployed applications."
   value = {
-    mongodb-k8s = juju_application.mongodb-k8s.name
+    mongodb_k8s = juju_application.mongodb_k8s.name
   }
 }
 

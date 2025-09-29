@@ -21,7 +21,7 @@ locals {
 #--------------------------------------------------------
 
 # replicaset mongodb-k8s app
-module "mongodb-k8s" {
+module "mongodb_k8s" {
   source = "../../charm/sharded"
 
   config_server = var.config_server

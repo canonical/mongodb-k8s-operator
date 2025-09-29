@@ -1,7 +1,7 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-variable "mongodb-k8s" {
+variable "mongodb_k8s" {
   description = "MongoDB app definition"
   type = object({
     app_name          = optional(string, "mongodb-k8s")

@@ -5,9 +5,9 @@
 output "app_names" {
   description = "Names of of all deployed applications."
   value = {
-    mongodb_config_server = module.mongodb_config_server.app_names["mongodb-k8s"]
+    mongodb_config_server = module.mongodb_config_server.app_names["mongodb_k8s"]
     shards = [
-      for shard_module in module.mongodb_shards : shard_module.app_names["mongodb-k8s"]
+      for shard_module in module.mongodb_shards : shard_module.app_names["mongodb_k8s"]
     ]
   }
 }
