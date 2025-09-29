@@ -1,7 +1,5 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
-# Copyright 2024 Canonical Ltd.
-# See LICENSE file for licensing details.
 
 variable "app_name" {
   description = "Application name"
