@@ -23,6 +23,10 @@ SERIES = "jammy"
 logger = logging.getLogger(__name__)
 
 
+class SecretNotFoundError(Exception):
+    """Raised when a secret is not found."""
+
+
 class Status:
     """Model class for status."""
 
@@ -222,20 +226,30 @@ async def get_direct_mongo_client(
 
 async def get_password(
     ops_test: OpsTest,
-    unit_id: int = 0,
-    username: str = "operator",
-    app_name: str = APP_NAME,
+    username: str,
+    app_name: str,
 ) -> str:
-    """Use the charm action to retrieve the password from provided unit.
+    """Retrieve the password for a given user from the application's Juju secret."""
+    secret = await get_secret_by_label(ops_test, label=f"{app_name}.app")
+    return secret.get(f"{username}-password")
 
-    Returns:
-        String with the password stored on the peer relation databag.
-    """
-    action = await ops_test.model.units.get(f"{app_name}/{unit_id}").run_action(
-        "get-password", **{"username": username}
-    )
-    action = await action.wait()
-    return action.results["password"]
+
+async def get_secret_by_label(ops_test: OpsTest, label: str) -> dict[str, str]:
+    secrets_raw = await ops_test.juju("list-secrets")
+    secret_ids = [
+        secret_line.split()[0] for secret_line in secrets_raw[1].split("\n")[1:] if secret_line
+    ]
+
+    for secret_id in secret_ids:
+        secret_data_raw = await ops_test.juju(
+            "show-secret", "--format", "json", "--reveal", secret_id
+        )
+        secret_data = json.loads(secret_data_raw[1])
+
+        if label == secret_data[secret_id].get("label"):
+            return secret_data[secret_id]["content"]["Data"]
+
+    raise SecretNotFoundError(f"Secret with label {label} not found.")
 
 
 async def mongodb_uri(
@@ -252,7 +266,7 @@ async def mongodb_uri(
     hosts = [f"{host}:{port}" for host in addresses]
     hosts = ",".join(hosts)
 
-    password = await get_password(ops_test, 0, username=username, app_name=app_name)
+    password = await get_password(ops_test, username=username, app_name=app_name)
 
     return f"mongodb://{username}:{password}@{hosts}/admin"
 

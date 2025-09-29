@@ -1,14 +1,13 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 import unittest
-from unittest.mock import Mock, PropertyMock, patch
+from unittest.mock import PropertyMock, patch
 
 import httpx
 import pytest
-from data_platform_helpers.advanced_statuses.models import StatusObject
 from lightkube import ApiError
 from ops.model import Relation
-from ops.testing import ActionFailed, Harness
+from ops.testing import Harness
 from parameterized import parameterized
 from single_kernel_mongo.config.literals import UnitState
 from single_kernel_mongo.core.kubernetes_upgrades import KubernetesUpgrade
@@ -88,27 +87,6 @@ class TestUpgrades(unittest.TestCase):
         mock_upgrade.return_value = True
         getattr(self.harness.charm.on[relation.name], handler).emit(relation)
         defer.assert_called()
-
-    @patch(
-        "single_kernel_mongo.state.charm_state.CharmState.upgrade_in_progress",
-        new_callable=PropertyMock,
-    )
-    def test_pass_pre_set_password_check_fails(self, mock_upgrade):
-        def mock_shard_role(role_name: str):
-            return role_name != "shard"
-
-        mock_pbm_status = Mock(return_value=[StatusObject(status="active", message="")])
-        self.harness.charm.is_role = mock_shard_role
-        mock_upgrade.return_value = True
-        self.harness.charm.operator.backup_manager.compute_statuses = mock_pbm_status
-
-        with self.assertRaises(ActionFailed) as action_failed:
-            self.harness.run_action("set-password")
-
-        assert (
-            action_failed.exception.message
-            == "Cannot set passwords while an upgrade is in progress"
-        )
 
     @parameterized.expand([[403, DeployedWithoutTrustError], [500, ApiError]])
     @patch("single_kernel_mongo.managers.k8s.K8sManager.get_partition")
