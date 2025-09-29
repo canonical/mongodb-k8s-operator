@@ -8,18 +8,14 @@ from unittest.mock import patch
 import pytest
 from data_platform_helpers.advanced_statuses.models import StatusObject
 from ops.pebble import PathError, ProtocolError
-from ops.testing import ActionFailed, Harness
+from ops.testing import Harness
 from parameterized import parameterized
 from pymongo.errors import ConfigurationError, ConnectionFailure, OperationFailure
 from single_kernel_mongo.config.literals import Scope
 from single_kernel_mongo.core.structured_config import MongoDBRoles
 from single_kernel_mongo.exceptions import WorkloadExecError
 from single_kernel_mongo.utils.mongo_connection import NotReadyError
-from single_kernel_mongo.utils.mongodb_users import (
-    BackupUser,
-    MonitorUser,
-    OperatorUser,
-)
+from single_kernel_mongo.utils.mongodb_users import BackupUser, MonitorUser
 
 from charm import MongoDBK8sCharm
 
@@ -653,6 +649,7 @@ class TestCharm(unittest.TestCase):
         """NOTE: currently ops.testing seems to allow for non-leader to set secrets too!"""
         secret = self.harness.charm.operator.state.secrets.set("new-secret", "bla", scope)
         secret = self.harness.charm.model.get_secret(label=secret.label)
+        self.harness.set_leader(False)
 
         self.harness.charm.on.secret_changed.emit(label=secret.label, id=secret.id)
         connect_exporter.assert_called()
@@ -668,6 +665,7 @@ class TestCharm(unittest.TestCase):
         # "Hack": creating a secret outside of the normal MongodbOperatorCharm.set_secret workflow
         scope_obj = self.harness.charm.app if scope == Scope.APP else self.harness.charm.unit
         secret = scope_obj.add_secret({"key": "value"})
+        self.harness.set_leader(False)
 
         with self._caplog.at_level(logging.DEBUG):
             self.harness.charm.on.secret_changed.emit(label=secret.label, id=secret.id)
@@ -680,50 +678,29 @@ class TestCharm(unittest.TestCase):
         "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
     )
     def test_connect_to_mongo_exporter_on_set_password(
-        self, connect_exporter, mock_set_user_password
+        self,
+        connect_exporter,
+        mock_set_user_password,
     ):
         """Test _connect_mongodb_exporter is called when the password is set for 'monitor' user."""
         self.harness.set_leader(True)
-
-        self.harness.run_action("set-password", {"username": "monitor"})
+        system_users = {
+            "monitor": "abc",
+        }
+        secret_id = self.harness.add_model_secret("mongodb-k8s", system_users)
+        self.harness.update_config(
+            {
+                "system-users": f"{secret_id}",
+            }
+        )
         connect_exporter.assert_called()
-
-    @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
-    @patch(
-        "single_kernel_mongo.managers.config.MongoDBExporterConfigManager.configure_and_restart"
-    )
-    def test_event_auto_reset_password_secrets_when_no_pw_value_shipped(
-        self, connect_exporter, set_user_password
-    ):
-        """Test _connect_mongodb_exporter is called when the password is set for 'montior' user.
-
-        Furthermore: in Juju 3.x we want to use secrets
-        """
-        self.harness.set_leader(True)
-
-        # Getting current password
-        params = {"username": "monitor"}
-        output = self.harness.run_action("set-password", params)
-        assert output.results["password"]
-        pw1 = output.results["password"]
-
-        connect_exporter.assert_called()
-
-        # New password was generated
-        params = {"username": "monitor"}
-        output = self.harness.run_action("set-password", params)
-        assert output.results["password"]
-        pw2 = output.results["password"]
-
-        # a new password was created
-        assert pw1 != pw2
 
     @patch("single_kernel_mongo.core.k8s_workload.KubernetesWorkload.exec")
     @patch("single_kernel_mongo.utils.mongo_connection.MongoConnection.set_user_password")
     @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.handle_licenses")
     @patch("single_kernel_mongo.managers.mongodb_operator.MongoDBOperator.set_permissions")
     @patch("ops.framework.EventBase.defer")
-    def test__connect_mongodb_exporter_success(self, defer, *unused):
+    def test_connect_mongodb_exporter_success(self, defer, *unused):
         """Tests the _connect_mongodb_exporter method has been called."""
         # Get container
         container = self.harness.model.unit.get_container("mongod")
@@ -754,10 +731,16 @@ class TestCharm(unittest.TestCase):
         service = self.harness.model.unit.get_container("mongod").get_service("mongodb-exporter")
         assert service.is_running()
 
-        params = {"username": "monitor", "password": "mongo123"}
-        self.harness.run_action("set-password", params)
+        system_users = {"monitor": "mongo123"}
+        secret_id = self.harness.add_model_secret("mongodb-k8s", system_users)
+        self.harness.update_config(
+            {
+                "system-users": f"{secret_id}",
+            }
+        )
 
         password = self.harness.charm.operator.state.get_user_password(MonitorUser)
+        assert password == "mongo123"
 
         updated_plan = self.harness.get_container_pebble_plan("mongod").to_dict()
         new_uri = (
@@ -777,23 +760,37 @@ class TestCharm(unittest.TestCase):
         """Tests that a given password is set as the new mongodb password for backup user."""
         self.harness.set_leader(True)
         self.harness.charm.operator.state.db_initialised = True
-        params = {"password": "canonical123", "username": "backup"}
-        self.harness.run_action("set-password", params)
+        system_users = {"backup": "canonical123"}
+        secret_id = self.harness.add_model_secret("mongodb-k8s", system_users)
+        self.harness.update_config(
+            {
+                "system-users": f"{secret_id}",
+            }
+        )
+
         new_password = self.harness.charm.operator.state.get_user_password(BackupUser)
 
         # verify app data is updated and results are reported to user
         self.assertEqual("canonical123", new_password)
 
+    @patch("ops.framework.EventBase.defer")
     @patch("single_kernel_mongo.managers.backups.BackupManager.get_statuses")
-    def test_set_backup_password_pbm_busy(self, pbm_status):
+    def test_set_backup_password_pbm_busy(self, pbm_status, event_defer):
         """Tests changes to passwords fail when pbm is restoring/backing up."""
         self.harness.set_leader(True)
 
         pbm_status.return_value = [StatusObject(status="maintenance", message="pbm")]
 
-        for user in [BackupUser, MonitorUser, OperatorUser]:
-            original_password = self.harness.charm.operator.state.get_user_password(user)
-            with pytest.raises(ActionFailed):
-                self.harness.run_action("set-password", {"username": user.username})
-            current_password = self.harness.charm.operator.state.get_user_password(user)
-            self.assertEqual(current_password, original_password)
+        system_users = {
+            "operator": "123",
+            "monitor": "abc",
+            "logrotate": "something",
+            "backup": "123abc",
+        }
+        secret_id = self.harness.add_model_secret("mongodb-k8s", system_users)
+        self.harness.update_config(
+            {
+                "system-users": f"{secret_id}",
+            }
+        )
+        event_defer.assert_called()
