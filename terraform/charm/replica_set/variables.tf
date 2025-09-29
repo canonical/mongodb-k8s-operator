@@ -60,8 +60,8 @@ variable "storage" {
   default     = {}
 
   validation {
-    condition     = length(var.storage) == 0 || lookup(var.storage, "count", 0) <= 1
-    error_message = "Only one storage is supported"
+    condition     = length(var.storage) == 0 || lookup(var.storage, "count", 0) <= 2
+    error_message = "Only two storages are supported"
   }
 }
 
