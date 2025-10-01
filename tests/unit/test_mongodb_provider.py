@@ -81,7 +81,7 @@ class TestMongoProvider(unittest.TestCase):
         statuses = self.harness.charm.operator.state.statuses.get(scope="unit", component="mongod")
         status = next(iter(statuses), None)
         assert as_status(status) == BlockedStatus(
-            "Sharding roles do not support database interface."
+            "The database relation cannot be used by sharding components (shards or config servers)."
         )
         oversee_users.assert_not_called()
 
