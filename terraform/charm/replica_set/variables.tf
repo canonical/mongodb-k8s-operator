@@ -13,7 +13,11 @@ variable "channel" {
   default     = "6/stable"
 }
 
-
+variable "base" {
+  description = "Charm base (old name: series)"
+  type        = string
+  default     = "ubuntu@22.04"
+}
 
 variable "config" {
   description = "Map of charm configuration options"
@@ -46,18 +50,23 @@ variable "constraints" {
 
 variable "machines" {
   description = "List of machines for placement"
-  type        = list(string)
-  default     = []
+  type        = set(string)
+  default     = null
 }
 
 variable "storage" {
   description = "Map of storage used by the application"
   type        = map(string)
   default     = {}
+
+  validation {
+    condition     = length(var.storage) == 0 || lookup(var.storage, "count", 0) <= 2
+    error_message = "Only two storages are supported"
+  }
 }
 
 variable "endpoint_bindings" {
   description = "Map of endpoint bindings"
-  type        = map(string)
-  default     = {}
+  type        = set(map(string))
+  default     = []
 }

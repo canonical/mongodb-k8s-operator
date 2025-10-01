@@ -56,53 +56,18 @@ jobs:
       - name: Run tests
         run: tox run -e unit
 
-  terraform-lint:
-    name: Terraform - Lint
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Install terraform snap
-        run: |
-          sudo snap install terraform --channel=latest/stable --classic
-      - name: lint charm module
-        working-directory: ./terraform
-        run: |
-          terraform init
-          terraform fmt
-          terraform validate
-      - name: lint test charm module
-        working-directory: ./terraform/modules
-        run: |
-          terraform init
-          terraform fmt
-          terraform validate
-
-  terraform-test:
-    name: Terraform - Run terraform tests
-    needs:
-      - terraform-lint
+  terraform-rs-test:
+    name: Terraform - Validation of replica-set product module
+    continue-on-error: true
     runs-on: ubuntu-22.04
     timeout-minutes: 120
-    strategy:
-      matrix:
-        module:
-          - name: replica set tests
-            working_directory: terraform/modules/replica_set
-            model_name: test-rs
-          - name: sharded tests
-            working_directory: terraform/modules/sharded_cluster
-            model_name: test-sc
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: (GitHub hosted) Free up disk space
-        timeout-minutes: 1
         run: |
           printf '\nDisk usage before cleanup\n'
           df --human-readable
@@ -110,39 +75,141 @@ jobs:
           rm -r /opt/hostedtoolcache/
           printf '\nDisk usage after cleanup\n'
           df --human-readable
+
       - name: (self hosted) Disk usage
-        timeout-minutes: 1
         run: df --human-readable
+
       - name: Install terraform snap
         run: |
           sudo snap install terraform --channel=latest/stable --classic
-      - name: juju set up
+
+      - name: Lint / format / validate TF modules
         run: |
-          sudo snap install juju --channel=3.6/beta --classic
-          sudo snap install juju-wait --channel=latest/stable --classic
-          sudo snap install jq
-      - name: LXD setup
+          pushd ./terraform
+          for dir in charm/replica_set product/replica_set; do
+            (cd "${dir}" && terraform init && terraform fmt && terraform validate)
+          done
+          popd
+
+      - name: run checks - prepare
         run: |
-          sudo snap refresh lxd --channel=latest/stable
-          sudo adduser "$USER" 'lxd'
-          # `newgrp` does not work in GitHub Actions; use `sg` instead
-          sg 'lxd' -c "lxd waitready"
-          sg 'lxd' -c "lxd init --auto"
-          sg 'lxd' -c "lxc network set lxdbr0 ipv6.address none"
-          sudo iptables -F FORWARD
-          sudo iptables -P FORWARD ACCEPT
+          sudo snap install juju --channel=3.6
+
+      - name: microk8s setup
+        run: |
+          sudo snap install microk8s --channel=1.27-strict
+          sudo usermod -a -G snap_microk8s "$(whoami)"
+          mkdir -p ~/.kube
+          sudo chown -R "$(whoami)" ~/.kube
+          newgrp snap_microk8s
+          sudo microk8s enable dns storage ingress
+
       - name: Juju setup
         run: |
-          mkdir -p ~/.local/share/juju # Workaround for juju 3 strict snap
-          sg 'lxd' -c "juju bootstrap 'localhost' --config model-logs-size=10G"
+          mkdir -p ~/.local/share/juju
+          sudo --user "$USER" juju bootstrap 'microk8s' --config model-logs-size=10G
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
-      - name: Terraform deploy ${{ matrix.module.name }}
-        working-directory: ${{ matrix.module.working_directory }}
+          juju add-model test
 
+      - name: Terraform deploy - replica-set product module
         run: |
-          juju add-model ${{ matrix.module.model_name }}
-          terraform init
-          terraform apply  -var "model_name=${{ matrix.module.model_name }}" -target null_resource.juju_wait_deployment -auto-approve
+          pushd ./terraform/product/replica_set/
+          terraform apply \
+            -var='mongodb_k8s={"model": "test"}' \
+            -var='self_signed_certificates={"model": "test"}' \
+            -var='s3_integrator={"model": "test", "config": {"bucket": "test"}}' \
+            -var='data_integrator={"model": "test"}' \
+            -auto-approve
+          popd
+
+      - name: Wait for juju deployment
+        run: |
+          # TODO - remove this when juju wait-for starts reporting the up to date status
+          until timeout 2m juju wait-for model test --query='life=="alive" && status=="available"'
+          do
+            echo "Retrying in 5 seconds..."
+            juju status -m test
+            sleep 5
+          done
+  
+  terraform-sharding-test:
+    name: Terraform - Validation of sharded cluster product module
+    continue-on-error: true
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: (GitHub hosted) Free up disk space
+        run: |
+          printf '\nDisk usage before cleanup\n'
+          df --human-readable
+          # Based on https://github.com/actions/runner-images/issues/2840#issuecomment-790492173
+          rm -r /opt/hostedtoolcache/
+          printf '\nDisk usage after cleanup\n'
+          df --human-readable
+
+      - name: (self hosted) Disk usage
+        run: df --human-readable
+
+      - name: Install terraform snap
+        run: |
+          sudo snap install terraform --channel=latest/stable --classic
+
+      - name: Lint / format / validate TF modules
+        run: |
+          pushd ./terraform
+          for dir in charm/replica_set charm/sharded product/replica_set product/sharded; do
+            (cd "${dir}" && terraform init && terraform fmt && terraform validate)
+          done
+          popd
+
+      - name: run checks - prepare
+        run: |
+          sudo snap install juju --channel=3.6
+
+      - name: microk8s setup
+        run: |
+          sudo snap install microk8s --channel=1.27-strict
+          sudo usermod -a -G snap_microk8s "$(whoami)"
+          mkdir -p ~/.kube
+          sudo chown -R "$(whoami)" ~/.kube
+          newgrp snap_microk8s
+          sudo microk8s enable dns storage ingress
+
+      - name: Juju setup
+        run: |
+          mkdir -p ~/.local/share/juju
+          sudo --user "$USER" juju bootstrap 'microk8s' --config model-logs-size=10G
+          juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
+          juju add-model test
+
+      - name: Terraform deploy - sharded cluster product module
+        run: |
+          pushd ./terraform/product/sharded/
+          terraform apply \
+            -var='config_server={"model": "test"}' \
+            -var='shards=[{"app_name": "shard-one", "model": "test"},{"app_name": "shard-two", "model": "test"}]' \
+            -var='mongos_k8s={"model": "test"}' \
+            -var='config_server={"model": "test"}' \
+            -var='self_signed_certificates={"model": "test"}' \
+            -var='s3_integrator={"model": "test", "config": {"bucket": "test"}}' \
+            -var='data_integrator={"model": "test"}' \
+            -auto-approve
+          popd
+
+      - name: Wait for juju deployment
+        run: |
+          # TODO - remove this when juju wait-for starts reporting the up to date status
+          until timeout 2m juju wait-for model test --query='life=="alive" && status=="available"'
+          do
+            echo "Retrying in 5 seconds..."
+            juju status -m test
+            sleep 5
+          done
 
   build:
     strategy:
