@@ -13,14 +13,29 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(autouse=True)
-def patch_k8s_manager(monkeypatch):
+def patch_upgrades(monkeypatch):
+    monkeypatch.setattr(
+        "single_kernel_mongo.state.charm_state.CharmState.upgrade_in_progress", False
+    )
     monkeypatch.setattr(
         "single_kernel_mongo.managers.k8s.K8sManager.get_partition",
         lambda *args, **kwargs: 0,
     )
     monkeypatch.setattr(
+        "single_kernel_mongo.managers.k8s.K8sManager.set_partition",
+        lambda *args, **kwargs: 0,
+    )
+    monkeypatch.setattr(
         "single_kernel_mongo.managers.k8s.K8sManager.get_pod",
         lambda *args, **kwargs: 0,
+    )
+
+
+@pytest.fixture(autouse=True)
+def patch_is_ready(mocker):
+    mocker.patch(
+        "single_kernel_mongo.utils.mongo_connection.MongoConnection.is_ready",
+        return_value=True,
     )
 
 
