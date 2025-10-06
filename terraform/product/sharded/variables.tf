@@ -7,7 +7,7 @@ variable "config_server" {
     app_name          = optional(string, "config-server")
     model             = string
     config            = optional(map(string), { "role" : "config-server" })
-    channel           = optional(string, "6/stable")
+    channel           = optional(string, "8/edge")
     base              = optional(string, "ubuntu@22.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
@@ -29,7 +29,7 @@ variable "shards" {
     app_name          = string
     model             = string
     config            = optional(map(string), { "role" : "shard" })
-    channel           = optional(string, "6/stable")
+    channel           = optional(string, "8/edge")
     base              = optional(string, "ubuntu@22.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
@@ -52,7 +52,7 @@ variable "mongos_k8s" {
     app_name = optional(string, "mongos-k8s")
     model    = string
     config   = optional(map(string), {})
-    channel  = optional(string, "6/stable")
+    channel  = optional(string, "8/edge")
     base     = optional(string, "ubuntu@22.04")
     revision = optional(string, null)
   })

@@ -7,7 +7,7 @@ variable "mongodb_k8s" {
     app_name          = optional(string, "mongodb-k8s")
     model             = string
     config            = optional(map(string), { "role" : "replication" })
-    channel           = optional(string, "6/stable")
+    channel           = optional(string, "8/edge")
     base              = optional(string, "ubuntu@22.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
