@@ -7,8 +7,8 @@ variable "config_server" {
     app_name          = string
     model             = string
     config            = optional(map(string), { "role" : "config-server" })
-    channel           = optional(string, "6/stable")
-    base              = optional(string, "ubuntu@22.04")
+    channel           = optional(string, "8-transition/edge")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
     constraints       = optional(string, "arch=amd64")
@@ -29,8 +29,8 @@ variable "shards" {
     app_name          = string
     model             = string
     config            = optional(map(string), { "role" : "shard" })
-    channel           = optional(string, "6/stable")
-    base              = optional(string, "ubuntu@22.04")
+    channel           = optional(string, "8-transition/edge")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
     constraints       = optional(string, "arch=amd64")

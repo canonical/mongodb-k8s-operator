@@ -26,8 +26,8 @@ No modules.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_app_name"></a> [app\_name](#input\_app\_name) | Application name | `string` | `"mongodb-k8s"` | no |
-| <a name="input_base"></a> [base](#input\_base) | Charm base (old name: series) | `string` | `"ubuntu@22.04"` | no |
-| <a name="input_channel"></a> [channel](#input\_channel) | Charm channel | `string` | `"6/stable"` | no |
+| <a name="input_base"></a> [base](#input\_base) | Charm base (old name: series) | `string` | `"ubuntu@24.04"` | no |
+| <a name="input_channel"></a> [channel](#input\_channel) | Charm channel | `string` | `"8-transition/edge"` | no |
 | <a name="input_config"></a> [config](#input\_config) | Map of charm configuration options | `map(string)` | `{}` | no |
 | <a name="input_constraints"></a> [constraints](#input\_constraints) | String listing constraints for this application | `string` | `"arch=amd64"` | no |
 | <a name="input_endpoint_bindings"></a> [endpoint\_bindings](#input\_endpoint\_bindings) | Map of endpoint bindings | `set(map(string))` | `[]` | no |
