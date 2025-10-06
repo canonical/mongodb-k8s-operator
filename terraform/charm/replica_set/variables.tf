@@ -16,7 +16,7 @@ variable "channel" {
 variable "base" {
   description = "Charm base (old name: series)"
   type        = string
-  default     = "ubuntu@22.04"
+  default     = "ubuntu@24.04"
 }
 
 variable "config" {

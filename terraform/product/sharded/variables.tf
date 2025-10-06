@@ -8,7 +8,7 @@ variable "config_server" {
     model             = string
     config            = optional(map(string), { "role" : "config-server" })
     channel           = optional(string, "8/edge")
-    base              = optional(string, "ubuntu@22.04")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
     constraints       = optional(string, "arch=amd64")
@@ -30,7 +30,7 @@ variable "shards" {
     model             = string
     config            = optional(map(string), { "role" : "shard" })
     channel           = optional(string, "8/edge")
-    base              = optional(string, "ubuntu@22.04")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 3)
     constraints       = optional(string, "arch=amd64")
@@ -53,7 +53,7 @@ variable "mongos_k8s" {
     model    = string
     config   = optional(map(string), {})
     channel  = optional(string, "8/edge")
-    base     = optional(string, "ubuntu@22.04")
+    base     = optional(string, "ubuntu@24.04")
     revision = optional(string, null)
   })
 }
