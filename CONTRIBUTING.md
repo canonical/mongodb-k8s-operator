@@ -23,10 +23,9 @@ this operator.
 ```shell
 tox run -e fmt           # update your code according to linting rules
 tox run -e lint          # code style
-tox run -e unit          # unit tests
 tox run -e integration   # integration tests
 tox run -e integration -- 'tests/integration/test_charm.py' --group='1'   # charm integration tests
-tox                      # runs 'fmt', 'lint' and 'unit' environments
+tox                      # runs 'fmt', 'lint' and environments
 ```
 
 ## Build charm
