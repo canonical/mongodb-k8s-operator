@@ -45,11 +45,6 @@ clean:
 	rm -rf .tox .coverage
 	find . -name __pycache__ -type d -exec rm -rf {} +;
 
-install-deps:
-# install deps in unit test venv
-	tox -e unit --notest
-	source .tox/unit/bin/activate && pip install black ipdb
-
 pod-logs:
 # workload container logs
 	microk8s.kubectl logs pod/$(app)-$(unit) --namespace=$(model) --container $(workload) -f
