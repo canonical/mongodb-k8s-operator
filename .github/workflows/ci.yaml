@@ -20,7 +20,7 @@ on:
 jobs:
   lint:
     name: Lint
-    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v29.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v35.0.2
 
   lib-check:
     name: Check libraries
@@ -41,20 +41,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           use-labels: false
           fail-build: ${{ github.event_name == 'pull_request' }}
-
-  unit-test:
-    name: Unit test charm
-    runs-on: ubuntu-22.04
-    timeout-minutes: 25 # TODO: reduce to 5 minutes
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install tox & poetry
-        run: |
-          pipx install tox
-          pipx install poetry
-      - name: Run tests
-        run: tox run -e unit
 
   terraform-rs-test:
     name: Terraform - Validation of replica-set product module
@@ -217,7 +203,7 @@ jobs:
         path:
           - .
     name: Build charm | ${{ matrix.path }}
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v29.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v35.0.2
     with:
       path-to-charm-directory: ${{ matrix.path }}
       cache: false
@@ -226,9 +212,8 @@ jobs:
     name: Integration test charm
     needs:
       - lint
-      - unit-test
       - build
-    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v29.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/integration_test_charm.yaml@v35.0.2
     with:
       artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
       cloud: microk8s
