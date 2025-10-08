@@ -37,9 +37,9 @@ jobs:
     name: Release charm
     needs:
       - ci-tests
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm.yaml@v35.0.2
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v35.0.2
     with:
-      channel: 8/edge
+      track: 8
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
