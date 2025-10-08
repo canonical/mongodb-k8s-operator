@@ -79,8 +79,14 @@ containers:
   mongod:
     resource: mongodb-image
     mounts:
-      - storage: mongodb
+      - storage: archive
+        location: /var/common/mongodb/archive
+      - storage: data
         location: /var/lib/mongodb
+      - storage: logs
+        location: /var/log/mongodb
+      - storage: temp
+        location: /tmp
 resources:
   mongodb-image:
     type: oci-image
@@ -88,9 +94,19 @@ resources:
     # TODO: Update sha whenever upstream rock changes
     upstream-source: ghcr.io/canonical/charmed-mongodb@sha256:739243ea34dc453d7d13eba96980c1618ebbd9202a742fd1e052caa644c174e0
 storage:
-  mongodb:
+  archive:
+    type: filesystem
+    location: /var/common/mongodb/archive
+    description: storage for local backup files.
+  data:
     type: filesystem
     location: /var/lib/mongodb
-  mongodb-logs:
+    description: storage for MongoDB data.
+  logs:
     type: filesystem
     location: /var/log/mongodb
+    description: storage for logfiles.
+  temp:
+    type: filesystem
+    location: /tmp
+    description: Storage mount used for storing temporary tablespaces.
