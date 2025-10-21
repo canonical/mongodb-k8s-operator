@@ -1,4 +1,6 @@
-name: Release to 8/edge
+# Copyright 2025 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: Release to Charmhub edge
 
 on:
   push:
@@ -6,41 +8,36 @@ on:
       - 8/edge
 
 jobs:
-  lib-check:
-    name: Check libraries
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - run: |
-          # Workaround for https://github.com/canonical/charmcraft/issues/1389#issuecomment-1880921728
-          touch requirements.txt
-      - name: Check libs
-        uses: canonical/charming-actions/check-libraries@2.6.2
-        with:
-          # NOTE: CHARMHUB_TOKEN is only allowed in latest/edge, latest/candidate
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-
   ci-tests:
-    needs:
-      - lib-check
     uses: ./.github/workflows/ci.yaml
     secrets: inherit
+
+  tag:
+    name: Create charm refresh compatibility version git tag
+    needs: ci-tests
+    uses: canonical/data-platform-workflows/.github/workflows/tag_charm_edge.yaml@v35.0.4
+    with:
+      track: '8'
     permissions:
-      contents: write # Needed for Allure Report beta
+      contents: write  # Needed to create git tag
+  
+  build:
+    name: Build charm
+    needs:
+      - ci-tests
+      - tag
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v35.0.4
 
   release:
     name: Release charm
     needs:
       - ci-tests
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v35.0.2
+      - tag
+      - build
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v35.0.4
     with:
-      track: 8
-      artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
+      track: ${{ needs.tag.outputs.track }}
+      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
