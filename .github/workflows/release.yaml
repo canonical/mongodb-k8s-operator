@@ -8,36 +8,28 @@ on:
       - 8/edge
 
 jobs:
-  ci-tests:
-    uses: ./.github/workflows/ci.yaml
-    secrets: inherit
-
   tag:
     name: Create charm refresh compatibility version git tag
-    needs: ci-tests
     uses: canonical/data-platform-workflows/.github/workflows/tag_charm_edge.yaml@v35.0.4
     with:
       track: '8'
     permissions:
       contents: write  # Needed to create git tag
   
-  build:
-    name: Build charm
-    needs:
-      - ci-tests
-      - tag
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v35.0.4
+  ci-tests:
+    needs: tag
+    uses: ./.github/workflows/ci.yaml
+    secrets: inherit
 
   release:
     name: Release charm
     needs:
       - ci-tests
       - tag
-      - build
     uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v35.0.4
     with:
       track: ${{ needs.tag.outputs.track }}
-      artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
+      artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
