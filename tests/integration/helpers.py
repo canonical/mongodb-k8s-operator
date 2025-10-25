@@ -257,7 +257,7 @@ async def mongodb_uri(
     unit_ids: list[int] | None = None,
     port: str = "27017",
     app_name: str = APP_NAME,
-    username: str = "operator",
+    username: str = "charmed-operator",
 ) -> str:
     if unit_ids is None:
         unit_ids = range(0, len(ops_test.model.applications[app_name].units))
