@@ -9,7 +9,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_juju"></a> [juju](#provider\_juju) | >= 0.20.0 |
+| <a name="provider_juju"></a> [juju](#provider\_juju) | 0.23.1 |
 
 ## Modules
 
@@ -30,8 +30,10 @@
 | [juju_integration.mongos_data_integrator_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_integration.s3_config_server_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_integration.s3_config_server_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
-| [juju_integration.tls_mongo_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
-| [juju_integration.tls_mongo_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
+| [juju_integration.tls_client_mongo_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
+| [juju_integration.tls_client_mongo_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
+| [juju_integration.tls_peer_mongo_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
+| [juju_integration.tls_peer_mongo_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_offer.config_server_mongos_offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | resource |
 | [juju_offer.s3_integrator_offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | resource |
 | [juju_offer.tls_provider_offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | resource |

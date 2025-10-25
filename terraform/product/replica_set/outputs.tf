@@ -29,7 +29,8 @@ output "requires" {
   description = "Map of all \"requires\" endpoints"
   value = {
     sharding                  = "sharding"
-    certificates              = "certificates"
+    peer_certificates         = "peer-certificates"
+    client_certificates       = "client-certificates"
     s3_credentials            = "s3-credentials"
     ldap                      = "ldap"
     ldap_certificate_transfer = "ldap-certificate-transfer"

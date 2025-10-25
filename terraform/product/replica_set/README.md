@@ -9,7 +9,7 @@
 
 | Name | Version |
 |------|---------|
-| <a name="provider_juju"></a> [juju](#provider\_juju) | >= 0.20.0 |
+| <a name="provider_juju"></a> [juju](#provider\_juju) | 0.23.1 |
 
 ## Modules
 
@@ -28,8 +28,10 @@
 | [juju_integration.mongodb_data_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_integration.mongodb_s3_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_integration.mongodb_s3_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
-| [juju_integration.mongodb_tls_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
-| [juju_integration.mongodb_tls_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
+| [juju_integration.mongodb_tls_client_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
+| [juju_integration.mongodb_tls_client_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
+| [juju_integration.mongodb_tls_peer_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
+| [juju_integration.mongodb_tls_peer_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_offer.mongodb_client_offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | resource |
 | [juju_offer.s3_integrator_offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | resource |
 | [juju_offer.tls_provider_offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | resource |
