@@ -1,15 +1,6 @@
 # Copyright 2024 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-terraform {
-  required_providers {
-    juju = {
-      source  = "juju/juju"
-      version = "~> 0.23.1"
-    }
-  }
-}
-
 resource "juju_application" "mongodb_k8s" {
   charm {
     name     = "mongodb-k8s"
