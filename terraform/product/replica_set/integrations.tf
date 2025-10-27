@@ -7,13 +7,30 @@
 
 ## Same model integrations
 
-resource "juju_integration" "mongodb_tls_same_model_integration" {
+resource "juju_integration" "mongodb_tls_peer_same_model_integration" {
   for_each = local.enable_tls && var.self_signed_certificates.model == var.mongodb_k8s.model ? { "integrated" = true } : {}
 
   model = var.mongodb_k8s.model
   application {
     name     = var.mongodb_k8s.app_name
-    endpoint = "certificates"
+    endpoint = "peer-certificates"
+  }
+  application {
+    name = var.self_signed_certificates.app_name
+  }
+  depends_on = [
+    module.mongodb_k8s,
+    juju_application.self-signed-certificates["deployed"],
+  ]
+}
+
+resource "juju_integration" "mongodb_tls_client_same_model_integration" {
+  for_each = local.enable_tls && var.self_signed_certificates.model == var.mongodb_k8s.model ? { "integrated" = true } : {}
+
+  model = var.mongodb_k8s.model
+  application {
+    name     = var.mongodb_k8s.app_name
+    endpoint = "client-certificates"
   }
   application {
     name = var.self_signed_certificates.app_name
@@ -74,7 +91,7 @@ resource "juju_integration" "mongodb_data_cross_model_integration" {
   ]
 }
 
-resource "juju_integration" "mongodb_tls_cross_model_integration" {
+resource "juju_integration" "mongodb_tls_peer_cross_model_integration" {
   for_each = local.enable_tls && var.self_signed_certificates.model != var.mongodb_k8s.model ? { "integrated" = true } : {}
   model    = var.mongodb_k8s.model
 
@@ -83,7 +100,24 @@ resource "juju_integration" "mongodb_tls_cross_model_integration" {
   }
   application {
     name     = var.mongodb_k8s.app_name
-    endpoint = "certificates"
+    endpoint = "peer-certificates"
+  }
+  depends_on = [
+    module.mongodb_k8s,
+    juju_offer.tls_provider_offer,
+  ]
+}
+
+resource "juju_integration" "mongodb_tls_client_cross_model_integration" {
+  for_each = local.enable_tls && var.self_signed_certificates.model != var.mongodb_k8s.model ? { "integrated" = true } : {}
+  model    = var.mongodb_k8s.model
+
+  application {
+    offer_url = juju_offer.tls_provider_offer["offered"].url
+  }
+  application {
+    name     = var.mongodb_k8s.app_name
+    endpoint = "client-certificates"
   }
   depends_on = [
     module.mongodb_k8s,
