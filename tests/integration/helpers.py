@@ -167,12 +167,12 @@ async def check_all_units_blocked_with_status(
     for unit in await get_application_units(ops_test, db_app_name):
         assert (
             unit.workload_status.value == "blocked"
-        ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
+        ), f"expected unit {unit.name} to be in blocked state. Got {unit.workload_status.value}"
         if status:
             # We can have extra info but we care for the most important status
             assert (
                 status in unit.workload_status.message
-            ), f"unit {unit.name} not in blocked state, in {unit.workload_status.value}"
+            ), f"expected {unit.name} status message to be `{status}`. Got `{unit.workload_status.message}`"
 
 
 async def wait_for_mongodb_units_blocked(
