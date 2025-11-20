@@ -99,12 +99,13 @@ jobs:
 
       - name: Terraform deploy - replica-set product module
         run: |
+          MODEL=$(juju show-model test | grep "model-uuid" | awk '{split($0, a, ": "); print a[2]}')
           pushd ./terraform/product/replica_set/
           terraform apply \
-            -var='mongodb_k8s={"model": "test"}' \
-            -var='self_signed_certificates={"model": "test"}' \
-            -var='s3_integrator={"model": "test", "config": {"bucket": "test"}}' \
-            -var='data_integrator={"model": "test"}' \
+            -var="mongodb_k8s={\"model_uuid\": \"$MODEL\"}" \
+            -var="self_signed_certificates={\"model_uuid\": \"$MODEL\"}" \
+            -var="s3_integrator={\"model_uuid\": \"$MODEL\", \"config\": {\"bucket\": \"test\"}}" \
+            -var="data_integrator={\"model_uuid\": \"$MODEL\"}" \
             -auto-approve
           popd
 
@@ -175,15 +176,16 @@ jobs:
 
       - name: Terraform deploy - sharded cluster product module
         run: |
+          MODEL=$(juju show-model test | grep "model-uuid" | awk '{split($0, a, ": "); print a[2]}')
           pushd ./terraform/product/sharded/
           terraform apply \
-            -var='config_server={"model": "test"}' \
-            -var='shards=[{"app_name": "shard-one", "model": "test"},{"app_name": "shard-two", "model": "test"}]' \
-            -var='mongos_k8s={"model": "test"}' \
-            -var='config_server={"model": "test"}' \
-            -var='self_signed_certificates={"model": "test"}' \
-            -var='s3_integrator={"model": "test", "config": {"bucket": "test"}}' \
-            -var='data_integrator={"model": "test"}' \
+            -var="config_server={\"model_uuid\": \"$MODEL\"}" \
+            -var="shards=[{\"app_name\": \"shard-one\", \"model_uuid\": \"$MODEL\"},{\"app_name\": \"shard-two\", \"model_uuid\": \"$MODEL\"}]" \
+            -var="mongos_k8s={\"model_uuid\": \"$MODEL\"}" \
+            -var="config_server={\"model_uuid\": \"$MODEL\"}" \
+            -var="self_signed_certificates={\"model_uuid\": \"$MODEL\"}" \
+            -var="s3_integrator={\"model_uuid\": \"$MODEL\", \"config\": {\"bucket\": \"test\"}}" \
+            -var="data_integrator={\"model_uuid\": \"$MODEL\"}" \
             -auto-approve
           popd
 

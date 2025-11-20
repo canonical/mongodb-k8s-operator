@@ -8,11 +8,11 @@ locals {
 
   tls_same_model_mongo_apps = [
     for app in local.mongo_apps :
-    app if local.enable_tls && app.model == var.self_signed_certificates.model
+    app if local.enable_tls && app.model_uuid == var.self_signed_certificates.model_uuid
   ]
   tls_cross_model_mongo_apps = [
     for app in local.mongo_apps :
-    app if local.enable_tls && app.model != var.self_signed_certificates.model
+    app if local.enable_tls && app.model_uuid != var.self_signed_certificates.model_uuid
   ]
 }
 
@@ -43,9 +43,9 @@ resource "juju_application" "self-signed-certificates" {
   units             = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? var.self_signed_certificates.units : null
   machines          = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? null : var.self_signed_certificates.machines
   config            = var.self_signed_certificates.config
-  model             = var.self_signed_certificates.model
   constraints       = var.self_signed_certificates.constraints
   endpoint_bindings = var.self_signed_certificates.endpoint_bindings
+  model_uuid        = var.self_signed_certificates.model_uuid
 }
 
 # mongos
@@ -57,9 +57,9 @@ resource "juju_application" "mongos_k8s" {
     base     = var.mongos_k8s.base
   }
 
-  name   = var.mongos_k8s.app_name
-  config = var.mongos_k8s.config
-  model  = var.data_integrator.model
+  name       = var.mongos_k8s.app_name
+  config     = var.mongos_k8s.config
+  model_uuid = var.data_integrator.model
 }
 
 # Integrator apps
@@ -75,9 +75,9 @@ resource "juju_application" "data_integrator" {
   units             = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? var.data_integrator.units : null
   machines          = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? null : var.data_integrator.machines
   config            = var.data_integrator.config
-  model             = var.data_integrator.model
   constraints       = var.data_integrator.constraints
   endpoint_bindings = var.data_integrator.endpoint_bindings
+  model_uuid        = var.data_integrator.model
 }
 
 resource "juju_application" "s3_integrator" {
@@ -92,7 +92,7 @@ resource "juju_application" "s3_integrator" {
   units             = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? var.s3_integrator.units : null
   machines          = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? null : var.s3_integrator.machines
   config            = var.s3_integrator.config
-  model             = var.s3_integrator.model
   constraints       = var.s3_integrator.constraints
   endpoint_bindings = var.s3_integrator.endpoint_bindings
+  model_uuid        = var.s3_integrator.model
 }
