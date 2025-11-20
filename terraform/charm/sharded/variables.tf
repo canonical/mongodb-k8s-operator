@@ -5,7 +5,7 @@ variable "config_server" {
   description = "Config server app definition"
   type = object({
     app_name          = string
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "role" : "config-server" })
     channel           = optional(string, "8-transition/edge")
     base              = optional(string, "ubuntu@24.04")
@@ -27,7 +27,7 @@ variable "shards" {
   description = "Shard apps"
   type = list(object({
     app_name          = string
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "role" : "shard" })
     channel           = optional(string, "8-transition/edge")
     base              = optional(string, "ubuntu@24.04")

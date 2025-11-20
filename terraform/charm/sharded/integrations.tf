@@ -7,8 +7,8 @@
 #--------------------------------------------------------
 
 resource "juju_integration" "mongodb_config_server_same_model_integrations" {
-  for_each = tomap({ for shard in local.shards_in_config_server_model : shard.app_name => shard })
-  model    = each.value.model
+  for_each   = tomap({ for shard in local.shards_in_config_server_model : shard.app_name => shard })
+  model_uuid = each.value.model_uuid
 
   application {
     name     = var.config_server.app_name
@@ -26,8 +26,8 @@ resource "juju_integration" "mongodb_config_server_same_model_integrations" {
 }
 
 resource "juju_integration" "mongodb_config_server_cross_model_integrations" {
-  for_each = tomap({ for shard in local.shards_not_in_config_server_model : shard.app_name => shard })
-  model    = each.value.model
+  for_each   = tomap({ for shard in local.shards_not_in_config_server_model : shard.app_name => shard })
+  model_uuid = each.value.model_uuid
 
   application {
     offer_url = juju_offer.mongodb_config_server_offer["offered"].url
