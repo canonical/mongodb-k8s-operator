@@ -21,7 +21,7 @@ module "mongodb_k8s" {
   units             = var.mongodb_k8s.units
   machines          = var.mongodb_k8s.machines
   config            = merge(var.mongodb_k8s.config, { "role" : "replication" })
-  model             = var.mongodb_k8s.model
+  model_uuid        = var.mongodb_k8s.model_uuid
   constraints       = var.mongodb_k8s.constraints
   storage           = var.mongodb_k8s.storage
   endpoint_bindings = var.mongodb_k8s.endpoint_bindings
@@ -42,9 +42,9 @@ resource "juju_application" "self-signed-certificates" {
   units             = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? var.self_signed_certificates.units : null
   machines          = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? null : var.self_signed_certificates.machines
   config            = var.self_signed_certificates.config
-  model             = var.self_signed_certificates.model
   constraints       = var.self_signed_certificates.constraints
   endpoint_bindings = var.self_signed_certificates.endpoint_bindings
+  model_uuid        = var.self_signed_certificates.model_uuid
 }
 
 
@@ -61,9 +61,9 @@ resource "juju_application" "data_integrator" {
   units             = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? var.data_integrator.units : null
   machines          = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? null : var.data_integrator.machines
   config            = var.data_integrator.config
-  model             = var.data_integrator.model
   constraints       = var.data_integrator.constraints
   endpoint_bindings = var.data_integrator.endpoint_bindings
+  model_uuid        = var.data_integrator.model_uuid
 }
 
 resource "juju_application" "s3_integrator" {
@@ -78,7 +78,7 @@ resource "juju_application" "s3_integrator" {
   units             = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? var.s3_integrator.units : null
   machines          = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? null : var.s3_integrator.machines
   config            = var.s3_integrator.config
-  model             = var.s3_integrator.model
   constraints       = var.s3_integrator.constraints
   endpoint_bindings = var.s3_integrator.endpoint_bindings
+  model_uuid        = var.s3_integrator.model_uuid
 }

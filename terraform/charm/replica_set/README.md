@@ -3,7 +3,7 @@
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
-| <a name="requirement_juju"></a> [juju](#requirement\_juju) | >= 0.20.0 |
+| <a name="requirement_juju"></a> [juju](#requirement\_juju) | ~> 1.0 |
 
 ## Providers
 
@@ -32,7 +32,7 @@ No modules.
 | <a name="input_constraints"></a> [constraints](#input\_constraints) | String listing constraints for this application | `string` | `"arch=amd64"` | no |
 | <a name="input_endpoint_bindings"></a> [endpoint\_bindings](#input\_endpoint\_bindings) | Map of endpoint bindings | `set(map(string))` | `[]` | no |
 | <a name="input_machines"></a> [machines](#input\_machines) | List of machines for placement | `set(string)` | `null` | no |
-| <a name="input_model"></a> [model](#input\_model) | Model name | `string` | n/a | yes |
+| <a name="input_model_uuid"></a> [model\_uuid](#input\_model\_uuid) | Model UUID | `string` | n/a | yes |
 | <a name="input_revision"></a> [revision](#input\_revision) | Charm revision | `number` | `null` | no |
 | <a name="input_storage"></a> [storage](#input\_storage) | Map of storage used by the application | `map(string)` | `{}` | no |
 | <a name="input_units"></a> [units](#input\_units) | Charm units | `number` | `3` | no |

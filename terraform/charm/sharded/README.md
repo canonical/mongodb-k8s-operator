@@ -3,7 +3,7 @@
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.6 |
-| <a name="requirement_juju"></a> [juju](#requirement\_juju) | >= 0.20.0 |
+| <a name="requirement_juju"></a> [juju](#requirement\_juju) | ~> 1.0 |
 
 ## Providers
 
@@ -30,8 +30,8 @@
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| <a name="input_config_server"></a> [config\_server](#input\_config\_server) | Config server app definition | <pre>object({<br/>    app_name          = string<br/>    model             = string<br/>    config            = optional(map(string), { "role" : "config-server" })<br/>    channel           = optional(string, "8/edge")<br/>    base              = optional(string, "ubuntu@24.04")<br/>    revision          = optional(string, null)<br/>    units             = optional(number, 3)<br/>    constraints       = optional(string, "arch=amd64")<br/>    machines          = optional(set(string), null)<br/>    storage           = optional(map(string), {})<br/>    endpoint_bindings = optional(set(map(string)), [])<br/>  })</pre> | n/a | yes |
-| <a name="input_shards"></a> [shards](#input\_shards) | Shard apps | <pre>list(object({<br/>    app_name          = string<br/>    model             = string<br/>    config            = optional(map(string), { "role" : "shard" })<br/>    channel           = optional(string, "8/edge")<br/>    base              = optional(string, "ubuntu@24.04")<br/>    revision          = optional(string, null)<br/>    units             = optional(number, 3)<br/>    constraints       = optional(string, "arch=amd64")<br/>    machines          = optional(set(string), null)<br/>    storage           = optional(map(string), {})<br/>    endpoint_bindings = optional(set(map(string)), [])<br/>  }))</pre> | `[]` | no |
+| <a name="input_config_server"></a> [config\_server](#input\_config\_server) | Config server app definition | <pre>object({<br/>    app_name          = string<br/>    model_uuid        = string<br/>    config            = optional(map(string), { "role" : "config-server" })<br/>    channel           = optional(string, "8/edge")<br/>    base              = optional(string, "ubuntu@24.04")<br/>    revision          = optional(string, null)<br/>    units             = optional(number, 3)<br/>    constraints       = optional(string, "arch=amd64")<br/>    machines          = optional(set(string), null)<br/>    storage           = optional(map(string), {})<br/>    endpoint_bindings = optional(set(map(string)), [])<br/>  })</pre> | n/a | yes |
+| <a name="input_shards"></a> [shards](#input\_shards) | Shard apps | <pre>list(object({<br/>    app_name          = string<br/>    model_uuid        = string<br/>    config            = optional(map(string), { "role" : "shard" })<br/>    channel           = optional(string, "8/edge")<br/>    base              = optional(string, "ubuntu@24.04")<br/>    revision          = optional(string, null)<br/>    units             = optional(number, 3)<br/>    constraints       = optional(string, "arch=amd64")<br/>    machines          = optional(set(string), null)<br/>    storage           = optional(map(string), {})<br/>    endpoint_bindings = optional(set(map(string)), [])<br/>  }))</pre> | `[]` | no |
 
 ## Outputs
 
