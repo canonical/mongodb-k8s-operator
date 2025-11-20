@@ -5,7 +5,7 @@ variable "mongodb_k8s" {
   description = "MongoDB app definition"
   type = object({
     app_name          = optional(string, "mongodb-k8s")
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "role" : "replication" })
     channel           = optional(string, "8/edge")
     base              = optional(string, "ubuntu@24.04")
@@ -22,7 +22,7 @@ variable "self_signed_certificates" {
   description = "Configuration for the self-signed-certificates app"
   type = object({
     app_name          = optional(string, "self-signed-certificates")
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "ca-common-name" : "CA" })
     channel           = optional(string, "latest/edge")
     base              = optional(string, "ubuntu@22.04")
@@ -45,7 +45,7 @@ variable "s3_integrator" {
   description = "Configuration for the backup integrator"
   type = object({
     app_name          = optional(string, "s3-integrator")
-    model             = string
+    model_uuid        = string
     config            = map(string)
     channel           = optional(string, "latest/edge")
     base              = optional(string, "ubuntu@22.04")
@@ -71,7 +71,7 @@ variable "data_integrator" {
   description = "Configuration for the data-integrator"
   type = object({
     app_name          = optional(string, "data-integrator")
-    model             = string
+    model_uuid        = string
     config            = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
     channel           = optional(string, "latest/edge")
     base              = optional(string, "ubuntu@22.04")
