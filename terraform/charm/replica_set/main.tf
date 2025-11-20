@@ -9,7 +9,6 @@ resource "juju_application" "mongodb_k8s" {
     base     = var.base
   }
   config             = var.config
-  model              = var.model
   name               = var.app_name
   units              = (var.machines == null || length(var.machines) == 0) ? var.units : null
   machines           = (var.machines == null || length(var.machines) == 0) ? null : var.machines
@@ -18,4 +17,5 @@ resource "juju_application" "mongodb_k8s" {
   endpoint_bindings  = var.endpoint_bindings
   trust              = true
 
+  model_uuid = var.model_uuid
 }

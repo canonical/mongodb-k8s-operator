@@ -8,12 +8,12 @@ locals {
 
   shards_in_config_server_model = [
     for shard in local.shards :
-    shard if shard != null && shard.model == var.config_server.model
+    shard if shard != null && shard.model_uuid == var.config_server.model_uuid
   ]
 
   shards_not_in_config_server_model = [
     for shard in local.shards :
-    shard if shard != null && shard.model != var.config_server.model
+    shard if shard != null && shard.model_uuid != var.config_server.model_uuid
   ]
 }
 
@@ -33,7 +33,7 @@ module "mongodb_config_server" {
   units             = var.config_server.units
   machines          = var.config_server.machines
   config            = merge(var.config_server.config, { "role" : "config-server" })
-  model             = var.config_server.model
+  model_uuid        = var.config_server.model_uuid
   constraints       = var.config_server.constraints
   storage           = var.config_server.storage
   endpoint_bindings = var.config_server.endpoint_bindings
@@ -52,7 +52,7 @@ module "mongodb_shards" {
   units       = each.value.units
   machines    = each.value.machines
   config      = merge(each.value.config, { "role" : "shard" })
-  model       = each.value.model
+  model_uuid  = each.value.model_uuid
   constraints = each.value.constraints
   storage     = each.value.storage
 }
