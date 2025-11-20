@@ -59,7 +59,7 @@ resource "juju_application" "mongos_k8s" {
 
   name       = var.mongos_k8s.app_name
   config     = var.mongos_k8s.config
-  model_uuid = var.data_integrator.model
+  model_uuid = var.data_integrator.model_uuid
 }
 
 # Integrator apps
@@ -77,7 +77,7 @@ resource "juju_application" "data_integrator" {
   config            = var.data_integrator.config
   constraints       = var.data_integrator.constraints
   endpoint_bindings = var.data_integrator.endpoint_bindings
-  model_uuid        = var.data_integrator.model
+  model_uuid        = var.data_integrator.model_uuid
 }
 
 resource "juju_application" "s3_integrator" {
@@ -94,5 +94,5 @@ resource "juju_application" "s3_integrator" {
   config            = var.s3_integrator.config
   constraints       = var.s3_integrator.constraints
   endpoint_bindings = var.s3_integrator.endpoint_bindings
-  model_uuid        = var.s3_integrator.model
+  model_uuid        = var.s3_integrator.model_uuid
 }
