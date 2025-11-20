@@ -89,7 +89,7 @@ resource "juju_integration" "s3_config_server_same_model_integration" {
 ## Cross model integrations
 
 resource "juju_integration" "config_server_mongos_cross_model_integration" {
-  for_each = var.mongos_k8s.model != var.config_server.model ? { "integrated" = true } : {}
+  for_each = var.mongos_k8s.model_uuid != var.config_server.model_uuid ? { "integrated" = true } : {}
 
   application {
     offer_url = juju_offer.config_server_mongos_offer["offered"].url
