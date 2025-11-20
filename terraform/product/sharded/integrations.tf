@@ -91,7 +91,7 @@ resource "juju_integration" "config_server_mongos_cross_model_integration" {
 resource "juju_integration" "tls_mongo_cross_model_integration" {
   count = length(local.tls_cross_model_mongo_apps)
 
-  model = local.tls_cross_model_mongo_apps[count.index].model_uuid
+  model_uuid = local.tls_cross_model_mongo_apps[count.index].model_uuid
 
   application {
     offer_url = juju_offer.tls_provider_offer["offered"].url
