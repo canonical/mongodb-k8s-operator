@@ -40,6 +40,9 @@ Security issues in the Charmed MongoDB K8s Operator can be reported through [Lau
 
 ## Contributing
 
+Most of the charm’s Python business logic lives in a shared library maintained in the [mongo-single-kernel-library](https://github.com/canonical/mongo-single-kernel-library)
+ repository. If you intend to contribute to or modify the charm’s core functionality, please make your changes in that library.
+
 Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhancements to this charm following best practice guidelines, and [CONTRIBUTING.md](https://github.com/canonical/mongodb-k8s-operator/blob/main/CONTRIBUTING.md) for developer guidance.
 
 
