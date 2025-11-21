@@ -44,11 +44,11 @@ Please see the [Juju SDK docs](https://juju.is/docs/sdk) for guidelines on enhan
 
 
 ## License
-The Charmed MongoDB K8s Operator is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](https://github.com/canonical/mongodb-operator/blob/main/LICENSE) for more information.
+The Charmed MongoDB K8s Operator is free software, distributed under the Apache Software License, version 2.0. See [LICENSE](https://github.com/canonical/mongodb-k8s-operator/blob/main/LICENSE) for more information.
 
 The Charmed MongoDB K8s Operator is free software, distributed under the Apache Software License, version 2.0. It [installs/operates/depends on] [MongoDB Community Version](https://github.com/mongodb/mongo), which is licensed under the Server Side Public License (SSPL)
 
-See [LICENSE](https://github.com/canonical/mongodb-operator/blob/main/LICENSE) for more information.
+See [LICENSE](https://github.com/canonical/mongodb-k8s-operator/blob/main/LICENSE) for more information.
 
 ## Trademark notice
 MongoDB' is a trademark or registered trademark of MongoDB Inc. Other trademarks are property of their respective owners.
