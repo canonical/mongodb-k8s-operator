@@ -22,12 +22,12 @@ This operator charm deploys and operates MongoDB on Kubernetes. It offers featur
 ### Basic Usage
 To deploy a single unit of MongoDB using its default configuration
 ```shell
-juju deploy ./mongodb-k8s_ubuntu-24.04-amd64.charm --resource mongodb-image=ghcr.io/canonical/charmed-mongodb@sha256:7ddb80a3b5ddffa95704a8980fc11037ba1a23273a9805214bc42be9f507107f
+juju deploy ./mongodb-k8s_ubuntu-24.04-amd64.charm --resource mongodb-image=ghcr.io/canonical/charmed-mongodb@sha256:739243ea34dc453d7d13eba96980c1618ebbd9202a742fd1e052caa644c174e0
 ```
 
 It is customary to use MongoDB with replication. Hence usually more than one unit (preferably an odd number to prohibit a "split-brain" scenario) is deployed. To deploy MongoDB with multiple replicas, specify the number of desired units with the `-n` option.
 ```shell
-juju deploy ./mongodb-k8s_ubuntu-24.04-amd64.charm --resource mongodb-image=ghcr.io/canonical/charmed-mongodb@sha256:7ddb80a3b5ddffa95704a8980fc11037ba1a23273a9805214bc42be9f507107f -n <number_of_replicas>
+juju deploy ./mongodb-k8s_ubuntu-24.04-amd64.charm --resource mongodb-image=ghcr.io/canonical/charmed-mongodb@sha256:739243ea34dc453d7d13eba96980c1618ebbd9202a742fd1e052caa644c174e0 -n <number_of_replicas>
 ```
 
 ## Documentation

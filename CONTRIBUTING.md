@@ -46,7 +46,7 @@ juju add-model dev
 juju model-config logging-config="<root>=INFO;unit=DEBUG"
 
 # Deploy the charm
-juju deploy ./mongodb-k8s_ubuntu-24.04-amd64.charm --resource mongodb-image=ghcr.io/canonical/charmed-mongodb@sha256:7ddb80a3b5ddffa95704a8980fc11037ba1a23273a9805214bc42be9f507107f --num-units=1
+juju deploy ./mongodb-k8s_ubuntu-24.04-amd64.charm --resource mongodb-image=ghcr.io/canonical/charmed-mongodb@sha256:739243ea34dc453d7d13eba96980c1618ebbd9202a742fd1e052caa644c174e0 --num-units=1
 ```
 
 ## Canonical Contributor Agreement
