@@ -24,8 +24,8 @@ variable "self_signed_certificates" {
     app_name          = optional(string, "self-signed-certificates")
     model_uuid        = string
     config            = optional(map(string), { "ca-common-name" : "CA" })
-    channel           = optional(string, "latest/edge")
-    base              = optional(string, "ubuntu@22.04")
+    channel           = optional(string, "1/stable")
+    base              = optional(string, "ubuntu@24.04")
     revision          = optional(string, null)
     units             = optional(number, 1)
     constraints       = optional(string, "arch=amd64")
