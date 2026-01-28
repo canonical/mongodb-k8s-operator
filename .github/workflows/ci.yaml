@@ -118,7 +118,7 @@ jobs:
             juju status -m test
             sleep 5
           done
-  
+
   terraform-sharding-test:
     name: Terraform - Validation of sharded cluster product module
     continue-on-error: true
@@ -208,7 +208,7 @@ jobs:
     uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v35.0.4
     with:
       path-to-charm-directory: ${{ matrix.path }}
-      cache: true
+      cache: false
 
   integration-test:
     name: Integration test charm
