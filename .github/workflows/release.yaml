@@ -37,11 +37,11 @@ jobs:
     name: Release charm
     needs:
       - ci-tests
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v35.0.2
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v41.1.1
     with:
       track: 8-transition
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
-      contents: write  # Needed to create git tags
+      contents: write # Needed to create git tags
