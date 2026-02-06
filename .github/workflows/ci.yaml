@@ -21,11 +21,15 @@ jobs:
   lint:
     name: Lint
     uses: canonical/data-platform-workflows/.github/workflows/lint.yaml@v35.0.4
+    permissions:
+      contents: read
 
   lib-check:
     name: Check libraries
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,6 +51,8 @@ jobs:
     continue-on-error: true
     runs-on: ubuntu-22.04
     timeout-minutes: 120
+    permissions:
+      contents: read
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -124,6 +130,8 @@ jobs:
     continue-on-error: true
     runs-on: ubuntu-22.04
     timeout-minutes: 120
+    permissions:
+      contents: read
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -209,6 +217,8 @@ jobs:
     with:
       path-to-charm-directory: ${{ matrix.path }}
       cache: false
+    permissions:
+      contents: read
 
   integration-test:
     name: Integration test charm
