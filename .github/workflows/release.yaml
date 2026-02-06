@@ -12,14 +12,16 @@ jobs:
     name: Create charm refresh compatibility version git tag
     uses: canonical/data-platform-workflows/.github/workflows/tag_charm_edge.yaml@v35.0.4
     with:
-      track: '8'
+      track: "8"
     permissions:
-      contents: write  # Needed to create git tag
-  
+      contents: write # Needed to create git tag
+
   ci-tests:
     needs: tag
     uses: ./.github/workflows/ci.yaml
     secrets: inherit
+    permissions:
+      contents: write
 
   release:
     name: Release charm
@@ -33,4 +35,4 @@ jobs:
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
-      contents: write  # Needed to create git tags
+      contents: write # Needed to create git tags
