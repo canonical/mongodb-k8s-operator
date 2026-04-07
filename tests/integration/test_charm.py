@@ -21,9 +21,8 @@ from .helpers import (
 logger = logging.getLogger(__name__)
 
 
-@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest):
+async def test_build_and_deploy(ops_test: OpsTest, charm: str):
     """Build the charm-under-test and deploy it together with related charms.
 
     Assert on the unit status before any relations/configurations take place.
@@ -33,9 +32,9 @@ async def test_build_and_deploy(ops_test: OpsTest):
         return await check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
 
     app_name = APP_NAME
-    # build and deploy charm from local source folder
-    charm = await ops_test.build_charm(".")
-    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
+    resources = {
+        "mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]
+    }
     await ops_test.model.deploy(
         charm,
         resources=resources,
@@ -62,7 +61,6 @@ async def test_build_and_deploy(ops_test: OpsTest):
     await ops_test.model.set_config({"update-status-hook-interval": "60m"})
 
 
-@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 @pytest.mark.parametrize("unit_id", UNIT_IDS)
 async def test_application_is_up(ops_test: OpsTest, unit_id: int):
