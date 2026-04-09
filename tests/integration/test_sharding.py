@@ -34,15 +34,13 @@ SHARD_NEEDS_CONFIG_SERVER_STATUS = "Missing relation to config-server."
 TIMEOUT = 30 * 60
 
 
-@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
-async def test_build_and_deploy(ops_test: OpsTest) -> None:
+async def test_build_and_deploy(ops_test: OpsTest, charm: str) -> None:
     """Build and deploy a sharded cluster."""
-    my_charm = await ops_test.build_charm(".")
     resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
 
     await ops_test.model.deploy(
-        my_charm,
+        charm,
         resources=resources,
         num_units=2,
         config={"role": "config-server"},
@@ -50,7 +48,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         trust=True,
     )
     await ops_test.model.deploy(
-        my_charm,
+        charm,
         resources=resources,
         num_units=2,
         config={"role": "shard"},
@@ -58,7 +56,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         trust=True,
     )
     await ops_test.model.deploy(
-        my_charm,
+        charm,
         resources=resources,
         num_units=2,
         config={"role": "shard"},
@@ -66,7 +64,7 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
         trust=True,
     )
     await ops_test.model.deploy(
-        my_charm,
+        charm,
         resources=resources,
         num_units=2,
         config={"role": "shard"},
@@ -115,7 +113,6 @@ async def test_build_and_deploy(ops_test: OpsTest) -> None:
     )
 
 
-@pytest.mark.group(1)
 @pytest.mark.abort_on_fail
 async def test_cluster_active(ops_test: OpsTest) -> None:
     """Tests the integration of cluster components works without error."""
