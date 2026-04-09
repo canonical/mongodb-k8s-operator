@@ -32,9 +32,7 @@ async def test_build_and_deploy(ops_test: OpsTest, charm: str):
         return await check_or_scale_app(ops_test, app_name, len(UNIT_IDS))
 
     app_name = APP_NAME
-    resources = {
-        "mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]
-    }
+    resources = {"mongodb-image": METADATA["resources"]["mongodb-image"]["upstream-source"]}
     await ops_test.model.deploy(
         charm,
         resources=resources,
