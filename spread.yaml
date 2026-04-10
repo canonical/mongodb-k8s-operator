@@ -90,7 +90,9 @@ backends:
     # Manually pass specific environment variables
     environment:
       CI: "$(HOST: echo $CI)"
+      DOCKERHUB_MIRROR: "$(HOST: echo $DOCKERHUB_MIRROR)"
       CHARM_UBUNTU_BASE: "$(HOST: echo $CHARM_UBUNTU_BASE)"
+      CONCIERGE_MICROK8S_CHANNEL: 1.34-strict/stable
       # To install pipx on self-hosted runners
       CONCIERGE_EXTRA_DEBS: pipx,build-essential,python3-dev,libldap-dev,libsasl2-dev
     systems:
@@ -112,6 +114,30 @@ prepare: |
   chown -R root:root "$SPREAD_PATH"
   cd "$SPREAD_PATH"
   snap install --classic concierge
+
+  if [[ -n "$DOCKERHUB_MIRROR" ]]
+  then
+    # Running on IS-hosted runner; configure microk8s to use Docker Hub mirror
+    # Run before concierge prepare because of https://github.com/canonical/concierge/issues/75
+
+    snap install microk8s --channel "$CONCIERGE_MICROK8S_CHANNEL" --classic
+
+    # Wait for microk8s to populate iptables
+    # https://chat.canonical.com/canonical/pl/jo5cg6wqjjrudqd5ybj6hhttee
+    until [[ -n $(iptables --list | grep -i "microk8s") ]]
+    do
+      echo "MicroK8s has not yet configured iptables."
+      sleep 10
+    done
+
+    tee /var/snap/microk8s/current/args/certs.d/docker.io/hosts.toml << EOF
+    server = "$DOCKERHUB_MIRROR"
+    [host."${DOCKERHUB_MIRROR#'https://'}"]
+    capabilities = ["pull", "resolve"]
+  EOF
+    microk8s stop
+    microk8s start
+  fi
 
   # Install charmcraft & pipx (on lxd-vm backend)
   concierge prepare --trace
