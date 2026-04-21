@@ -1,0 +1,55 @@
+# Copyright 2026 Canonical Ltd.
+# See LICENSE file for licensing details.
+name: Promote revisions to next channel
+
+on:
+  workflow_dispatch:
+    inputs:
+      revisions:
+        description: |
+          Comma-separated list of git revision tags to promote.
+          These must match the tags pushed by the release workflow.
+
+          Example: 'rev123,rev124'
+        required: true
+        type: string
+      track:
+        description: |
+          Charmhub track to promote to
+
+          https://juju.is/docs/juju/channel#heading--track
+        required: true
+        type: string
+      to-risk:
+        description: |
+          Promote to `track` input and this Charmhub risk
+
+          https://juju.is/docs/juju/channel#heading--risk
+
+          Must be one of "beta", "candidate", "stable"
+        required: true
+        type: string
+      charmcraft-snap-revision:
+        description: charmcraft snap revision
+        required: false
+        type: string
+      charmcraft-snap-channel:
+        description: |
+          charmcraft snap channel
+
+          Cannot be used if `charmcraft-snap-revision` input is passed
+        required: false
+        type: string
+
+jobs:
+  promote:
+    name: Promote charm revisions
+    uses: canonical/data-platform-workflows/.github/workflows/_promote_charms_by_revision.yaml@vXYZ
+    with:
+      revisions: ${{ inputs.revisions }}
+      track: ${{ inputs.track }}
+      to-risk: ${{ inputs.to-risk }}
+    secrets:
+      charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+    permissions:
+      contents: write # Needed to create git tags
