@@ -51,3 +51,10 @@ options:
     type: secret
     description: |
       A Juju secret URI of a secret containing the private key for client-to-server TLS certificates.
+
+  enable-encryption-at-rest:
+    default: false
+    type: boolean
+    description: |
+      This variable enables encryption at rest for MongoDB. It must be set at deploy time, as it cannot be set after MongoDB has started.
+      When enabling encryption at rest, you must integrate MongoDB with Vault-k8s Charm.

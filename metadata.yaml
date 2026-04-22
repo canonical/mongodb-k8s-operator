@@ -82,6 +82,10 @@ requires:
     interface: certificate_transfer
     limit: 1
     optional: true
+  vault-kv:
+    interface: vault-kv
+    optional: true
+    limit: 1
 
 containers:
   mongod:
@@ -100,7 +104,7 @@ resources:
     type: oci-image
     description: OCI image for mongodb
     # TODO: Update sha whenever upstream rock changes
-    upstream-source: ghcr.io/canonical/charmed-mongodb@sha256:7c05bd7fc92db23cbe342e0e87c99abb6c0b52795e0f1ff5c2aa2bb1682d5cb8
+    upstream-source: ghcr.io/canonical/charmed-mongodb@sha256:a4af3eae796e0d6da3bec6924e0f942755a5b83a20ecbcafb0593c9e2491b2e9
 storage:
   archive:
     type: filesystem
