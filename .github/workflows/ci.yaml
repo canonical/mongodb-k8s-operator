@@ -49,9 +49,10 @@ jobs:
     permissions: {}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: (GitHub hosted) Free up disk space
         run: |
@@ -127,9 +128,10 @@ jobs:
     permissions: {}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: (GitHub hosted) Free up disk space
         run: |
