@@ -6,42 +6,22 @@ on:
       - 6/edge
 
 jobs:
-  lib-check:
-    name: Check libraries
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - run: |
-          # Workaround for https://github.com/canonical/charmcraft/issues/1389#issuecomment-1880921728
-          touch requirements.txt
-      - name: Check libs
-        uses: canonical/charming-actions/check-libraries@2.6.2
-        with:
-          # NOTE: CHARMHUB_TOKEN is only allowed in latest/edge, latest/candidate
-          credentials: "${{ secrets.CHARMHUB_TOKEN }}"
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-
   ci-tests:
-    needs:
-      - lib-check
     uses: ./.github/workflows/ci.yaml
-    secrets: inherit
     permissions:
+      actions: read
       contents: write # Needed for Allure Report beta
 
   release:
     name: Release charm
     needs:
       - ci-tests
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v42.1.0
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v49.0.0
     with:
       track: 6
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
+      actions: read
       contents: write # Needed to create git tags
