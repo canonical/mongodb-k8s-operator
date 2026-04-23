@@ -67,7 +67,7 @@ jobs:
         id: package-version
         run: |
           VERSION=$(poetry show mongo-charms-single-kernel -f json | jq -r '.version')
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout releases
         uses: actions/checkout@v6
@@ -106,6 +106,6 @@ jobs:
 
       - name: Commit and push changes
         run: |
-          git add revisions_v${PIP_VERSION}.json
+          git add "revisions_v${PIP_VERSION}.json"
           git commit -m "New revisions for ${PIP_VERSION}"
-          git push -u origin ${RELEASES_BRANCH} -f
+          git push -u origin "${RELEASES_BRANCH}" -f
