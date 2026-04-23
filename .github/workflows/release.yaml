@@ -14,14 +14,14 @@ jobs:
     with:
       track: "8"
     permissions:
-      actions: read
+      actions: read # Needed for GitHub API call to get workflow version
       contents: write # Needed to create git tag
 
   ci-tests:
     needs: tag
     uses: ./.github/workflows/ci.yaml
     permissions:
-      actions: read
+      actions: read # Needed for GitHub API call to get workflow version
       contents: write
 
   release:
@@ -36,5 +36,76 @@ jobs:
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
-      actions: read
+      actions: read # Needed for GitHub API call to get workflow version
       contents: write # Needed to create git tags
+
+  push-revision-files:
+    name: Create revision file
+    needs:
+      - ci-tests
+      - tag
+      - release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to commit and push
+    env:
+      RELEASES_BRANCH: releases
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install deps
+        run: |
+          sudo snap install jq
+          pipx install poetry
+          sudo apt update
+          sudo apt install -y build-essential python3-dev libldap-dev libsasl2-dev
+
+      - name: Get pip package version
+        id: package-version
+        run: |
+          VERSION=$(poetry show mongo-charms-single-kernel -f json | jq -r '.version')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Checkout releases
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          ref: ${{ env.RELEASES_BRANCH }}
+
+      - name: Configure git signing
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CI_COMMITS_SSH_SIGNING_KEY }}" > ~/.ssh/ssh-key
+          chmod 600 ~/.ssh/ssh-key
+
+          git config --global user.name "canonical-data-platform-bot"
+          git config --global user.email "canonical-data-platform-bot@canonical.com"
+
+          git config --global gpg.format ssh
+          git config --global user.signingkey ~/.ssh/ssh-key
+          git config --global commit.gpgsign true
+
+      - name: Write new file
+        shell: python
+        run: |
+          import json
+          import os
+
+          pip_version = os.environ["PIP_VERSION"]
+          releases = json.loads(os.environ["REVISIONS"])
+
+          print(f"{pip_version=} |"{releases=})
+          with open(f"revisions_v{pip_version}.json", mode="w") as fd:
+            fd.write(releases)
+        env:
+          PIP_VERSION: ${{ steps.package-version.outputs.version }}
+          REVISIONS: ${{ needs.release.outputs.charm-revisions }}
+
+      - name: Commit and push changes
+        run: |
+          git add revisions_v${PIP_VERSION}.json
+          git commit -m "New revisions for ${PIP_VERSION}"
+          git push -u origin ${RELEASES_BRANCH} -f
