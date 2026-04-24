@@ -48,6 +48,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Needed to commit and push
+    outputs:
+      pip-version: ${{ steps.package-version.outputs.pip-version }}
     env:
       RELEASES_BRANCH: releases
     steps:
@@ -68,7 +70,7 @@ jobs:
         id: package-version
         run: |
           VERSION=$(poetry show mongo-charms-single-kernel -f json | jq -r '.version')
-          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "pip-version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout releases
         uses: actions/checkout@v6
@@ -102,7 +104,7 @@ jobs:
           with open(f"revisions_v{pip_version}.json", mode="w") as fd:
             fd.write(json.dumps(releases))
         env:
-          PIP_VERSION: ${{ steps.package-version.outputs.version }}
+          PIP_VERSION: ${{ steps.package-version.outputs.pip-version }}
           REVISIONS: ${{ needs.release.outputs.charm-revisions }}
 
       - name: Commit and push changes
@@ -111,4 +113,52 @@ jobs:
           git commit -m "New revisions for ${PIP_VERSION}"
           git push -u origin "${RELEASES_BRANCH}" -f
         env:
-          PIP_VERSION: ${{ steps.package-version.outputs.version }}
+          PIP_VERSION: ${{ steps.package-version.outputs.pip-version }}
+
+  generate-summary:
+    name: Generate summary
+    needs:
+      - ci-tests
+      - tag
+      - release
+      - push-revision-files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Get charm name
+        id: charm-name
+        run: |
+          NAME=$(grep "^name: " metadata.yaml | cut -d":" -f2 | xargs)
+          echo "charm-name=${NAME}" >> "${GITHUB_OUTPUT}"
+      - name: summary
+        shell: python
+        run: |
+          import json
+          import os
+
+          revisions = json.loads(os.environ["REVISIONS"])
+          pip_version = os.environ["PIP_VERSION"]
+          charm_name = os.environ["CHARM_NAME"]
+          channel = os.environ["CHANNEL"]
+
+          revisions = "\n".join([f"* {architecture}: {revision}" for architecture, revision in revisions.items()])
+
+          summary = f"""
+          Charm {charm_name} has been released to channel {channel}
+
+          Revisions published:
+          {revisions}
+
+          Congratulations!
+          """
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], mode="a") as fd:
+              fd.write(summary)
+        env:
+          PIP_VERSION: ${{ needs.push-revision-files.outputs.pip-version }}
+          REVISIONS: ${{ needs.release.outputs.charm-revisions }}
+          CHARM_NAME: ${{ steps.charm-name.outputs.charm-name }}
+          CHANNEL: ${{ github.ref_name }}
