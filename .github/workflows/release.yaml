@@ -75,8 +75,9 @@ jobs:
       - name: Checkout releases
         uses: actions/checkout@v6
         with:
-          persist-credentials: false
+          persist-credentials: true
           ref: ${{ env.RELEASES_BRANCH }}
+          token: ${{ secrets.PAT }}
 
       - name: Configure git signing
         run: |
