@@ -14,14 +14,14 @@ jobs:
     with:
       track: "8"
     permissions:
-      actions: read
+      actions: read # Needed for GitHub API call to get workflow version
       contents: write # Needed to create git tag
 
   ci-tests:
     needs: tag
     uses: ./.github/workflows/ci.yaml
     permissions:
-      actions: read
+      actions: read # Needed for GitHub API call to get workflow version
       contents: write
 
   release:
@@ -36,5 +36,132 @@ jobs:
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
-      actions: read
+      actions: read # Needed for GitHub API call to get workflow version
       contents: write # Needed to create git tags
+
+  push-revision-files:
+    name: Create revision file
+    needs:
+      - ci-tests
+      - tag
+      - release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to commit and push
+    outputs:
+      pip-version: ${{ steps.package-version.outputs.pip-version }}
+    env:
+      RELEASES_BRANCH: releases
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Install deps
+        run: |
+          sudo snap install jq
+          pipx install poetry
+          sudo apt update
+          sudo apt install -y build-essential python3-dev libldap-dev libsasl2-dev
+          pipx environment --value PIPX_BIN_DIR >> "${GITHUB_PATH}"
+
+      - name: Get pip package version
+        id: package-version
+        run: |
+          VERSION=$(poetry show mongo-charms-single-kernel -f json | jq -r '.version')
+          echo "pip-version=${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout releases
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: true
+          ref: ${{ env.RELEASES_BRANCH }}
+          token: ${{ secrets.PAT }}
+
+      - name: Configure git signing
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CI_COMMITS_SSH_SIGNING_KEY }}" > ~/.ssh/ssh-key
+          chmod 600 ~/.ssh/ssh-key
+
+          git config --global user.name "canonical-data-platform-bot"
+          git config --global user.email "canonical-data-platform-bot@canonical.com"
+
+          git config --global gpg.format ssh
+          git config --global user.signingkey ~/.ssh/ssh-key
+          git config --global commit.gpgsign true
+
+      - name: Write new file
+        shell: python
+        run: |
+          import json
+          import os
+
+          pip_version = os.environ["PIP_VERSION"]
+          releases = json.loads(os.environ["REVISIONS"])
+
+          print(f"{pip_version=} |{releases=}")
+          with open(f"revisions_v{pip_version}.json", mode="w") as fd:
+            fd.write(json.dumps(releases))
+        env:
+          PIP_VERSION: ${{ steps.package-version.outputs.pip-version }}
+          REVISIONS: ${{ needs.release.outputs.charm-revisions }}
+
+      - name: Commit and push changes
+        run: |
+          git add "revisions_v${PIP_VERSION}.json"
+          git commit -m "New revisions for ${PIP_VERSION}"
+          git push -u origin "${RELEASES_BRANCH}" -f
+        env:
+          PIP_VERSION: ${{ steps.package-version.outputs.pip-version }}
+
+  generate-summary:
+    name: Generate summary
+    needs:
+      - ci-tests
+      - tag
+      - release
+      - push-revision-files
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Get charm name
+        id: charm-name
+        run: |
+          NAME=$(grep "^name: " metadata.yaml | cut -d":" -f2 | xargs)
+          echo "charm-name=${NAME}" >> "${GITHUB_OUTPUT}"
+      - name: summary
+        shell: python
+        run: |
+          import json
+          import os
+
+          revisions = json.loads(os.environ["REVISIONS"])
+          pip_version = os.environ["PIP_VERSION"]
+          charm_name = os.environ["CHARM_NAME"]
+          channel = os.environ["CHANNEL"]
+
+          revisions = "\n".join([f"* {architecture}: {revision}" for architecture, revision in revisions.items()])
+
+          summary = f"""
+          Charm {charm_name} has been released to channel {channel}
+
+          Revisions published:
+          {revisions}
+
+          Congratulations!
+          """
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], mode="a") as fd:
+              fd.write(summary)
+        env:
+          PIP_VERSION: ${{ needs.push-revision-files.outputs.pip-version }}
+          REVISIONS: ${{ needs.release.outputs.charm-revisions }}
+          CHARM_NAME: ${{ steps.charm-name.outputs.charm-name }}
+          CHANNEL: ${{ github.ref_name }}
