@@ -62,12 +62,12 @@ jobs:
           pipx install poetry
           sudo apt update
           sudo apt install -y build-essential python3-dev libldap-dev libsasl2-dev
-          echo $(pipx environment --value PIPX_BIN_DIR) >> ${GITHUB_PATH}
+          pipx environment --value PIPX_BIN_DIR >> "${GITHUB_PATH}"
 
       - name: Get pip package version
         id: package-version
         run: |
-          export VERSION=$(poetry show mongo-charms-single-kernel -f json | jq -r '.version')
+          VERSION=$(poetry show mongo-charms-single-kernel -f json | jq -r '.version')
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout releases
