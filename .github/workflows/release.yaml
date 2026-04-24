@@ -62,11 +62,12 @@ jobs:
           pipx install poetry
           sudo apt update
           sudo apt install -y build-essential python3-dev libldap-dev libsasl2-dev
+          echo $(pipx environment --value PIPX_BIN_DIR) >> ${GITHUB_PATH}
 
       - name: Get pip package version
         id: package-version
         run: |
-          VERSION=$(poetry show mongo-charms-single-kernel -f json | jq -r '.version')
+          export VERSION=$(poetry show mongo-charms-single-kernel -f json | jq -r '.version')
           echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout releases
@@ -99,7 +100,7 @@ jobs:
 
           print(f"{pip_version=} |{releases=}")
           with open(f"revisions_v{pip_version}.json", mode="w") as fd:
-            fd.write(releases)
+            fd.write(json.dumps(releases))
         env:
           PIP_VERSION: ${{ steps.package-version.outputs.version }}
           REVISIONS: ${{ needs.release.outputs.charm-revisions }}
@@ -109,3 +110,5 @@ jobs:
           git add "revisions_v${PIP_VERSION}.json"
           git commit -m "New revisions for ${PIP_VERSION}"
           git push -u origin "${RELEASES_BRANCH}" -f
+        env:
+          PIP_VERSION: ${{ steps.package-version.outputs.version }}
