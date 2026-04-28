@@ -25,21 +25,12 @@ on:
           Promote to `track` input and this Charmhub risk
 
           https://juju.is/docs/juju/channel#heading--risk
-
-          Must be one of "beta", "candidate", "stable"
         required: true
-        type: string
-      charmcraft-snap-revision:
-        description: charmcraft snap revision
-        required: false
-        type: string
-      charmcraft-snap-channel:
-        description: |
-          charmcraft snap channel
-
-          Cannot be used if `charmcraft-snap-revision` input is passed
-        required: false
-        type: string
+        type: choice
+        options:
+          - beta
+          - candidate
+          - stable
 
 jobs:
   promote:
@@ -52,4 +43,5 @@ jobs:
     secrets:
       charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
+      actions: read # Needed for Github API call to get workflow version
       contents: write # Needed to create git tags
