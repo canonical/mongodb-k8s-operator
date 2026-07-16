@@ -437,6 +437,21 @@ files = [
 pycparser = {version = "*", markers = "implementation_name != \"PyPy\""}
 
 [[package]]
+name = "charmlibs-snap"
+version = "1.0.1.post0"
+description = "The charmlibs.snap package."
+optional = false
+python-versions = ">=3.10"
+groups = ["main", "integration"]
+files = [
+    {file = "charmlibs_snap-1.0.1.post0-py3-none-any.whl", hash = "sha256:655041096952c63e92c8d25a6183149f0594d4888be4be62a9635cb96897aa01"},
+    {file = "charmlibs_snap-1.0.1.post0.tar.gz", hash = "sha256:1e8da752ee405aa981665da8c4772016236baf80d2d902b02ec8c1c640fb2844"},
+]
+
+[package.dependencies]
+opentelemetry-api = "*"
+
+[[package]]
 name = "charset-normalizer"
 version = "3.4.7"
 description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
@@ -748,18 +763,18 @@ files = [
 
 [[package]]
 name = "deepmerge"
-version = "2.0"
+version = "2.1.0"
 description = "A toolset for deeply merging Python dictionaries."
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "integration"]
 files = [
-    {file = "deepmerge-2.0-py3-none-any.whl", hash = "sha256:6de9ce507115cff0bed95ff0ce9ecc31088ef50cbdf09bc90a09349a318b3d00"},
-    {file = "deepmerge-2.0.tar.gz", hash = "sha256:5c3d86081fbebd04dd5de03626a0607b809a98fb6ccba5770b62466fe940ff20"},
+    {file = "deepmerge-2.1.0-py3-none-any.whl", hash = "sha256:8f148339a91d680a75ecb74ade235d9e759a93df373a0b04e9d31c8666cfeb75"},
+    {file = "deepmerge-2.1.0.tar.gz", hash = "sha256:07ca7a7b8935df596c512fa8161877c0487ac61f691c07766e7d71d2b23bdd2f"},
 ]
 
 [package.extras]
-dev = ["black", "build", "mypy", "pytest", "pyupgrade", "twine", "validate-pyproject[all]"]
+dev = ["black", "build", "mypy", "pytest", "pyupgrade", "sphinx", "sphinx-rtd-theme", "twine", "validate-pyproject[all]"]
 
 [[package]]
 name = "dnspython"
@@ -1631,18 +1646,19 @@ files = [
 
 [[package]]
 name = "mongo-charms-single-kernel"
-version = "1.7.21"
+version = "1.7.22"
 description = "Shared and reusable code for Mongo-related charms"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main", "integration"]
 files = [
-    {file = "mongo_charms_single_kernel-1.7.21-py3-none-any.whl", hash = "sha256:b5929dad97bf7b04f9a638e74acdcaae10fdf79d783d972063e97f4fd9256c92"},
-    {file = "mongo_charms_single_kernel-1.7.21.tar.gz", hash = "sha256:343740eec248e154cae316d6d4c91520e5ae65637e463cd2b33322e7ddfe352b"},
+    {file = "mongo_charms_single_kernel-1.7.22-py3-none-any.whl", hash = "sha256:06c833695cbeed742a5f82a0f8416f6df2b918c343e72eeb8425cbce339dd330"},
+    {file = "mongo_charms_single_kernel-1.7.22.tar.gz", hash = "sha256:e2de33de7950aac9ed312d9b69653602b7cee1c8662fabcb635088651471d68e"},
 ]
 
 [package.dependencies]
 boto3 = ">=1.37.12,<1.38.0"
+charmlibs-snap = ">=1.0.0,<2.0.0"
 cosl = "*"
 cryptography = "*"
 dacite = ">=1.9.0,<1.10.0"
@@ -2176,14 +2192,14 @@ typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
 
 [[package]]
 name = "pydantic-settings"
-version = "2.14.1"
+version = "2.14.2"
 description = "Settings management using Pydantic"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "integration"]
 files = [
-    {file = "pydantic_settings-2.14.1-py3-none-any.whl", hash = "sha256:6e3c7edfd8277687cdc598f56e5cff0e9bfff0910a3749deaa8d4401c3a2b9de"},
-    {file = "pydantic_settings-2.14.1.tar.gz", hash = "sha256:e874d3bec7e787b0c9958277956ed9b4dd5de6a80e162188fdaff7c5e26fd5fa"},
+    {file = "pydantic_settings-2.14.2-py3-none-any.whl", hash = "sha256:a20c97b37910b6550d5ea50fbcc2d4187defe58cd57070b73863d069419c9440"},
+    {file = "pydantic_settings-2.14.2.tar.gz", hash = "sha256:c19dd64b19097f1de80184f0cc7b0272a13ae6e170cbf240a3e27e381ed14a5f"},
 ]
 
 [package.dependencies]
@@ -3226,4 +3242,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10.12"
-content-hash = "6ec2e260ceb700473d57f14295aad640a8bd385ac4bd65e28c6f8577f7d48d0c"
+content-hash = "519a4825059b9c96b0c7fd582d3e061627a0e9c1daabe460f4085fc75aabf2f6"
