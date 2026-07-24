@@ -22,11 +22,8 @@
 | Name | Type |
 |------|------|
 | [juju_application.data_integrator](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | resource |
-| [juju_application.mongos_k8s](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | resource |
 | [juju_application.s3_integrator](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | resource |
 | [juju_application.self-signed-certificates](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/application) | resource |
-| [juju_integration.config_server_mongos_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
-| [juju_integration.config_server_mongos_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_integration.mongos_data_integrator_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_integration.s3_config_server_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_integration.s3_config_server_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
@@ -34,7 +31,6 @@
 | [juju_integration.tls_client_mongo_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_integration.tls_peer_mongo_cross_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
 | [juju_integration.tls_peer_mongo_same_model_integration](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/integration) | resource |
-| [juju_offer.config_server_mongos_offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | resource |
 | [juju_offer.s3_integrator_offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | resource |
 | [juju_offer.tls_provider_offer](https://registry.terraform.io/providers/juju/juju/latest/docs/resources/offer) | resource |
 

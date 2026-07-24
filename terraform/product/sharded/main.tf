@@ -16,6 +16,11 @@ locals {
   ]
 }
 
+moved {
+  from = juju_application.mongos_k8s
+  to   = module.mongodb_k8s.module.mongos.juju_application.mongos_k8s
+}
+
 #--------------------------------------------------------
 # 1. DEPLOYMENTS
 #--------------------------------------------------------
@@ -46,20 +51,6 @@ resource "juju_application" "self-signed-certificates" {
   constraints       = var.self_signed_certificates.constraints
   endpoint_bindings = var.self_signed_certificates.endpoint_bindings
   model_uuid        = var.self_signed_certificates.model_uuid
-}
-
-# mongos
-resource "juju_application" "mongos_k8s" {
-  charm {
-    name     = "mongos-k8s"
-    channel  = var.mongos_k8s.channel
-    revision = var.mongos_k8s.revision
-    base     = var.mongos_k8s.base
-  }
-
-  name       = var.mongos_k8s.app_name
-  config     = var.mongos_k8s.config
-  model_uuid = var.data_integrator.model_uuid
 }
 
 # Integrator apps

@@ -5,15 +5,6 @@
 # 2. Offers
 #--------------------------------------------------------
 
-resource "juju_offer" "config_server_mongos_offer" {
-  for_each = var.config_server.model_uuid != var.mongos_k8s.model_uuid ? { "offered" = true } : {}
-
-  application_name = var.config_server.app_name
-  endpoints        = ["cluster"]
-  depends_on       = [module.mongodb_k8s]
-  model_uuid       = var.config_server.model_uuid
-}
-
 resource "juju_offer" "tls_provider_offer" {
   for_each = local.enable_tls && length(local.tls_cross_model_mongo_apps) > 0 ? { "offered" = true } : {}
 
