@@ -11,20 +11,18 @@ locals {
 
 # replicaset mongodb app
 module "mongodb_k8s" {
-  source = "../../charm/replica_set"
+  source = "../../charms/mongodb"
 
   channel  = var.mongodb_k8s.channel
   revision = var.mongodb_k8s.revision
   base     = var.mongodb_k8s.base
 
-  app_name          = var.mongodb_k8s.app_name
-  units             = var.mongodb_k8s.units
-  machines          = var.mongodb_k8s.machines
-  config            = merge(var.mongodb_k8s.config, { "role" : "replication" })
-  model_uuid        = var.mongodb_k8s.model_uuid
-  constraints       = var.mongodb_k8s.constraints
-  storage           = var.mongodb_k8s.storage
-  endpoint_bindings = var.mongodb_k8s.endpoint_bindings
+  app_name           = var.mongodb_k8s.app_name
+  units              = var.mongodb_k8s.units
+  config             = merge(var.mongodb_k8s.config, { "role" : "replication" })
+  model_uuid         = var.mongodb_k8s.model_uuid
+  constraints        = var.mongodb_k8s.constraints
+  storage_directives = var.mongodb_k8s.storage
 }
 
 # self-signed-certificates app

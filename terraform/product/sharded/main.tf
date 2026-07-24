@@ -22,10 +22,10 @@ locals {
 
 # replicaset mongodb-k8s app
 module "mongodb_k8s" {
-  source = "../../charm/sharded"
+  source = "../../components/config_and_routing"
 
   config_server = var.config_server
-  shards        = var.shards
+  mongos        = var.mongos_k8s
 }
 
 # self-signed-certificates app
