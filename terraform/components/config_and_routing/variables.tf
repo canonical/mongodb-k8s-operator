@@ -4,7 +4,7 @@
 variable "config_server" {
   description = "Config server app definition"
   type = object({
-    app_name    = string
+    app_name    = optional(string, "config-server")
     base        = optional(string, "ubuntu@24.04")
     channel     = optional(string, "8/stable")
     config      = optional(map(string), { "role" : "config-server" })

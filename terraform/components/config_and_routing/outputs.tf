@@ -37,8 +37,8 @@ output "provides" {
   value = {
     config_server                   = module.config_server.provides["config_server"]
     config_server_cluster           = module.config_server.provides["cluster"]
-    config_server_grafana_dashboard = module.config_server.provides["grafana-dashboard"]
-    config_server_metrics           = module.config_server.provides["metrics-endpoint"]
+    config_server_grafana_dashboard = module.config_server.provides["grafana_dashboard"]
+    config_server_metrics           = module.config_server.provides["metrics_endpoint"]
     mongos_proxy                    = module.mongos.provides["mongos_proxy"]
   }
 }
