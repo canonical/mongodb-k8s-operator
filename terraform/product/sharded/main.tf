@@ -33,6 +33,21 @@ module "mongodb_k8s" {
   mongos        = var.mongos_k8s
 }
 
+module "shards" {
+  for_each = { for shard in var.shards : shard.app_name => shard }
+  source   = "../../charms/mongodb"
+
+  app_name           = each.value.app_name
+  base               = each.value.base
+  channel            = each.value.channel
+  config             = merge(each.value.config, { "role" : "shard" })
+  constraints        = each.value.constraints
+  model_uuid         = each.value.model_uuid
+  revision           = each.value.revision
+  storage_directives = each.value.storage
+  units              = each.value.units
+}
+
 # self-signed-certificates app
 resource "juju_application" "self-signed-certificates" {
   for_each = local.enable_tls ? { "deployed" = true } : {}
