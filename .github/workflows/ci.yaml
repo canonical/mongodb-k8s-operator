@@ -63,7 +63,7 @@ jobs:
         run: tox run -e terraform-lint
 
 
-    terraform-product-test:
+  terraform-product-test:
     name: Terraform - ${{ matrix.product_module }} product module
     needs:
       - terraform-lint
@@ -100,24 +100,21 @@ jobs:
         run: |
           sudo snap install terraform --channel=latest/stable --classic
 
-      - name: LXD setup
+      - name: microk8s setup
         run: |
-          sudo snap install lxd --channel=latest/stable
-          sudo adduser "$USER" 'lxd'
-          # `newgrp` does not work in GitHub Actions; use `sg` instead
-          sg 'lxd' -c "lxd waitready"
-          sg 'lxd' -c "lxd init --auto"
-          sg 'lxd' -c "lxc network set lxdbr0 ipv6.address none"
-          sudo iptables -F FORWARD
-          sudo iptables -P FORWARD ACCEPT
+          sudo snap install microk8s --channel=1.35-strict/stable
+          sudo usermod -a -G snap_microk8s "$(whoami)"
+          mkdir -p ~/.kube
+          sudo chown -R "$(whoami)" ~/.kube
+          newgrp snap_microk8s
+          sudo microk8s enable dns storage ingress
 
       - name: Juju setup
         run: |
-          sudo snap install juju --channel=3.6
           mkdir -p ~/.local/share/juju
-          sg 'lxd' -c "juju bootstrap 'localhost' --config model-logs-size=10G"
+          sudo --user "$USER" juju bootstrap 'microk8s' --config model-logs-size=10G
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
-          juju add-model "test-${{ matrix.product_module }}"
+          juju add-model test
 
       - name: Terraform deploy - ${{ matrix.product_module }} product module
         run: bash "${{ matrix.apply_script }}" "test-${{ matrix.product_module }}"
