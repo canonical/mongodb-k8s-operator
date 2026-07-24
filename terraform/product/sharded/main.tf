@@ -16,6 +16,11 @@ locals {
   ]
 }
 
+moved {
+  from = juju_application.mongos_k8s
+  to   = module.mongodb_k8s.module.mongos.juju_application.mongos_k8s
+}
+
 #--------------------------------------------------------
 # 1. DEPLOYMENTS
 #--------------------------------------------------------
