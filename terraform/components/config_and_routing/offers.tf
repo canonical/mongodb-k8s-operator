@@ -15,6 +15,7 @@ resource "juju_offer" "config_server" {
 }
 
 resource "juju_offer" "config_server_cluster" {
+  name             = "${module.config_server.provides["cluster"].name}-cluster"
   application_name = module.config_server.provides["cluster"].name
   endpoints        = [module.config_server.provides["cluster"].endpoint]
   model_uuid       = module.config_server.application.model_uuid
