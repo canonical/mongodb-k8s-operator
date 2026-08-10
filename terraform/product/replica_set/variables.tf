@@ -33,11 +33,11 @@ variable "backups_integrator" {
 variable "data_integrator" {
   description = "Configuration for the data-integrator"
   type = object({
-    app_name           = optional(string, "data-integrator")
-    base               = optional(string, "ubuntu@24.04")
-    channel            = optional(string, "latest/stable")
-    config             = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
-    constraints        = optional(string, "arch=amd64")
+    app_name    = optional(string, "data-integrator")
+    base        = optional(string, "ubuntu@24.04")
+    channel     = optional(string, "latest/stable")
+    config      = optional(map(string), { "database-name" : "test", "extra-user-roles" : "admin" })
+    constraints = optional(string, "arch=amd64")
     endpoint_bindings = optional(set(object({
       space    = string
       endpoint = optional(string)
