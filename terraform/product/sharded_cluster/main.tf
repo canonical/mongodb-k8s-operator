@@ -116,11 +116,9 @@ resource "terraform_data" "validate_ldap_integrations" {
 resource "terraform_data" "validate_cross_model_integration_urls" {
   input = {
     client_certificates_cross_model_apps       = local.client_certificates_cross_model_apps
-    grafana_dashboard_cross_model_apps         = local.grafana_dashboard_cross_model_apps
     ldap_cross_model_apps                      = local.ldap_cross_model_apps
     ldap_certificate_transfer_cross_model_apps = local.ldap_certificate_transfer_cross_model_apps
     logging_cross_model_apps                   = local.logging_cross_model_apps
-    metrics_endpoint_cross_model_apps          = local.metrics_endpoint_cross_model_apps
     peer_certificates_cross_model_apps         = local.peer_certificates_cross_model_apps
     vault_kv_cross_model_apps                  = local.vault_kv_cross_model_apps
   }
@@ -129,14 +127,6 @@ resource "terraform_data" "validate_cross_model_integration_urls" {
     precondition {
       condition     = length(local.client_certificates_cross_model_apps) == 0 || try(var.client_certificates_integration.url != null && var.client_certificates_integration.url != "", false)
       error_message = "client_certificates_integration.url must be provided when client certificates is cross-model from any MongoDB application."
-    }
-    precondition {
-      condition     = length(local.grafana_dashboard_cross_model_apps) == 0 || try(var.grafana_dashboard_integration.url != null && var.grafana_dashboard_integration.url != "", false)
-      error_message = "grafana_dashboard_integration.url must be provided when Grafana is cross-model from any MongoDB application."
-    }
-    precondition {
-      condition     = length(local.metrics_endpoint_cross_model_apps) == 0 || try(var.metrics_endpoint_integration.url != null && var.metrics_endpoint_integration.url != "", false)
-      error_message = "metrics_endpoint_integration.url must be provided when metrics are cross-model from any MongoDB application."
     }
     precondition {
       condition     = length(local.logging_cross_model_apps) == 0 || try(var.logging_integration.url != null && var.logging_integration.url != "", false)

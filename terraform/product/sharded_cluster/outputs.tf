@@ -83,6 +83,12 @@ output "offers" {
   description = "Map of all offer endpoints."
   value = merge(
     module.config_and_routing.offers,
+    length(module.shards) > 0 ? merge([
+      for shard_key, shard_module in module.shards : {
+        "${local.shards[tonumber(shard_key)].app_name}_grafana_dashboard" = shard_module.offers["grafana_dashboard"]
+        "${local.shards[tonumber(shard_key)].app_name}_metrics_endpoint"  = shard_module.offers["metrics_endpoint"]
+      }
+    ]...) : {},
     {
       gcs_credentials = try(module.gcs_integrator[0].offers.gcs_credentials, null)
       s3_credentials  = try(module.s3_integrator[0].offers.s3_credentials, null)

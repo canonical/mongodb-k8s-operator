@@ -59,7 +59,7 @@ resource "juju_integration" "mongos_client" {
 
   application {
     name     = module.data_integrator.application.name
-    endpoint = "mongos"
+    endpoint = "mongodb"
   }
 
   depends_on = [
@@ -110,17 +110,17 @@ resource "juju_integration" "client_certificates" {
 
 resource "juju_integration" "grafana_dashboard" {
   for_each   = { for app in local.grafana_dashboard_apps : app.app_name => app }
-  model_uuid = each.value.model_uuid
+  model_uuid = var.grafana_dashboard_integration.model_uuid
 
   application {
-    name      = each.value.model_uuid == var.grafana_dashboard_integration.model_uuid ? var.grafana_dashboard_integration.name : null
-    endpoint  = each.value.model_uuid == var.grafana_dashboard_integration.model_uuid ? var.grafana_dashboard_integration.endpoint : null
-    offer_url = each.value.model_uuid != var.grafana_dashboard_integration.model_uuid ? var.grafana_dashboard_integration.url : null
+    name     = var.grafana_dashboard_integration.name
+    endpoint = var.grafana_dashboard_integration.endpoint
   }
 
   application {
-    name     = local.grafana_dashboard_provides[each.key].name
-    endpoint = local.grafana_dashboard_provides[each.key].endpoint
+    name      = each.value.model_uuid == var.grafana_dashboard_integration.model_uuid ? local.grafana_dashboard_provides[each.key].name : null
+    endpoint  = each.value.model_uuid == var.grafana_dashboard_integration.model_uuid ? local.grafana_dashboard_provides[each.key].endpoint : null
+    offer_url = each.value.model_uuid != var.grafana_dashboard_integration.model_uuid ? local.grafana_dashboard_offers[each.key].url : null
   }
 
   depends_on = [module.config_and_routing, module.shards]
@@ -182,17 +182,17 @@ resource "juju_integration" "logging" {
 
 resource "juju_integration" "metrics_endpoint" {
   for_each   = { for app in local.metrics_endpoint_apps : app.app_name => app }
-  model_uuid = each.value.model_uuid
+  model_uuid = var.metrics_endpoint_integration.model_uuid
 
   application {
-    name      = each.value.model_uuid == var.metrics_endpoint_integration.model_uuid ? var.metrics_endpoint_integration.name : null
-    endpoint  = each.value.model_uuid == var.metrics_endpoint_integration.model_uuid ? var.metrics_endpoint_integration.endpoint : null
-    offer_url = each.value.model_uuid != var.metrics_endpoint_integration.model_uuid ? var.metrics_endpoint_integration.url : null
+    name     = var.metrics_endpoint_integration.name
+    endpoint = var.metrics_endpoint_integration.endpoint
   }
 
   application {
-    name     = local.metrics_endpoint_provides[each.key].name
-    endpoint = local.metrics_endpoint_provides[each.key].endpoint
+    name      = each.value.model_uuid == var.metrics_endpoint_integration.model_uuid ? local.metrics_endpoint_provides[each.key].name : null
+    endpoint  = each.value.model_uuid == var.metrics_endpoint_integration.model_uuid ? local.metrics_endpoint_provides[each.key].endpoint : null
+    offer_url = each.value.model_uuid != var.metrics_endpoint_integration.model_uuid ? local.metrics_endpoint_offers[each.key].url : null
   }
 
   depends_on = [module.config_and_routing, module.shards]

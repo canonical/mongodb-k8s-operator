@@ -46,12 +46,6 @@ locals {
   metrics_endpoint_apps  = local.metrics_endpoint_enabled ? local.mongodb_apps : []
   logging_apps           = local.logging_enabled ? local.mongodb_apps : []
 
-  grafana_dashboard_cross_model_apps = local.grafana_dashboard_enabled ? [
-    for app in local.mongodb_apps : app if app.model_uuid != var.grafana_dashboard_integration.model_uuid
-  ] : []
-  metrics_endpoint_cross_model_apps = local.metrics_endpoint_enabled ? [
-    for app in local.mongodb_apps : app if app.model_uuid != var.metrics_endpoint_integration.model_uuid
-  ] : []
   logging_cross_model_apps = local.logging_enabled ? [
     for app in local.mongodb_apps : app if app.model_uuid != var.logging_integration.model_uuid
   ] : []
@@ -113,11 +107,25 @@ locals {
     { for shard_key, shard in local.shards : shard.app_name => module.shards[shard_key].provides["grafana_dashboard"] }
   )
 
+  grafana_dashboard_offers = merge(
+    {
+      (module.config_and_routing.components["config_server"].name) = module.config_and_routing.offers["config_server_grafana_dashboard"]
+    },
+    { for shard_key, shard in local.shards : shard.app_name => module.shards[shard_key].offers["grafana_dashboard"] }
+  )
+
   metrics_endpoint_provides = merge(
     {
       (module.config_and_routing.provides["config_server_metrics"].name) = module.config_and_routing.provides["config_server_metrics"]
     },
     { for shard_key, shard in local.shards : shard.app_name => module.shards[shard_key].provides["metrics_endpoint"] }
+  )
+
+  metrics_endpoint_offers = merge(
+    {
+      (module.config_and_routing.components["config_server"].name) = module.config_and_routing.offers["config_server_metrics_endpoint"]
+    },
+    { for shard_key, shard in local.shards : shard.app_name => module.shards[shard_key].offers["metrics_endpoint"] }
   )
 
   logging_requires = merge(

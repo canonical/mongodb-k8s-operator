@@ -28,7 +28,9 @@ output "offers" {
       kind = "offer"
       url  = juju_offer.config_server_cluster.url
     }
-    mongos_proxy = module.mongos.offers["mongos_proxy"]
+    config_server_grafana_dashboard = module.config_server.offers["grafana_dashboard"]
+    config_server_metrics_endpoint  = module.config_server.offers["metrics_endpoint"]
+    mongos_proxy                    = module.mongos.offers["mongos_proxy"]
   }
 }
 

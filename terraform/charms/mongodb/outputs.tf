@@ -8,7 +8,16 @@ output "application" {
 
 output "offers" {
   description = "Map of all offers exposed by the single charm."
-  value       = {}
+  value = {
+    grafana_dashboard = {
+      kind = "offer"
+      url  = juju_offer.grafana_dashboard.url
+    }
+    metrics_endpoint = {
+      kind = "offer"
+      url  = juju_offer.metrics_endpoint.url
+    }
+  }
 }
 
 # Provided integration endpoints
