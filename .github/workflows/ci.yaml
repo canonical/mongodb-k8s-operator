@@ -95,7 +95,7 @@ jobs:
       - name: Lint / format / validate TF modules
         run: |
           pushd ./terraform
-          for dir in charms/mongodb product/replica_set; do
+          for dir in product/replica_set; do
             (cd "${dir}" && terraform init && terraform fmt && terraform validate)
           done
           popd
@@ -174,7 +174,7 @@ jobs:
       - name: Lint / format / validate TF modules
         run: |
           pushd ./terraform
-          for dir in components/config_and_routing product/replica_set product/sharded; do
+          for dir in product/replica_set product/sharded; do
             (cd "${dir}" && terraform init && terraform fmt && terraform validate)
           done
           popd
