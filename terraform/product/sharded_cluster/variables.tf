@@ -192,28 +192,6 @@ variable "grafana_dashboard_integration" {
   default = null
 }
 
-variable "metrics_endpoint_integration" {
-  description = "Optional metrics endpoint integration target for the config server and shards."
-  type = object({
-    name       = string
-    endpoint   = string
-    model_uuid = string
-    url        = optional(string, null)
-  })
-  default = null
-}
-
-variable "logging_integration" {
-  description = "Optional logging integration target for the config server and shards."
-  type = object({
-    name       = string
-    endpoint   = string
-    model_uuid = string
-    url        = optional(string, null)
-  })
-  default = null
-}
-
 variable "ldap_integration" {
   description = "Optional LDAP integration target. Must be configured together with ldap_certificate_transfer_integration."
   type = object({
@@ -256,6 +234,28 @@ variable "ldap_certificate_transfer_integration" {
     )
     error_message = "ldap_certificate_transfer_integration must include non-empty 'name', 'endpoint', and 'model_uuid' attributes."
   }
+}
+
+variable "logging_integration" {
+  description = "Optional logging integration target for the config server and shards."
+  type = object({
+    name       = string
+    endpoint   = string
+    model_uuid = string
+    url        = optional(string, null)
+  })
+  default = null
+}
+
+variable "metrics_endpoint_integration" {
+  description = "Optional metrics endpoint integration target for the config server and shards."
+  type = object({
+    name       = string
+    endpoint   = string
+    model_uuid = string
+    url        = optional(string, null)
+  })
+  default = null
 }
 
 variable "peer_certificates_integration" {

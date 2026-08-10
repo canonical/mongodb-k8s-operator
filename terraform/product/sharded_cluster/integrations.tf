@@ -90,60 +90,6 @@ resource "juju_integration" "s3_credentials" {
 }
 
 # Other apps
-resource "juju_integration" "grafana_dashboard" {
-  for_each   = { for app in local.grafana_dashboard_apps : app.app_name => app }
-  model_uuid = each.value.model_uuid
-
-  application {
-    name      = each.value.model_uuid == var.grafana_dashboard_integration.model_uuid ? var.grafana_dashboard_integration.name : null
-    endpoint  = each.value.model_uuid == var.grafana_dashboard_integration.model_uuid ? var.grafana_dashboard_integration.endpoint : null
-    offer_url = each.value.model_uuid != var.grafana_dashboard_integration.model_uuid ? var.grafana_dashboard_integration.url : null
-  }
-
-  application {
-    name     = local.grafana_dashboard_provides[each.key].name
-    endpoint = local.grafana_dashboard_provides[each.key].endpoint
-  }
-
-  depends_on = [module.config_and_routing, module.shards]
-}
-
-resource "juju_integration" "metrics_endpoint" {
-  for_each   = { for app in local.metrics_endpoint_apps : app.app_name => app }
-  model_uuid = each.value.model_uuid
-
-  application {
-    name      = each.value.model_uuid == var.metrics_endpoint_integration.model_uuid ? var.metrics_endpoint_integration.name : null
-    endpoint  = each.value.model_uuid == var.metrics_endpoint_integration.model_uuid ? var.metrics_endpoint_integration.endpoint : null
-    offer_url = each.value.model_uuid != var.metrics_endpoint_integration.model_uuid ? var.metrics_endpoint_integration.url : null
-  }
-
-  application {
-    name     = local.metrics_endpoint_provides[each.key].name
-    endpoint = local.metrics_endpoint_provides[each.key].endpoint
-  }
-
-  depends_on = [module.config_and_routing, module.shards]
-}
-
-resource "juju_integration" "logging" {
-  for_each   = { for app in local.logging_apps : app.app_name => app }
-  model_uuid = each.value.model_uuid
-
-  application {
-    name      = each.value.model_uuid == var.logging_integration.model_uuid ? var.logging_integration.name : null
-    endpoint  = each.value.model_uuid == var.logging_integration.model_uuid ? var.logging_integration.endpoint : null
-    offer_url = each.value.model_uuid != var.logging_integration.model_uuid ? var.logging_integration.url : null
-  }
-
-  application {
-    name     = local.logging_requires[each.key].name
-    endpoint = local.logging_requires[each.key].endpoint
-  }
-
-  depends_on = [module.config_and_routing, module.shards]
-}
-
 resource "juju_integration" "client_certificates" {
   for_each   = { for app in local.client_certificates_apps : app.app_name => app }
   model_uuid = each.value.model_uuid
@@ -160,6 +106,24 @@ resource "juju_integration" "client_certificates" {
   }
 
   depends_on = [module.config_and_routing]
+}
+
+resource "juju_integration" "grafana_dashboard" {
+  for_each   = { for app in local.grafana_dashboard_apps : app.app_name => app }
+  model_uuid = each.value.model_uuid
+
+  application {
+    name      = each.value.model_uuid == var.grafana_dashboard_integration.model_uuid ? var.grafana_dashboard_integration.name : null
+    endpoint  = each.value.model_uuid == var.grafana_dashboard_integration.model_uuid ? var.grafana_dashboard_integration.endpoint : null
+    offer_url = each.value.model_uuid != var.grafana_dashboard_integration.model_uuid ? var.grafana_dashboard_integration.url : null
+  }
+
+  application {
+    name     = local.grafana_dashboard_provides[each.key].name
+    endpoint = local.grafana_dashboard_provides[each.key].endpoint
+  }
+
+  depends_on = [module.config_and_routing, module.shards]
 }
 
 resource "juju_integration" "ldap" {
@@ -196,6 +160,42 @@ resource "juju_integration" "ldap_certificate_transfer" {
   }
 
   depends_on = [module.config_and_routing]
+}
+
+resource "juju_integration" "logging" {
+  for_each   = { for app in local.logging_apps : app.app_name => app }
+  model_uuid = each.value.model_uuid
+
+  application {
+    name      = each.value.model_uuid == var.logging_integration.model_uuid ? var.logging_integration.name : null
+    endpoint  = each.value.model_uuid == var.logging_integration.model_uuid ? var.logging_integration.endpoint : null
+    offer_url = each.value.model_uuid != var.logging_integration.model_uuid ? var.logging_integration.url : null
+  }
+
+  application {
+    name     = local.logging_requires[each.key].name
+    endpoint = local.logging_requires[each.key].endpoint
+  }
+
+  depends_on = [module.config_and_routing, module.shards]
+}
+
+resource "juju_integration" "metrics_endpoint" {
+  for_each   = { for app in local.metrics_endpoint_apps : app.app_name => app }
+  model_uuid = each.value.model_uuid
+
+  application {
+    name      = each.value.model_uuid == var.metrics_endpoint_integration.model_uuid ? var.metrics_endpoint_integration.name : null
+    endpoint  = each.value.model_uuid == var.metrics_endpoint_integration.model_uuid ? var.metrics_endpoint_integration.endpoint : null
+    offer_url = each.value.model_uuid != var.metrics_endpoint_integration.model_uuid ? var.metrics_endpoint_integration.url : null
+  }
+
+  application {
+    name     = local.metrics_endpoint_provides[each.key].name
+    endpoint = local.metrics_endpoint_provides[each.key].endpoint
+  }
+
+  depends_on = [module.config_and_routing, module.shards]
 }
 
 resource "juju_integration" "peer_certificates" {
