@@ -63,10 +63,18 @@ jobs:
         run: tox run -e terraform-lint
 
 
-  terraform-rs-test:
-    name: Terraform - Validation of replica-set product module
+  terraform-product-test:
+    name: Terraform - ${{ matrix.product_module }} product module
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - product_module: replica-set
+            apply_script: .github/scripts/terraform-apply-replica-set.sh
+    needs:
+      - terraform-lint
     continue-on-error: true
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions: {}
     steps:
@@ -91,19 +99,9 @@ jobs:
       - name: Install terraform snap
         run: |
           sudo snap install terraform --channel=latest/stable --classic
-
-      - name: Lint / format / validate TF modules
-        run: |
-          pushd ./terraform
-          for dir in product/replica_set; do
-            (cd "${dir}" && terraform init && terraform fmt && terraform validate)
-          done
-          popd
-
-      - name: run checks - prepare
+      - name: Install Juju
         run: |
           sudo snap install juju --channel=3.6
-
       - name: microk8s setup
         run: |
           sudo snap install microk8s --channel=1.35-strict/stable
@@ -118,27 +116,18 @@ jobs:
           mkdir -p ~/.local/share/juju
           sudo --user "$USER" juju bootstrap 'microk8s' --config model-logs-size=10G
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
-          juju add-model test
+          juju add-model "test-${{ matrix.product_module }}"
 
-      - name: Terraform deploy - replica-set product module
-        run: |
-          MODEL=$(juju show-model test | grep "model-uuid" | awk '{split($0, a, ": "); print a[2]}')
-          pushd ./terraform/product/replica_set/
-          terraform apply \
-            -var="mongodb_k8s={\"model_uuid\": \"$MODEL\"}" \
-            -var="self_signed_certificates={\"model_uuid\": \"$MODEL\"}" \
-            -var="s3_integrator={\"model_uuid\": \"$MODEL\", \"config\": {\"bucket\": \"test\"}}" \
-            -var="data_integrator={\"model_uuid\": \"$MODEL\"}" \
-            -auto-approve
-          popd
+      - name: Terraform deploy - ${{ matrix.product_module }} product module
+        run: bash "${{ matrix.apply_script }}" "test-${{ matrix.product_module }}"
 
       - name: Wait for juju deployment
         run: |
           # TODO - remove this when juju wait-for starts reporting the up to date status
-          until timeout 2m juju wait-for model test --query='life=="alive" && status=="available"'
+          until timeout 2m juju wait-for model "test-${{ matrix.product_module }}" --query='life=="alive" && status=="available"'
           do
             echo "Retrying in 5 seconds..."
-            juju status -m test
+            juju status -m "test-${{ matrix.product_module }}"
             sleep 5
           done
 
@@ -174,7 +163,7 @@ jobs:
       - name: Lint / format / validate TF modules
         run: |
           pushd ./terraform
-          for dir in product/replica_set product/sharded; do
+          for dir in product/sharded; do
             (cd "${dir}" && terraform init && terraform fmt && terraform validate)
           done
           popd
