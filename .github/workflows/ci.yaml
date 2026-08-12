@@ -41,6 +41,28 @@ jobs:
         run: tox run -e lint
     permissions: {}
 
+  terraform-lint:
+    name: Terraform - Lint / format / validate modules
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install terraform snap
+        run: |
+          sudo snap install terraform --channel=latest/stable --classic
+
+      - name: Install tox
+        run: pipx install tox
+
+      - name: Lint / format / validate TF modules
+        run: tox run -e terraform-lint
+
+
   terraform-rs-test:
     name: Terraform - Validation of replica-set product module
     continue-on-error: true
@@ -73,7 +95,7 @@ jobs:
       - name: Lint / format / validate TF modules
         run: |
           pushd ./terraform
-          for dir in charm/replica_set product/replica_set; do
+          for dir in product/replica_set; do
             (cd "${dir}" && terraform init && terraform fmt && terraform validate)
           done
           popd
@@ -152,7 +174,7 @@ jobs:
       - name: Lint / format / validate TF modules
         run: |
           pushd ./terraform
-          for dir in charm/replica_set charm/sharded product/replica_set product/sharded; do
+          for dir in product/replica_set product/sharded; do
             (cd "${dir}" && terraform init && terraform fmt && terraform validate)
           done
           popd

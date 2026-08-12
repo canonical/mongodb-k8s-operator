@@ -9,7 +9,8 @@ output "app_names" {
       "data_integrator" : juju_application.data_integrator.name
       "s3_integrator" : juju_application.s3_integrator.name
       "self_signed_certificates" : var.self_signed_certificates != null ? juju_application.self-signed-certificates["deployed"].name : null
-      "mongos_k8s" : juju_application.mongos_k8s.name
+      "mongos_k8s" : module.mongodb_k8s.app_names["mongos"]
+      "shards" : [for shard in module.shards : shard.application.name]
     }
   )
 }
@@ -47,7 +48,7 @@ output "offers" {
   value = merge(
     module.mongodb_k8s.offers,
     {
-      "config_server_mongos" : try(juju_offer.config_server_mongos_offer["offered"].url, null),
+      "config_server_mongos" : module.mongodb_k8s.offers["config_server_cluster"].url,
       "tls_provider" : try(juju_offer.tls_provider_offer["offered"].url, null),
       "s3_credentials" : try(juju_offer.s3_integrator_offer["offered"].url, null)
     }

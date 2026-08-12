@@ -4,7 +4,7 @@
 output "app_names" {
   description = "Names of of all deployed applications."
   value = {
-    mongodb_k8s              = module.mongodb_k8s.app_names["mongodb_k8s"]
+    mongodb_k8s              = module.mongodb_k8s.application.name
     data_integrator          = juju_application.s3_integrator.name
     s3_integrator            = juju_application.s3_integrator.name
     self_signed_certificates = var.self_signed_certificates != null ? juju_application.self-signed-certificates["deployed"].name : null

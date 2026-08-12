@@ -22,10 +22,25 @@ locals {
 
 # replicaset mongodb-k8s app
 module "mongodb_k8s" {
-  source = "../../charm/sharded"
+  source = "../../components/config_and_routing"
 
   config_server = var.config_server
-  shards        = var.shards
+  mongos        = var.mongos_k8s
+}
+
+module "shards" {
+  for_each = { for shard in var.shards : shard.app_name => shard }
+  source   = "../../charms/mongodb"
+
+  app_name           = each.value.app_name
+  base               = each.value.base
+  channel            = each.value.channel
+  config             = merge(each.value.config, { "role" : "shard" })
+  constraints        = each.value.constraints
+  model_uuid         = each.value.model_uuid
+  revision           = each.value.revision
+  storage_directives = each.value.storage
+  units              = each.value.units
 }
 
 # self-signed-certificates app
@@ -46,20 +61,6 @@ resource "juju_application" "self-signed-certificates" {
   constraints       = var.self_signed_certificates.constraints
   endpoint_bindings = var.self_signed_certificates.endpoint_bindings
   model_uuid        = var.self_signed_certificates.model_uuid
-}
-
-# mongos
-resource "juju_application" "mongos_k8s" {
-  charm {
-    name     = "mongos-k8s"
-    channel  = var.mongos_k8s.channel
-    revision = var.mongos_k8s.revision
-    base     = var.mongos_k8s.base
-  }
-
-  name       = var.mongos_k8s.app_name
-  config     = var.mongos_k8s.config
-  model_uuid = var.data_integrator.model_uuid
 }
 
 # Integrator apps

@@ -7,6 +7,23 @@
 
 ## Same model integrations
 
+resource "juju_integration" "config_server_shards" {
+  for_each = module.shards
+
+  model_uuid = each.value.application.model_uuid
+
+  application {
+    name      = var.config_server.model_uuid == each.value.application.model_uuid ? module.mongodb_k8s.provides["config_server"].name : null
+    endpoint  = var.config_server.model_uuid == each.value.application.model_uuid ? module.mongodb_k8s.provides["config_server"].endpoint : null
+    offer_url = var.config_server.model_uuid != each.value.application.model_uuid ? module.mongodb_k8s.offers["config_server"].url : null
+  }
+
+  application {
+    name     = each.value.requires["sharding"].name
+    endpoint = each.value.requires["sharding"].endpoint
+  }
+}
+
 resource "juju_integration" "mongos_data_integrator_same_model_integration" {
   application {
     name = var.data_integrator.app_name
@@ -15,24 +32,10 @@ resource "juju_integration" "mongos_data_integrator_same_model_integration" {
     name = var.mongos_k8s.app_name
   }
   depends_on = [
-    juju_application.mongos_k8s,
+    module.mongodb_k8s,
     juju_application.data_integrator,
   ]
   model_uuid = var.data_integrator.model_uuid
-}
-
-resource "juju_integration" "config_server_mongos_same_model_integration" {
-  application {
-    name = var.config_server.app_name
-  }
-  application {
-    name = var.mongos_k8s.app_name
-  }
-  depends_on = [
-    module.mongodb_k8s,
-    juju_integration.mongos_data_integrator_same_model_integration,
-  ]
-  model_uuid = var.mongos_k8s.model_uuid
 }
 
 resource "juju_integration" "tls_peer_mongo_same_model_integration" {
@@ -48,6 +51,7 @@ resource "juju_integration" "tls_peer_mongo_same_model_integration" {
   }
   depends_on = [
     module.mongodb_k8s,
+    module.shards,
     juju_application.self-signed-certificates["deployed"],
   ]
 }
@@ -65,6 +69,7 @@ resource "juju_integration" "tls_client_mongo_same_model_integration" {
   }
   depends_on = [
     module.mongodb_k8s,
+    module.shards,
     juju_application.self-signed-certificates["deployed"],
   ]
 }
@@ -88,23 +93,6 @@ resource "juju_integration" "s3_config_server_same_model_integration" {
 #--------------------------------------------------------
 ## Cross model integrations
 
-resource "juju_integration" "config_server_mongos_cross_model_integration" {
-  for_each = var.mongos_k8s.model_uuid != var.config_server.model_uuid ? { "integrated" = true } : {}
-
-  application {
-    offer_url = juju_offer.config_server_mongos_offer["offered"].url
-  }
-  application {
-    name     = var.mongos_k8s.app_name
-    endpoint = "cluster"
-  }
-  depends_on = [
-    juju_application.mongos_k8s,
-    juju_offer.config_server_mongos_offer,
-  ]
-  model_uuid = var.mongos_k8s.model_uuid
-}
-
 resource "juju_integration" "tls_peer_mongo_cross_model_integration" {
   count = length(local.tls_cross_model_mongo_apps)
 
@@ -119,6 +107,7 @@ resource "juju_integration" "tls_peer_mongo_cross_model_integration" {
   }
   depends_on = [
     module.mongodb_k8s,
+    module.shards,
     juju_offer.tls_provider_offer,
   ]
 }
@@ -137,6 +126,7 @@ resource "juju_integration" "tls_client_mongo_cross_model_integration" {
   }
   depends_on = [
     module.mongodb_k8s,
+    module.shards,
     juju_offer.tls_provider_offer,
   ]
 }
