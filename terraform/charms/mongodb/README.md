@@ -1,6 +1,6 @@
-# Terraform module for MongoDB replica set
+# Terraform module for mongodb-k8s-operator
 
-This is a Terraform module facilitating the deployment of a MongoDB replica set with [Terraform juju provider](https://github.com/juju/terraform-provider-juju/). For more information, refer to the provider [documentation](https://registry.terraform.io/providers/juju/juju/latest/docs).
+This is a Terraform module facilitating the deployment of the MongoDB K8s charm with [Terraform juju provider](https://github.com/juju/terraform-provider-juju/). For more information, refer to the provider [documentation](https://registry.terraform.io/providers/juju/juju/latest/docs).
 
 ## Requirements
 
