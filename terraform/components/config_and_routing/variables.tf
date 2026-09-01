@@ -6,7 +6,7 @@ variable "config_server" {
   type = object({
     app_name    = optional(string, "config-server")
     base        = optional(string, "ubuntu@24.04")
-    channel     = optional(string, "8-transition/stable")
+    channel     = optional(string, "8-transition/edge")
     config      = optional(map(string), { "role" : "config-server" })
     constraints = optional(string, "arch=amd64")
     expose = optional(list(object({
@@ -36,7 +36,7 @@ variable "mongos" {
   type = object({
     app_name    = optional(string, "mongos")
     base        = optional(string, "ubuntu@24.04")
-    channel     = optional(string, "8-transition/stable")
+    channel     = optional(string, "8-transition/edge")
     config      = optional(map(string), {})
     constraints = optional(string, "arch=amd64")
     model_uuid  = string

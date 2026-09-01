@@ -70,7 +70,7 @@ variable "mongodb" {
   type = object({
     app_name    = optional(string, "mongodb-k8s")
     base        = optional(string, "ubuntu@24.04")
-    channel     = optional(string, "8-transition/stable")
+    channel     = optional(string, "8-transition/edge")
     config      = optional(map(string), { "role" : "replication" })
     constraints = optional(string, "arch=amd64")
     expose = optional(list(object({
