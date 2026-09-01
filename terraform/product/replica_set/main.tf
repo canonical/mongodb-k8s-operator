@@ -1,84 +1,96 @@
-# Copyright 2024 Canonical Ltd.
+# Copyright 2026 Canonical Ltd.
 # See LICENSE file for licensing details.
 
-locals {
-  enable_tls = var.self_signed_certificates != null
-}
 
 #--------------------------------------------------------
 # 1. DEPLOYMENTS
 #--------------------------------------------------------
 
-# replicaset mongodb app
-module "mongodb_k8s" {
-  source = "../../charm/replica_set"
+# Replica set MongoDB app
+module "mongodb" {
+  source = "../../charms/mongodb"
 
-  channel  = var.mongodb_k8s.channel
-  revision = var.mongodb_k8s.revision
-  base     = var.mongodb_k8s.base
-
-  app_name          = var.mongodb_k8s.app_name
-  units             = var.mongodb_k8s.units
-  machines          = var.mongodb_k8s.machines
-  config            = merge(var.mongodb_k8s.config, { "role" : "replication" })
-  model_uuid        = var.mongodb_k8s.model_uuid
-  constraints       = var.mongodb_k8s.constraints
-  storage           = var.mongodb_k8s.storage
-  endpoint_bindings = var.mongodb_k8s.endpoint_bindings
+  app_name = var.mongodb.app_name
+  base     = var.mongodb.base
+  channel  = var.mongodb.channel
+  config = merge(
+    var.mongodb.config,
+    { "role" : "replication" },
+  )
+  constraints        = var.mongodb.constraints
+  expose             = var.mongodb.expose
+  model_uuid         = var.mongodb.model_uuid
+  revision           = var.mongodb.revision
+  storage_directives = var.mongodb.storage_directives
+  units              = var.mongodb.units
 }
 
-# self-signed-certificates app
-resource "juju_application" "self-signed-certificates" {
-  for_each = local.enable_tls ? { "deployed" = true } : {}
+resource "terraform_data" "validate_ldap_integrations" {
+  input = local.ldap_integrations
 
-  charm {
-    name     = "self-signed-certificates"
-    channel  = var.self_signed_certificates.channel
-    revision = var.self_signed_certificates.revision
-    base     = var.self_signed_certificates.base
+  lifecycle {
+    precondition {
+      condition     = length(local.ldap_integrations) == 0 || length(local.ldap_integrations) == 2
+      error_message = "LDAP integrations must be configured together: set both ldap_integration and ldap_certificate_transfer_integration, or neither."
+    }
   }
-
-  name              = var.self_signed_certificates.app_name
-  units             = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? var.self_signed_certificates.units : null
-  machines          = (var.self_signed_certificates.machines == null || length(var.self_signed_certificates.machines) == 0) ? null : var.self_signed_certificates.machines
-  config            = var.self_signed_certificates.config
-  constraints       = var.self_signed_certificates.constraints
-  endpoint_bindings = var.self_signed_certificates.endpoint_bindings
-  model_uuid        = var.self_signed_certificates.model_uuid
 }
-
 
 # Integrator apps
-resource "juju_application" "data_integrator" {
-  charm {
-    name     = "data-integrator"
-    channel  = var.data_integrator.channel
-    revision = var.data_integrator.revision
-    base     = var.data_integrator.base
-  }
+module "data_integrator" {
+  source = "git::https://github.com/canonical/data-integrator.git//terraform/charm/data_integrator?ref=main"
 
-  name              = var.data_integrator.app_name
-  units             = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? var.data_integrator.units : null
-  machines          = (var.data_integrator.machines == null || length(var.data_integrator.machines) == 0) ? null : var.data_integrator.machines
-  config            = var.data_integrator.config
-  constraints       = var.data_integrator.constraints
-  endpoint_bindings = var.data_integrator.endpoint_bindings
-  model_uuid        = var.data_integrator.model_uuid
+  app_name           = var.data_integrator.app_name
+  base               = var.data_integrator.base
+  channel            = var.data_integrator.channel
+  config             = var.data_integrator.config
+  constraints        = var.data_integrator.constraints
+  endpoint_bindings  = var.data_integrator.endpoint_bindings
+  machines           = var.data_integrator.machines
+  model_uuid         = var.data_integrator.model_uuid
+  revision           = var.data_integrator.revision
+  storage_directives = var.data_integrator.storage_directives
+  units              = var.data_integrator.units
 }
 
-resource "juju_application" "s3_integrator" {
-  charm {
-    name     = "s3-integrator"
-    channel  = var.s3_integrator.channel
-    revision = var.s3_integrator.revision
-    base     = var.s3_integrator.base
+resource "juju_secret" "s3_secret" {
+  count      = local.s3_integrator_enabled && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
+  model_uuid = var.backups_integrator.model_uuid
+  name       = "s3-integrator-credentials"
+  value = {
+    access-key = var.s3_access_key
+    secret-key = var.s3_secret_key
   }
+  info = "S3 credentials for s3-integrator"
+}
 
-  name              = var.s3_integrator.app_name
-  units             = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? var.s3_integrator.units : null
-  machines          = (var.s3_integrator.machines == null || length(var.s3_integrator.machines) == 0) ? null : var.s3_integrator.machines
-  config            = var.s3_integrator.config
-  constraints       = var.s3_integrator.constraints
-  endpoint_bindings = var.s3_integrator.endpoint_bindings
-  model_uuid        = var.s3_integrator.model_uuid
+module "s3_integrator" {
+  depends_on = [juju_secret.s3_secret]
+  count      = local.s3_integrator_enabled ? 1 : 0
+  source     = "git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator?ref=main"
+
+  app_name = "s3-integrator"
+  base     = var.backups_integrator.base
+  channel  = var.backups_integrator.channel
+  config = merge(
+    var.backups_integrator.config,
+    length(juju_secret.s3_secret) > 0 ? {
+      credentials = juju_secret.s3_secret[0].secret_uri
+    } : {}
+  )
+  constraints = var.backups_integrator.constraints
+  machines    = var.backups_integrator.machines
+  model_uuid  = var.backups_integrator.model_uuid
+  revision    = var.backups_integrator.revision
+  units       = 1
+}
+
+resource "juju_access_secret" "s3_secret_access" {
+  depends_on = [juju_secret.s3_secret, module.s3_integrator]
+  count      = length(juju_secret.s3_secret) > 0 ? 1 : 0
+  model_uuid = var.backups_integrator.model_uuid
+  applications = [
+    module.s3_integrator[0].application.name
+  ]
+  secret_id = juju_secret.s3_secret[0].secret_id
 }
