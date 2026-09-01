@@ -14,6 +14,13 @@ rules:
         - actions/*
         - docker/login-action
         - tiobe/tics-github-action
+        - astral-sh/ruff-pre-commit
+        - codespell-project/codespell
+        - python-poetry/poetry
+        - pre-commit/pre-commit-hooks
+        - pre-commit/mirrors-mypy
+        - rhysd/actionlint
+        - zizmorcore/zizmor-pre-commit
   # Pinning actions to a commit SHA has a security tradeoff—pinned actions cannot be later
   # compromised, but they also cannot be security patched.
   # Above (in `forbidden-uses`), we restrict actions usage to organizations that we trust to have
@@ -29,3 +36,6 @@ rules:
         actions/*: ref-pin
         docker/login-action: ref-pin
         tiobe/tics-github-action: ref-pin
+  self-repository:
+    # TODO: Re enable this when actionlint is fixed
+    disable: true
