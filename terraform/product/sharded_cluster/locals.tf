@@ -2,12 +2,12 @@
 # See LICENSE file for licensing details.
 
 locals {
-  certificates_enabled        = var.certificates_integration != null ? true : false
-  grafana_dashboard_enabled   = var.grafana_dashboard_integration != null ? true : false
-  ldap_enabled                = var.ldap_integration != null && var.ldap_certificate_transfer_integration != null ? true : false
-  logging_enabled             = var.logging_integration != null ? true : false
-  metrics_endpoint_enabled    = var.metrics_endpoint_integration != null ? true : false
-  s3_credentials_enabled      = try(var.backups_integrator.storage_type == "s3", false)
+  certificates_enabled      = var.certificates_integration != null ? true : false
+  grafana_dashboard_enabled = var.grafana_dashboard_integration != null ? true : false
+  ldap_enabled              = var.ldap_integration != null && var.ldap_certificate_transfer_integration != null ? true : false
+  logging_enabled           = var.logging_integration != null ? true : false
+  metrics_endpoint_enabled  = var.metrics_endpoint_integration != null ? true : false
+  s3_credentials_enabled    = var.backups_integrator != null ? true : false
 
   shards = [
     for app in coalesce(var.shards, []) : app if app != null
@@ -37,6 +37,14 @@ locals {
     for app in local.mongo_apps :
     app if app.model_uuid != var.certificates_integration.model_uuid
   ] : []
+
+  certificates_requires = merge(
+    {
+      (module.config_and_routing.requires["config_server_certificates"].name) = module.config_and_routing.requires["config_server_certificates"]
+      (module.config_and_routing.requires["mongos_certificates"].name)        = module.config_and_routing.requires["mongos_certificates"]
+    },
+    { for shard_key, shard in local.shards : shard.app_name => module.shards[shard_key].requires["certificates"] }
+  )
 
   grafana_dashboard_apps = local.grafana_dashboard_enabled ? local.mongodb_apps : []
   metrics_endpoint_apps  = local.metrics_endpoint_enabled ? local.mongodb_apps : []

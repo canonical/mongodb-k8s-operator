@@ -68,8 +68,8 @@ output "requires" {
     length(module.shards) > 0 ? merge([
       for shard_key, shard_module in module.shards : {
         "${local.shards[tonumber(shard_key)].app_name}_certificates" = shard_module.requires["certificates"]
-        "${local.shards[tonumber(shard_key)].app_name}_logging"             = shard_module.requires["logging"]
-        "${local.shards[tonumber(shard_key)].app_name}_sharding"            = shard_module.requires["sharding"]
+        "${local.shards[tonumber(shard_key)].app_name}_logging"      = shard_module.requires["logging"]
+        "${local.shards[tonumber(shard_key)].app_name}_sharding"     = shard_module.requires["sharding"]
       }
     ]...) : {}
   )
@@ -86,7 +86,7 @@ output "offers" {
       }
     ]...) : {},
     {
-      s3_credentials  = try(module.s3_integrator[0].offers.s3_credentials, null)
+      s3_credentials = try(module.s3_integrator[0].offers.s3_credentials, null)
     }
   )
 }

@@ -62,7 +62,7 @@ output "provides" {
 output "requires" {
   description = "Map of all \"requires\" endpoints"
   value = {
-    mongodb_certificates       = module.mongodb.requires["certificates"]
+    mongodb_certificates              = module.mongodb.requires["certificates"]
     mongodb_ldap                      = module.mongodb.requires["ldap"]
     mongodb_ldap_certificate_transfer = module.mongodb.requires["ldap_certificate_transfer"]
     mongodb_logging                   = module.mongodb.requires["logging"]

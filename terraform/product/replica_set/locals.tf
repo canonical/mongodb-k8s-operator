@@ -2,12 +2,12 @@
 # See LICENSE file for licensing details.
 
 locals {
-  s3_integrator_enabled         = try(var.backups_integrator.storage_type == "s3", false)
-  certificates_enabled          = var.certificates_integration != null ? true : false
-  grafana_dashboard_enabled     = var.grafana_dashboard_integration != null ? true : false
-  ldap_enabled                  = var.ldap_integration != null && var.ldap_certificate_transfer_integration != null ? true : false
-  logging_enabled               = var.logging_integration != null ? true : false
-  metrics_endpoint_enabled      = var.metrics_endpoint_integration != null ? true : false
+  s3_integrator_enabled     = var.backups_integrator != null ? true : false
+  certificates_enabled      = var.certificates_integration != null ? true : false
+  grafana_dashboard_enabled = var.grafana_dashboard_integration != null ? true : false
+  ldap_enabled              = var.ldap_integration != null && var.ldap_certificate_transfer_integration != null ? true : false
+  logging_enabled           = var.logging_integration != null ? true : false
+  metrics_endpoint_enabled  = var.metrics_endpoint_integration != null ? true : false
 
   ldap_integrations = compact([
     var.ldap_integration != null ? "ldap_integration" : "",

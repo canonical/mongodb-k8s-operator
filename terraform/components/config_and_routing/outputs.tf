@@ -48,12 +48,12 @@ output "provides" {
 output "requires" {
   description = "Map of all \"requires\" endpoints"
   value = {
-    config_server_certificates       = module.config_server.requires["certificates"]
+    config_server_certificates              = module.config_server.requires["certificates"]
     config_server_ldap                      = module.config_server.requires["ldap"]
     config_server_ldap_certificate_transfer = module.config_server.requires["ldap_certificate_transfer"]
     config_server_logging                   = module.config_server.requires["logging"]
     config_server_s3_credentials            = module.config_server.requires["s3_credentials"]
-    mongos_certificates              = module.mongos.requires["certificates"]
+    mongos_certificates                     = module.mongos.requires["certificates"]
     mongos_cluster                          = module.mongos.requires["cluster"]
     mongos_ldap                             = module.mongos.requires["ldap"]
     mongos_ldap_certificate_transfer        = module.mongos.requires["ldap_certificate_transfer"]
