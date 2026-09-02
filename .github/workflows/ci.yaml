@@ -41,10 +41,41 @@ jobs:
         run: tox run -e lint
     permissions: {}
 
-  terraform-rs-test:
-    name: Terraform - Validation of replica-set product module
+  terraform-lint:
+    name: Terraform - Lint / format / validate modules
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions: {}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install terraform snap
+        run: |
+          sudo snap install terraform --channel=latest/stable --classic
+
+      - name: Install tox
+        run: pipx install tox
+
+      - name: Lint / format / validate TF modules
+        run: tox run -e terraform-lint
+
+  terraform-product-test:
+    name: Terraform - ${{ matrix.product_module }} product module
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - product_module: replica-set
+            apply_script: .github/scripts/terraform-apply-replica-set.sh
+          - product_module: sharded-cluster
+            apply_script: .github/scripts/terraform-apply-sharded.sh
+    needs:
+      - terraform-lint
     continue-on-error: true
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions: {}
     steps:
@@ -70,21 +101,13 @@ jobs:
         run: |
           sudo snap install terraform --channel=latest/stable --classic
 
-      - name: Lint / format / validate TF modules
-        run: |
-          pushd ./terraform
-          for dir in charm/replica_set product/replica_set; do
-            (cd "${dir}" && terraform init && terraform fmt && terraform validate)
-          done
-          popd
-
-      - name: run checks - prepare
+      - name: Install Juju
         run: |
           sudo snap install juju --channel=3.6
 
       - name: microk8s setup
         run: |
-          sudo snap install microk8s --channel=1.27-strict
+          sudo snap install microk8s --channel=1.35-strict/stable
           sudo usermod -a -G snap_microk8s "$(whoami)"
           mkdir -p ~/.kube
           sudo chown -R "$(whoami)" ~/.kube
@@ -96,109 +119,18 @@ jobs:
           mkdir -p ~/.local/share/juju
           sudo --user "$USER" juju bootstrap 'microk8s' --config model-logs-size=10G
           juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
-          juju add-model test
+          juju add-model "test-${{ matrix.product_module }}"
 
-      - name: Terraform deploy - replica-set product module
-        run: |
-          MODEL=$(juju show-model test | grep "model-uuid" | awk '{split($0, a, ": "); print a[2]}')
-          pushd ./terraform/product/replica_set/
-          terraform apply \
-            -var="mongodb_k8s={\"model_uuid\": \"$MODEL\"}" \
-            -var="self_signed_certificates={\"model_uuid\": \"$MODEL\"}" \
-            -var="s3_integrator={\"model_uuid\": \"$MODEL\", \"config\": {\"bucket\": \"test\"}}" \
-            -var="data_integrator={\"model_uuid\": \"$MODEL\"}" \
-            -auto-approve
-          popd
+      - name: Terraform deploy - ${{ matrix.product_module }} product module
+        run: bash "${{ matrix.apply_script }}" "test-${{ matrix.product_module }}"
 
       - name: Wait for juju deployment
         run: |
           # TODO - remove this when juju wait-for starts reporting the up to date status
-          until timeout 2m juju wait-for model test --query='life=="alive" && status=="available"'
+          until timeout 2m juju wait-for model "test-${{ matrix.product_module }}" --query='life=="alive" && status=="available"'
           do
             echo "Retrying in 5 seconds..."
-            juju status -m test
-            sleep 5
-          done
-
-  terraform-sharding-test:
-    name: Terraform - Validation of sharded cluster product module
-    continue-on-error: true
-    runs-on: ubuntu-22.04
-    timeout-minutes: 120
-    permissions: {}
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: (GitHub hosted) Free up disk space
-        run: |
-          printf '\nDisk usage before cleanup\n'
-          df --human-readable
-          # Based on https://github.com/actions/runner-images/issues/2840#issuecomment-790492173
-          rm -r /opt/hostedtoolcache/
-          printf '\nDisk usage after cleanup\n'
-          df --human-readable
-
-      - name: (self hosted) Disk usage
-        run: df --human-readable
-
-      - name: Install terraform snap
-        run: |
-          sudo snap install terraform --channel=latest/stable --classic
-
-      - name: Lint / format / validate TF modules
-        run: |
-          pushd ./terraform
-          for dir in charm/replica_set charm/sharded product/replica_set product/sharded; do
-            (cd "${dir}" && terraform init && terraform fmt && terraform validate)
-          done
-          popd
-
-      - name: run checks - prepare
-        run: |
-          sudo snap install juju --channel=3.6
-
-      - name: microk8s setup
-        run: |
-          sudo snap install microk8s --channel=1.27-strict
-          sudo usermod -a -G snap_microk8s "$(whoami)"
-          mkdir -p ~/.kube
-          sudo chown -R "$(whoami)" ~/.kube
-          newgrp snap_microk8s
-          sudo microk8s enable dns storage ingress
-
-      - name: Juju setup
-        run: |
-          mkdir -p ~/.local/share/juju
-          sudo --user "$USER" juju bootstrap 'microk8s' --config model-logs-size=10G
-          juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
-          juju add-model test
-
-      - name: Terraform deploy - sharded cluster product module
-        run: |
-          MODEL=$(juju show-model test | grep "model-uuid" | awk '{split($0, a, ": "); print a[2]}')
-          pushd ./terraform/product/sharded/
-          terraform apply \
-            -var="config_server={\"model_uuid\": \"$MODEL\"}" \
-            -var="shards=[{\"app_name\": \"shard-one\", \"model_uuid\": \"$MODEL\"},{\"app_name\": \"shard-two\", \"model_uuid\": \"$MODEL\"}]" \
-            -var="mongos_k8s={\"model_uuid\": \"$MODEL\"}" \
-            -var="config_server={\"model_uuid\": \"$MODEL\"}" \
-            -var="self_signed_certificates={\"model_uuid\": \"$MODEL\"}" \
-            -var="s3_integrator={\"model_uuid\": \"$MODEL\", \"config\": {\"bucket\": \"test\"}}" \
-            -var="data_integrator={\"model_uuid\": \"$MODEL\"}" \
-            -auto-approve
-          popd
-
-      - name: Wait for juju deployment
-        run: |
-          # TODO - remove this when juju wait-for starts reporting the up to date status
-          until timeout 2m juju wait-for model test --query='life=="alive" && status=="available"'
-          do
-            echo "Retrying in 5 seconds..."
-            juju status -m test
+            juju status -m "test-${{ matrix.product_module }}"
             sleep 5
           done
 
