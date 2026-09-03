@@ -20,7 +20,7 @@ on:
 jobs:
   lint-workflows:
     name: Lint .github/workflows
-    uses: canonical/data-platform-workflows/.github/workflows/lint_workflows.yaml@v49.0.1
+    uses: canonical/data-platform-workflows/.github/workflows/lint_workflows.yaml@v52.0.0
     permissions:
       contents: read
 
@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Install tox & poetry
@@ -80,7 +80,7 @@ jobs:
     permissions: {}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -136,7 +136,7 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v49.0.1
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v52.0.0
     with:
       cache: true
     permissions:
