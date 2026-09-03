@@ -17,7 +17,7 @@ jobs:
     permissions: {}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Set up environment
@@ -91,11 +91,11 @@ jobs:
         run: df --human-readable
       - name: Checkout
         timeout-minutes: 3
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Setup python 3.12
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
       - name: Set up environment
@@ -108,7 +108,7 @@ jobs:
           go install github.com/canonical/spread/cmd/spread@latest
       - name: Download packed charm(s)
         timeout-minutes: 5
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           pattern: ${{ inputs.artifact-prefix }}-*
           merge-multiple: true
