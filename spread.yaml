@@ -96,7 +96,6 @@ backends:
       # To install pipx on self-hosted runners
       CONCIERGE_EXTRA_DEBS: pipx,build-essential,python3-dev,libldap-dev,libsasl2-dev
       DOCKERHUB_MIRROR: "$(HOST: echo $DOCKERHUB_MIRROR)"
-      CONCIERGE_MICROK8S_CHANNEL: 1.35-strict/stable
       # Python 3.12
       LD_LIBRARY_PATH: "$(HOST: echo $LD_LIBRARY_PATH)"
       PKG_CONFIG_PATH: "$(HOST: echo $PKG_CONFIG_PATH)"
@@ -124,30 +123,6 @@ prepare: |
   cd "$SPREAD_PATH"
   snap install --classic concierge
 
-  if [[ -n "$DOCKERHUB_MIRROR" ]]
-  then
-    # Running on IS-hosted runner; configure microk8s to use Docker Hub mirror
-    # Run before concierge prepare because of https://github.com/canonical/concierge/issues/75
-
-    snap install microk8s --channel "$CONCIERGE_MICROK8S_CHANNEL" --classic
-
-    # Wait for microk8s to populate iptables
-    # https://chat.canonical.com/canonical/pl/jo5cg6wqjjrudqd5ybj6hhttee
-    until [[ -n $(iptables --list | grep -i "microk8s") ]]
-    do
-      echo "MicroK8s has not yet configured iptables."
-      sleep 10
-    done
-
-    tee /var/snap/microk8s/current/args/certs.d/docker.io/hosts.toml << EOF
-    server = "$DOCKERHUB_MIRROR"
-    [host."${DOCKERHUB_MIRROR#'https://'}"]
-    capabilities = ["pull", "resolve"]
-  EOF
-    microk8s stop
-    microk8s start
-  fi
-
   # Install pipx (on lxd-vm backend)
   pipx install tox poetry
   pipx ensurepath
@@ -157,6 +132,17 @@ prepare-each: |
   cd "$SPREAD_PATH"
   # `concierge prepare` needs to be run for each spread job in case Juju version changed
   concierge prepare --trace
+
+  # k8s status --wait-ready returns as soon as 1 node is ready
+  # (see https://github.com/canonical/k8s-snap/issues/1789)
+  # but Cilium, CoreDNS, and storage may still be initialising
+  for res in deployment/cilium-operator deployment/coredns deployment/metrics-server daemonset/cilium daemonset/ck-storage-rawfile-csi-node statefulset/ck-storage-rawfile-csi-controller; do
+      if k8s kubectl -n kube-system get "$res" >/dev/null 2>&1; then
+          k8s kubectl -n kube-system rollout status "$res" --timeout=5m
+      else
+          echo "Skipping rollout status for missing $res"
+      fi
+  done
 
   # Unable to set constraint on all models because of Juju bug:
   # https://bugs.launchpad.net/juju/+bug/2065050

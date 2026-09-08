@@ -47,7 +47,7 @@ clean:
 
 pod-logs:
 # workload container logs
-	microk8s.kubectl logs pod/$(app)-$(unit) --namespace=$(model) --container $(workload) -f
+	sudo k8s kubectl logs pod/$(app)-$(unit) --namespace=$(model) --container $(workload) -f
 
 debug-hook:
 # debug hook for given unit
@@ -55,15 +55,15 @@ debug-hook:
 
 ssh-workload-container:
 # ssh into workload container for given unit (default=0)
-	microk8s.kubectl exec -n $(model) -it $(app)-$(unit) --container $(workload)  -- /bin/bash
+	sudo k8s kubectl exec -n $(model) -it $(app)-$(unit) --container $(workload)  -- /bin/bash
 
 ssh-charm-container:
 # ssh into charm container for given unit (default=0)
-	microk8s.kubectl exec -n $(model) -it $(app)-$(unit) -- /bin/bash
+	sudo k8s kubectl exec -n $(model) -it $(app)-$(unit) -- /bin/bash
 
 prune-pvcs:
 # remove dangling pvcs
-	for i in $$(microk8s.kubectl get pvc -n $(model)|grep database| awk "{ print $$1 }"); do microk8s.kubectl delete pvc/$${i} -n $(model); done
+	for i in $$(sudo k8s kubectl get pvc -n $(model)|grep database| awk "{ print $$1 }"); do sudo k8s kubectl delete pvc/$${i} -n $(model); done
 
 get-credentials:
 # run mysql specific action on leader 
