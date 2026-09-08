@@ -1,6 +1,6 @@
 # Charmed MongoDB on Kubernetes
 [![CharmHub Badge](https://charmhub.io/mongodb-k8s/badge.svg)](https://charmhub.io/mongodb-k8s)
-[![Release to 6/edge](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/release.yaml/badge.svg)](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/release.yaml)
+[![Release to 8/edge](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/release.yaml/badge.svg)](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/release.yaml)
 [![Tests](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/ci.yaml/badge.svg)](https://github.com/canonical/mongodb-k8s-operator/actions/workflows/ci.yaml)
 ## Overview
 

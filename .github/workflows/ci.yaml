@@ -136,7 +136,6 @@ jobs:
       - name: K8s + Juju setup
         # Uses the `k8s` provider defined in ./concierge.yaml to install
         # Canonical K8s, bootstrap it, and bootstrap a Juju controller on it
-        # (replaces the previous manual microk8s + juju bootstrap steps).
         env:
           CONCIERGE_JUJU_CHANNEL: 3.6/stable
         run: sudo concierge prepare --trace
