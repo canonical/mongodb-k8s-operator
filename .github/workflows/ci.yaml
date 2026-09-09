@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Install tox & poetry
@@ -80,7 +80,7 @@ jobs:
     permissions: {}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -97,28 +97,65 @@ jobs:
       - name: (self hosted) Disk usage
         run: df --human-readable
 
+      - name: Purge Docker
+        # GitHub-hosted Azure runners ship Docker pre-installed and active.
+        # Canonical K8s requires "A system with no previous installations
+        # of containerd/docker as this may cause conflicts"
+        # (see https://documentation.ubuntu.com/canonical-kubernetes
+        # /release-1.32/snap/tutorial/getting-started/).
+        # Completely purging Docker requires also
+        # deleting the Docker-specific `iptables-nft` rulesets
+        # created on installation.
+        timeout-minutes: 5
+        run: |
+          sudo apt-get remove --purge -y docker-ce docker-ce-cli containerd.io docker.io containerd 2>/dev/null || true
+          sudo nft flush ruleset
+          sudo ip link delete docker0 2>/dev/null || true
+
+      - name: Remove podman CNI bridge config
+        # Ubuntu 24.04 runners ship podman with a CNI bridge config
+        # (/etc/cni/net.d/87-podman-bridge.conflist) that sorts
+        # lexicographically before Cilium's config (05-cilium.conflist).
+        # When that file is present, containerd picks the podman bridge
+        # as the active CNI before Cilium is ready, bypassing the
+        # node.kubernetes.io/network-unavailable taint and scheduling
+        # pods onto the 10.88.0.0/16 bridge instead of the Cilium pod
+        # CIDR. Removing the file ensures Cilium is the only CNI plugin
+        # from the start.
+        timeout-minutes: 1
+        run: |
+          sudo rm -f /etc/cni/net.d/87-podman-bridge.conflist
+
       - name: Install terraform snap
         run: |
           sudo snap install terraform --channel=latest/stable --classic
 
-      - name: Install Juju
-        run: |
-          sudo snap install juju --channel=3.6
+      - name: Install concierge
+        run: sudo snap install --classic concierge
 
-      - name: microk8s setup
-        run: |
-          sudo snap install microk8s --channel=1.35-strict/stable
-          sudo usermod -a -G snap_microk8s "$(whoami)"
-          mkdir -p ~/.kube
-          sudo chown -R "$(whoami)" ~/.kube
-          newgrp snap_microk8s
-          sudo microk8s enable dns storage ingress
+      - name: K8s + Juju setup
+        # Uses the `k8s` provider defined in ./concierge.yaml to install
+        # Canonical K8s, bootstrap it, and bootstrap a Juju controller on it
+        env:
+          CONCIERGE_JUJU_CHANNEL: 3.6/stable
+        run: sudo concierge prepare --trace
 
-      - name: Juju setup
+      - name: Wait for K8s workloads
+        # `k8s status --wait-ready` returns as soon as 1 node is ready
+        # (see https://github.com/canonical/k8s-snap/issues/1789)
+        # but Cilium, CoreDNS, and storage may still be initialising
         run: |
-          mkdir -p ~/.local/share/juju
-          sudo --user "$USER" juju bootstrap 'microk8s' --config model-logs-size=10G
-          juju model-defaults logging-config='<root>=INFO; unit=DEBUG'
+          for res in deployment/cilium-operator deployment/coredns deployment/metrics-server daemonset/cilium daemonset/ck-storage-rawfile-csi-node statefulset/ck-storage-rawfile-csi-controller; do
+              if sudo k8s kubectl -n kube-system get "$res" >/dev/null 2>&1; then
+                  sudo k8s kubectl -n kube-system rollout status "$res" --timeout=5m
+              else
+                  echo "Skipping rollout status for missing $res"
+              fi
+          done
+
+      - name: Juju model setup
+        run: |
+          juju controller-config model-logs-size=10G
           juju add-model "test-${{ matrix.product_module }}"
 
       - name: Terraform deploy - ${{ matrix.product_module }} product module

@@ -55,7 +55,7 @@ jobs:
       RELEASES_BRANCH: releases
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -74,7 +74,7 @@ jobs:
           echo "pip-version=${VERSION}" >> "${GITHUB_OUTPUT}"
 
       - name: Checkout releases
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: true
           ref: ${{ env.RELEASES_BRANCH }}
@@ -129,7 +129,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Get charm name
