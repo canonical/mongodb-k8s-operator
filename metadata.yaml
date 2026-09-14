@@ -64,10 +64,12 @@ requires:
     optional: true
   s3-credentials:
     interface: s3
+    limit: 1
     optional: true
   gcs-credentials:
     interface: gcs
     limit: 1
+    optional: true
   sharding:
     interface: shards
     # shards can only relate to one config-server
@@ -83,8 +85,8 @@ requires:
     optional: true
   vault-kv:
     interface: vault-kv
-    optional: true
     limit: 1
+    optional: true
 
 containers:
   mongod:
