@@ -9,18 +9,16 @@
 module "config_and_routing" {
   source = "../../components/config_and_routing"
 
-  depends_on = [juju_secret.tls_client_private_key, juju_secret.tls_peer_private_key]
-
   config_server = merge(
     var.config_server,
     {
       config = merge(
         var.config_server.config,
-        length(juju_secret.tls_client_private_key) > 0 ? {
-          "tls-client-private-key" = juju_secret.tls_client_private_key[0].secret_uri
+        length(juju_secret.config_server_tls_client_private_key) > 0 ? {
+          "tls-client-private-key" = juju_secret.config_server_tls_client_private_key[0].secret_uri
         } : {},
-        length(juju_secret.tls_peer_private_key) > 0 ? {
-          "tls-peer-private-key" = juju_secret.tls_peer_private_key[0].secret_uri
+        length(juju_secret.config_server_tls_peer_private_key) > 0 ? {
+          "tls-peer-private-key" = juju_secret.config_server_tls_peer_private_key[0].secret_uri
         } : {}
       )
     }
@@ -28,44 +26,46 @@ module "config_and_routing" {
   mongos = var.mongos
 }
 
-resource "juju_secret" "tls_client_private_key" {
-  count      = var.tls_client_private_key != null ? 1 : 0
+resource "juju_secret" "config_server_tls_client_private_key" {
+  count      = var.config_server_tls_client_private_key_version > 0 ? 1 : 0
   model_uuid = var.config_server.model_uuid
   name       = "${var.config_server.app_name}-tls-client-private-key"
-  value = {
-    private-key = var.tls_client_private_key
+  value_wo = {
+    private-key = var.config_server_tls_client_private_key
   }
-  info = "TLS client private key for ${var.config_server.app_name}"
+  info             = "TLS client private key for ${var.config_server.app_name}"
+  value_wo_version = var.config_server_tls_client_private_key_version
 }
 
-resource "juju_access_secret" "tls_client_private_key" {
-  depends_on = [juju_secret.tls_client_private_key, module.config_and_routing]
-  count      = length(juju_secret.tls_client_private_key) > 0 ? 1 : 0
+resource "juju_access_secret" "config_server_tls_client_private_key" {
+  depends_on = [module.config_and_routing]
+  count      = length(juju_secret.config_server_tls_client_private_key) > 0 ? 1 : 0
   model_uuid = var.config_server.model_uuid
   applications = [
     module.config_and_routing.components["config_server"].name
   ]
-  secret_id = juju_secret.tls_client_private_key[0].secret_id
+  secret_id = juju_secret.config_server_tls_client_private_key[0].secret_id
 }
 
-resource "juju_secret" "tls_peer_private_key" {
-  count      = var.tls_peer_private_key != null ? 1 : 0
+resource "juju_secret" "config_server_tls_peer_private_key" {
+  count      = var.config_server_tls_peer_private_key_version > 0 ? 1 : 0
   model_uuid = var.config_server.model_uuid
   name       = "${var.config_server.app_name}-tls-peer-private-key"
-  value = {
-    private-key = var.tls_peer_private_key
+  value_wo = {
+    private-key = var.config_server_tls_peer_private_key
   }
-  info = "TLS peer private key for ${var.config_server.app_name}"
+  info             = "TLS peer private key for ${var.config_server.app_name}"
+  value_wo_version = var.config_server_tls_peer_private_key_version
 }
 
-resource "juju_access_secret" "tls_peer_private_key" {
-  depends_on = [juju_secret.tls_peer_private_key, module.config_and_routing]
-  count      = length(juju_secret.tls_peer_private_key) > 0 ? 1 : 0
+resource "juju_access_secret" "config_server_tls_peer_private_key" {
+  depends_on = [module.config_and_routing]
+  count      = length(juju_secret.config_server_tls_peer_private_key) > 0 ? 1 : 0
   model_uuid = var.config_server.model_uuid
   applications = [
     module.config_and_routing.components["config_server"].name
   ]
-  secret_id = juju_secret.tls_peer_private_key[0].secret_id
+  secret_id = juju_secret.config_server_tls_peer_private_key[0].secret_id
 }
 
 # shard apps
@@ -169,9 +169,8 @@ module "data_integrator" {
 }
 
 module "gcs_integrator" {
-  depends_on = [juju_secret.gcs_secret]
-  count      = local.gcs_credentials_enabled ? 1 : 0
-  source     = "git::https://github.com/canonical/object-storage-integrator.git//gcs/terraform/charm/gcs_integrator?ref=main"
+  count  = local.gcs_credentials_enabled ? 1 : 0
+  source = "git::https://github.com/canonical/object-storage-integrator.git//gcs/terraform/charm/gcs_integrator?ref=main"
 
   app_name = "gcs-integrator"
   base     = var.backups_integrator.base
@@ -190,17 +189,18 @@ module "gcs_integrator" {
 }
 
 resource "juju_secret" "gcs_secret" {
-  count      = local.gcs_credentials_enabled && var.gcs_secret_key != null ? 1 : 0
+  count      = local.gcs_credentials_enabled && var.gcs_secret_version > 0 ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   name       = "gcs-integrator-credentials"
-  value = {
+  value_wo = {
     secret-key = var.gcs_secret_key
   }
-  info = "GCS credentials for gcs-integrator"
+  info             = "GCS credentials for gcs-integrator"
+  value_wo_version = var.gcs_secret_version
 }
 
 resource "juju_access_secret" "gcs_secret_access" {
-  depends_on = [juju_secret.gcs_secret, module.gcs_integrator]
+  depends_on = [module.gcs_integrator]
   count      = length(juju_secret.gcs_secret) > 0 ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   applications = [
@@ -210,20 +210,20 @@ resource "juju_access_secret" "gcs_secret_access" {
 }
 
 resource "juju_secret" "s3_secret" {
-  count      = local.s3_credentials_enabled && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
+  count      = local.s3_credentials_enabled && var.s3_secret_version > 0 ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   name       = "s3-integrator-credentials"
-  value = {
+  value_wo = {
     access-key = var.s3_access_key
     secret-key = var.s3_secret_key
   }
-  info = "S3 credentials for s3-integrator"
+  info             = "S3 credentials for s3-integrator"
+  value_wo_version = var.s3_secret_version
 }
 
 module "s3_integrator" {
-  depends_on = [juju_secret.s3_secret]
-  count      = local.s3_credentials_enabled ? 1 : 0
-  source     = "git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator?ref=main"
+  count  = local.s3_credentials_enabled ? 1 : 0
+  source = "git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator?ref=main"
 
   app_name = "s3-integrator"
   base     = var.backups_integrator.base
@@ -242,7 +242,7 @@ module "s3_integrator" {
 }
 
 resource "juju_access_secret" "s3_secret_access" {
-  depends_on = [juju_secret.s3_secret, module.s3_integrator]
+  depends_on = [module.s3_integrator]
   count      = length(juju_secret.s3_secret) > 0 ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   applications = [

@@ -314,36 +314,75 @@ variable "logging_config" {
 }
 
 variable "gcs_secret_key" {
-  description = "GCP service-account JSON key for GCS credentials."
+  description = "gcs secret key. Supply through TF_VAR_gcs_secret_key or -var, at plan and at apply."
   type        = string
   sensitive   = true
+  ephemeral   = true
   default     = null
 }
 
 variable "s3_access_key" {
-  description = "S3 access key."
+  description = "s3 access key. Supply through TF_VAR_s3_access_key or -var, at plan and at apply."
   type        = string
   sensitive   = true
+  ephemeral   = true
   default     = null
 }
 
 variable "s3_secret_key" {
-  description = "S3 secret key."
+  description = "s3 secret key. Supply through TF_VAR_s3_secret_key or -var, at plan and at apply."
   type        = string
   sensitive   = true
+  ephemeral   = true
   default     = null
 }
 
-variable "tls_client_private_key" {
-  description = "Private key for client-to-server TLS certificates on the config server. When set, the module stores it in a Juju secret and configures the config server with the secret URI."
+variable "config_server_tls_client_private_key" {
+  description = "Config-server TLS client private key. Supply through TF_VAR_config_server_tls_client_private_key or -var, at plan and at apply."
   type        = string
   sensitive   = true
+  ephemeral   = true
   default     = null
 }
 
-variable "tls_peer_private_key" {
-  description = "Private key for peer-to-peer TLS certificates on the config server. When set, the module stores it in a Juju secret and configures the config server with the secret URI."
+variable "config_server_tls_peer_private_key" {
+  description = "Config-server TLS peer private key. Supply through TF_VAR_config_server_tls_peer_private_key or -var, at plan and at apply."
   type        = string
   sensitive   = true
+  ephemeral   = true
   default     = null
+}
+
+variable "config_server_tls_client_private_key_version" {
+  description = "0 creates no secret. 1 creates it. Increment to rotate."
+  type        = number
+  default     = 0
+}
+
+variable "config_server_tls_peer_private_key_version" {
+  description = "0 creates no secret. 1 creates it. Increment to rotate."
+  type        = number
+  default     = 0
+}
+
+variable "s3_secret_version" {
+  description = "0 creates no secret. 1 creates it. Increment to rotate."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.s3_secret_version == 0 || local.s3_credentials_enabled
+    error_message = "s3_secret_version requires backups_integrator.storage_type = \"s3\"."
+  }
+}
+
+variable "gcs_secret_version" {
+  description = "0 creates no secret. 1 creates it. Increment to rotate."
+  type        = number
+  default     = 0
+
+  validation {
+    condition     = var.gcs_secret_version == 0 || local.gcs_credentials_enabled
+    error_message = "gcs_secret_version requires backups_integrator.storage_type = \"gcs\"."
+  }
 }

@@ -10,8 +10,6 @@
 module "mongodb" {
   source = "../../charms/mongodb"
 
-  depends_on = [juju_secret.tls_client_private_key, juju_secret.tls_peer_private_key]
-
   app_name = var.mongodb.app_name
   base     = var.mongodb.base
   channel  = var.mongodb.channel
@@ -34,17 +32,18 @@ module "mongodb" {
 }
 
 resource "juju_secret" "tls_client_private_key" {
-  count      = var.tls_client_private_key != null ? 1 : 0
+  count      = var.tls_client_private_key_version > 0 ? 1 : 0
   model_uuid = var.mongodb.model_uuid
   name       = "${var.mongodb.app_name}-tls-client-private-key"
-  value = {
+  value_wo = {
     private-key = var.tls_client_private_key
   }
-  info = "TLS client private key for ${var.mongodb.app_name}"
+  info             = "TLS client private key for ${var.mongodb.app_name}"
+  value_wo_version = var.tls_client_private_key_version
 }
 
 resource "juju_access_secret" "tls_client_private_key" {
-  depends_on = [juju_secret.tls_client_private_key, module.mongodb]
+  depends_on = [module.mongodb]
   count      = length(juju_secret.tls_client_private_key) > 0 ? 1 : 0
   model_uuid = var.mongodb.model_uuid
   applications = [
@@ -54,17 +53,18 @@ resource "juju_access_secret" "tls_client_private_key" {
 }
 
 resource "juju_secret" "tls_peer_private_key" {
-  count      = var.tls_peer_private_key != null ? 1 : 0
+  count      = var.tls_peer_private_key_version > 0 ? 1 : 0
   model_uuid = var.mongodb.model_uuid
   name       = "${var.mongodb.app_name}-tls-peer-private-key"
-  value = {
+  value_wo = {
     private-key = var.tls_peer_private_key
   }
-  info = "TLS peer private key for ${var.mongodb.app_name}"
+  info             = "TLS peer private key for ${var.mongodb.app_name}"
+  value_wo_version = var.tls_peer_private_key_version
 }
 
 resource "juju_access_secret" "tls_peer_private_key" {
-  depends_on = [juju_secret.tls_peer_private_key, module.mongodb]
+  depends_on = [module.mongodb]
   count      = length(juju_secret.tls_peer_private_key) > 0 ? 1 : 0
   model_uuid = var.mongodb.model_uuid
   applications = [
@@ -117,9 +117,8 @@ module "data_integrator" {
 }
 
 module "gcs_integrator" {
-  depends_on = [juju_secret.gcs_secret]
-  count      = local.gcs_integrator_enabled ? 1 : 0
-  source     = "git::https://github.com/canonical/object-storage-integrator.git//gcs/terraform/charm/gcs_integrator?ref=main"
+  count  = local.gcs_integrator_enabled ? 1 : 0
+  source = "git::https://github.com/canonical/object-storage-integrator.git//gcs/terraform/charm/gcs_integrator?ref=main"
 
   app_name = "gcs-integrator"
   base     = var.backups_integrator.base
@@ -138,17 +137,18 @@ module "gcs_integrator" {
 }
 
 resource "juju_secret" "gcs_secret" {
-  count      = local.gcs_integrator_enabled && var.gcs_secret_key != null ? 1 : 0
+  count      = local.gcs_integrator_enabled && var.gcs_secret_version > 0 ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   name       = "gcs-integrator-credentials"
-  value = {
+  value_wo = {
     secret-key = var.gcs_secret_key
   }
-  info = "GCS credentials for gcs-integrator"
+  info             = "GCS credentials for gcs-integrator"
+  value_wo_version = var.gcs_secret_version
 }
 
 resource "juju_access_secret" "gcs_secret_access" {
-  depends_on = [juju_secret.gcs_secret, module.gcs_integrator]
+  depends_on = [module.gcs_integrator]
   count      = length(juju_secret.gcs_secret) > 0 ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   applications = [
@@ -158,20 +158,20 @@ resource "juju_access_secret" "gcs_secret_access" {
 }
 
 resource "juju_secret" "s3_secret" {
-  count      = local.s3_integrator_enabled && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
+  count      = local.s3_integrator_enabled && var.s3_secret_version > 0 ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   name       = "s3-integrator-credentials"
-  value = {
+  value_wo = {
     access-key = var.s3_access_key
     secret-key = var.s3_secret_key
   }
-  info = "S3 credentials for s3-integrator"
+  info             = "S3 credentials for s3-integrator"
+  value_wo_version = var.s3_secret_version
 }
 
 module "s3_integrator" {
-  depends_on = [juju_secret.s3_secret]
-  count      = local.s3_integrator_enabled ? 1 : 0
-  source     = "git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator?ref=main"
+  count  = local.s3_integrator_enabled ? 1 : 0
+  source = "git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator?ref=main"
 
   app_name = "s3-integrator"
   base     = var.backups_integrator.base
@@ -190,7 +190,7 @@ module "s3_integrator" {
 }
 
 resource "juju_access_secret" "s3_secret_access" {
-  depends_on = [juju_secret.s3_secret, module.s3_integrator]
+  depends_on = [module.s3_integrator]
   count      = length(juju_secret.s3_secret) > 0 ? 1 : 0
   model_uuid = var.backups_integrator.model_uuid
   applications = [
