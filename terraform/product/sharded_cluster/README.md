@@ -167,12 +167,3 @@ terraform apply tfplan
 Keep credentials out of `.tfvars` files. Keep version numbers in your non-sensitive configuration for subsequent runs. Backup credentials require the matching `backups_integrator.storage_type` (`s3` or `gcs`); a nonzero version without the matching integrator is rejected.
 
 To rotate a secret, update the credential in your environment and increment the matching version variable, for example `config_server_tls_client_private_key_version = 2`. For S3, supply both keys and increment `s3_secret_version`. Changing a credential without changing the version has no effect and produces no warning. Terraform only needs the credential on runs that create or rotate the secret. Any other plan or apply works with it unset.
-
-
-TLS secrets are created in the config-server model and granted only to the config-server application. These inputs do not configure mongos or shard applications. Backup secrets are created in the backup integrator's model.
-
-### Migration
-
-Previously, providing a credential enabled creation automatically. Set its version to `1` and supply the credential when migrating an existing managed secret. Terraform `moved` blocks migrate the TLS secret and grant resource addresses to their `config_server_` names without recreating them. Credentials previously written with `value` remain in historical state and saved plans; rotate them and handle retained copies accordingly.
-
-The config-server TLS inputs are named `config_server_tls_client_private_key` and `config_server_tls_peer_private_key`, with matching `_version` inputs. Update callers and `TF_VAR_` environment variables that used the previous unprefixed names.

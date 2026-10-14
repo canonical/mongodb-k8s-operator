@@ -158,8 +158,3 @@ terraform apply tfplan
 Keep credentials out of `.tfvars` files. Keep version numbers in your non-sensitive configuration for subsequent runs. Backup credentials require the matching `backups_integrator.storage_type` (`s3` or `gcs`); a nonzero version without the matching integrator is rejected.
 
 To rotate a secret, update the credential in your environment and increment the matching version variable, for example `tls_client_private_key_version = 2`. For S3, supply both keys and increment `s3_secret_version`. Changing a credential without changing the version has no effect and produces no warning. Terraform only needs the credential on runs that create or rotate the secret. Any other plan or apply works with it unset.
-
-
-### Migration
-
-Previously, a supplied credential enabled secret creation automatically. Set its version to `1` and supply the credential when migrating. Existing secret and grant resource addresses are preserved. Credentials previously stored with `value` remain in historical state and saved plans; rotate them and handle retained copies accordingly.
