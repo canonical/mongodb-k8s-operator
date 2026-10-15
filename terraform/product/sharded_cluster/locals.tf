@@ -2,6 +2,10 @@
 # See LICENSE file for licensing details.
 
 locals {
+  create_s3_secret = local.s3_credentials_enabled && var.s3_secret_uri == null && var.s3_secret_version > 0
+  use_s3_secret    = local.s3_credentials_enabled && (var.s3_secret_uri != null || local.create_s3_secret)
+  s3_secret_uri    = coalesce(var.s3_secret_uri, one(juju_secret.s3_secret[*].secret_uri), "-")
+
   certificates_enabled      = var.certificates_integration != null ? true : false
   grafana_dashboard_enabled = var.grafana_dashboard_integration != null ? true : false
   ldap_enabled              = var.ldap_integration != null && var.ldap_certificate_transfer_integration != null ? true : false
