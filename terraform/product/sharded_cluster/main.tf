@@ -100,28 +100,25 @@ module "data_integrator" {
 }
 
 resource "juju_secret" "s3_secret" {
-  count      = local.s3_credentials_enabled && var.s3_access_key != null && var.s3_secret_key != null ? 1 : 0
-  model_uuid = var.backups_integrator.model_uuid
-  name       = "s3-integrator-credentials"
-  value = {
-    access-key = var.s3_access_key
-    secret-key = var.s3_secret_key
-  }
-  info = "S3 credentials for s3-integrator"
+  count            = local.create_s3_secret ? 1 : 0
+  model_uuid       = var.backups_integrator.model_uuid
+  name             = "s3-integrator-credentials"
+  value_wo         = { access-key = var.s3_access_key, secret-key = var.s3_secret_key }
+  value_wo_version = var.s3_secret_version
+  info             = "S3 credentials for s3-integrator"
 }
 
 module "s3_integrator" {
-  depends_on = [juju_secret.s3_secret]
-  count      = local.s3_credentials_enabled ? 1 : 0
-  source     = "git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator?ref=main"
+  count  = local.s3_credentials_enabled ? 1 : 0
+  source = "git::https://github.com/canonical/object-storage-integrator.git//s3/terraform/charm/s3_integrator?ref=main"
 
   app_name = "s3-integrator"
   base     = var.backups_integrator.base
   channel  = var.backups_integrator.channel
   config = merge(
     var.backups_integrator.config,
-    length(juju_secret.s3_secret) > 0 ? {
-      credentials = juju_secret.s3_secret[0].secret_uri
+    local.use_s3_secret ? {
+      credentials = local.s3_secret_uri
     } : {}
   )
   constraints = var.backups_integrator.constraints
@@ -132,11 +129,9 @@ module "s3_integrator" {
 }
 
 resource "juju_access_secret" "s3_secret_access" {
-  depends_on = [juju_secret.s3_secret, module.s3_integrator]
-  count      = length(juju_secret.s3_secret) > 0 ? 1 : 0
-  model_uuid = var.backups_integrator.model_uuid
-  applications = [
-    module.s3_integrator[0].application.name
-  ]
-  secret_id = juju_secret.s3_secret[0].secret_id
+  depends_on   = [module.s3_integrator]
+  count        = local.use_s3_secret ? 1 : 0
+  model_uuid   = var.backups_integrator.model_uuid
+  applications = [module.s3_integrator[0].application.name]
+  secret_id    = regex("[^/:]+$", local.s3_secret_uri)
 }
