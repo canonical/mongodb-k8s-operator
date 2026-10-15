@@ -2,6 +2,22 @@
 # See LICENSE file for licensing details.
 
 locals {
+  create_config_server_tls_client_private_key     = var.config_server_tls_client_private_key_secret_uri == null && var.config_server_tls_client_private_key_version > 0
+  use_config_server_tls_client_private_key        = (var.config_server_tls_client_private_key_secret_uri != null || local.create_config_server_tls_client_private_key)
+  config_server_tls_client_private_key_secret_uri = coalesce(var.config_server_tls_client_private_key_secret_uri, one(juju_secret.config_server_tls_client_private_key[*].secret_uri), "-")
+
+  create_config_server_tls_peer_private_key     = var.config_server_tls_peer_private_key_secret_uri == null && var.config_server_tls_peer_private_key_version > 0
+  use_config_server_tls_peer_private_key        = (var.config_server_tls_peer_private_key_secret_uri != null || local.create_config_server_tls_peer_private_key)
+  config_server_tls_peer_private_key_secret_uri = coalesce(var.config_server_tls_peer_private_key_secret_uri, one(juju_secret.config_server_tls_peer_private_key[*].secret_uri), "-")
+
+  create_s3_secret = local.s3_credentials_enabled && var.s3_secret_uri == null && var.s3_secret_version > 0
+  use_s3_secret    = local.s3_credentials_enabled && (var.s3_secret_uri != null || local.create_s3_secret)
+  s3_secret_uri    = coalesce(var.s3_secret_uri, one(juju_secret.s3_secret[*].secret_uri), "-")
+
+  create_gcs_secret = local.gcs_credentials_enabled && var.gcs_secret_uri == null && var.gcs_secret_version > 0
+  use_gcs_secret    = local.gcs_credentials_enabled && (var.gcs_secret_uri != null || local.create_gcs_secret)
+  gcs_secret_uri    = coalesce(var.gcs_secret_uri, one(juju_secret.gcs_secret[*].secret_uri), "-")
+
   backups_integrator_channel  = var.backups_integrator != null ? coalesce(var.backups_integrator.channel, var.backups_integrator.storage_type == "s3" ? "2/stable" : "1/stable") : null
   client_certificates_enabled = var.client_certificates_integration != null ? true : false
   encryption_at_rest_enabled  = var.vault_kv_integration != null ? true : false
