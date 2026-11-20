@@ -20,9 +20,10 @@ on:
 jobs:
   lint-workflows:
     name: Lint .github/workflows
-    uses: canonical/data-platform-workflows/.github/workflows/lint_workflows.yaml@v49.0.1
+    uses: canonical/data-platform-workflows/.github/workflows/lint_workflows.yaml@v56.0.0
     permissions:
       contents: read
+    cache-mode: none
 
   lint:
     name: Lint
@@ -40,12 +41,14 @@ jobs:
       - name: tox run -e lint
         run: tox run -e lint
     permissions: {}
+    cache-mode: none
 
   terraform-lint:
     name: Terraform - Lint / format / validate modules
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions: {}
+    cache-mode: none
     steps:
       - name: Checkout repo
         uses: actions/checkout@v7
@@ -78,6 +81,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     permissions: {}
+    cache-mode: none
     steps:
       - name: Checkout repo
         uses: actions/checkout@v7
@@ -173,12 +177,12 @@ jobs:
 
   build:
     name: Build charm
-    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v49.0.1
+    uses: canonical/data-platform-workflows/.github/workflows/build_charm.yaml@v56.0.0
     with:
       cache: true
     permissions:
-      actions: read
       contents: read
+    cache-mode: none
 
   integration-test:
     name: Integration test charm
@@ -191,3 +195,4 @@ jobs:
       artifact-prefix: ${{ needs.build.outputs.artifact-prefix }}
     permissions:
       contents: read
+    cache-mode: none
