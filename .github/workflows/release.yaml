@@ -10,35 +10,35 @@ on:
 jobs:
   tag:
     name: Create charm refresh compatibility version git tag
-    uses: canonical/data-platform-workflows/.github/workflows/tag_charm_edge.yaml@v49.0.1
+    uses: canonical/data-platform-workflows/.github/workflows/tag_charm_edge.yaml@v56.0.0
     with:
       track: "8"
     permissions:
-      actions: read # Needed for GitHub API call to get workflow version
       contents: write # Needed to create git tag
+    cache-mode: none
 
   ci-tests:
     needs: tag
     uses: ./.github/workflows/ci.yaml
     permissions:
-      actions: read # Needed for GitHub API call to get workflow version
       contents: write
+    cache-mode: none
 
   release:
     name: Release charm
     needs:
       - ci-tests
       - tag
-    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v49.0.1
+    uses: canonical/data-platform-workflows/.github/workflows/release_charm_edge.yaml@v56.0.0
     with:
       track: ${{ needs.tag.outputs.track }}
       artifact-prefix: ${{ needs.ci-tests.outputs.artifact-prefix }}
       charmcraft-snap-revision: "8022"
     secrets:
-      charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
+      charmhub-token: ${{ secrets.CHARMHUB_TOKEN_EDGE }}
     permissions:
-      actions: read # Needed for GitHub API call to get workflow version
       contents: write # Needed to create git tags
+    cache-mode: none
 
   push-revision-files:
     name: Create revision file
@@ -49,6 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Needed to commit and push
+    cache-mode: none
     outputs:
       pip-version: ${{ steps.package-version.outputs.pip-version }}
     env:
@@ -127,6 +128,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    cache-mode: none
     steps:
       - name: Checkout
         uses: actions/checkout@v7
