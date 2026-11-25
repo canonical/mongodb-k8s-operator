@@ -35,13 +35,14 @@ on:
 jobs:
   promote:
     name: Promote charm revisions
-    uses: canonical/data-platform-workflows/.github/workflows/_promote_charms.yaml@v56.0.0
+    uses: canonical/data-platform-workflows/.github/workflows/_promote_charms.yaml@v49.0.1
     with:
       revisions: ${{ inputs.revisions }}
       track: ${{ inputs.track }}
       to-risk: ${{ inputs.to-risk }}
+      charmcraft-snap-revision: "8022"
     secrets:
-      charmhub-token: ${{ secrets.CHARMHUB_TOKEN_PROMOTION }}
+      charmhub-token: ${{ secrets.CHARMHUB_TOKEN }}
     permissions:
       contents: write # Needed to create git tags
     cache-mode: none
